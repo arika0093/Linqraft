@@ -10,5 +10,8 @@
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\..\src\EFCore.ExprGenerator\EFCore.ExprGenerator.csproj" />
+    <ProjectReference Include="..\..\src\EFCore.ExprGenerator.SourceGenerator\EFCore.ExprGenerator.SourceGenerator.csproj"
+                      OutputItemType="Analyzer"
+                      ReferenceOutputAssembly="false" />
   </ItemGroup>
 </Project>
