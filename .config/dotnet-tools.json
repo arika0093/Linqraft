@@ -1,0 +1,20 @@
+{
+  "version": 1,
+  "isRoot": true,
+  "tools": {
+    "nbgv": {
+      "version": "3.8.118",
+      "commands": [
+        "nbgv"
+      ],
+      "rollForward": false
+    },
+    "csharpier": {
+      "version": "1.1.2",
+      "commands": [
+        "csharpier"
+      ],
+      "rollForward": false
+    }
+  }
+}
