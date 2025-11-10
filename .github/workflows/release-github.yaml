@@ -1,0 +1,59 @@
+name: Release Package to GitHub
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - release/*
+    paths:
+      - '**.csproj'
+      - '**.cs'
+      - '**.yaml'
+
+permissions:
+  contents: write
+
+env:
+  DOTNET_VERSION: '9.0.x'
+
+jobs:
+  release-github:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: ${{ env.DOTNET_VERSION }}
+          cache: true
+          cache-dependency-path: '**/packages.lock.json'
+
+      - uses: dotnet/nbgv@master
+        id: nbgv
+
+      - name: Restore dependencies
+        run: dotnet restore --locked-mode
+
+      - name: Build
+        run: dotnet build --no-restore -c Release
+
+      - name: Generate Nuget Package
+        run: dotnet pack --no-build -c Release --output ./artifacts
+
+      - name: Create Release
+        id: create_release
+        uses: softprops/action-gh-release@v1
+        with:
+          name: ${{ steps.nbgv.outputs.SemVer2 }}
+          tag_name: ${{ steps.nbgv.outputs.SemVer2 }}
+          target_commitish: ${{ github.ref }}
+          generate_release_notes: true
+          files: ./artifacts/*.nupkg
+          # if hyphen contains in the tag name, it will be prerelease
+          prerelease: ${{ contains(steps.nbgv.outputs.SemVer2, '-') }}
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
