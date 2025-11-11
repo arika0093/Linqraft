@@ -170,24 +170,19 @@ public class SelectExprGenerator : IIncrementalGenerator
         foreach (var prop in structure.Properties)
         {
             var propertyType = prop.TypeName;
+            // もしpropertyTypeがGenerics型であれば、その親側のみを使う
+            if (propertyType.Contains("<"))
+            {
+                propertyType = propertyType[..propertyType.IndexOf("<")];
+            }
 
             // ネストした構造の場合、再帰的にDTOを生成（先に追加）
             if (prop.NestedStructure is not null)
             {
                 var nestedId = GenerateUniqueId(prop.NestedStructure);
                 var nestedDtoName = GenerateDtoClasses(prop.NestedStructure, nestedId, dtoClasses);
-
-                // List<T> の場合は List<NestedDto> に変換
-                if (propertyType.StartsWith("System.Collections.Generic.List<"))
-                {
-                    propertyType = $"List<{nestedDtoName}>";
-                }
-                else if (propertyType.Contains("IEnumerable<"))
-                {
-                    propertyType = $"List<{nestedDtoName}>";
-                }
+                propertyType = $"{propertyType}<{nestedDtoName}>";
             }
-
             sb.AppendLine($"        public required {propertyType} {prop.Name} {{ get; set; }}");
         }
 
@@ -270,7 +265,7 @@ public class SelectExprGenerator : IIncrementalGenerator
         if (string.IsNullOrEmpty(paramName))
             paramName = "x"; // デフォルトパラメータ名
 
-        var baseExpression = expression.Substring(0, selectIndex);
+        var baseExpression = expression[..selectIndex];
         var uniqueId = GenerateUniqueId(nestedStructure);
         var nestedDtoName = $"{nestedStructure.SourceTypeName}Dto_{uniqueId}";
 
@@ -314,7 +309,7 @@ public class SelectExprGenerator : IIncrementalGenerator
             // 次のパートの最初のトークン（プロパティ名）を取得
             var nextPart = parts[i];
             var dotIndex = nextPart.IndexOf('.');
-            var propertyName = dotIndex > 0 ? nextPart.Substring(0, dotIndex) : nextPart;
+            var propertyName = dotIndex > 0 ? nextPart[..dotIndex] : nextPart;
 
             currentPath = $"{currentPath}.{propertyName}";
         }
@@ -382,9 +377,12 @@ public class SelectExprGenerator : IIncrementalGenerator
             else
             {
                 // 式から推測されるプロパティ名を取得
-                propertyName = GetImplicitPropertyName(expression);
-                if (propertyName is null)
+                var name = GetImplicitPropertyName(expression);
+                if (name is null)
+                {
                     continue;
+                }
+                propertyName = name;
             }
 
             var property = AnalyzeExpression(propertyName, expression, semanticModel);
