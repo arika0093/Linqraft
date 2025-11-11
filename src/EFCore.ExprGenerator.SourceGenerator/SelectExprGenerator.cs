@@ -228,13 +228,9 @@ public class SelectExprGenerator : IIncrementalGenerator
         sb.AppendLine("        /// <summary>");
         sb.AppendLine("        /// generated method");
         sb.AppendLine("        /// </summary>");
-        sb.AppendLine(
-            $"        public static global::System.Linq.IQueryable<{dtoName}> SelectExpr<TResult>("
-        );
-        sb.AppendLine(
-            $"            this global::System.Linq.IQueryable<{sourceTypeFullName}> query,"
-        );
-        sb.AppendLine($"            global::System.Func<{sourceTypeFullName}, TResult> selector)");
+        sb.AppendLine($"        public static IQueryable<{dtoName}> SelectExpr<TResult>(");
+        sb.AppendLine($"            this IQueryable<{sourceTypeFullName}> query,");
+        sb.AppendLine($"            Func<{sourceTypeFullName}, TResult> selector)");
         sb.AppendLine("        {");
         sb.AppendLine($"            return query.Select(s => new {dtoName}");
         sb.AppendLine("            {");
