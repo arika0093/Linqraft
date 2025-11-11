@@ -1,1 +1,5 @@
-﻿<Project Sdk="Microsoft.NET.Sdk"></Project>
+﻿<Project Sdk="Microsoft.NET.Sdk">
+  <ItemGroup>
+    <ProjectReference Include="..\..\src\EFCore.ExprGenerator\EFCore.ExprGenerator.csproj" />
+  </ItemGroup>
+</Project>
