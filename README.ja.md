@@ -1,13 +1,15 @@
 # EFCore.ExprGenerator
 
-EFCore.ExprGenerator is a source generator that makes writing Select queries in Entity Framework Core (EF Core) more concise and enables the use of nullable expressions in selectors.
+EntityFrameworkCore(EFCore)におけるSelectクエリの記述を簡潔にし、nullable式を利用できるようにします。
 
 [English](./README.md) | [Japanese](./README.ja.md)
 
-## Problem
-Consider fetching data from a table that has many related tables in EF Core.
+## 課題
+EFCoreにおいて、関連テーブルが大量にあるテーブルのデータを取得する例を考えます。
 
-Using `Include` and `ThenInclude` quickly makes the code verbose and hard to read. If you forget an `Include`, you can encounter a `NullReferenceException` at runtime and it is difficult to detect. Also, `Include` retrieves all related data which can be inefficient for performance.
+`Include`や`ThenInclude`を使用する方法は、すぐにコードが複雑になり可読性が低下します。
+また、Includeを忘れると実行時に`NullReferenceException`が発生する上、それを検知することは難しい難点があります。
+さらに、全てのデータを取得する関係上、パフォーマンス上でも問題があります。
 
 ```csharp
 var orders = await dbContext.Orders
@@ -22,7 +24,7 @@ var orders = await dbContext.Orders
     .ToListAsync();
 ```
 
-A better approach is to use DTOs (Data Transfer Objects) and select only the data you need.
+より理想的な方法はDTO(Data Transfer Object)を使用し、必要なデータのみを選択的に取得することです。
 
 ```csharp
 var orders = await dbContext.Orders
@@ -41,12 +43,13 @@ var orders = await dbContext.Orders
     .ToListAsync();
 ```
 
-This approach is much more efficient because it retrieves only the needed columns. However, it has drawbacks:
+上記の方法は、必要なデータのみを取得できるためパフォーマンス上大きな利点があります。
+しかし、以下のような欠点があります。
 
-- While you can use anonymous types, you must define DTO classes manually when you need to pass results between methods or return them.
-- If child objects have nullable properties, you end up writing verbose ternary expressions to guard each access.
+* 匿名型を利用することは可能ですが、他の関数に渡す場合や返却値として使用する場合、手動でDTOクラスを定義する必要があります。
+* nullableなプロパティを持つ子オブジェクトが存在する場合、三項演算子を駆使した冗長なコードを書く必要があります。
 
-Because nullable operators are not supported inside expression trees, you cannot write `o.Customer?.Name` directly in many selectors. The code often becomes:
+Expression内ではnullable演算子が利用できない性質上、`o.Customer?.Name`のような記述ができず、以下のようなコードになりがちです。
 
 ```csharp
 var orders = await dbContext.Orders
@@ -71,8 +74,9 @@ var orders = await dbContext.Orders
     .ToListAsync();
 ```
 
-## Features
-EFCore.ExprGenerator is a Source Generator designed to solve the issues above. With it you can write selectors like this:
+## 特徴
+EFCore.ExprGeneratorは、上記の問題を解決するために設計されたSource Generatorです。
+上記の例では、以下のように記述することができます。
 
 ```csharp
 var orders = await dbContext.Orders
@@ -91,7 +95,8 @@ var orders = await dbContext.Orders
     .ToListAsync();
 ```
 
-Note that you don't need to define `OrderDto` or `OrderItemDto`. The source generator automatically generates code from the anonymous selector. For example it will generate a method like:
+`OrderDto`や`OrderItemDto`などを定義していないことに注目してください。
+Source Generatorにより、上記のコードから以下のようなメソッドが自動生成されます。
 
 ```csharp
 namespace EFCore.ExprGenerator.Sample;
@@ -141,16 +146,16 @@ public class OrderDto_D03CE9AC
 }
 ```
 
-## Usage
-### Installation
-Install `EFCore.ExprGenerator` from NuGet:
+## 使用方法
+### インストール
+`EFCore.ExprGenerator`をNuGetからインストールします。
 
 ```
-dotnet add package EFCore.ExprGenerator --prerelease
+-dotnet add package EFCore.ExprGenerator --prerelease
 ```
 
-### Example
-Use the `SelectExpr` method with an anonymous selector:
+### 利用例
+以下のように`SelectExpr`メソッドを使用して、匿名型でクエリを記述します。
 
 ```csharp
 var orders = await dbContext.Orders
@@ -173,4 +178,3 @@ var orders = await dbContext.Orders
     })
     .ToListAsync();
 ```
-
