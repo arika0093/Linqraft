@@ -136,12 +136,13 @@ public class SelectExprGenerator : IIncrementalGenerator
 
             // DTOクラスを生成（ネストしたDTOも含む）
             var dtoClasses = new List<string>();
-            var mainDtoName = GenerateDtoClasses(dtoStructure, uniqueId, dtoClasses);
+            var mainDtoName = GenerateDtoClasses(dtoStructure, uniqueId, dtoClasses, namespaceName);
+            var mainDtoFullName = $"global::{namespaceName}.{mainDtoName}";
 
             // SelectExprメソッドを生成
             var selectExprMethod = GenerateSelectExprMethod(
                 info.SourceType.Name,
-                mainDtoName,
+                mainDtoFullName,
                 dtoStructure,
                 info.AnonymousObject
             );
@@ -153,9 +154,6 @@ public class SelectExprGenerator : IIncrementalGenerator
                 dtoClasses,
                 selectExprMethod
             );
-
-            // デバッグ: 生成されたコードをファイルとして出力
-            context.AddSource("Debug_GeneratedCode.g.cs", $"/*\n{sourceCode}\n*/");
 
             // Source Generatorに登録
             context.AddSource($"GeneratedExpression_{uniqueId}.g.cs", sourceCode);
@@ -174,7 +172,8 @@ public class SelectExprGenerator : IIncrementalGenerator
     private static string GenerateDtoClasses(
         DtoStructure structure,
         string uniqueId,
-        List<string> dtoClasses
+        List<string> dtoClasses,
+        string namespaceName
     )
     {
         var dtoName = $"{structure.SourceTypeName}Dto_{uniqueId}";
@@ -196,8 +195,10 @@ public class SelectExprGenerator : IIncrementalGenerator
             if (prop.NestedStructure is not null)
             {
                 var nestedId = GenerateUniqueId(prop.NestedStructure);
-                var nestedDtoName = GenerateDtoClasses(prop.NestedStructure, nestedId, dtoClasses);
-                propertyType = $"{propertyType}<{nestedDtoName}>";
+                var nestedDtoName = GenerateDtoClasses(prop.NestedStructure, nestedId, dtoClasses, namespaceName);
+                // propertyTypeは既にglobal::で始まる完全修飾名なので、nestedDtoNameも同様にglobal::を付ける
+                var nestedDtoFullName = $"global::{namespaceName}.{nestedDtoName}";
+                propertyType = $"{propertyType}<{nestedDtoFullName}>";
             }
             sb.AppendLine($"        public required {propertyType} {prop.Name} {{ get; set; }}");
         }
@@ -216,13 +217,14 @@ public class SelectExprGenerator : IIncrementalGenerator
         AnonymousObjectCreationExpressionSyntax anonymousObj
     )
     {
+        var sourceTypeFullName = structure.SourceTypeFullName;
         var sb = new StringBuilder();
         sb.AppendLine("        /// <summary>");
         sb.AppendLine("        /// generated method");
         sb.AppendLine("        /// </summary>");
-        sb.AppendLine($"        public static IQueryable<{dtoName}> SelectExpr<TResult>(");
-        sb.AppendLine($"            this IQueryable<{sourceTypeName}> query,");
-        sb.AppendLine($"            Func<{sourceTypeName}, TResult> selector)");
+        sb.AppendLine($"        public static global::System.Linq.IQueryable<{dtoName}> SelectExpr<TResult>(");
+        sb.AppendLine($"            this global::System.Linq.IQueryable<{sourceTypeFullName}> query,");
+        sb.AppendLine($"            global::System.Func<{sourceTypeFullName}, TResult> selector)");
         sb.AppendLine("        {");
         sb.AppendLine($"            return query.Select(s => new {dtoName}");
         sb.AppendLine("            {");
@@ -249,7 +251,14 @@ public class SelectExprGenerator : IIncrementalGenerator
         // ネストしたSelect（コレクション）の場合
         if (property.NestedStructure is not null)
         {
-            return ConvertNestedSelect(expression, property.NestedStructure);
+            var converted = ConvertNestedSelect(expression, property.NestedStructure);
+            // デバッグ: 変換が正しく行われたかチェック
+            if (converted == expression && expression.Contains("Select"))
+            {
+                // 変換が行われなかった場合、元の式をコメントとして残す
+                return $"{converted} /* CONVERSION FAILED: {property.Name} */";
+            }
+            return converted;
         }
 
         // Nullable演算子が使われている場合、明示的なnullチェックに変換
@@ -266,11 +275,13 @@ public class SelectExprGenerator : IIncrementalGenerator
     {
         // 例: s.Childs.Select(c => new { ... })
         // パラメータ名を抽出（例: "c"）
-        var selectIndex = expression.IndexOf(".Select(");
+        // .Select の後に空白やジェネリック型パラメータがある可能性を考慮
+        var selectIndex = expression.IndexOf(".Select");
         if (selectIndex == -1)
             return expression;
 
-        var lambdaStart = expression.IndexOf("(", selectIndex + 8);
+        // Select の後の '(' を探す（ラムダの開始）
+        var lambdaStart = expression.IndexOf("(", selectIndex);
         if (lambdaStart == -1)
             return expression;
 
@@ -284,7 +295,7 @@ public class SelectExprGenerator : IIncrementalGenerator
 
         var baseExpression = expression[..selectIndex];
         var uniqueId = GenerateUniqueId(nestedStructure);
-        var nestedDtoName = $"{nestedStructure.SourceTypeName}Dto_{uniqueId}";
+        var nestedDtoName = $"{nestedStructure.SourceTypeFullName}Dto_{uniqueId}";
 
         var propertyAssignments = new List<string>();
         foreach (var prop in nestedStructure.Properties)
@@ -296,7 +307,7 @@ public class SelectExprGenerator : IIncrementalGenerator
         }
 
         var propertiesCode = string.Join(", ", propertyAssignments);
-        return $"{baseExpression}.Select({paramName} => new {nestedDtoName} {{ {propertiesCode} }}).ToList()";
+        return $"{baseExpression}.Select({paramName} => new {nestedDtoName} {{ {propertiesCode} }})";
     }
 
     private static string ConvertNullableAccessToExplicitCheck(string expression)
@@ -411,7 +422,7 @@ public class SelectExprGenerator : IIncrementalGenerator
 
         return new DtoStructure(
             SourceTypeName: sourceType.Name,
-            SourceTypeFullName: sourceType.ToDisplayString(),
+            SourceTypeFullName: sourceType.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat),
             Properties: properties
         );
     }
@@ -493,7 +504,7 @@ public class SelectExprGenerator : IIncrementalGenerator
 
         return new DtoProperty(
             Name: propertyName,
-            TypeName: propertyType.ToDisplayString(SymbolDisplayFormat.MinimallyQualifiedFormat),
+            TypeName: propertyType.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat),
             IsNullable: isNullable || hasNullableAccess,
             OriginalExpression: expression.ToString(),
             NestedStructure: nestedStructure
