@@ -127,9 +127,6 @@
         "dependencies": {
           "System.Runtime.CompilerServices.Unsafe": "4.5.3"
         }
-      },
-      "efcore.exprgenerator.core": {
-        "type": "Project"
       }
     }
   }

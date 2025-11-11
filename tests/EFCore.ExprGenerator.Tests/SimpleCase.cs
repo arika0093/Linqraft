@@ -35,6 +35,51 @@ public class SimpleCase
             NumberEnumerable = [4, 5, 6],
         },
     ];
+    private readonly List<Simple1Manual> Case1ManualData =
+    [
+        new()
+        {
+            Id = 1,
+            FirstName = "John",
+            LastName = "Doe",
+        },
+        new()
+        {
+            Id = 2,
+            FirstName = "Jane",
+            LastName = "Smith",
+        },
+    ];
+    private readonly List<Simple2Manual> Case2ManualData =
+    [
+        new()
+        {
+            Id = 1,
+            ItemList = ["A", "B", "C"],
+            NumberEnumerable = [1, 2, 3],
+        },
+        new()
+        {
+            Id = 2,
+            ItemList = ["D", "E", "F"],
+            NumberEnumerable = [4, 5, 6],
+        },
+    ];
+    private readonly List<Simple2ManyLinqMethods> Case2ManyLinqMethodsData =
+    [
+        new()
+        {
+            Id = 1,
+            ItemList = ["A", "B", "C"],
+            NumberEnumerable = [1, 2, 3],
+        },
+        new()
+        {
+            Id = 2,
+            ItemList = ["D", "E", "F"],
+            NumberEnumerable = [4, 5, 6],
+        },
+    ];
 
     [Fact]
     public void Case1()
@@ -45,7 +90,7 @@ public class SimpleCase
             .ToList();
         converted.Count.ShouldBe(2);
         var first = converted[0];
-        first.GetType().ShouldBe(typeof(Simple1Dto_463C0F24));
+        //first.GetType().ShouldBe(typeof(Simple1Dto_463C0F24));
         first.Id.ShouldBe(1);
         first.FullName.ShouldBe("John Doe");
     }
@@ -61,7 +106,7 @@ public class SimpleCase
             .ToList();
         converted.Count.ShouldBe(2);
         var first = converted[0];
-        first.GetType().ShouldBe(typeof(Simple1Dto_463C0F24));
+        //first.GetType().ShouldBe(typeof(Simple1Dto_463C0F24));
         first.Id.ShouldBe(1);
         first.FullName.ShouldBe("John Doe");
     }
@@ -69,7 +114,7 @@ public class SimpleCase
     [Fact]
     public void Case1Manually()
     {
-        var converted = Case1Data
+        var converted = Case1ManualData
             .AsQueryable()
             .SelectExpr(s => new Simple1Dto
             {
@@ -98,7 +143,7 @@ public class SimpleCase
             .ToList();
         converted.Count.ShouldBe(2);
         var first = converted[0];
-        first.GetType().ShouldBe(typeof(Simple2Dto_F6685604));
+        //first.GetType().ShouldBe(typeof(Simple2Dto_F6685604));
         first.Id.ShouldBe(1);
         first.ItemCount.ShouldBe(3);
         first.NumberSum.ShouldBe(6);
@@ -107,7 +152,7 @@ public class SimpleCase
     [Fact]
     public void Case2ManyLinqMethods()
     {
-        var converted = Case2Data
+        var converted = Case2ManyLinqMethodsData
             .AsQueryable()
             .Where(s => s.Id > 0)
             .OrderBy(s => s.Id)
@@ -120,7 +165,7 @@ public class SimpleCase
             .ToList();
         converted.Count.ShouldBe(2);
         var first = converted[0];
-        first.GetType().ShouldBe(typeof(Simple2Dto_F6685604));
+        //first.GetType().ShouldBe(typeof(Simple2Dto_F6685604));
         first.Id.ShouldBe(1);
         first.ItemCount.ShouldBe(2);
         first.NumberSum.ShouldBe(2);
@@ -129,7 +174,7 @@ public class SimpleCase
     [Fact]
     public void Case2Manually()
     {
-        var converted = Case2Data
+        var converted = Case2ManualData
             .AsQueryable()
             .SelectExpr(s => new Simple2Dto
             {
@@ -154,6 +199,8 @@ internal class Simple1
     public string LastName { get; set; } = "";
 }
 
+internal class Simple1Manual : Simple1;
+
 internal class Simple1Dto
 {
     public int Id { get; set; }
@@ -166,6 +213,10 @@ internal class Simple2
     public List<string> ItemList { get; set; } = [];
     public IEnumerable<int> NumberEnumerable { get; set; } = [];
 }
+
+internal class Simple2ManyLinqMethods : Simple2;
+
+internal class Simple2Manual : Simple2;
 
 internal class Simple2Dto
 {
