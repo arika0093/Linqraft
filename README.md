@@ -162,15 +162,3 @@ var orders = await dbContext.Orders
     })
     .ToListAsync();
 ```
-
-```csharp
-var orders = await dbContext.Orders
-    .SelectExpr(o => new
-    {
-        Id = o.Id,
-        CustomerName = o.Customer?.Name,
-        // ...
-    })
-    .ToListAsync();
-```
-
