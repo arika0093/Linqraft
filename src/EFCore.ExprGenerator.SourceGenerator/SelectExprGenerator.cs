@@ -380,7 +380,7 @@ public class SelectExprGenerator : IIncrementalGenerator
         sb.AppendLine();
         sb.AppendLine($"namespace {namespaceName}");
         sb.AppendLine("{");
-        sb.AppendLine("    internal static class GeneratedExpression");
+        sb.AppendLine($"    internal static partial class GeneratedExpression_{mainDtoName}");
         sb.AppendLine("    {");
         sb.AppendLine(selectExprMethod);
         sb.AppendLine("    }");
