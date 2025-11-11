@@ -45,6 +45,7 @@ public class SimpleCase
             .ToList();
         converted.Count.ShouldBe(2);
         var first = converted[0];
+        first.GetType().ShouldBe(typeof(Simple1Dto_463C0F24));
         first.Id.ShouldBe(1);
         first.FullName.ShouldBe("John Doe");
     }
@@ -60,6 +61,7 @@ public class SimpleCase
             .ToList();
         converted.Count.ShouldBe(2);
         var first = converted[0];
+        first.GetType().ShouldBe(typeof(Simple1Dto_463C0F24));
         first.Id.ShouldBe(1);
         first.FullName.ShouldBe("John Doe");
     }
@@ -77,6 +79,7 @@ public class SimpleCase
             .ToList();
         converted.Count.ShouldBe(2);
         var first = converted[0];
+        first.GetType().ShouldBe(typeof(Simple1Dto));
         first.Id.ShouldBe(1);
         first.FullName.ShouldBe("John Doe");
     }
@@ -95,9 +98,32 @@ public class SimpleCase
             .ToList();
         converted.Count.ShouldBe(2);
         var first = converted[0];
+        first.GetType().ShouldBe(typeof(Simple2Dto_F6685604));
         first.Id.ShouldBe(1);
         first.ItemCount.ShouldBe(3);
         first.NumberSum.ShouldBe(6);
+    }
+
+    [Fact]
+    public void Case2ManyLinqMethods()
+    {
+        var converted = Case2Data
+            .AsQueryable()
+            .Where(s => s.Id > 0)
+            .OrderBy(s => s.Id)
+            .SelectExpr(s => new
+            {
+                s.Id,
+                ItemCount = s.ItemList.Where(i => i != "Z").Count(),
+                NumberSum = s.NumberEnumerable.Where(n => n % 2 == 0).Sum(),
+            })
+            .ToList();
+        converted.Count.ShouldBe(2);
+        var first = converted[0];
+        first.GetType().ShouldBe(typeof(Simple2Dto_F6685604));
+        first.Id.ShouldBe(1);
+        first.ItemCount.ShouldBe(2);
+        first.NumberSum.ShouldBe(2);
     }
 
     [Fact]
@@ -114,6 +140,7 @@ public class SimpleCase
             .ToList();
         converted.Count.ShouldBe(2);
         var first = converted[0];
+        first.GetType().ShouldBe(typeof(Simple2Dto));
         first.Id.ShouldBe(1);
         first.ItemCount.ShouldBe(3);
         first.NumberSum.ShouldBe(6);

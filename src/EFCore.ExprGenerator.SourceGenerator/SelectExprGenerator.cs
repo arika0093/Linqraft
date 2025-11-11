@@ -31,18 +31,45 @@ public class SelectExprGenerator : IIncrementalGenerator
                 predicate: static (node, _) => IsSelectExprInvocation(node),
                 transform: static (ctx, _) => GetSelectExprInfo(ctx)
             )
-            .Where(static info => info is not null);
+            .Where(static info => info is not null)
+            .Collect();
 
         // Code generation
         context.RegisterSourceOutput(
             invocations,
-            (spc, info) =>
+            (spc, infos) =>
             {
-                if (info is null)
-                    return;
-                GenerateCode(spc, info);
+                // Remove duplicates based on unique ID
+                var uniqueInfos = new Dictionary<string, SelectExprInfo>();
+                foreach (var info in infos)
+                {
+                    if (info is null)
+                        continue;
+                    var uniqueId = GetUniqueIdForInfo(info);
+                    if (!uniqueInfos.ContainsKey(uniqueId))
+                    {
+                        uniqueInfos[uniqueId] = info;
+                    }
+                }
+
+                // Generate code for each unique info
+                foreach (var info in uniqueInfos.Values)
+                {
+                    GenerateCode(spc, info);
+                }
             }
         );
+    }
+
+    private static string GetUniqueIdForInfo(SelectExprInfo info)
+    {
+        // Analyze anonymous type structure
+        var dtoStructure = AnalyzeAnonymousType(
+            info.AnonymousObject,
+            info.SemanticModel,
+            info.SourceType
+        );
+        return GenerateUniqueId(dtoStructure);
     }
 
     private static bool IsSelectExprInvocation(SyntaxNode node)
@@ -88,10 +115,6 @@ public class SelectExprGenerator : IIncrementalGenerator
 
         // Get target type from MemberAccessExpression
         if (invocation.Expression is not MemberAccessExpressionSyntax memberAccess)
-            return null;
-
-        var symbolInfo = semanticModel.GetSymbolInfo(memberAccess.Expression);
-        if (symbolInfo.Symbol is not IPropertySymbol and not ILocalSymbol and not IParameterSymbol)
             return null;
 
         // Get type information
@@ -140,12 +163,7 @@ public class SelectExprGenerator : IIncrementalGenerator
             var mainDtoFullName = $"global::{namespaceName}.{mainDtoName}";
 
             // Generate SelectExpr method
-            var selectExprMethod = GenerateSelectExprMethod(
-                info.SourceType.Name,
-                mainDtoFullName,
-                dtoStructure,
-                info.AnonymousObject
-            );
+            var selectExprMethod = GenerateSelectExprMethod(mainDtoFullName, dtoStructure);
 
             // Build final source code
             var sourceCode = BuildSourceCode(
@@ -216,12 +234,7 @@ public class SelectExprGenerator : IIncrementalGenerator
         return dtoName;
     }
 
-    private static string GenerateSelectExprMethod(
-        string sourceTypeName,
-        string dtoName,
-        DtoStructure structure,
-        AnonymousObjectCreationExpressionSyntax anonymousObj
-    )
+    private static string GenerateSelectExprMethod(string dtoName, DtoStructure structure)
     {
         var sourceTypeFullName = structure.SourceTypeFullName;
         var sb = new StringBuilder();
@@ -239,7 +252,7 @@ public class SelectExprGenerator : IIncrementalGenerator
         var propertyAssignments = new List<string>();
         foreach (var prop in structure.Properties)
         {
-            var assignment = GeneratePropertyAssignment(prop, "s");
+            var assignment = GeneratePropertyAssignment(prop);
             propertyAssignments.Add($"                {prop.Name} = {assignment}");
         }
 
@@ -250,7 +263,7 @@ public class SelectExprGenerator : IIncrementalGenerator
         return sb.ToString();
     }
 
-    private static string GeneratePropertyAssignment(DtoProperty property, string parameterName)
+    private static string GeneratePropertyAssignment(DtoProperty property)
     {
         var expression = property.OriginalExpression;
 
@@ -306,7 +319,7 @@ public class SelectExprGenerator : IIncrementalGenerator
         var propertyAssignments = new List<string>();
         foreach (var prop in nestedStructure.Properties)
         {
-            var assignment = GeneratePropertyAssignment(prop, paramName);
+            var assignment = GeneratePropertyAssignment(prop);
             // For nested Select, convert to inline to avoid multi-line
             assignment = assignment.Replace("\n", " ").Replace("\r", "");
             propertyAssignments.Add($"{prop.Name} = {assignment}");
