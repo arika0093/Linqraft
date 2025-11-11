@@ -22,6 +22,9 @@ internal abstract record SelectExprInfo
     // Get DTO class name
     public abstract string GetClassName(DtoStructure structure);
 
+    // Generate SelectExpr method
+    protected abstract string GenerateSelectExprMethod(string dtoName, DtoStructure structure);
+
     // Generate DTO classes
     public abstract string GenerateDtoClasses(
         DtoStructure structure,
@@ -115,37 +118,6 @@ internal abstract record SelectExprInfo
         {
             sb.AppendLine(dtoClass);
         }
-        return sb.ToString();
-    }
-
-    protected string GenerateSelectExprMethod(string dtoName, DtoStructure structure)
-    {
-        var sourceTypeFullName = structure.SourceTypeFullName;
-        var sb = new StringBuilder();
-        sb.AppendLine(
-            $$""""
-                /// <summary>
-                /// generated select expression method of {{dtoName}}
-                /// </summary>
-                public static IQueryable<{{dtoName}}> SelectExpr<TResult>(
-                    this IQueryable<{{sourceTypeFullName}}> query,
-                    Func<{{sourceTypeFullName}}, TResult> selector)
-                {
-                    return query.Select(s => new {{dtoName}}
-                    {
-            """"
-        );
-        // Generate property assignments
-        var propertyAssignments = structure
-            .Properties.Select(prop =>
-            {
-                var assignment = GeneratePropertyAssignment(prop, 12);
-                return $"            {prop.Name} = {assignment}";
-            })
-            .ToList();
-        sb.AppendLine(string.Join($",\n", propertyAssignments));
-        sb.AppendLine("        });");
-        sb.AppendLine("    }");
         return sb.ToString();
     }
 

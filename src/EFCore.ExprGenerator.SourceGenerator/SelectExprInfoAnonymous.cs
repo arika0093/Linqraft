@@ -1,4 +1,5 @@
 ﻿using System.Collections.Generic;
+using System.Linq;
 using System.Text;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
@@ -60,6 +61,37 @@ internal record SelectExprInfoAnonymous : SelectExprInfo
         // Add current DTO (nested DTOs are already added by recursive calls)
         dtoClasses.Add(sb.ToString());
         return dtoName;
+    }
+
+    protected override string GenerateSelectExprMethod(string dtoName, DtoStructure structure)
+    {
+        var sourceTypeFullName = structure.SourceTypeFullName;
+        var sb = new StringBuilder();
+        sb.AppendLine(
+            $$""""
+                /// <summary>
+                /// generated select expression method of {{dtoName}}
+                /// </summary>
+                public static IQueryable<{{dtoName}}> SelectExpr<TResult>(
+                    this IQueryable<{{sourceTypeFullName}}> query,
+                    Func<{{sourceTypeFullName}}, TResult> selector)
+                {
+                    return query.Select(s => new {{dtoName}}
+                    {
+            """"
+        );
+        // Generate property assignments
+        var propertyAssignments = structure
+            .Properties.Select(prop =>
+            {
+                var assignment = GeneratePropertyAssignment(prop, 12);
+                return $"            {prop.Name} = {assignment}";
+            })
+            .ToList();
+        sb.AppendLine(string.Join($",\n", propertyAssignments));
+        sb.AppendLine("        });");
+        sb.AppendLine("    }");
+        return sb.ToString();
     }
 
     public override string GetClassName(DtoStructure structure) =>

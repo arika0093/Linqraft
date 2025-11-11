@@ -35,6 +35,13 @@ internal record DtoStructure(
         ITypeSymbol sourceType
     )
     {
+        // For named types, get the return type (the type being constructed) instead of the source type
+        var returnTypeInfo = semanticModel.GetTypeInfo(namedObj);
+        var returnType = returnTypeInfo.Type ?? returnTypeInfo.ConvertedType;
+
+        // If we can't determine the return type, fall back to source type
+        var targetType = returnType ?? sourceType;
+
         var properties = new List<DtoProperty>();
         foreach (var arg in namedObj.ArgumentList?.Arguments ?? [])
         {
@@ -69,8 +76,8 @@ internal record DtoStructure(
             }
         }
         return new DtoStructure(
-            SourceTypeName: sourceType.Name,
-            SourceTypeFullName: sourceType.ToDisplayString(
+            SourceTypeName: targetType.Name,
+            SourceTypeFullName: targetType.ToDisplayString(
                 SymbolDisplayFormat.FullyQualifiedFormat
             ),
             Properties: properties

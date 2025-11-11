@@ -5,6 +5,116 @@ namespace EFCore.ExprGenerator.Tests;
 
 public class SimpleCase
 {
+    [Fact]
+    public void Case1()
+    {
+        var converted = Case1Data
+            .AsQueryable()
+            .SelectExpr(s => new { s.Id, FullName = s.FirstName + " " + s.LastName })
+            .ToList();
+        converted.Count.ShouldBe(2);
+        var first = converted[0];
+        first.GetType().ShouldBe(typeof(Simple1Dto_2F80DAD3));
+        first.Id.ShouldBe(1);
+        first.FullName.ShouldBe("John Doe");
+    }
+
+    [Fact]
+    public void Case1ManyLinqMethods()
+    {
+        var converted = Case1Data
+            .AsQueryable()
+            .Where(s => s.Id > 0)
+            .OrderBy(s => s.LastName)
+            .SelectExpr(s => new { s.Id, FullName = s.FirstName + " " + s.LastName })
+            .ToList();
+        converted.Count.ShouldBe(2);
+        var first = converted[0];
+        first.GetType().ShouldBe(typeof(Simple1Dto_2F80DAD3));
+        first.Id.ShouldBe(1);
+        first.FullName.ShouldBe("John Doe");
+    }
+
+    [Fact]
+    public void Case1Manually()
+    {
+        var converted = Case1ManualData
+            .AsQueryable()
+            .SelectExpr(s => new Simple1Dto
+            {
+                Id = s.Id,
+                FullName = s.FirstName + " " + s.LastName,
+            })
+            .ToList();
+        converted.Count.ShouldBe(2);
+        var first = converted[0];
+        first.GetType().ShouldBe(typeof(Simple1Dto));
+        first.Id.ShouldBe(1);
+        first.FullName.ShouldBe("John Doe");
+    }
+
+    [Fact]
+    public void Case2()
+    {
+        var converted = Case2Data
+            .AsQueryable()
+            .SelectExpr(s => new
+            {
+                s.Id,
+                ItemCount = s.ItemList.Count(),
+                NumberSum = s.NumberEnumerable.Sum(),
+            })
+            .ToList();
+        converted.Count.ShouldBe(2);
+        var first = converted[0];
+        first.GetType().ShouldBe(typeof(Simple2Dto_C921C361));
+        first.Id.ShouldBe(1);
+        first.ItemCount.ShouldBe(3);
+        first.NumberSum.ShouldBe(6);
+    }
+
+    [Fact]
+    public void Case2ManyLinqMethods()
+    {
+        var converted = Case2ManyLinqMethodsData
+            .AsQueryable()
+            .Where(s => s.Id > 0)
+            .OrderBy(s => s.Id)
+            .SelectExpr(s => new
+            {
+                s.Id,
+                ItemCount = s.ItemList.Where(i => i != "C").Count(),
+                NumberSum = s.NumberEnumerable.Where(n => n % 2 == 0).Sum(),
+            })
+            .ToList();
+        converted.Count.ShouldBe(2);
+        var first = converted[0];
+        first.GetType().ShouldBe(typeof(Simple2ManyLinqMethodsDto_803513BE));
+        first.Id.ShouldBe(1);
+        first.ItemCount.ShouldBe(2);
+        first.NumberSum.ShouldBe(2);
+    }
+
+    [Fact]
+    public void Case2Manually()
+    {
+        var converted = Case2ManualData
+            .AsQueryable()
+            .SelectExpr(s => new Simple2Dto
+            {
+                Id = s.Id,
+                ItemCount = s.ItemList.Count(),
+                NumberSum = s.NumberEnumerable.Sum(),
+            })
+            .ToList();
+        converted.Count.ShouldBe(2);
+        var first = converted[0];
+        first.GetType().ShouldBe(typeof(Simple2Dto));
+        first.Id.ShouldBe(1);
+        first.ItemCount.ShouldBe(3);
+        first.NumberSum.ShouldBe(6);
+    }
+
     private readonly List<Simple1> Case1Data =
     [
         new()
@@ -80,116 +190,6 @@ public class SimpleCase
             NumberEnumerable = [4, 5, 6],
         },
     ];
-
-    [Fact]
-    public void Case1()
-    {
-        var converted = Case1Data
-            .AsQueryable()
-            .SelectExpr(s => new { s.Id, FullName = s.FirstName + " " + s.LastName })
-            .ToList();
-        converted.Count.ShouldBe(2);
-        var first = converted[0];
-        //first.GetType().ShouldBe(typeof(Simple1Dto_463C0F24));
-        first.Id.ShouldBe(1);
-        first.FullName.ShouldBe("John Doe");
-    }
-
-    [Fact]
-    public void Case1ManyLinqMethods()
-    {
-        var converted = Case1Data
-            .AsQueryable()
-            .Where(s => s.Id > 0)
-            .OrderBy(s => s.LastName)
-            .SelectExpr(s => new { s.Id, FullName = s.FirstName + " " + s.LastName })
-            .ToList();
-        converted.Count.ShouldBe(2);
-        var first = converted[0];
-        //first.GetType().ShouldBe(typeof(Simple1Dto_463C0F24));
-        first.Id.ShouldBe(1);
-        first.FullName.ShouldBe("John Doe");
-    }
-
-    [Fact]
-    public void Case1Manually()
-    {
-        var converted = Case1ManualData
-            .AsQueryable()
-            .SelectExpr(s => new Simple1Dto
-            {
-                Id = s.Id,
-                FullName = s.FirstName + " " + s.LastName,
-            })
-            .ToList();
-        converted.Count.ShouldBe(2);
-        var first = converted[0];
-        first.GetType().ShouldBe(typeof(Simple1Dto));
-        first.Id.ShouldBe(1);
-        first.FullName.ShouldBe("John Doe");
-    }
-
-    [Fact]
-    public void Case2()
-    {
-        var converted = Case2Data
-            .AsQueryable()
-            .SelectExpr(s => new
-            {
-                s.Id,
-                ItemCount = s.ItemList.Count(),
-                NumberSum = s.NumberEnumerable.Sum(),
-            })
-            .ToList();
-        converted.Count.ShouldBe(2);
-        var first = converted[0];
-        //first.GetType().ShouldBe(typeof(Simple2Dto_F6685604));
-        first.Id.ShouldBe(1);
-        first.ItemCount.ShouldBe(3);
-        first.NumberSum.ShouldBe(6);
-    }
-
-    [Fact]
-    public void Case2ManyLinqMethods()
-    {
-        var converted = Case2ManyLinqMethodsData
-            .AsQueryable()
-            .Where(s => s.Id > 0)
-            .OrderBy(s => s.Id)
-            .SelectExpr(s => new
-            {
-                s.Id,
-                ItemCount = s.ItemList.Where(i => i != "Z").Count(),
-                NumberSum = s.NumberEnumerable.Where(n => n % 2 == 0).Sum(),
-            })
-            .ToList();
-        converted.Count.ShouldBe(2);
-        var first = converted[0];
-        //first.GetType().ShouldBe(typeof(Simple2Dto_F6685604));
-        first.Id.ShouldBe(1);
-        first.ItemCount.ShouldBe(2);
-        first.NumberSum.ShouldBe(2);
-    }
-
-    [Fact]
-    public void Case2Manually()
-    {
-        var converted = Case2ManualData
-            .AsQueryable()
-            .SelectExpr(s => new Simple2Dto
-            {
-                Id = s.Id,
-                ItemCount = s.ItemList.Count(),
-                NumberSum = s.NumberEnumerable.Sum(),
-            })
-            .ToList();
-        converted.Count.ShouldBe(2);
-        var first = converted[0];
-        first.GetType().ShouldBe(typeof(Simple2Dto));
-        first.Id.ShouldBe(1);
-        first.ItemCount.ShouldBe(3);
-        first.NumberSum.ShouldBe(6);
-    }
 }
 
 internal class Simple1
