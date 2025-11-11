@@ -94,6 +94,7 @@ internal abstract record SelectExprInfo
         string selectExprMethod
     )
     {
+        var accessibility = GetAccessibilityString(SourceType);
         var sb = new StringBuilder();
         sb.Append(
             $$"""
@@ -107,7 +108,7 @@ internal abstract record SelectExprInfo
             using System.Collections.Generic;
 
             namespace {{namespaceName}};
-            internal static partial class GeneratedExpression_{{mainDtoName}}
+            {{accessibility}} static partial class GeneratedExpression_{{mainDtoName}}
             {
             {{selectExprMethod}}
             }
@@ -260,6 +261,20 @@ internal abstract record SelectExprInfo
             or SpecialType.System_Double
             or SpecialType.System_Decimal => "0",
             _ => "default",
+        };
+    }
+
+    protected string GetAccessibilityString(ITypeSymbol typeSymbol)
+    {
+        return typeSymbol.DeclaredAccessibility switch
+        {
+            Accessibility.Public => "public",
+            Accessibility.Internal => "internal",
+            Accessibility.Private => "private",
+            Accessibility.Protected => "protected",
+            Accessibility.ProtectedAndInternal => "private protected",
+            Accessibility.ProtectedOrInternal => "protected internal",
+            _ => "internal", // Default to internal for safety
         };
     }
 }

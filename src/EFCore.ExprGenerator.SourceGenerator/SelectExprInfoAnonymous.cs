@@ -25,9 +25,10 @@ internal record SelectExprInfoAnonymous : SelectExprInfo
     )
     {
         var dtoName = GetClassName(structure);
+        var accessibility = GetAccessibilityString(SourceType);
 
         var sb = new StringBuilder();
-        sb.AppendLine($"public class {dtoName}");
+        sb.AppendLine($"{accessibility} class {dtoName}");
         sb.AppendLine("{");
 
         foreach (var prop in structure.Properties)
