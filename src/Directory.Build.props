@@ -5,7 +5,7 @@
     <Nullable>enable</Nullable>
     <RootNamespace>EFCore.ExprGenerator</RootNamespace>
     <RestorePackagesWithLockFile>true</RestorePackagesWithLockFile>
-    <PackageDescription></PackageDescription>
+    <PackageDescription>EFCore.ExprGenerator is a library that generates expression trees for Entity Framework Core queries, enabling dynamic and efficient data retrieval.</PackageDescription>
     <PackageProjectUrl>https://github.com/arika0093/EFCore.ExprGenerator</PackageProjectUrl>
     <RepositoryUrl>https://github.com/arika0093/EFCore.ExprGenerator</RepositoryUrl>
     <PackageLicenseExpression>Apache-2.0</PackageLicenseExpression>
