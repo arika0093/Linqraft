@@ -1,0 +1,12 @@
+<Project>
+  <ItemGroup>
+    <ProjectReference Include="..\..\src\EFCore.ExprGenerator.Core\EFCore.ExprGenerator.Core.csproj">
+      <OutputItemType>Analyzer</OutputItemType>
+      <ReferenceOutputAssembly>true</ReferenceOutputAssembly>
+    </ProjectReference>
+    <ProjectReference Include="..\..\src\EFCore.ExprGenerator.SourceGenerator\EFCore.ExprGenerator.SourceGenerator.csproj">
+      <OutputItemType>Analyzer</OutputItemType>
+      <ReferenceOutputAssembly>true</ReferenceOutputAssembly>
+    </ProjectReference>
+  </ItemGroup>
+</Project>

@@ -50,6 +50,21 @@ public class SimpleCase
     }
 
     [Fact]
+    public void Case1ManyLinqMethods()
+    {
+        var converted = Case1Data
+            .AsQueryable()
+            .Where(s => s.Id > 0)
+            .OrderBy(s => s.LastName)
+            .SelectExpr(s => new { s.Id, FullName = s.FirstName + " " + s.LastName })
+            .ToList();
+        converted.Count.ShouldBe(2);
+        var first = converted[0];
+        first.Id.ShouldBe(1);
+        first.FullName.ShouldBe("John Doe");
+    }
+
+    [Fact]
     public void Case1Manually()
     {
         var converted = Case1Data
