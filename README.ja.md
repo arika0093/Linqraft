@@ -172,3 +172,6 @@ var orders = await dbContext.Orders
     })
     .ToListAsync();
 ```
+
+## ライセンス
+このプロジェクトはApache License 2.0の下でライセンスされています。
