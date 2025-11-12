@@ -20,6 +20,12 @@
       PackagePath="build"
       Visible="false"
     />
+    <None
+      Include="EFCore.ExprGenerator.SourceGenerator.targets"
+      Pack="true"
+      PackagePath="build"
+      Visible="false"
+    />
   </ItemGroup>
   <ItemGroup>
     <PackageReference Include="Microsoft.CodeAnalysis.Analyzers" Version="3.*">

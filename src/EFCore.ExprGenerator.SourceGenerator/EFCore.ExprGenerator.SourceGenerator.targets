@@ -1,0 +1,10 @@
+<Project InitialTargets="EFCore_ExprGenerator_Interceptors">
+  <Target Name="EFCore_ExprGenerator_Interceptors">
+    <PropertyGroup>
+      <!-- Modifying both InterceptorsNamespaces and InterceptorsPreviewNamespaces, -->
+      <!-- in case they're using an old version of the SDK that doesn't support the former -->
+      <InterceptorsNamespaces>$(InterceptorsNamespaces);EFCore.ExprGenerator</InterceptorsNamespaces>
+      <InterceptorsPreviewNamespaces>$(InterceptorsPreviewNamespaces);EFCore.ExprGenerator</InterceptorsPreviewNamespaces>
+    </PropertyGroup>
+  </Target>
+</Project>
