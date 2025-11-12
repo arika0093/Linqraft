@@ -40,7 +40,6 @@ internal abstract record SelectExprInfo
             using System;
             using System.Linq;
             using System.Collections.Generic;
-            using System.Runtime.CompilerServices;
             """;
     }
 

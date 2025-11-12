@@ -62,10 +62,12 @@ internal record SelectExprInfoAnonymous : SelectExprInfo
     )
     {
         var sourceTypeFullName = structure.SourceTypeFullName;
+        var overloadAttr =
+            "[global::System.Runtime.CompilerServices.OverloadResolutionPriority(0)]";
         var sb = new StringBuilder();
 
         sb.AppendLine(GenerateMethodHeaderPart(dtoName, location));
-        sb.AppendLine("    [OverloadResolutionPriority(0)]");
+        sb.AppendLine($"    {overloadAttr}");
         sb.AppendLine($"    public static IQueryable<{dtoName}> SelectExpr<TResult>(");
         sb.AppendLine($"        this IQueryable<{sourceTypeFullName}> query,");
         sb.AppendLine($"        Func<{sourceTypeFullName}, TResult> selector");

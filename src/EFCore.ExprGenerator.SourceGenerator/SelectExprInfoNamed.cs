@@ -48,10 +48,12 @@ internal record SelectExprInfoNamed : SelectExprInfo
         var inheritanceDepth = GetInheritanceDepth(SourceType);
         var overloadPriority = inheritanceDepth + 1;
 
+        var overloadAttr =
+            $"[global::System.Runtime.CompilerServices.OverloadResolutionPriority({overloadPriority})]";
         var sb = new StringBuilder();
 
         sb.AppendLine(GenerateMethodHeaderPart(dtoName, location));
-        sb.AppendLine($"    [OverloadResolutionPriority({overloadPriority})]");
+        sb.AppendLine($"    {overloadAttr}");
         sb.AppendLine($"    public static IQueryable<{dtoFullName}> SelectExpr<TResult>(");
         sb.AppendLine($"        this IQueryable<{querySourceTypeFullName}> query,");
         sb.AppendLine(
