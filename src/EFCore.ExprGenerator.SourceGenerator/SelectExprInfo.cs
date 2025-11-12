@@ -125,7 +125,7 @@ internal abstract record SelectExprInfo
             using System.Linq;
             using System.Collections.Generic;
 
-            namespace {{namespaceName}};
+            namespace EFCore.ExprGenerator;
             {{accessibility}} static partial class GeneratedExpression_{{mainDtoName}}
             {
             {{selectExprMethod}}
