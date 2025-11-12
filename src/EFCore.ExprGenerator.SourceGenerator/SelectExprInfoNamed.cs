@@ -18,16 +18,8 @@ internal record SelectExprInfoNamed : SelectExprInfo
         return DtoStructure.AnalyzeNamedType(ObjectCreation, SemanticModel, SourceType)!;
     }
 
-    public override string GenerateDtoClasses(
-        DtoStructure structure,
-        List<string> dtoClasses,
-        string namespaceName
-    )
-    {
-        // nothing to do, as named types are already defined
-        // but we need to return the class name
-        return GetClassName(structure);
-    }
+    public override string GenerateDtoClasses(DtoStructure structure, List<string> dtoClasses) =>
+        GetClassName(structure);
 
     public override string GetClassName(DtoStructure structure) => structure.SourceTypeName;
 
@@ -37,6 +29,8 @@ internal record SelectExprInfoNamed : SelectExprInfo
         InterceptableLocation location
     )
     {
+        var namespaceName = GetNamespaceString();
+        var dtoFullName = $"global::{namespaceName}.{GetClassName(structure)}";
         // Use SourceType for the query source (not the DTO return type)
         var querySourceTypeFullName = SourceType.ToDisplayString(
             Microsoft.CodeAnalysis.SymbolDisplayFormat.FullyQualifiedFormat
@@ -49,7 +43,7 @@ internal record SelectExprInfoNamed : SelectExprInfo
         var sb = new StringBuilder();
 
         sb.AppendLine(GenerateMethodHeaderPart(dtoName, location));
-        sb.AppendLine($"    public static IQueryable<{dtoName}> SelectExpr<TResult>(");
+        sb.AppendLine($"    public static IQueryable<{dtoFullName}> SelectExpr<TResult>(");
         sb.AppendLine($"        this IQueryable<{querySourceTypeFullName}> query,");
         sb.AppendLine($"        Func<{querySourceTypeFullName}, TResult> selector)");
         sb.AppendLine("    {");
@@ -57,5 +51,13 @@ internal record SelectExprInfoNamed : SelectExprInfo
         sb.AppendLine("    }");
 
         return sb.ToString();
+    }
+
+    protected override string GetUsingNamespaceString()
+    {
+        return $"""
+            {base.GetUsingNamespaceString()}
+            using {GetNamespaceString()};
+            """;
     }
 }

@@ -19,11 +19,7 @@ internal record SelectExprInfoAnonymous : SelectExprInfo
         return DtoStructure.AnalyzeAnonymousType(AnonymousObject, SemanticModel, SourceType)!;
     }
 
-    public override string GenerateDtoClasses(
-        DtoStructure structure,
-        List<string> dtoClasses,
-        string namespaceName
-    )
+    public override string GenerateDtoClasses(DtoStructure structure, List<string> dtoClasses)
     {
         var dtoName = GetClassName(structure);
         var accessibility = GetAccessibilityString(SourceType);
@@ -46,12 +42,7 @@ internal record SelectExprInfoAnonymous : SelectExprInfo
                     baseType = propertyType[..propertyType.IndexOf("<")];
                 }
 
-                var nestedId = prop.NestedStructure.GetUniqueId();
-                var nestedDtoName = GenerateDtoClasses(
-                    prop.NestedStructure,
-                    dtoClasses,
-                    namespaceName
-                );
+                var nestedDtoName = GenerateDtoClasses(prop.NestedStructure, dtoClasses);
                 propertyType = $"{baseType}<{nestedDtoName}>";
             }
             sb.AppendLine($"    public required {propertyType} {prop.Name} {{ get; set; }}");

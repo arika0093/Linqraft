@@ -31,11 +31,17 @@ internal abstract record SelectExprInfo
     );
 
     // Generate DTO classes
-    public abstract string GenerateDtoClasses(
-        DtoStructure structure,
-        List<string> dtoClasses,
-        string namespaceName
-    );
+    public abstract string GenerateDtoClasses(DtoStructure structure, List<string> dtoClasses);
+
+    // Get using namespace declarations
+    protected virtual string GetUsingNamespaceString()
+    {
+        return """
+            using System;
+            using System.Linq;
+            using System.Collections.Generic;
+            """;
+    }
 
     // Generate source code
     public void GenerateCode(SourceProductionContext context)
@@ -56,24 +62,15 @@ internal abstract record SelectExprInfo
             // Generate unique ID (from hash of property structure and first location)
             var uniqueId = GetUniqueId(location);
 
-            // Get namespace
-            var namespaceSymbol = SourceType.ContainingNamespace;
-            var namespaceName = namespaceSymbol?.ToDisplayString() ?? "Generated";
-
             // Generate DTO classes (including nested DTOs)
             var dtoClasses = new List<string>();
-            var mainDtoName = GenerateDtoClasses(dtoStructure, dtoClasses, namespaceName);
+            var mainDtoName = GenerateDtoClasses(dtoStructure, dtoClasses);
 
             // Generate SelectExpr method with interceptor attribute (using only first location)
             var selectExprMethod = GenerateSelectExprMethod(mainDtoName, dtoStructure, location);
 
             // Build final source code
-            var sourceCode = BuildSourceCode(
-                namespaceName,
-                mainDtoName,
-                dtoClasses,
-                selectExprMethod
-            );
+            var sourceCode = BuildSourceCode(mainDtoName, dtoClasses, selectExprMethod);
 
             // Register with Source Generator
             context.AddSource($"GeneratedExpression_{uniqueId}.g.cs", sourceCode);
@@ -101,7 +98,6 @@ internal abstract record SelectExprInfo
     }
 
     protected string BuildSourceCode(
-        string namespaceName,
         string mainDtoName,
         List<string> dtoClasses,
         string selectExprMethod
@@ -116,9 +112,7 @@ internal abstract record SelectExprInfo
             #pragma warning disable IDE0060
             #pragma warning disable CS8601
 
-            using System;
-            using System.Linq;
-            using System.Collections.Generic;
+            {{GetUsingNamespaceString()}}
 
             namespace EFCore.ExprGenerator;
             {{accessibility}} static partial class GeneratedExpression_{{mainDtoName}}
@@ -306,6 +300,12 @@ internal abstract record SelectExprInfo
             or SpecialType.System_Decimal => "0",
             _ => "default",
         };
+    }
+
+    protected string GetNamespaceString()
+    {
+        var namespaceSymbol = SourceType.ContainingNamespace;
+        return namespaceSymbol?.ToDisplayString() ?? "Generated";
     }
 
     protected string GetAccessibilityString(ITypeSymbol typeSymbol)
