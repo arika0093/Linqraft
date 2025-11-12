@@ -149,6 +149,17 @@ Install `EFCore.ExprGenerator` from NuGet:
 dotnet add package EFCore.ExprGenerator --prerelease
 ```
 
+and enable interceptor in your csproj:
+
+```xml
+<Project>
+  <PropertyGroup>
+    <!-- add EFCore.ExprGenerator to the InterceptorsPreviewNamespaces -->
+    <InterceptorsPreviewNamespaces>$(InterceptorsPreviewNamespaces);EFCore.ExprGenerator</InterceptorsPreviewNamespaces>
+  </PropertyGroup>
+</Project>
+```
+
 ### Example
 Use the `SelectExpr` method with an anonymous selector:
 

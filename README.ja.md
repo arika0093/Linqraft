@@ -159,6 +159,17 @@ public class OrderDto_D03CE9AC
 -dotnet add package EFCore.ExprGenerator --prerelease
 ```
 
+そして、csprojでインターセプターを有効にします。
+
+```xml
+<Project>
+  <PropertyGroup>
+    <!-- add EFCore.ExprGenerator to the InterceptorsPreviewNamespaces -->
+    <InterceptorsPreviewNamespaces>$(InterceptorsPreviewNamespaces);EFCore.ExprGenerator</InterceptorsPreviewNamespaces>
+  </PropertyGroup>
+</Project>
+```
+
 ### 利用例
 以下のように`SelectExpr`メソッドを使用して、匿名型でクエリを記述します。
 
