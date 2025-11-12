@@ -65,6 +65,7 @@ internal record SelectExprInfoAnonymous : SelectExprInfo
         var sb = new StringBuilder();
 
         sb.AppendLine(GenerateMethodHeaderPart(dtoName, location));
+        sb.AppendLine("    [OverloadResolutionPriority(0)]");
         sb.AppendLine($"    public static IQueryable<{dtoName}> SelectExpr<TResult>(");
         sb.AppendLine($"        this IQueryable<{sourceTypeFullName}> query,");
         sb.AppendLine($"        Func<{sourceTypeFullName}, TResult> selector");

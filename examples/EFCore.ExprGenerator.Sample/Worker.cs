@@ -41,6 +41,15 @@ public class Worker(IDbContextFactory<SampleDbContext> dbContextFactory, ILogger
                 })
                 .FirstOrDefaultAsync(stoppingToken);
 
+            var sample2 = await dbContext
+                .SampleClasses.SelectExpr(s => new
+                {
+                    Id = s.Id,
+                    Foo = s.Foo,
+                    Bar = s.Bar,
+                })
+                .FirstOrDefaultAsync(stoppingToken);
+
             logger.LogInformation(
                 "Sample data retrieved: {Sample}",
                 JsonSerializer.Serialize(sample)
