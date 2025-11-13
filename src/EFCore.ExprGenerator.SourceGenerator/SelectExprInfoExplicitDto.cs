@@ -82,7 +82,7 @@ internal record SelectExprInfoExplicitDto : SelectExprInfo
         var id = GetUniqueId();
         var methodDecl = $"public static IQueryable<TResult> SelectExpr_{id}<TIn, TResult>(";
         sb.AppendLine($"/// <summary>");
-        sb.AppendLine($"/// generated select expression method {dtoName}");
+        sb.AppendLine($"/// generated select expression method {dtoName} (explicit)");
         sb.AppendLine($"/// at {location.GetDisplayLocation()}");
         sb.AppendLine($"/// </summary>");
         sb.AppendLine($"{location.GetInterceptsLocationAttributeSyntax()}");
@@ -99,8 +99,8 @@ internal record SelectExprInfoExplicitDto : SelectExprInfo
         var propertyAssignments = structure
             .Properties.Select(prop =>
             {
-                var assignment = GeneratePropertyAssignment(prop, 12);
-                return $"        {prop.Name} = {assignment}";
+                var assignment = GeneratePropertyAssignment(prop, 8);
+                return $"    {prop.Name} = {assignment}";
             })
             .ToList();
         sb.AppendLine(string.Join($",\n", propertyAssignments));

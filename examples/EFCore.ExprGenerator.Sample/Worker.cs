@@ -20,7 +20,7 @@ public class Worker(IDbContextFactory<SampleDbContext> dbContextFactory, ILogger
 
             // get sample data
             var sample = await dbContext
-                .SampleClasses.SelectExpr<SampleClass, SampleClassFullDto>(s => new
+                .SampleClasses.SelectExpr(s => new
                 {
                     s.Id,
                     s.Foo,
@@ -41,14 +41,14 @@ public class Worker(IDbContextFactory<SampleDbContext> dbContextFactory, ILogger
                 })
                 .FirstOrDefaultAsync(stoppingToken);
 
-            var sample2 = await dbContext
-                .SampleClasses.SelectExpr<SampleClass, SampleClassSimpleDto>(s => new
-                {
-                    s.Id,
-                    s.Foo,
-                    s.Bar,
-                })
-                .FirstOrDefaultAsync(stoppingToken);
+            // var sample2 = await dbContext
+            //     .SampleClasses.SelectExpr<SampleClass, SampleClassSimpleDto>(s => new
+            //     {
+            //         s.Id,
+            //         s.Foo,
+            //         s.Bar,
+            //     })
+            //     .FirstOrDefaultAsync(stoppingToken);
 
             logger.LogInformation(
                 "Sample data retrieved: {Sample}",

@@ -50,7 +50,7 @@ internal record SelectExprInfoNamed : SelectExprInfo
         sb.AppendLine($"public static IQueryable<TResult> SelectExpr_{id}<T, TResult>(");
         sb.AppendLine($"    this IQueryable<T> query,");
         sb.AppendLine($"    Func<T, TResult> selector)");
-        sb.AppendLine("    {");
+        sb.AppendLine("{");
         sb.AppendLine(
             $"    var matchedQuery = query as object as IQueryable<{querySourceTypeFullName}>;"
         );

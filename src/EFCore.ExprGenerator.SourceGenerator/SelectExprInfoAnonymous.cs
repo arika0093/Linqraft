@@ -56,12 +56,12 @@ internal record SelectExprInfoAnonymous : SelectExprInfo
         var propertyAssignments = structure
             .Properties.Select(prop =>
             {
-                var assignment = GeneratePropertyAssignment(prop, 12);
+                var assignment = GeneratePropertyAssignment(prop, 8);
                 return $"        {prop.Name} = {assignment}";
             })
             .ToList();
         sb.AppendLine(string.Join($",\n", propertyAssignments));
-        sb.AppendLine("        });");
+        sb.AppendLine("    });");
         sb.AppendLine($"    return converted as object as IQueryable<TResult>;");
         sb.AppendLine("}");
         sb.AppendLine();

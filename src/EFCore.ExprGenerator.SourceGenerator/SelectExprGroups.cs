@@ -65,8 +65,8 @@ internal class SelectExprGroups
 
     private string BuildSourceCode(List<string> dtoClasses, List<string> selectExprMethods)
     {
-        var indentedClasses = IndentUtility(string.Join("\n\n", dtoClasses), 8);
-        var indentedExpr = IndentUtility(string.Join("\n\n", selectExprMethods), 8);
+        var indentedExpr = IndentUtility(string.Join("\n", selectExprMethods), 8);
+        var indentedClasses = IndentUtility(string.Join("\n", dtoClasses), 4);
         return $$"""
             {{GenerateFileHeaderPart()}}
 
