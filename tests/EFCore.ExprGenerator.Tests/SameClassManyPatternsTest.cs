@@ -32,6 +32,20 @@ public class SameClassManyPatternsTest
     }
 
     [Fact]
+    public void Default2()
+    {
+        var converted = Datas
+            .AsQueryable()
+            .SelectExpr<SimpleClass, DefaultDto>(s => new
+            {
+                s.Id,
+                FullName = s.FirstName + " & " + s.LastName,
+            })
+            .ToList();
+        converted[0].FullName.ShouldBe("Alice & Smith");
+    }
+
+    [Fact]
     public void Custom1()
     {
         var converted = Datas

@@ -2,14 +2,15 @@ using System;
 using System.Collections.Generic;
 using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
-using System.Threading.Tasks;
 using System.Linq;
+using System.Threading.Tasks;
 using Microsoft.EntityFrameworkCore;
 
 namespace EFCore.ExprGenerator.Tests;
 
 public sealed class UseEFCoreSenarioTest : IDisposable
 {
+    private const string DbFileName = "efcore-senario.db";
     private readonly SampleDbContext dbContext;
 
     public UseEFCoreSenarioTest()
@@ -23,6 +24,10 @@ public sealed class UseEFCoreSenarioTest : IDisposable
     public void Dispose()
     {
         dbContext.Dispose();
+        if (System.IO.File.Exists(DbFileName))
+        {
+            System.IO.File.Delete(DbFileName);
+        }
     }
 
     [Fact]
@@ -57,7 +62,7 @@ public sealed class UseEFCoreSenarioTest : IDisposable
         protected override void OnConfiguring(DbContextOptionsBuilder builder)
         {
             builder
-                .UseSqlite("Data Source=efcore-senario.db")
+                .UseSqlite($"Data Source={DbFileName}")
                 .UseSeeding(
                     // seed data
                     async (dbContext, flag) =>
