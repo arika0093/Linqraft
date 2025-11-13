@@ -152,7 +152,20 @@ dotnet add package EFCore.ExprGenerator --prerelease
 ```
 
 ### 利用例
-以下のように`SelectExpr`メソッドを使用します。
+`SelectExpr`をジェネリクス無しで使用すると、匿名型が返されます。
+
+```csharp
+var orders = await dbContext.Orders
+    .SelectExpr(o => new
+    {
+        Id = o.Id,
+        CustomerName = o.Customer?.Name,
+        // ...
+    })
+    .ToListAsync();
+```
+
+結果をDTOクラスに変更したい場合は、以下のようにジェネリクスを指定するだけです。
 
 ```csharp
 var orders = await dbContext.Orders
@@ -167,7 +180,7 @@ var orders = await dbContext.Orders
     .ToListAsync();
 ```
 
-自動生成機能を使用せず、既存のDtoクラスを利用することも可能です。この場合、ジェネリクス引数を指定せずに使用する必要があります。
+自動生成機能を使用せず、既存のDTOクラスを利用することも可能です。この場合、ジェネリクス引数を指定せずに使用する必要があります。
 
 ```csharp
 var orders = await dbContext.Orders
@@ -181,21 +194,6 @@ var orders = await dbContext.Orders
 
 // your existing DTO class
 public class OrderDto { /* ... */ }
-```
-
-ジェネリクスを指定せずに匿名型を渡した場合、そのまま匿名型が返されます。
-
-```csharp
-var orders = await dbContext.Orders
-    .SelectExpr(o => new
-    {
-        Id = o.Id,
-        CustomerName = o.Customer?.Name,
-        // ...
-    })
-    .ToListAsync();
-var firstOrder = orders.First();
-Console.WriteLine(firstOrder.GetType().Name); // anonymous type
 ```
 
 ## ライセンス
