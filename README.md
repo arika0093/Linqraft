@@ -202,17 +202,6 @@ Install `EFCore.ExprGenerator` from NuGet:
 dotnet add package EFCore.ExprGenerator --prerelease
 ```
 
-Enable the interceptor namespace in your project file:
-
-```xml
-<Project>
-  <PropertyGroup>
-    <!-- add EFCore.ExprGenerator to the InterceptorsPreviewNamespaces -->
-    <InterceptorsPreviewNamespaces>$(InterceptorsPreviewNamespaces);EFCore.ExprGenerator</InterceptorsPreviewNamespaces>
-  </PropertyGroup>
-</Project>
-```
-
 ### Examples
 
 Use `SelectExpr` without generics to get an anonymous-type projection:

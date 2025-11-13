@@ -199,17 +199,6 @@ namespace Tutorial
 dotnet add package EFCore.ExprGenerator --prerelease
 ```
 
-そして、csprojでインターセプターを有効にします。
-
-```xml
-<Project>
-  <PropertyGroup>
-    <!-- add EFCore.ExprGenerator to the InterceptorsPreviewNamespaces -->
-    <InterceptorsPreviewNamespaces>$(InterceptorsPreviewNamespaces);EFCore.ExprGenerator</InterceptorsPreviewNamespaces>
-  </PropertyGroup>
-</Project>
-```
-
 ### 利用例
 `SelectExpr`をジェネリクス無しで使用すると、匿名型が返されます。
 
