@@ -48,7 +48,8 @@ internal record DtoProperty(
                 {
                     // Get collection element type from the Select's source
                     if (
-                        selectInvocation.Expression is MemberAccessExpressionSyntax selectMemberAccess
+                        selectInvocation.Expression
+                        is MemberAccessExpressionSyntax selectMemberAccess
                     )
                     {
                         var collectionType = semanticModel

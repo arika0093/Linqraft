@@ -130,6 +130,9 @@ var orders = await dbContext.Orders
 </details>
 
 ## 使用方法
+### 前提
+内部的に[インターセプター](https://learn.microsoft.com/ja-jp/dotnet/csharp/whats-new/csharp-12#interceptors)を使用するため、.NET 8.0以降である必要があります。
+
 ### インストール
 `EFCore.ExprGenerator`をNuGetからインストールします。
 

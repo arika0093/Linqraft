@@ -91,8 +91,9 @@ internal record SelectExprInfoExplicitDto : SelectExprInfo
         sb.AppendLine($"    Func<TIn, object> selector) where TResult : {dtoFullName}");
         sb.AppendLine($"{{");
         sb.AppendLine(
-            $"    return (IQueryable<TResult>)(object)((IQueryable<{sourceTypeFullName}>)(object)query).Select(s => new {dtoFullName}"
+            $"    var matchedQuery = query as object as IQueryable<{sourceTypeFullName}>;"
         );
+        sb.AppendLine($"    var converted = matchedQuery.Select(s => new {dtoFullName}");
         sb.AppendLine($"    {{");
 
         // Generate property assignments
@@ -106,6 +107,7 @@ internal record SelectExprInfoExplicitDto : SelectExprInfo
         sb.AppendLine(string.Join($",\n", propertyAssignments));
 
         sb.AppendLine($"    }});");
+        sb.AppendLine($"    return converted as object as IQueryable<TResult>;");
         sb.AppendLine($"}}");
         return sb.ToString();
     }

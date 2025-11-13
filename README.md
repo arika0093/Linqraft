@@ -110,6 +110,9 @@ For example, the following methods and classes are generated:
 </details>
 
 ## Usage
+### Prerequisites
+The library uses [Interceptors](https://learn.microsoft.com/en-us/dotnet/csharp/whats-new/csharp-12#interceptors) internally, so .NET 8.0 or later is required.
+
 ### Installation
 Install `EFCore.ExprGenerator` from NuGet.
 
