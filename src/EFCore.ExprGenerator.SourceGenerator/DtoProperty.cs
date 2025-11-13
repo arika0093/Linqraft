@@ -35,10 +35,7 @@ internal record DtoProperty(
         DtoStructure? nestedStructure = null;
         // First, try to find Select invocation (handles both direct Select and chained methods like ToList)
         var selectInvocation = FindSelectInvocation(expression);
-        if (selectInvocation is not null)
-        {
-            // Analyze anonymous type in lambda expression
-            if (selectInvocation.ArgumentList.Arguments.Count > 0)
+        if (selectInvocation is not null && selectInvocation.ArgumentList.Arguments.Count > 0)
             {
                 var lambdaArg = selectInvocation.ArgumentList.Arguments[0].Expression;
                 if (
