@@ -204,7 +204,8 @@ internal abstract record SelectExprInfo
             return expression;
         // Build null checks
         var nullCheckPart = string.Join(" && ", checks);
-        var nullableTypeName = $"({typeSymbol.ToDisplayString()})";
+        var typeSymbolValue = typeSymbol.ToDisplayString();
+        var nullableTypeName = typeSymbolValue != "?" ? $"({typeSymbolValue})" : "";
         var defaultValue = GetDefaultValueForType(typeSymbol);
         return $"{nullCheckPart} ? {nullableTypeName}{accessPath} : {defaultValue}";
     }

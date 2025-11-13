@@ -62,7 +62,7 @@ internal record SelectExprInfoExplicitDto : SelectExprInfo
     }
 
     // Get DTO class name
-    protected override string GetClassName(DtoStructure structure) => structure.SourceTypeName;
+    protected override string GetClassName(DtoStructure structure) => $"{structure.SourceTypeName}Dto_{structure.GetUniqueId()}";
 
     // Get parent DTO class name
     protected override string GetParentDtoClassName(DtoStructure structure) => ExplicitDtoName;

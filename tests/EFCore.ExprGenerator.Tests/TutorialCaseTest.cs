@@ -11,6 +11,7 @@ public class TutorialCaseTest
     public void TryTutorialCase()
     {
         var orders = Orders
+            .AsQueryable()
             // Order: input entity type
             // OrderDto: output DTO type (auto-generated)
             .SelectExpr<Order, OrderDto>(o => new
@@ -19,7 +20,7 @@ public class TutorialCaseTest
                 CustomerName = o.Customer?.Name,
                 CustomerCountry = o.Customer?.Address?.Country?.Name,
                 CustomerCity = o.Customer?.Address?.City?.Name,
-                Items = o.OrderItems?.Select(oi => new
+                Items = o.OrderItems.Select(oi => new
                 {
                     ProductName = oi.Product?.Name,
                     Quantity = oi.Quantity,
@@ -33,7 +34,7 @@ public class Order
 {
     public int Id { get; set; }
     public Customer? Customer { get; set; }
-    public List<OrderItem> OrderItems { get; set; } = [];
+    public List<OrderItem>? OrderItems { get; set; }
 }
 
 public class Customer
