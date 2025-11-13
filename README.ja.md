@@ -12,6 +12,7 @@ EFCoreにおいて、関連テーブルが大量にあるテーブルのデー�
 さらに、全てのデータを取得する関係上、パフォーマンス上でも問題があります。
 
 ```csharp
+// ⚠️ unreadable, inefficient, and error-prone
 var orders = await dbContext.Orders
     .Include(o => o.Customer)
         .ThenInclude(c => c.Address)
@@ -27,6 +28,7 @@ var orders = await dbContext.Orders
 より理想的な方法はDTO(Data Transfer Object)を使用し、必要なデータのみを選択的に取得することです。
 
 ```csharp
+// ✅️ readable and efficient
 var orders = await dbContext.Orders
     .Select(o => new OrderDto
     {
@@ -52,6 +54,7 @@ var orders = await dbContext.Orders
 Expression内ではnullable演算子が利用できない性質上、`o.Customer?.Name`のような記述ができず、以下のようなコードになりがちです。
 
 ```csharp
+// 🤔 too ugly code with lots of null checks
 var orders = await dbContext.Orders
     .Select(o => new OrderDto
     {
@@ -72,6 +75,21 @@ var orders = await dbContext.Orders
             : new List<OrderItemDto>()
     })
     .ToListAsync();
+
+// 🤔 you must define DTO classes manually
+public class OrderDto
+{
+    public int Id { get; set; }
+    public string? CustomerName { get; set; }
+    public string? CustomerCountry { get; set; }
+    public string? CustomerCity { get; set; }
+    public List<OrderItemDto> Items { get; set; } = new();
+}
+public class OrderItemDto
+{
+    public string? ProductName { get; set; }
+    public int Quantity { get; set; }
+}
 ```
 
 ## 特徴
@@ -79,6 +97,7 @@ EFCore.ExprGeneratorは、上記の問題を解決するために設計された
 上記の例では、以下のように記述することができます。
 
 ```csharp
+// ✅️ auto-generated DTOs, with null-propagation support
 var orders = await dbContext.Orders
     // Order: input entity type
     // OrderDto: output DTO type (auto-generated)
@@ -145,7 +164,7 @@ var orders = await dbContext.Orders
     .ToListAsync();
 ```
 
-自動生成機能を使用せず、既存のDtoクラスを利用することも可能です。この場合、ジェネリクス引数を指定しなくても構いません。
+自動生成機能を使用せず、既存のDtoクラスを利用することも可能です。この場合、ジェネリクス引数を指定せずに使用する必要があります。
 
 ```csharp
 var orders = await dbContext.Orders

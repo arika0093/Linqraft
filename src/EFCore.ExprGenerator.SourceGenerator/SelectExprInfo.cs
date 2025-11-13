@@ -119,11 +119,13 @@ internal abstract record SelectExprInfo
             #nullable enable
             #pragma warning disable IDE0060
             #pragma warning disable CS8601
+            #pragma warning disable CS8603
+            #pragma warning disable CS8604
 
             {{GetUsingNamespaceString()}}
 
             namespace EFCore.ExprGenerator;
-            {{accessibility}} static partial class GeneratedExpression_{{mainDtoName}}
+            {{accessibility}} static partial class GeneratedExpression
             {
             {{selectExprMethod}}
             }
@@ -329,20 +331,5 @@ internal abstract record SelectExprInfo
             Accessibility.ProtectedOrInternal => "protected internal",
             _ => "internal", // Default to internal for safety
         };
-    }
-
-    /// <summary>
-    /// Calculate inheritance depth of a type (0 for direct object descendants, 1 for their children, etc.)
-    /// </summary>
-    protected int GetInheritanceDepth(ITypeSymbol typeSymbol)
-    {
-        int depth = 0;
-        var current = typeSymbol.BaseType;
-        while (current != null && current.SpecialType != SpecialType.System_Object)
-        {
-            depth++;
-            current = current.BaseType;
-        }
-        return depth;
     }
 }

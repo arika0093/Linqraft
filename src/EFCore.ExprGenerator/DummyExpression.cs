@@ -19,4 +19,16 @@ public static class DummyExpression
     {
         throw new NotImplementedException();
     }
+
+    /// <summary>
+    /// Dummy Select expression method for EFCore.ExprGenerator to compile correctly.
+    /// </summary>
+    public static IQueryable<TResult> SelectExpr<T, TResult>(
+        this IQueryable<T> query,
+        Func<T, object> selector
+    )
+        where T : class
+    {
+        throw new NotImplementedException();
+    }
 }

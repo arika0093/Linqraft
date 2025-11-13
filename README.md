@@ -144,7 +144,7 @@ var orders = await dbContext.Orders
     .ToListAsync();
 ```
 
-You can also use existing DTO classes without using the auto-generation feature. In this case, you do not need to specify the generic argument.
+It is also possible to use an existing DTO class without using the auto-generation feature. In this case, you need to use it without specifying the generic argument.
 
 ```csharp
 var orders = await dbContext.Orders

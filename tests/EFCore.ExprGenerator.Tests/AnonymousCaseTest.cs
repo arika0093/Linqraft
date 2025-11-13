@@ -20,25 +20,25 @@ public class AnonymousCaseTest
     [Fact]
     public void Case1Other1()
     {
-        // var converted = SampleData
-        //     .AsQueryable()
-        //     .SelectExpr(s => new { s.Id, FullName = s.FirstName + " - " + s.LastName })
-        //     .ToList();
-        // converted.Count.ShouldBe(2);
-        // var first = converted[0];
-        // first.FullName.ShouldBe("John - Doe");
+        var converted = SampleData
+            .AsQueryable()
+            .SelectExpr(s => new { s.Id, FullName = s.FirstName + " - " + s.LastName })
+            .ToList();
+        converted.Count.ShouldBe(2);
+        var first = converted[0];
+        first.FullName.ShouldBe("John - Doe");
     }
 
     [Fact]
     public void Case1Other2()
     {
-        // var converted = SampleData
-        //     .AsQueryable()
-        //     .SelectExpr(s => new { s.Id, FullName = s.FirstName + " | " + s.LastName })
-        //     .ToList();
-        // converted.Count.ShouldBe(2);
-        // var first = converted[0];
-        // first.FullName.ShouldBe("John | Doe");
+        var converted = SampleData
+            .AsQueryable()
+            .SelectExpr(s => new { s.Id, FullName = s.FirstName + " | " + s.LastName })
+            .ToList();
+        converted.Count.ShouldBe(2);
+        var first = converted[0];
+        first.FullName.ShouldBe("John | Doe");
     }
 
     private static readonly List<AnonymousTestClass> SampleData =

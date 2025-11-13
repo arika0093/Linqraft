@@ -82,19 +82,19 @@ public class SimpleCaseTest
     [Fact]
     public void Case1ManuallyOther()
     {
-        // var converted = Case1Data
-        //     .AsQueryable()
-        //     .SelectExpr(s => new Simple1Dto
-        //     {
-        //         Id = s.Id,
-        //         FullName = s.FirstName + " + " + s.LastName,
-        //     })
-        //     .ToList();
-        // converted.Count.ShouldBe(2);
-        // var first = converted[0];
-        // first.GetType().ShouldBe(typeof(Simple1Dto));
-        // first.Id.ShouldBe(1);
-        // first.FullName.ShouldBe("John + Doe");
+        var converted = Case1Data
+            .AsQueryable()
+            .SelectExpr(s => new Simple1Dto
+            {
+                Id = s.Id,
+                FullName = s.FirstName + " + " + s.LastName,
+            })
+            .ToList();
+        converted.Count.ShouldBe(2);
+        var first = converted[0];
+        first.GetType().ShouldBe(typeof(Simple1Dto));
+        first.Id.ShouldBe(1);
+        first.FullName.ShouldBe("John + Doe");
     }
 
     [Fact]

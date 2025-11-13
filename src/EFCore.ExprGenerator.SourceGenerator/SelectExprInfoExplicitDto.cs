@@ -189,15 +189,16 @@ internal record SelectExprInfoExplicitDto : SelectExprInfo
         {
             count++;
             var className = $"{dtoName}_{count:D4}";
-            var classDecl = $"static partial class GeneratedExpression_{className}";
-            sb.AppendLine($"    {accessibility} {classDecl}");
+            var methodDecl =
+                $"public static IQueryable<TResult> SelectExpr_{className}<TIn, TResult>(";
+            sb.AppendLine($"    {accessibility} static partial class GeneratedExpression");
             sb.AppendLine($"    {{");
             sb.AppendLine($"        /// <summary>");
             sb.AppendLine($"        /// generated select expression method {dtoName}");
             sb.AppendLine($"        /// at {loc.GetDisplayLocation()}");
             sb.AppendLine($"        /// </summary>");
             sb.AppendLine($"        {loc.GetInterceptsLocationAttributeSyntax()}");
-            sb.AppendLine($"        public static IQueryable<TResult> SelectExpr<TIn, TResult>(");
+            sb.AppendLine($"        {methodDecl}");
             sb.AppendLine($"            this IQueryable<TIn> query,");
             sb.AppendLine($"            Func<TIn, object> selector) where TResult : {dtoFullName}");
             sb.AppendLine($"        {{");
