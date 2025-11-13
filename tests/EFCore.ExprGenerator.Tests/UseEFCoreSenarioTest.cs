@@ -24,10 +24,6 @@ public sealed class UseEFCoreSenarioTest : IDisposable
     public void Dispose()
     {
         dbContext.Dispose();
-        if (System.IO.File.Exists(DbFileName))
-        {
-            System.IO.File.Delete(DbFileName);
-        }
     }
 
     [Fact]
@@ -64,8 +60,7 @@ public sealed class UseEFCoreSenarioTest : IDisposable
             builder
                 .UseSqlite($"Data Source={DbFileName}")
                 .UseSeeding(
-                    // seed data
-                    async (dbContext, flag) =>
+                    (dbContext, flag) =>
                     {
                         var sampleEntity = new SampleClass
                         {
