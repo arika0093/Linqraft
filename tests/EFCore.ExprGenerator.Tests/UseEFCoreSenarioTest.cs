@@ -1,10 +1,16 @@
+using System;
+using System.Collections.Generic;
+using System.ComponentModel.DataAnnotations;
+using System.ComponentModel.DataAnnotations.Schema;
+using System.Threading.Tasks;
+using System.Linq;
 using Microsoft.EntityFrameworkCore;
 
 namespace EFCore.ExprGenerator.Tests;
 
 public sealed class UseEFCoreSenarioTest : IDisposable
 {
-    private SampleDbContext dbContext;
+    private readonly SampleDbContext dbContext;
 
     public UseEFCoreSenarioTest()
     {
