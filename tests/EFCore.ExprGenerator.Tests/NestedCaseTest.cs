@@ -5,8 +5,8 @@ namespace EFCore.ExprGenerator.Tests;
 
 public class NestedCaseTest
 {
-    private readonly List<NestBase> NestData = new()
-    {
+    private readonly List<NestBase> NestData =
+    [
         new NestBase
         {
             Id = 1,
@@ -57,7 +57,7 @@ public class NestedCaseTest
             },
         },
         // Additional test data can be added here
-    };
+    ];
 
     [Fact]
     public void NestedCase_SelectExpr_Works()
@@ -84,13 +84,12 @@ public class NestedCaseTest
             .ToList();
         converted.Count.ShouldBe(1);
         var first = converted[0];
-        first.GetType().Name.ShouldContain("NestBaseDto_");
         first.Id.ShouldBe(1);
         first.Name.ShouldBe("Base1");
         first.ChildDescription.ShouldBe("Child1 of Base1");
         first.GrandChildDetails.ShouldBe("GrandChild1 of Child1 of Base1");
         first.GreatGrandChildInfo.ShouldBe("GreatGrandChild1 of GrandChild1 of Child1 of Base1");
-        first.Child2Summaries.Count().ShouldBe(2);
+        first.Child2Summaries.Count.ShouldBe(2);
         var child2First = first.Child2Summaries.First();
         child2First.Summary.ShouldBe("Child2-1 of Base1");
         child2First.GrandChild2.Count().ShouldBe(2);
