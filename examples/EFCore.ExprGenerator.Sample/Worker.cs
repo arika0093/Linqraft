@@ -44,9 +44,9 @@ public class Worker(IDbContextFactory<SampleDbContext> dbContextFactory, ILogger
             var sample2 = await dbContext
                 .SampleClasses.SelectExpr<SampleClass, SampleClassSimpleDto>(s => new
                 {
-                    Id = s.Id,
-                    Foo = s.Foo,
-                    Bar = s.Bar,
+                    s.Id,
+                    s.Foo,
+                    s.Bar,
                 })
                 .FirstOrDefaultAsync(stoppingToken);
 
