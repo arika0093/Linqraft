@@ -158,8 +158,7 @@ internal abstract record SelectExprInfo
         // If nullable operator is used, convert to explicit null check
         if (property.IsNullable && expression.Contains("?."))
         {
-            var defaultValue = GetDefaultValueForType(property.TypeSymbol);
-            return ConvertNullableAccessToExplicitCheck(expression, defaultValue);
+            return ConvertNullableAccessToExplicitCheck(expression, property.TypeSymbol);
         }
         // Regular property access
         return expression;
@@ -226,7 +225,7 @@ internal abstract record SelectExprInfo
         return code;
     }
 
-    protected string ConvertNullableAccessToExplicitCheck(string expression, string defaultValue)
+    protected string ConvertNullableAccessToExplicitCheck(string expression, ITypeSymbol typeSymbol)
     {
         // Example: c.Child?.Id → c.Child != null ? c.Child.Id : null
         // Example: s.Child3?.Child?.Id → s.Child3 != null && s.Child3.Child != null ? s.Child3.Child.Id : null
@@ -254,7 +253,9 @@ internal abstract record SelectExprInfo
             return expression;
         // Build null checks
         var nullCheckPart = string.Join(" && ", checks);
-        return $"{nullCheckPart} ? {accessPath} : {defaultValue}";
+        var nullableTypeName = $"({typeSymbol.ToDisplayString()})";
+        var defaultValue = GetDefaultValueForType(typeSymbol);
+        return $"{nullCheckPart} ? {nullableTypeName}{accessPath} : {defaultValue}";
     }
 
     protected string? GetImplicitPropertyName(ExpressionSyntax expression)
