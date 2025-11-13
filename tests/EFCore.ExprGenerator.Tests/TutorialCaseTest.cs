@@ -1,5 +1,6 @@
 using System.Collections.Generic;
 using System.Linq;
+using EFCore.ExprGenerator;
 
 namespace Tutorial;
 
@@ -12,21 +13,20 @@ public class TutorialCaseTest
     {
         var orders = Orders
             .AsQueryable()
-            .SelectExpr(o => new
+            .SelectExpr(s => new
             {
-                Id = o.Id,
-                CustomerName = o.Customer?.Name,
-                CustomerCountry = o.Customer?.Address?.Country?.Name,
-                CustomerCity = o.Customer?.Address?.City?.Name,
-                Items = o.OrderItems?.Select(oi => new
-                {
-                    ProductName = oi.Product?.Name,
-                    Quantity = oi.Quantity,
-                }) ?? [],
+                Id = s.Id,
+                //CustomerName = s.Customer?.Name,
+                CustomerCountry = s.Customer?.Address?.Country?.Name,
+                CustomerCity = s.Customer?.Address?.City?.Name,
+                //    Items = s.OrderItems?.Select(oi => new
+                //    {
+                //        ProductName = oi.Product?.Name,
+                //        Quantity = oi.Quantity,
+                //    }) ?? [],
             })
             .ToList();
     }
-
 
     [Fact]
     public void TryTutorialCaseExplicit()
@@ -35,17 +35,17 @@ public class TutorialCaseTest
             .AsQueryable()
             // Order: input entity type
             // OrderDto: output DTO type (auto-generated)
-            .SelectExpr<Order, OrderDto>(o => new
+            .SelectExpr<Order, OrderDto>(s => new
             {
-                Id = o.Id,
-                CustomerName = o.Customer?.Name,
-                CustomerCountry = o.Customer?.Address?.Country?.Name,
-                CustomerCity = o.Customer?.Address?.City?.Name,
-                Items = o.OrderItems?.Select(oi => new
-                {
-                    ProductName = oi.Product?.Name,
-                    Quantity = oi.Quantity,
-                }) ?? [],
+                Id = s.Id,
+                //CustomerName = s.Customer?.Name,
+                CustomerCountry = s.Customer?.Address?.Country?.Name,
+                CustomerCity = s.Customer?.Address?.City?.Name,
+                //Items = s.OrderItems?.Select(oi => new
+                //{
+                //    ProductName = oi.Product?.Name,
+                //    Quantity = oi.Quantity,
+                //}) ?? [],
             })
             .ToList();
     }
