@@ -111,7 +111,6 @@ internal abstract record SelectExprInfo
         string selectExprMethod
     )
     {
-        var accessibility = GetAccessibilityString(SourceType);
         var sb = new StringBuilder();
         sb.Append(
             $$"""
@@ -125,7 +124,7 @@ internal abstract record SelectExprInfo
             {{GetUsingNamespaceString()}}
 
             namespace EFCore.ExprGenerator;
-            {{accessibility}} static partial class GeneratedExpression
+            file static partial class GeneratedExpression
             {
             {{selectExprMethod}}
             }
