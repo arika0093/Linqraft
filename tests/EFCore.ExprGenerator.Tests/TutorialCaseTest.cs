@@ -8,7 +8,28 @@ public class TutorialCaseTest
     private List<Order> Orders = [];
 
     [Fact]
-    public void TryTutorialCase()
+    public void TryTutorialCaseAnonymous()
+    {
+        var orders = Orders
+            .AsQueryable()
+            .SelectExpr(o => new
+            {
+                Id = o.Id,
+                CustomerName = o.Customer?.Name,
+                CustomerCountry = o.Customer?.Address?.Country?.Name,
+                CustomerCity = o.Customer?.Address?.City?.Name,
+                Items = o.OrderItems?.Select(oi => new
+                {
+                    ProductName = oi.Product?.Name,
+                    Quantity = oi.Quantity,
+                }) ?? [],
+            })
+            .ToList();
+    }
+
+
+    [Fact]
+    public void TryTutorialCaseExplicit()
     {
         var orders = Orders
             .AsQueryable()
@@ -20,11 +41,11 @@ public class TutorialCaseTest
                 CustomerName = o.Customer?.Name,
                 CustomerCountry = o.Customer?.Address?.Country?.Name,
                 CustomerCity = o.Customer?.Address?.City?.Name,
-                Items = o.OrderItems.Select(oi => new
+                Items = o.OrderItems?.Select(oi => new
                 {
                     ProductName = oi.Product?.Name,
                     Quantity = oi.Quantity,
-                }),
+                }) ?? [],
             })
             .ToList();
     }
