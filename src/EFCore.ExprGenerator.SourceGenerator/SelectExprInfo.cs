@@ -182,7 +182,8 @@ internal abstract record SelectExprInfo
         // Only check the part before .Select, not inside the lambda
         var originalBaseExpression = expression[..selectIndex];
         // Check if it contains ?. OR ends with ? (which means ?.Select)
-        var hasNullableAccess = originalBaseExpression.Contains("?.") || originalBaseExpression.EndsWith("?");
+        var hasNullableAccess =
+            originalBaseExpression.Contains("?.") || originalBaseExpression.EndsWith("?");
         if (hasNullableAccess)
         {
             // Convert s.OrderItems?.Select(...) ?? [] to:
@@ -190,7 +191,7 @@ internal abstract record SelectExprInfo
 
             // Build null checks for all nullable parts
             var checks = new List<string>();
-            var accessPath = baseExpression;  // baseExpression is already without the ?
+            var accessPath = baseExpression; // baseExpression is already without the ?
 
             // Check if originalBaseExpression ends with ? (from ?.)
             if (originalBaseExpression.EndsWith("?"))
