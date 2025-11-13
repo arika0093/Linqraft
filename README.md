@@ -254,6 +254,10 @@ public class OrderDto { /* ... */ }
 > [!NOTE]
 > Although the repository name contains "EFCore", the library has no runtime dependency on EF Core and can be used with any IQueryable provider that supports projection.
 
+### Troubleshooting
+Sometimes, immediately building after changes may result in error `CS8072` (null-propagation operator cannot be used in expression tree lambdas).
+In such cases, rebuilding the project resolves the issue.
+
 ## Notes
 The translation of anonymous-type selectors into Select-compatible expressions is done by source generation and some heuristics. Very complex expressions or certain C# constructs may not be supported. If you encounter unsupported cases, please open an issue with a minimal repro.
 
