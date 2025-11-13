@@ -1,159 +1,112 @@
-# EFCore.ExprGenerator - Developer Guide
-
-This document is a developer guide for understanding and editing the code in this project.
+This document describes the development guidelines, project structure, and technical background for this repository.
 
 ## Overview
 
-Automatically generates corresponding `Select` queries and DTO classes from the content written in the `.SelectExpr` method.
-For example:
+This project is a C# source generator that automatically generates Expression trees and DTO classes corresponding to IQueryable<T>.Select usages.
+It analyzes the contents of `.SelectExpr` calls and generates the corresponding `Select` expressions and DTO classes.
+Here is an example:
 
 ```csharp
 public class SampleClass
 {
     public void GetSample(List<BaseClass> data)
     {
-        var converted = data.AsQueryable()
-            .SelectExpr(x => new
-            {
-                x.Id,
-                x.Name,
-                ChildDescription = x.Child?.Description,
-                GrandChildTitles = x.Child?.GrandChild.Select(gc => gc.Title).ToList() ?? []
-            })
-            .ToList();
-    }
-}
-
-// class definitions
-internal class BaseClass
-{
-    public int Id { get; set; }
-    public string Name { get; set; } = null!;
-    public Child? Child { get; set; }
-}
-internal class ChildClass
-{
-    public string? Description { get; set; }
-    public IEnumerable<GrandChildClass> GrandChild { get; set; }
-}
-internal class GrandChildClass
-{
-    public string Title { get; set; } = null!;
-}
-```
-
-When you write code like the above, the following method and DTO are automatically generated:
-
-```csharp
-internal static class GeneratedExpression_ABCD1234
-{
-    public static IQueryable<BaseClassDto_ABCD1234> SelectExpr<TResult>(
-        this IQueryable<BaseClass> query,
-        Func<BaseClass, TResult> selector)
-    {
-        return query.Select(s => new BaseClassDto_ABCD1234
+        var query = data.AsQueryable();
+        // pattern 1: use anonymous type to specify selection
+        // return type is anonymous type
+        query.SelectExpr(x => new
         {
-            Id = s.Id,
-            Name = s.Name,
-            ChildDescription = s.Child != null ? s.Child.Description : default,
-            GrandChildTitles = s.Child != null && s.Child.GrandChild != null ? s.Child.GrandChild.Select(gc => gc.Title).ToList() : default,
+            x.Id,
+            // you can use the null-conditional operator
+            ChildDescription = x.Child?.Description,
+        });
+
+        // pattern 2: use an explicit DTO class
+        // return type is SampleDto (auto-generated)
+        query.SelectExpr<SampleDto>(x => new
+        {
+            x.Id,
+            // you can select child properties
+            ChildNames = x.Children.Select(c => c.Name).ToList(),
+        });
+
+        // pattern 3: use an already defined DTO class
+        query.SelectExpr(x => new PredefinedDto
+        {
+            x.Name,
+            x.Value,
         });
     }
+}
 
-    public class BaseClassDto_ABCD1234
-    {
-        public required int Id { get; set; }
-        public required string Name { get; set; }
-        public required string? ChildDescription { get; set; }
-        public required IEnumerable<string>? GrandChildTitles { get; set; }
-    }
+public class PredefinedDto
+{
+    public string Name { get; set; }
+    public int Value { get; set; }
 }
 ```
 
-The DummyExpression in EFCore.ExprGenerator is a "hook" point for triggering the above auto-generation and does nothing by itself.
-Therefore, it will not cause any bugs and does not need to be edited.
+## Project structure
 
-## Project Structure
-
-This project consists of the following four projects:
+The repository is organized as follows (relevant folders under `src/`):
 
 ### `src/EFCore.ExprGenerator/`
-The main library distributed as a NuGet package. It contains:
-- `DummyExpression.cs`: An empty extension method that serves as a marker for the Source Generator to detect
-- It performs no operations at runtime and is only used at compile time
+The runtime library distributed as a NuGet package. Notable file:
+- `DummyExpression.cs`: an empty extension method that acts as a marker for the Source Generator to detect `SelectExpr` usages. It performs no runtime work and exists only to be recognized at compile time.
 
 ### `src/EFCore.ExprGenerator.SourceGenerator/`
-The Source Generator implementation that performs the actual code generation. It contains:
-- `SelectExprGenerator.cs`: Main Source Generator implementation
-- `SelectExprInfo.cs`: Extracts information from anonymous types and generates DTO classes
-- `DtoProperty.cs`: Manages DTO property information
+The Source Generator implementation that performs the actual code generation. Important files include:
+- `SelectExprGenerator.cs`: the generator entry point
+- `SelectExprGroups.cs`: grouping SelectExpr information (grouped per namespace)
+- `SelectExprInfo.cs`: holds information for each SelectExpr and provides the foundation for code generation
+  - `SelectExprInfoAnonymous.cs`: handles anonymous-type SelectExpr information (pattern 1)
+  - `SelectExprInfoExplicitDto.cs`: handles explicit DTO SelectExpr information (pattern 2)
+  - `SelectExprInfoPredefinedDto.cs`: handles pre-existing DTO SelectExpr information (pattern 3)
 
 ### `tests/EFCore.ExprGenerator.Tests/`
-The test project. Contains test cases for various scenarios:
-- Simple/Nested/CaseTest, etc.: Tests for various patterns
-- Verifies that the generated code is as expected
+The test project. It contains test cases exercising various scenarios and verifies generated output.
 
 ### `examples/EFCore.ExprGenerator.Sample/`
 A sample project demonstrating usage examples.
 
-## Technical Background
-This project is implemented as a **C# Source Generator**.
+## Technical background
 
-## Build and Test
+This project consists of a C# Source Generator and an interceptor mechanism:
 
-Always perform a clean build as past caches may remain.
+- C# Source Generator: a compile-time code generation feature (available since C# 9). The generator inspects `SelectExpr` calls and emits expression trees and DTO classes.
+- Interceptor: a technique used to intercept method calls and replace the `SelectExpr` call with the generated expression trees at runtime.
+
+## Build and test
+
+Always perform a clean build to avoid stale generator caches:
+
 ```bash
 dotnet clean && dotnet build
 dotnet test --no-build
 ```
 
-If you want to access the generated code, you can output it to actual files by following these steps:
+If you want to inspect the generated sources on disk, follow these steps:
 
-1. Delete the `(test-project)/.generated` directory if it already exists.
-2. Set `EmitCompilerGeneratedFiles` to true in EFCore.ExprGenerator.Tests.csproj.
-3. The generated code will be output to `(test-project)/.generated/**/*.g.cs`.
-4. After confirmation, make sure to set `EmitCompilerGeneratedFiles` back to false.
+1. Remove the `(test-project)/.generated` directory if it already exists.
+2. Enable `EmitCompilerGeneratedFiles` in `EFCore.ExprGenerator.Tests.csproj`.
+3. The generated code will be emitted to `(test-project)/.generated/**/*.g.cs`.
 
-## Development Guidelines
+## Development guidelines
 
-### Test-Driven Development Recommended
-- When adding new features, create test cases first
-- Verify the generated code in the test project to ensure it's as expected
-- Ensure all existing tests pass before committing changes
+### Test-driven development recommended
 
-### Source Generator-Specific Considerations
-- **Cache Issues**: If changes are not reflected, run `dotnet clean`
-- **IDE Restart**: If changes are not reflected in Visual Studio or Rider, an IDE restart may be necessary
-- **Debugging**: Debugging Source Generators is more complex than regular code. To check generated code, use `EmitCompilerGeneratedFiles` as described above
+- When adding new features, write tests first.
+- Verify the generated code in the test project to ensure it matches expectations.
+- Ensure all existing tests pass before committing changes.
 
-### Code Editing Guidelines
-- Do not edit `DummyExpression.cs` (it functions as a marker)
-- When changing the Source Generator itself, always add test cases
-- Pay attention to the quality (readability, performance) of the generated code
+### Source generator-specific considerations
 
-## Troubleshooting
+- Cache issues: if changes to the generator are not reflected, run `dotnet clean`.
+- IDE restart: if generated code is not visible in Visual Studio or Rider, an IDE restart may be required.
+- Debugging: debugging source generators can be more involved than regular code. Use `EmitCompilerGeneratedFiles` to inspect emitted sources when necessary.
 
-### Generated Code Not Updating
-1. Run `dotnet clean` to clear the cache
-2. Restart the IDE
-3. Delete the `.generated` directory and rebuild
+### Code editing guidelines
 
-### Tests Failing
-1. Run `dotnet clean`
-2. Build with `dotnet build`
-3. Run tests with `dotnet test --no-build`
-4. Check the error messages of failed tests
-5. Check the generated code with `EmitCompilerGeneratedFiles`
-
-### Local Testing of NuGet Package
-1. Create a package with `dotnet pack`
-2. Place it in a local NuGet feed
-3. Reference it in a sample project and verify functionality
-
-## Limitations
-
-- Overly complex expression trees may not be parsed correctly
-- Some LINQ methods may not be supported
-- There are limitations on custom type mapping
-
-For detailed limitations and known issues, please check the GitHub Issues.
+- Do not edit `DummyExpression.cs` (it serves only as a marker).
+- When modifying the source generator, always add or update tests.
+- Pay attention to the readability and performance of the generated code.
