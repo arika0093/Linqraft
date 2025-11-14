@@ -1,12 +1,12 @@
 # Linqraft Performance Benchmark
 
-このプロジェクトは、Linqraftを使用した場合と従来のEF Core `.Select`を使用した場合のパフォーマンス比較を行うベンチマークです。
+This project benchmarks the performance difference between using Linqraft and the traditional EF Core `.Select` method.
 
-## ベンチマーク結果
+## Benchmark Results
 
-**📊 [詳細なベンチマーク結果を見る](./BENCHMARK_RESULTS.md)**
+**📊 [See detailed benchmark results](./BENCHMARK_RESULTS.md)**
 
-### 結果サマリー
+### Summary
 
 | Method                        | Mean     | Ratio | Allocated |
 |------------------------------ |---------:|------:|----------:|
@@ -15,66 +15,70 @@
 | Linqraft Anonymous            | 1.778 ms |  0.97 | 244.41 KB |
 | Traditional Anonymous         | 1.834 ms |  1.00 | 245.99 KB |
 
-**主な発見:**
-- ✅ Linqraftの自動生成DTOは従来の手動DTOと**ほぼ同じパフォーマンス** (差は0.98%)
-- ✅ メモリ割り当ても**ほぼ同じ** (~245 KB)
-- ✅ パフォーマンスのペナルティなしで、より読みやすいコードを実現
+**Key findings:**
+- ✅ Linqraft auto-generated DTOs have almost the same performance as traditional manual DTOs (difference: 0.98%)
+- ✅ Memory allocation is also nearly identical (~245 KB)
+- ✅ Achieves more readable code with no performance penalty
 
-## ベンチマーク内容
 
-以下の4つのパターンを比較します:
+## Benchmark Patterns
 
-1. **Traditional Anonymous** (従来 - 匿名型): 冗長なnullチェックが必要
-2. **Traditional Manual DTO** (従来 - 手動DTO): 手動でDTOを定義 + 冗長なnullチェック
-3. **Linqraft Anonymous** (Linqraft - 匿名型): null条件演算子が使用可能
-4. **Linqraft Auto-Generated DTO** (Linqraft - 自動生成DTO): DTOクラスが自動生成 + null条件演算子
+The following four patterns are compared:
 
-### コード比較
+1. **Traditional Anonymous**: Requires verbose null checks
+2. **Traditional Manual DTO**: Manual DTO definition + verbose null checks
+3. **Linqraft Anonymous**: Can use null-conditional operator
+4. **Linqraft Auto-Generated DTO**: DTO class is auto-generated + null-conditional operator
 
-**従来の方法 (冗長なnullチェック)**:
+
+### Code Comparison
+
+**Traditional (verbose null checks):**
 ```csharp
 ChildId = c.Child != null ? c.Child.Id : null,
 Child3ChildId = s.Child3 != null && s.Child3.Child != null ? s.Child3.Child.Id : null,
 ```
 
-**Linqraft使用 (簡潔なnull条件演算子)**:
+**Using Linqraft (concise null-conditional operator):**
 ```csharp
 ChildId = c.Child?.Id,
 Child3ChildId = s.Child3?.Child?.Id,
 ```
 
-## 実行方法
 
-### 前提条件
-- .NET 9.0 SDK以降
+## How to Run
 
-### テスト実行（動作確認）
+### Prerequisites
+- .NET 9.0 SDK or later
 
-まず、4つのパターンが正しく動作することを確認:
+### Test Run (Functionality Check)
+
+First, verify that all four patterns work correctly:
 ```bash
 cd examples/Linqraft.Benchmark
 dotnet run --test
 ```
 
-### ベンチマーク実行
+### Benchmark Run
 
-実際のパフォーマンス測定:
+To measure actual performance:
 ```bash
 cd examples/Linqraft.Benchmark
 dotnet run -c Release
 ```
 
-結果は `BenchmarkDotNet.Artifacts/results/` に保存されます。
+Results are saved in `BenchmarkDotNet.Artifacts/results/`.
 
-## テストデータ
 
-ベンチマークでは100件のサンプルデータを使用します。各レコードは:
-- 親クラス (SampleClass)
-- 子クラスのリスト (2件のSampleChildClass)
-- nullableな子クラス (SampleChildClass2) - 50%の確率で存在
-- 必須の子クラス (SampleChildClass3)
-- さらにネストされた子クラス (SampleChildChildClass, SampleChildChildClass2)
+## Test Data
 
-を含みます。
+The benchmark uses 100 sample records. Each record includes:
+- Parent class (`SampleClass`)
+- List of child classes (2 `SampleChildClass` instances)
+- Nullable child class (`SampleChildClass2`) - present 50% of the time
+- Required child class (`SampleChildClass3`)
+- Further nested child classes (`SampleChildChildClass`, `SampleChildChildClass2`)
+
+All documentation and comments are in English.
 
 

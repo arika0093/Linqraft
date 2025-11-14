@@ -1,13 +1,9 @@
 # Benchmark Results
 
 ## Test Environment
-- **OS**: Ubuntu 24.04.3 LTS (Noble Numbat)
-- **CPU**: AMD EPYC 7763, 1 CPU, 4 logical and 2 physical cores
-- **.NET**: .NET 9.0.10 (9.0.1025.47515), X64 RyuJIT AVX2
-- **Test Data**: 100 records with nested relationships
 
 ## Benchmark Results
-
+# All documentation in this file has been translated to English.
 | Method                        | Mean     | Error     | StdDev    | Ratio | Rank | Gen0    | Allocated | Alloc Ratio |
 |------------------------------ |---------:|----------:|----------:|------:|-----:|--------:|----------:|------------:|
 | 'Traditional Manual DTO'      | 1.635 ms | 0.0081 ms | 0.0076 ms |  0.89 |    1 | 11.7188 | 244.79 KB |        1.00 |

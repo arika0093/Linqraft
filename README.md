@@ -268,17 +268,14 @@ In such cases, rebuilding the project resolves the issue.
 
 ## Performance
 
-To see real performance comparisons between traditional EF Core `.Select` and Linqraft's `.SelectExpr`, check out the [benchmark project](./examples/Linqraft.Benchmark).
+| Method                        | Mean     | Error     | StdDev    | Ratio | Rank | Gen0    | Allocated | Alloc Ratio |
+|------------------------------ |---------:|----------:|----------:|------:|-----:|--------:|----------:|------------:|
+| 'Traditional Manual DTO'      | 1.635 ms | 0.0081 ms | 0.0076 ms |  0.89 |    1 | 11.7188 | 244.79 KB |        1.00 |
+| 'Linqraft Auto-Generated DTO' | 1.651 ms | 0.0105 ms | 0.0098 ms |  0.90 |    1 | 11.7188 | 245.23 KB |        1.00 |
+| 'Linqraft Anonymous'          | 1.778 ms | 0.0059 ms | 0.0055 ms |  0.97 |    2 | 11.7188 | 244.41 KB |        0.99 |
+| 'Traditional Anonymous'       | 1.834 ms | 0.0092 ms | 0.0086 ms |  1.00 |    3 | 11.7188 | 245.99 KB |        1.00 |
 
-The benchmark compares:
-- Traditional EF Core `.Select` with manual DTOs (requiring verbose null checks)
-- Linqraft `.SelectExpr` with auto-generated DTOs (supporting null-conditional operators)
-
-Run the benchmark yourself:
-```bash
-cd examples/Linqraft.Benchmark
-dotnet run -c Release
-```
+the performance is nearly identical. for more details, see [Linqraft.Benchmark](./examples/Linqraft.Benchmark) for details.
 
 ## Notes
 The translation of anonymous-type selectors into Select-compatible expressions is done by source generation and some heuristics. Very complex expressions or certain C# constructs may not be supported. If you encounter unsupported cases, please open an issue with a minimal repro.

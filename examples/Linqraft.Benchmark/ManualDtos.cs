@@ -15,6 +15,8 @@ public class ManualSampleClassDto
     public string? Child3ChildGrault { get; set; }
 }
 
+// Manual Data Transfer Objects (DTOs) for the traditional Select approach (Pattern 1)
+
 public class ManualSampleChildDto
 {
     public int Id { get; set; }
@@ -22,3 +24,4 @@ public class ManualSampleChildDto
     public int? ChildId { get; set; }
     public string? ChildQux { get; set; }
 }
+// Child Data Transfer Object (DTO)
