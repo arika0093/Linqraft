@@ -169,13 +169,13 @@ namespace Linqraft
 
 namespace Tutorial
 {
-    public class OrderItemDto_DE33EA40
+    public partial class OrderItemDto_DE33EA40
     {
         public required string? ProductName { get; set; }
         public required int Quantity { get; set; }
     }
 
-    public class OrderDto
+    public partial class OrderDto
     {
         public required int Id { get; set; }
         public required string? CustomerName { get; set; }
@@ -230,6 +230,16 @@ var orders = await dbContext.Orders
         // ...
     })
     .ToListAsync();
+```
+
+You can extend the generated DTO classes as needed since they are output as `partial` classes.
+
+```csharp
+// extend generated DTO class if needed
+public partial class OrderDto
+{
+    public string GetDisplayName() => $"{Id}: {CustomerName}";
+}
 ```
 
 If you already have DTO classes and want to use them directly, call `SelectExpr` without generics and construct your DTO type in the selector:

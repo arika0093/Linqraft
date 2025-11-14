@@ -1,0 +1,41 @@
+name: Bug Report
+description: File a bug report.
+title: "bug: "
+labels: ["bug"]
+type: bug
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for taking the time to fill out this bug report!
+  - type: text-area
+    id: minimal-repro
+    attributes:
+      label: Minimal Reproducible Example
+      description: Please provide a minimal reproducible example that demonstrates the issue.
+      placeholder: query.SelectExpr(s => ...);
+    validations:
+      required: true
+  - type: textarea
+    id: generated-output
+    attributes:
+      label: Generated Output
+      description: Please provide the generated output you actually got.
+      placeholder: You can see a generated code in Analyzer output window.
+    validations:
+      required: true
+  - type: textarea
+    id: expected-output
+    attributes:
+      label: Expected Output
+      description: Please provide the output you expected to see.
+      placeholder: Generated namespace maybe `MyApp.DTOs`.
+    validations:
+      required: true
+  - type: textarea
+    id: additional-information
+    attributes:
+      label: Additional Information
+      description: Please provide any additional information that might be relevant to the issue.
+    validations:
+      required: false
