@@ -85,5 +85,5 @@ public class IEnumerableCaseTest
 public class EnumerableSimpleDto
 {
     public int Id { get; set; }
-    public string FullName { get; set; }
+    public required string FullName { get; set; }
 }
