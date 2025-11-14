@@ -58,9 +58,36 @@ class Program
         dbContext.Add(sampleEntity);
         await dbContext.SaveChangesAsync();
 
-        // Test traditional select
-        Console.WriteLine("Testing Traditional Select...");
-        var traditionalResult = await dbContext.SampleClasses
+        Console.WriteLine("Testing all 4 patterns:\n");
+
+        // Pattern 1: Traditional with Anonymous Type
+        Console.WriteLine("1. Traditional with Anonymous Type...");
+        var result1 = await dbContext.SampleClasses
+            .Select(s => new
+            {
+                s.Id,
+                s.Foo,
+                s.Bar,
+                Childs = s.Childs.Select(c => new
+                {
+                    c.Id,
+                    c.Baz,
+                    ChildId = c.Child != null ? c.Child.Id : (int?)null,
+                    ChildQux = c.Child != null ? c.Child.Qux : null,
+                }),
+                Child2Id = s.Child2 != null ? (int?)s.Child2.Id : null,
+                Child2Quux = s.Child2 != null ? s.Child2.Quux : null,
+                Child3Id = s.Child3.Id,
+                Child3Corge = s.Child3.Corge,
+                Child3ChildId = s.Child3 != null && s.Child3.Child != null ? (int?)s.Child3.Child.Id : null,
+                Child3ChildGrault = s.Child3 != null && s.Child3.Child != null ? s.Child3.Child.Grault : null,
+            })
+            .ToListAsync();
+        Console.WriteLine($"   ✓ Returned {result1.Count} results");
+
+        // Pattern 2: Traditional with Manual DTO
+        Console.WriteLine("2. Traditional with Manual DTO...");
+        var result2 = await dbContext.SampleClasses
             .Select(s => new ManualSampleClassDto
             {
                 Id = s.Id,
@@ -81,11 +108,36 @@ class Program
                 Child3ChildGrault = s.Child3 != null && s.Child3.Child != null ? s.Child3.Child.Grault : null,
             })
             .ToListAsync();
-        Console.WriteLine($"Traditional Select returned {traditionalResult.Count} results");
+        Console.WriteLine($"   ✓ Returned {result2.Count} results");
 
-        // Test Linqraft SelectExpr
-        Console.WriteLine("Testing Linqraft SelectExpr...");
-        var linqraftResult = await dbContext.SampleClasses
+        // Pattern 3: Linqraft with Anonymous Type
+        Console.WriteLine("3. Linqraft with Anonymous Type...");
+        var result3 = await dbContext.SampleClasses
+            .SelectExpr(s => new
+            {
+                s.Id,
+                s.Foo,
+                s.Bar,
+                Childs = s.Childs.Select(c => new
+                {
+                    c.Id,
+                    c.Baz,
+                    ChildId = c.Child?.Id,
+                    ChildQux = c.Child?.Qux,
+                }),
+                Child2Id = s.Child2?.Id,
+                Child2Quux = s.Child2?.Quux,
+                Child3Id = s.Child3.Id,
+                Child3Corge = s.Child3.Corge,
+                Child3ChildId = s.Child3?.Child?.Id,
+                Child3ChildGrault = s.Child3?.Child?.Grault,
+            })
+            .ToListAsync();
+        Console.WriteLine($"   ✓ Returned {result3.Count} results");
+
+        // Pattern 4: Linqraft with Auto-Generated DTO
+        Console.WriteLine("4. Linqraft with Auto-Generated DTO...");
+        var result4 = await dbContext.SampleClasses
             .SelectExpr<SampleClass, LinqraftSampleClassDto>(s => new
             {
                 s.Id,
@@ -106,12 +158,12 @@ class Program
                 Child3ChildGrault = s.Child3?.Child?.Grault,
             })
             .ToListAsync();
-        Console.WriteLine($"Linqraft SelectExpr returned {linqraftResult.Count} results");
+        Console.WriteLine($"   ✓ Returned {result4.Count} results");
 
         // Cleanup
         await dbContext.Database.EnsureDeletedAsync();
         
-        Console.WriteLine("\n✅ Both methods work correctly!");
+        Console.WriteLine("\n✅ All 4 patterns work correctly!");
         Console.WriteLine("\nRun without --test flag to execute benchmark:");
         Console.WriteLine("  dotnet run -c Release");
     }

@@ -1,6 +1,6 @@
 namespace Linqraft.Benchmark;
 
-// Manual DTOs for traditional Select approach
+// Manual DTOs for traditional Select approach (Pattern 1)
 public class ManualSampleClassDto
 {
     public int Id { get; set; }

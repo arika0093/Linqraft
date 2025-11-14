@@ -2,72 +2,45 @@
 
 このプロジェクトは、Linqraftを使用した場合と従来のEF Core `.Select`を使用した場合のパフォーマンス比較を行うベンチマークです。
 
+## ベンチマーク結果
+
+**📊 [詳細なベンチマーク結果を見る](./BENCHMARK_RESULTS.md)**
+
+### 結果サマリー
+
+| Method                        | Mean     | Ratio | Allocated |
+|------------------------------ |---------:|------:|----------:|
+| Traditional Manual DTO        | 1.635 ms |  0.89 | 244.79 KB |
+| **Linqraft Auto-Generated DTO** | **1.651 ms** |  **0.90** | **245.23 KB** |
+| Linqraft Anonymous            | 1.778 ms |  0.97 | 244.41 KB |
+| Traditional Anonymous         | 1.834 ms |  1.00 | 245.99 KB |
+
+**主な発見:**
+- ✅ Linqraftの自動生成DTOは従来の手動DTOと**ほぼ同じパフォーマンス** (差は0.98%)
+- ✅ メモリ割り当ても**ほぼ同じ** (~245 KB)
+- ✅ パフォーマンスのペナルティなしで、より読みやすいコードを実現
+
 ## ベンチマーク内容
 
-以下の2つの方法を比較します:
+以下の4つのパターンを比較します:
 
-1. **TraditionalSelect (ベースライン)**: 従来のEF Core `.Select`を使用し、手動で定義したDTOクラスにマッピング
-   - 手動でDTOクラスを定義する必要がある
-   - null条件演算子が使えないため、三項演算子で冗長なnullチェックを記述
-
-2. **LinqraftSelectExpr**: Linqraftの`.SelectExpr`を使用し、自動生成されたDTOクラスにマッピング
-   - DTOクラスは自動生成される
-   - null条件演算子(`?.`)が使用可能で、簡潔なコード記述が可能
+1. **Traditional Anonymous** (従来 - 匿名型): 冗長なnullチェックが必要
+2. **Traditional Manual DTO** (従来 - 手動DTO): 手動でDTOを定義 + 冗長なnullチェック
+3. **Linqraft Anonymous** (Linqraft - 匿名型): null条件演算子が使用可能
+4. **Linqraft Auto-Generated DTO** (Linqraft - 自動生成DTO): DTOクラスが自動生成 + null条件演算子
 
 ### コード比較
 
-**従来の方法 (TraditionalSelect)**:
+**従来の方法 (冗長なnullチェック)**:
 ```csharp
-// ❌ 冗長なnullチェックが必要
-var result = await dbContext.SampleClasses
-    .Select(s => new ManualSampleClassDto
-    {
-        Id = s.Id,
-        Foo = s.Foo,
-        Bar = s.Bar,
-        Childs = s.Childs.Select(c => new ManualSampleChildDto
-        {
-            Id = c.Id,
-            Baz = c.Baz,
-            ChildId = c.Child != null ? c.Child.Id : null,
-            ChildQux = c.Child != null ? c.Child.Qux : null,
-        }),
-        Child2Id = s.Child2 != null ? s.Child2.Id : null,
-        Child2Quux = s.Child2 != null ? s.Child2.Quux : null,
-        Child3ChildId = s.Child3 != null && s.Child3.Child != null ? s.Child3.Child.Id : null,
-        Child3ChildGrault = s.Child3 != null && s.Child3.Child != null ? s.Child3.Child.Grault : null,
-    })
-    .ToListAsync();
-
-// 手動でDTOクラスを定義する必要がある
-public class ManualSampleClassDto { /* ... */ }
-public class ManualSampleChildDto { /* ... */ }
+ChildId = c.Child != null ? c.Child.Id : null,
+Child3ChildId = s.Child3 != null && s.Child3.Child != null ? s.Child3.Child.Id : null,
 ```
 
-**Linqraftを使用 (LinqraftSelectExpr)**:
+**Linqraft使用 (簡潔なnull条件演算子)**:
 ```csharp
-// ✅ null条件演算子が使用可能で簡潔
-var result = await dbContext.SampleClasses
-    .SelectExpr<SampleClass, LinqraftSampleClassDto>(s => new
-    {
-        s.Id,
-        s.Foo,
-        s.Bar,
-        Childs = s.Childs.Select(c => new
-        {
-            c.Id,
-            c.Baz,
-            ChildId = c.Child?.Id,      // ← null条件演算子
-            ChildQux = c.Child?.Qux,    // ← null条件演算子
-        }),
-        Child2Id = s.Child2?.Id,        // ← null条件演算子
-        Child2Quux = s.Child2?.Quux,    // ← null条件演算子
-        Child3ChildId = s.Child3?.Child?.Id,        // ← null条件演算子の連鎖
-        Child3ChildGrault = s.Child3?.Child?.Grault, // ← null条件演算子の連鎖
-    })
-    .ToListAsync();
-
-// DTOクラスは自動生成される - 定義不要！
+ChildId = c.Child?.Id,
+Child3ChildId = s.Child3?.Child?.Id,
 ```
 
 ## 実行方法
@@ -77,7 +50,7 @@ var result = await dbContext.SampleClasses
 
 ### テスト実行（動作確認）
 
-まず、両方のメソッドが正しく動作することを確認:
+まず、4つのパターンが正しく動作することを確認:
 ```bash
 cd examples/Linqraft.Benchmark
 dotnet run --test
@@ -91,16 +64,7 @@ cd examples/Linqraft.Benchmark
 dotnet run -c Release
 ```
 
-## ベンチマーク結果の見方
-
-BenchmarkDotNetは以下の情報を提供します:
-
-- **Mean**: 平均実行時間
-- **Error**: 測定誤差
-- **StdDev**: 標準偏差
-- **Ratio**: ベースラインとの比率
-- **Gen0, Gen1, Gen2**: ガベージコレクションの発生回数
-- **Allocated**: 割り当てられたメモリ量
+結果は `BenchmarkDotNet.Artifacts/results/` に保存されます。
 
 ## テストデータ
 
@@ -112,4 +76,5 @@ BenchmarkDotNetは以下の情報を提供します:
 - さらにネストされた子クラス (SampleChildChildClass, SampleChildChildClass2)
 
 を含みます。
+
 
