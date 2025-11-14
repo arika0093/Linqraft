@@ -24,12 +24,6 @@
       PackagePath="build"
       Visible="false"
     />
-    <None
-      Include="Linqraft.SourceGenerator.targets"
-      Pack="true"
-      PackagePath="build"
-      Visible="false"
-    />
   </ItemGroup>
   <ItemGroup>
     <PackageReference Include="Microsoft.CodeAnalysis.Analyzers" Version="3.11.0">
