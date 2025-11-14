@@ -262,20 +262,35 @@ public class OrderDto { /* ... */ }
 > If you want to use the auto-generated type information, you can navigate to the generated code (for example via F12 in your editor) by placing the cursor on the `OrderDto` class.
 > and then you can copy it or use it as you like.
 
-### Troubleshooting
-Sometimes, immediately building after changes may result in error `CS8072` (null-propagation operator cannot be used in expression tree lambdas).
-In such cases, rebuilding the project resolves the issue.
-
 ## Performance
 
-| Method                        | Mean     | Error     | StdDev    | Ratio | Rank | Gen0    | Allocated | Alloc Ratio |
-|------------------------------ |---------:|----------:|----------:|------:|-----:|--------:|----------:|------------:|
-| 'Traditional Manual DTO'      | 1.635 ms | 0.0081 ms | 0.0076 ms |  0.89 |    1 | 11.7188 | 244.79 KB |        1.00 |
-| 'Linqraft Auto-Generated DTO' | 1.651 ms | 0.0105 ms | 0.0098 ms |  0.90 |    1 | 11.7188 | 245.23 KB |        1.00 |
-| 'Linqraft Anonymous'          | 1.778 ms | 0.0059 ms | 0.0055 ms |  0.97 |    2 | 11.7188 | 244.41 KB |        0.99 |
-| 'Traditional Anonymous'       | 1.834 ms | 0.0092 ms | 0.0086 ms |  1.00 |    3 | 11.7188 | 245.99 KB |        1.00 |
+<details>
+<summary>Benchmark Environments</summary>
+
+```
+BenchmarkDotNet v0.15.7, Windows 11 (10.0.26200.7171/25H2/2025Update/HudsonValley2)
+Intel Core i7-14700F 2.10GHz, 1 CPU, 28 logical and 20 physical cores
+.NET SDK 10.0.100-rc.2.25502.107
+  [Host]     : .NET 9.0.10 (9.0.10, 9.0.1025.47515), X64 RyuJIT x86-64-v3
+  DefaultJob : .NET 9.0.10 (9.0.10, 9.0.1025.47515), X64 RyuJIT x86-64-v3
+```
+
+</details>
+
+| Method                        | Mean       | Error    | StdDev   | Ratio | RatioSD | Rank | Gen0    | Gen1   | Allocated | Alloc Ratio |
+|------------------------------ |-----------:|---------:|---------:|------:|--------:|-----:|--------:|-------:|----------:|------------:|
+| 'Traditional Manual DTO'      |   962.2 us |  7.11 us |  6.65 us |  0.92 |    0.01 |    1 | 13.6719 | 1.9531 | 245.06 KB |        1.00 |
+| 'Linqraft Auto-Generated DTO' |   968.6 us |  7.40 us |  6.92 us |  0.92 |    0.01 |    1 | 13.6719 | 1.9531 | 245.09 KB |        1.00 |
+| 'Linqraft Anonymous'          | 1,030.7 us |  4.64 us |  4.34 us |  0.98 |    0.01 |    2 | 13.6719 | 1.9531 | 244.92 KB |        1.00 |
+| 'Traditional Anonymous'       | 1,047.7 us | 16.51 us | 15.44 us |  1.00 |    0.02 |    2 | 13.6719 | 1.9531 | 246.14 KB |        1.00 |
 
 the performance is nearly identical. for more details, see [Linqraft.Benchmark](./examples/Linqraft.Benchmark) for details.
+
+## Troubleshooting
+### CS8072 Error
+Sometimes, immediately building after changes may result in error `CS8072` (null-propagation operator cannot be used in expression tree lambdas).
+In such cases, rebuilding the project resolves the issue.
+If the issue persists, it may be due to null-propagation operators being incorrectly included in the generated source code. In that case, please feel free to open an issue!
 
 ## Notes
 The translation of anonymous-type selectors into Select-compatible expressions is done by source generation and some heuristics. Very complex expressions or certain C# constructs may not be supported. If you encounter unsupported cases, please open an issue with a minimal repro.

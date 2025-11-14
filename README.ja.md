@@ -257,23 +257,35 @@ public class OrderDto { /* ... */ }
 > 自動生成された型情報を利用したい場合、OrderDtoクラスにカーソルを合わせてF12キーを押すと、生成されたコードにジャンプします。
 > あとはコピーするなどして自由に利用できます。
 
-### トラブルシューティング
-変更直後にビルドを行うと エラー `CS8072`(式ツリーのラムダに null 伝搬演算子を含めることはできません) が発生する場合があります。
-この場合、プロジェクトをリビルドすると解決します。
-
 ## パフォーマンス
 
-従来のEF Core `.Select`とLinqraftの`.SelectExpr`の実際のパフォーマンス比較については、[ベンチマークプロジェクト](./examples/Linqraft.Benchmark)をご覧ください。
+<details>
+<summary>Benchmark Environments</summary>
 
-ベンチマークでは以下を比較します:
-- 従来のEF Core `.Select` - 手動で定義したDTOを使用（冗長なnullチェックが必要）
-- Linqraft `.SelectExpr` - 自動生成されたDTOを使用（null条件演算子をサポート）
-
-ベンチマークの実行方法:
-```bash
-cd examples/Linqraft.Benchmark
-dotnet run -c Release
 ```
+BenchmarkDotNet v0.15.7, Windows 11 (10.0.26200.7171/25H2/2025Update/HudsonValley2)
+Intel Core i7-14700F 2.10GHz, 1 CPU, 28 logical and 20 physical cores
+.NET SDK 10.0.100-rc.2.25502.107
+  [Host]     : .NET 9.0.10 (9.0.10, 9.0.1025.47515), X64 RyuJIT x86-64-v3
+  DefaultJob : .NET 9.0.10 (9.0.10, 9.0.1025.47515), X64 RyuJIT x86-64-v3
+```
+
+</details>
+
+| Method                        | Mean       | Error    | StdDev   | Ratio | RatioSD | Rank | Gen0    | Gen1   | Allocated | Alloc Ratio |
+|------------------------------ |-----------:|---------:|---------:|------:|--------:|-----:|--------:|-------:|----------:|------------:|
+| 'Traditional Manual DTO'      |   962.2 us |  7.11 us |  6.65 us |  0.92 |    0.01 |    1 | 13.6719 | 1.9531 | 245.06 KB |        1.00 |
+| 'Linqraft Auto-Generated DTO' |   968.6 us |  7.40 us |  6.92 us |  0.92 |    0.01 |    1 | 13.6719 | 1.9531 | 245.09 KB |        1.00 |
+| 'Linqraft Anonymous'          | 1,030.7 us |  4.64 us |  4.34 us |  0.98 |    0.01 |    2 | 13.6719 | 1.9531 | 244.92 KB |        1.00 |
+| 'Traditional Anonymous'       | 1,047.7 us | 16.51 us | 15.44 us |  1.00 |    0.02 |    2 | 13.6719 | 1.9531 | 246.14 KB |        1.00 |
+
+手動で定義した場合とLinqraftの性能はほぼ同等です。詳細については、[Linqraft.Benchmark](./examples/Linqraft.Benchmark)をご覧ください。
+
+## トラブルシューティング
+### CS8072 Error
+変更直後にビルドを行うと エラー `CS8072`(式ツリーのラムダに null 伝搬演算子を含めることはできません) が発生する場合があります。
+この場合、プロジェクトをリビルドすると解決します。
+もし解決しない場合、生成されたソースコードに誤ってnull伝搬演算子が含まれている可能性があります。その場合はお気軽にIssueを立ててください！
 
 ## 注意事項
 `.SelectExpr`内の匿名型を`.Select`対応のものに置き換える処理は力技で行っているため、複雑な式や一部のC#構文に対応していない場合があります。
