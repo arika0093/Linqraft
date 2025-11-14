@@ -43,19 +43,20 @@ internal record SelectExprInfoNamed : SelectExprInfo
         // For named types, extract the original object creation expression
         // from the lambda and use it as-is
         var originalExpression = ObjectCreation.ToString();
+        var returnTypePrefix = GetReturnTypePrefix();
 
         var sb = new StringBuilder();
         var id = GetUniqueId();
         sb.AppendLine(GenerateMethodHeaderPart(dtoName, location));
-        sb.AppendLine($"public static IQueryable<TResult> SelectExpr_{id}<T, TResult>(");
-        sb.AppendLine($"    this IQueryable<T> query,");
+        sb.AppendLine($"public static {returnTypePrefix}<TResult> SelectExpr_{id}<T, TResult>(");
+        sb.AppendLine($"    this {returnTypePrefix}<T> query,");
         sb.AppendLine($"    Func<T, TResult> selector)");
         sb.AppendLine("{");
         sb.AppendLine(
-            $"    var matchedQuery = query as object as IQueryable<{querySourceTypeFullName}>;"
+            $"    var matchedQuery = query as object as {returnTypePrefix}<{querySourceTypeFullName}>;"
         );
         sb.AppendLine($"    var converted = matchedQuery.Select({LambdaParameterName} => {originalExpression});");
-        sb.AppendLine($"    return converted as object as IQueryable<TResult>;");
+        sb.AppendLine($"    return converted as object as {returnTypePrefix}<TResult>;");
         sb.AppendLine("}");
         return sb.ToString();
     }

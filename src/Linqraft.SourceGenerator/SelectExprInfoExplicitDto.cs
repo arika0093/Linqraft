@@ -95,21 +95,22 @@ internal record SelectExprInfoExplicitDto : SelectExprInfo
         var sourceTypeFullName = structure.SourceTypeFullName;
         var actualNamespace = GetActualDtoNamespace();
         var dtoFullName = $"global::{actualNamespace}.{dtoName}";
+        var returnTypePrefix = GetReturnTypePrefix();
         var sb = new StringBuilder();
 
         var id = GetUniqueId();
-        var methodDecl = $"public static IQueryable<TResult> SelectExpr_{id}<TIn, TResult>(";
+        var methodDecl = $"public static {returnTypePrefix}<TResult> SelectExpr_{id}<TIn, TResult>(";
         sb.AppendLine($"/// <summary>");
         sb.AppendLine($"/// generated select expression method {dtoName} (explicit)");
         sb.AppendLine($"/// at {location.GetDisplayLocation()}");
         sb.AppendLine($"/// </summary>");
         sb.AppendLine($"{location.GetInterceptsLocationAttributeSyntax()}");
         sb.AppendLine($"{methodDecl}");
-        sb.AppendLine($"    this IQueryable<TIn> query,");
+        sb.AppendLine($"    this {returnTypePrefix}<TIn> query,");
         sb.AppendLine($"    Func<TIn, object> selector) where TResult : {dtoFullName}");
         sb.AppendLine($"{{");
         sb.AppendLine(
-            $"    var matchedQuery = query as object as IQueryable<{sourceTypeFullName}>;"
+            $"    var matchedQuery = query as object as {returnTypePrefix}<{sourceTypeFullName}>;"
         );
         sb.AppendLine($"    var converted = matchedQuery.Select({LambdaParameterName} => new {dtoFullName}");
         sb.AppendLine($"    {{");
@@ -125,7 +126,7 @@ internal record SelectExprInfoExplicitDto : SelectExprInfo
         sb.AppendLine(string.Join($",\n", propertyAssignments));
 
         sb.AppendLine($"    }});");
-        sb.AppendLine($"    return converted as object as IQueryable<TResult>;");
+        sb.AppendLine($"    return converted as object as {returnTypePrefix}<TResult>;");
         sb.AppendLine($"}}");
         return sb.ToString();
     }

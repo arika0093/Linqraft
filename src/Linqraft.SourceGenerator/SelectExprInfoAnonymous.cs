@@ -37,19 +37,20 @@ internal record SelectExprInfoAnonymous : SelectExprInfo
     )
     {
         var sourceTypeFullName = structure.SourceTypeFullName;
+        var returnTypePrefix = GetReturnTypePrefix();
         var sb = new StringBuilder();
 
         var id = GetUniqueId();
         sb.AppendLine(GenerateMethodHeaderPart("anonymous type", location));
-        sb.AppendLine($"public static IQueryable<TResult> SelectExpr_{id}<T, TResult>(");
-        sb.AppendLine($"    this IQueryable<T> query,");
+        sb.AppendLine($"public static {returnTypePrefix}<TResult> SelectExpr_{id}<T, TResult>(");
+        sb.AppendLine($"    this {returnTypePrefix}<T> query,");
         sb.AppendLine($"    Func<T, TResult> selector");
         sb.AppendLine($")");
         sb.AppendLine($"{{");
         sb.AppendLine(
-            $"    var matchedQuery = query as object as IQueryable<{sourceTypeFullName}>;"
+            $"    var matchedQuery = query as object as {returnTypePrefix}<{sourceTypeFullName}>;"
         );
-        sb.AppendLine($"    var converted = matchedQuery.Select({LambdaParameterName} => new");
+            sb.AppendLine($"    var converted = matchedQuery.Select({LambdaParameterName} => new");
         sb.AppendLine($"    {{");
 
         // Generate property assignments
@@ -62,7 +63,7 @@ internal record SelectExprInfoAnonymous : SelectExprInfo
             .ToList();
         sb.AppendLine(string.Join($",\n", propertyAssignments));
         sb.AppendLine("    });");
-        sb.AppendLine($"    return converted as object as IQueryable<TResult>;");
+        sb.AppendLine($"    return converted as object as {returnTypePrefix}<TResult>;");
         sb.AppendLine("}");
         sb.AppendLine();
         return sb.ToString();

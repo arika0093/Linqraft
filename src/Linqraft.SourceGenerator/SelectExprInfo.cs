@@ -63,6 +63,46 @@ internal abstract record SelectExprInfo
         return namespaceSymbol?.ToDisplayString() ?? "Generated";
     }
 
+    // Check if the invocation source is IEnumerable (not IQueryable)
+    protected bool IsEnumerableInvocation()
+    {
+        // Get the type of the expression on which SelectExpr is called
+        if (Invocation.Expression is not MemberAccessExpressionSyntax memberAccess)
+            return false;
+
+        var typeInfo = SemanticModel.GetTypeInfo(memberAccess.Expression);
+        if (typeInfo.Type is not INamedTypeSymbol namedType)
+            return false;
+
+        // Check if the type is IEnumerable<T> (not IQueryable<T>)
+        var typeDisplayString = namedType.ToDisplayString();
+        
+        // If it's IQueryable, return false
+        if (typeDisplayString.Contains("IQueryable"))
+            return false;
+
+        // If it's IEnumerable (and not a more specific interface like IQueryable), return true
+        if (typeDisplayString.Contains("IEnumerable"))
+            return true;
+
+        // Check base interfaces
+        foreach (var baseInterface in namedType.AllInterfaces)
+        {
+            if (baseInterface.Name == "IQueryable")
+                return false;
+            if (baseInterface.Name == "IEnumerable")
+                return true;
+        }
+
+        return false;
+    }
+
+    // Get the return type string based on whether it's IQueryable or IEnumerable
+    protected string GetReturnTypePrefix()
+    {
+        return IsEnumerableInvocation() ? "IEnumerable" : "IQueryable";
+    }
+
     // Generate unique ID (including location information)
     protected string GetUniqueId()
     {

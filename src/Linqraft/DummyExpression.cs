@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections.Generic;
 using System.Linq;
 
 namespace Linqraft
@@ -26,6 +27,33 @@ namespace Linqraft
         [global::System.Runtime.CompilerServices.OverloadResolutionPriority(-1)]
         public static IQueryable<TResult> SelectExpr<T, TResult>(
             this IQueryable<T> query,
+            Func<T, object> selector
+        )
+            where T : class
+        {
+            throw new NotImplementedException();
+        }
+
+        /// <summary>
+        /// Create select expression method, with generate instance DTOs.
+        /// Works with IEnumerable where nullable operators are supported natively.
+        /// </summary>
+        public static IEnumerable<TResult> SelectExpr<T, TResult>(
+            this IEnumerable<T> query,
+            Func<T, TResult> selector
+        )
+            where T : class
+        {
+            throw new NotImplementedException();
+        }
+
+        /// <summary>
+        /// Create select expression method, with generate instance DTOs.
+        /// Works with IEnumerable where nullable operators are supported natively.
+        /// </summary>
+        [global::System.Runtime.CompilerServices.OverloadResolutionPriority(-1)]
+        public static IEnumerable<TResult> SelectExpr<T, TResult>(
+            this IEnumerable<T> query,
             Func<T, object> selector
         )
             where T : class
