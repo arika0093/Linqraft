@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Text;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
@@ -40,9 +41,6 @@ internal record SelectExprInfoNamed : SelectExprInfo
         var querySourceTypeFullName = SourceType.ToDisplayString(
             SymbolDisplayFormat.FullyQualifiedFormat
         );
-        // For named types, extract the original object creation expression
-        // from the lambda and use it as-is
-        var originalExpression = ObjectCreation.ToString();
         var returnTypePrefix = GetReturnTypePrefix();
 
         var sb = new StringBuilder();
@@ -55,7 +53,20 @@ internal record SelectExprInfoNamed : SelectExprInfo
         sb.AppendLine(
             $"    var matchedQuery = query as object as {returnTypePrefix}<{querySourceTypeFullName}>;"
         );
-        sb.AppendLine($"    var converted = matchedQuery.Select({LambdaParameterName} => {originalExpression});");
+        sb.AppendLine($"    var converted = matchedQuery.Select({LambdaParameterName} => new {dtoName}");
+        sb.AppendLine($"    {{");
+
+        // Generate property assignments using GeneratePropertyAssignment to properly handle null-conditional operators
+        var propertyAssignments = structure
+            .Properties.Select(prop =>
+            {
+                var assignment = GeneratePropertyAssignment(prop, 8);
+                return $"        {prop.Name} = {assignment}";
+            })
+            .ToList();
+        sb.AppendLine(string.Join($",\n", propertyAssignments));
+
+        sb.AppendLine($"    }});");
         sb.AppendLine($"    return converted as object as {returnTypePrefix}<TResult>;");
         sb.AppendLine("}");
         return sb.ToString();

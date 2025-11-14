@@ -138,6 +138,64 @@ public class NestedCaseTest
         );
         child2First.GrandChild2Values.ShouldBe([1, 2]);
     }
+
+    [Fact]
+    public void NestedCase_SelectExpr_PredefinedDto_WithNullConditional()
+    {
+        // Create test data with both null and non-null cases
+        var testData = new List<NestBase>
+        {
+            new NestBase
+            {
+                Id = 1,
+                Name = "Base1",
+                Child = new NestChild1
+                {
+                    Description = "Child1 of Base1",
+                    GrandChild = new NestGrandChild
+                    {
+                        Details = "GrandChild1 of Child1 of Base1",
+                        GreatGrandChild = null,
+                    },
+                },
+                Child2 = [],
+            },
+            new NestBase
+            {
+                Id = 2,
+                Name = "Base2",
+                Child = null, // null child to test null-conditional operator
+                Child2 = [],
+            },
+        };
+
+        var converted = testData
+            .AsQueryable()
+            .SelectExpr(s => new NestBasePredefinedDto
+            {
+                Id = s.Id,
+                Name = s.Name,
+                ChildDescription = s.Child?.Description,
+                GrandChildDetails = s.Child?.GrandChild?.Details,
+            })
+            .ToList();
+
+        converted.Count.ShouldBe(2);
+
+        // First item has non-null child
+        var first = converted[0];
+        first.Id.ShouldBe(1);
+        first.Name.ShouldBe("Base1");
+        first.ChildDescription.ShouldBe("Child1 of Base1");
+        first.GrandChildDetails.ShouldBe("GrandChild1 of Child1 of Base1");
+
+        // Second item has null child
+        var second = converted[1];
+        second.Id.ShouldBe(2);
+        second.Name.ShouldBe("Base2");
+        second.ChildDescription.ShouldBeNull();
+        second.GrandChildDetails.ShouldBeNull();
+    }
 }
 
 internal class NestBase
@@ -175,4 +233,12 @@ internal class NestGrandChild2
 {
     public required string Notes { get; set; }
     public required int Value { get; set; }
+}
+
+internal class NestBasePredefinedDto
+{
+    public int Id { get; set; }
+    public string Name { get; set; } = null!;
+    public string? ChildDescription { get; set; }
+    public string? GrandChildDetails { get; set; }
 }
