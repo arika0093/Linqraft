@@ -261,6 +261,20 @@ public class OrderDto { /* ... */ }
 変更直後にビルドを行うと エラー `CS8072`(式ツリーのラムダに null 伝搬演算子を含めることはできません) が発生する場合があります。
 この場合、プロジェクトをリビルドすると解決します。
 
+## パフォーマンス
+
+従来のEF Core `.Select`とLinqraftの`.SelectExpr`の実際のパフォーマンス比較については、[ベンチマークプロジェクト](./examples/Linqraft.Benchmark)をご覧ください。
+
+ベンチマークでは以下を比較します:
+- 従来のEF Core `.Select` - 手動で定義したDTOを使用（冗長なnullチェックが必要）
+- Linqraft `.SelectExpr` - 自動生成されたDTOを使用（null条件演算子をサポート）
+
+ベンチマークの実行方法:
+```bash
+cd examples/Linqraft.Benchmark
+dotnet run -c Release
+```
+
 ## 注意事項
 `.SelectExpr`内の匿名型を`.Select`対応のものに置き換える処理は力技で行っているため、複雑な式や一部のC#構文に対応していない場合があります。
 それらのケースに遭遇した際には、Issueを立てていただけると幸いです。

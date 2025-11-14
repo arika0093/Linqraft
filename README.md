@@ -266,6 +266,20 @@ public class OrderDto { /* ... */ }
 Sometimes, immediately building after changes may result in error `CS8072` (null-propagation operator cannot be used in expression tree lambdas).
 In such cases, rebuilding the project resolves the issue.
 
+## Performance
+
+To see real performance comparisons between traditional EF Core `.Select` and Linqraft's `.SelectExpr`, check out the [benchmark project](./examples/Linqraft.Benchmark).
+
+The benchmark compares:
+- Traditional EF Core `.Select` with manual DTOs (requiring verbose null checks)
+- Linqraft `.SelectExpr` with auto-generated DTOs (supporting null-conditional operators)
+
+Run the benchmark yourself:
+```bash
+cd examples/Linqraft.Benchmark
+dotnet run -c Release
+```
+
 ## Notes
 The translation of anonymous-type selectors into Select-compatible expressions is done by source generation and some heuristics. Very complex expressions or certain C# constructs may not be supported. If you encounter unsupported cases, please open an issue with a minimal repro.
 
