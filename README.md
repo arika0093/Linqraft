@@ -169,13 +169,13 @@ namespace Linqraft
 
 namespace Tutorial
 {
-    public class OrderItemDto_DE33EA40
+    public partial class OrderItemDto_DE33EA40
     {
         public required string? ProductName { get; set; }
         public required int Quantity { get; set; }
     }
 
-    public class OrderDto
+    public partial class OrderDto
     {
         public required int Id { get; set; }
         public required string? CustomerName { get; set; }
