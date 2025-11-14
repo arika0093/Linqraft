@@ -232,6 +232,16 @@ var orders = await dbContext.Orders
     .ToListAsync();
 ```
 
+You can extend the generated DTO classes as needed since they are output as `partial` classes.
+
+```csharp
+// extend generated DTO class if needed
+public partial class OrderDto
+{
+    public string GetDisplayName() => $"{Id}: {CustomerName}";
+}
+```
+
 If you already have DTO classes and want to use them directly, call `SelectExpr` without generics and construct your DTO type in the selector:
 
 ```csharp

@@ -228,6 +228,15 @@ var orders = await dbContext.Orders
     .ToListAsync();
 ```
 
+DTOクラスは`partial`で出力されるため、必要に応じて拡張することもできます。
+```csharp
+// extend generated DTO class if needed
+public partial class OrderDto
+{
+    public string GetDisplayName() => $"{Id}: {CustomerName}";
+}
+```
+
 自動生成機能を使用せず、既存のDTOクラスを利用することも可能です。この場合、ジェネリクス引数を指定せずに使用する必要があります。
 
 ```csharp
