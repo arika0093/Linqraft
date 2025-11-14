@@ -17,6 +17,7 @@ internal abstract record SelectExprInfo
     public required SemanticModel SemanticModel { get; init; }
     public required InvocationExpressionSyntax Invocation { get; init; }
     public required string LambdaParameterName { get; init; }
+    public required string CallerNamespace { get; init; }
 
     // Generate DTO classes (including nested DTOs)
     public abstract List<GenerateDtoClassInfo> GenerateDtoClasses();
@@ -56,11 +57,10 @@ internal abstract record SelectExprInfo
         return [selectExprMethod];
     }
 
-    // Get namespace string
+    // Get namespace string (returns the namespace where SelectExpr is invoked)
     public string GetNamespaceString()
     {
-        var namespaceSymbol = SourceType.ContainingNamespace;
-        return namespaceSymbol?.ToDisplayString() ?? "Generated";
+        return CallerNamespace;
     }
 
     // Check if the invocation source is IEnumerable (not IQueryable)

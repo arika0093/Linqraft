@@ -183,6 +183,13 @@ public partial class SelectExprGenerator : IIncrementalGenerator
         if (sourceType is null)
             return null;
 
+        // Get the namespace of the calling code
+        var namespaceDecl = invocation
+            .Ancestors()
+            .OfType<BaseNamespaceDeclarationSyntax>()
+            .FirstOrDefault();
+        var callerNamespace = namespaceDecl?.Name.ToString() ?? "";
+
         return new SelectExprInfoAnonymous
         {
             SourceType = sourceType,
@@ -190,6 +197,7 @@ public partial class SelectExprGenerator : IIncrementalGenerator
             SemanticModel = semanticModel,
             Invocation = invocation,
             LambdaParameterName = lambdaParameterName,
+            CallerNamespace = callerNamespace,
         };
     }
 
@@ -216,6 +224,13 @@ public partial class SelectExprGenerator : IIncrementalGenerator
         if (sourceType is null)
             return null;
 
+        // Get the namespace of the calling code
+        var namespaceDecl = invocation
+            .Ancestors()
+            .OfType<BaseNamespaceDeclarationSyntax>()
+            .FirstOrDefault();
+        var callerNamespace = namespaceDecl?.Name.ToString() ?? "";
+
         return new SelectExprInfoNamed
         {
             SourceType = sourceType,
@@ -223,6 +238,7 @@ public partial class SelectExprGenerator : IIncrementalGenerator
             SemanticModel = semanticModel,
             Invocation = invocation,
             LambdaParameterName = lambdaParameterName,
+            CallerNamespace = callerNamespace,
         };
     }
 
@@ -268,8 +284,7 @@ public partial class SelectExprGenerator : IIncrementalGenerator
             .Ancestors()
             .OfType<BaseNamespaceDeclarationSyntax>()
             .FirstOrDefault();
-        var targetNamespace =
-            namespaceDecl?.Name.ToString() ?? semanticModel.Compilation.AssemblyName ?? "Generated";
+        var targetNamespace = namespaceDecl?.Name.ToString() ?? "";
 
         return new SelectExprInfoExplicitDto
         {
@@ -280,6 +295,7 @@ public partial class SelectExprGenerator : IIncrementalGenerator
             ExplicitDtoName = explicitDtoName,
             TargetNamespace = targetNamespace,
             LambdaParameterName = lambdaParameterName,
+            CallerNamespace = targetNamespace,
         };
     }
 }
