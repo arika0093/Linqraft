@@ -9,7 +9,7 @@ namespace Linqraft
     public static class DummyExpression
     {
         /// <summary>
-        /// Dummy Select expression method for Linqraft to compile correctly.
+        /// Create select expression method, usable nullable operators, and generate instance DTOs.
         /// </summary>
         public static IQueryable<TResult> SelectExpr<T, TResult>(
             this IQueryable<T> query,
@@ -21,7 +21,7 @@ namespace Linqraft
         }
 
         /// <summary>
-        /// Dummy Select expression method for Linqraft to compile correctly.
+        /// Create select expression method, usable nullable operators, and generate instance DTOs.
         /// </summary>
         [global::System.Runtime.CompilerServices.OverloadResolutionPriority(-1)]
         public static IQueryable<TResult> SelectExpr<T, TResult>(

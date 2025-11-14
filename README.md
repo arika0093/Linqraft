@@ -102,7 +102,7 @@ Linqraft is a Roslyn Source Generator that addresses the problems above. Using t
 ```csharp
 using Linqraft;
 
-// 💮 auto-generated DTOs, with null-propagation support
+// ✨️ auto-generated DTOs, with null-propagation support
 var orders = await dbContext.Orders
     // Order: input entity type
     // OrderDto: output DTO type (auto-generated)
