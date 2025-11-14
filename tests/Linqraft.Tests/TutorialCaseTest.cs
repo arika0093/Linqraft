@@ -19,11 +19,13 @@ public class TutorialCaseTest
                 CustomerName = s.Customer?.Name,
                 CustomerCountry = s.Customer?.Address?.Country?.Name,
                 CustomerCity = s.Customer?.Address?.City?.Name,
-                Items = s.OrderItems?.Select(oi => new
-                {
-                    ProductName = oi.Product?.Name,
-                    Quantity = oi.Quantity,
-                }) ?? [],
+                Items = s
+                    .OrderItems.Select(oi => new
+                    {
+                        ProductName = oi.Product?.Name,
+                        Quantity = oi.Quantity,
+                    })
+                    .ToList(),
             })
             .ToList();
     }
@@ -41,11 +43,13 @@ public class TutorialCaseTest
                 CustomerName = s.Customer?.Name,
                 CustomerCountry = s.Customer?.Address?.Country?.Name,
                 CustomerCity = s.Customer?.Address?.City?.Name,
-                Items = s.OrderItems?.Select(oi => new
-                {
-                    ProductName = oi.Product?.Name,
-                    Quantity = oi.Quantity,
-                }) ?? [],
+                Items = s
+                    .OrderItems.Select(oi => new
+                    {
+                        ProductName = oi.Product?.Name,
+                        Quantity = oi.Quantity,
+                    })
+                    .ToList(),
             })
             .ToList();
     }
@@ -55,7 +59,7 @@ public class Order
 {
     public int Id { get; set; }
     public Customer? Customer { get; set; }
-    public List<OrderItem>? OrderItems { get; set; }
+    public List<OrderItem> OrderItems { get; set; } = [];
 }
 
 public class Customer

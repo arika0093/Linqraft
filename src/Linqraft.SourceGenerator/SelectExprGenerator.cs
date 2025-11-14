@@ -154,9 +154,13 @@ public partial class SelectExprGenerator : IIncrementalGenerator
         return lambda switch
         {
             SimpleLambdaExpressionSyntax simple => simple.Parameter.Identifier.Text,
-            ParenthesizedLambdaExpressionSyntax paren when paren.ParameterList.Parameters.Count > 0
-                => paren.ParameterList.Parameters[0].Identifier.Text,
-            _ => "s" // fallback to default
+            ParenthesizedLambdaExpressionSyntax paren
+                when paren.ParameterList.Parameters.Count > 0 => paren
+                .ParameterList
+                .Parameters[0]
+                .Identifier
+                .Text,
+            _ => "s", // fallback to default
         };
     }
 

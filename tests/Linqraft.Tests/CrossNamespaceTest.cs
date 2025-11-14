@@ -12,7 +12,7 @@ public class CrossNamespaceTest
             .AsQueryable()
             .SelectExpr<Linqraft.Tests.SourceNamespace.TestClass, TestSampleDto>(s => new
             {
-                Bar = s.Id
+                Bar = s.Id,
             })
             .First();
 
@@ -29,7 +29,7 @@ public class CrossNamespaceTest
             .SelectExpr<Linqraft.Tests.SourceNamespace.ParentClass, ParentDto>(s => new
             {
                 ParentId = s.Id,
-                ChildName = s.Child.Name
+                ChildName = s.Child.Name,
             })
             .First();
 
@@ -43,11 +43,7 @@ public class CrossNamespaceTest
     {
         var rst = SampleData
             .AsQueryable()
-            .SelectExpr(s => new PredefinedDto
-            {
-                Name = s.Name,
-                Value = s.Id
-            })
+            .SelectExpr(s => new PredefinedDto { Name = s.Name, Value = s.Id })
             .First();
 
         rst.Name.ShouldBe("Test");
@@ -58,7 +54,7 @@ public class CrossNamespaceTest
 
     private readonly List<Linqraft.Tests.SourceNamespace.TestClass> SampleData =
     [
-        new() { Id = 1, Name = "Test" }
+        new() { Id = 1, Name = "Test" },
     ];
 
     private readonly List<Linqraft.Tests.SourceNamespace.ParentClass> SampleDataWithChild =
@@ -66,12 +62,13 @@ public class CrossNamespaceTest
         new()
         {
             Id = 1,
-            Child = new Linqraft.Tests.SourceNamespace.ChildClass { Name = "TestChild" }
-        }
+            Child = new Linqraft.Tests.SourceNamespace.ChildClass { Name = "TestChild" },
+        },
     ];
 }
 
 public partial class TestSampleDto;
+
 public partial class ParentDto;
 
 public class PredefinedDto

@@ -3,12 +3,7 @@
     <TargetFramework>net8.0</TargetFramework>
   </PropertyGroup>
   <ItemGroup>
-    <None
-      Include="Linqraft.targets"
-      Pack="true"
-      PackagePath="build"
-      Visible="false"
-    />
+    <None Include="Linqraft.targets" Pack="true" PackagePath="build" Visible="false" />
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\Linqraft.SourceGenerator\Linqraft.SourceGenerator.csproj" />

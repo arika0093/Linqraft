@@ -76,7 +76,7 @@ internal abstract record SelectExprInfo
 
         // Check if the type is IEnumerable<T> (not IQueryable<T>)
         var typeDisplayString = namedType.ToDisplayString();
-        
+
         // If it's IQueryable, return false
         if (typeDisplayString.Contains("IQueryable"))
             return false;

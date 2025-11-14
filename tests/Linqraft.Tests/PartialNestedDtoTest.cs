@@ -61,11 +61,7 @@ public partial class PartialNestedDtoTest
 
         var converted = testData
             .AsQueryable()
-            .SelectExpr<Entity, OuterClass.InnerClass.DeepDto>(e => new
-            {
-                e.Id,
-                e.Name,
-            })
+            .SelectExpr<Entity, OuterClass.InnerClass.DeepDto>(e => new { e.Id, e.Name })
             .ToList();
 
         converted.Count.ShouldBe(1);

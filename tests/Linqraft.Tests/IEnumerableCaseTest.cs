@@ -5,11 +5,22 @@ namespace Linqraft.Tests;
 
 public class IEnumerableCaseTest
 {
-    private static List<Simple1> EnumerableData => new()
-    {
-        new Simple1 { Id = 1, FirstName = "John", LastName = "Doe" },
-        new Simple1 { Id = 2, FirstName = "Jane", LastName = "Smith" },
-    };
+    private static List<Simple1> EnumerableData =>
+        new()
+        {
+            new Simple1
+            {
+                Id = 1,
+                FirstName = "John",
+                LastName = "Doe",
+            },
+            new Simple1
+            {
+                Id = 2,
+                FirstName = "Jane",
+                LastName = "Smith",
+            },
+        };
 
     [Fact]
     public void BasicEnumerableCase()
@@ -68,11 +79,7 @@ public class IEnumerableCaseTest
     {
         var converted = EnumerableData
             .OrderByDescending(s => s.Id)
-            .SelectExpr(s => new
-            {
-                s.Id,
-                FullName = s.FirstName + " " + s.LastName,
-            })
+            .SelectExpr(s => new { s.Id, FullName = s.FirstName + " " + s.LastName })
             .ToList();
         converted.Count.ShouldBe(2);
         var first = converted[0];
@@ -80,7 +87,6 @@ public class IEnumerableCaseTest
         first.FullName.ShouldBe("Jane Smith");
     }
 }
-
 
 public class EnumerableSimpleDto
 {

@@ -94,8 +94,30 @@ internal record DtoProperty(
 
     private static bool HasNullableAccess(ExpressionSyntax expression)
     {
-        // Check if ?. operator is used
-        return expression.DescendantNodes().OfType<ConditionalAccessExpressionSyntax>().Any();
+        // Check if ?. operator is used at the top level (excluding nested lambdas)
+        // We need to exclude ConditionalAccessExpressionSyntax that are inside lambda expressions
+        // because those apply to the nested properties, not the outer property
+        var conditionalAccesses = expression
+            .DescendantNodes()
+            .OfType<ConditionalAccessExpressionSyntax>();
+
+        foreach (var conditionalAccess in conditionalAccesses)
+        {
+            // Check if this conditional access is inside a lambda expression
+            var ancestors = conditionalAccess.Ancestors();
+            var isInsideLambda = ancestors
+                .TakeWhile(n => n != expression) // Only check ancestors up to the root expression
+                .OfType<LambdaExpressionSyntax>()
+                .Any();
+
+            // If not inside a lambda, this is a top-level nullable access
+            if (!isInsideLambda)
+            {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     private static InvocationExpressionSyntax? FindSelectInvocation(ExpressionSyntax expression)

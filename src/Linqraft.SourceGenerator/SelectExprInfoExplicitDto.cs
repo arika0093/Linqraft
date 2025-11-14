@@ -108,15 +108,17 @@ internal record SelectExprInfoExplicitDto : SelectExprInfo
         var actualNamespace = GetActualDtoNamespace();
 
         // Build full DTO name with parent classes if nested
-        var dtoFullName = ParentClasses.Count > 0
-            ? $"global::{actualNamespace}.{string.Join(".", ParentClasses)}.{dtoName}"
-            : $"global::{actualNamespace}.{dtoName}";
+        var dtoFullName =
+            ParentClasses.Count > 0
+                ? $"global::{actualNamespace}.{string.Join(".", ParentClasses)}.{dtoName}"
+                : $"global::{actualNamespace}.{dtoName}";
 
         var returnTypePrefix = GetReturnTypePrefix();
         var sb = new StringBuilder();
 
         var id = GetUniqueId();
-        var methodDecl = $"public static {returnTypePrefix}<TResult> SelectExpr_{id}<TIn, TResult>(";
+        var methodDecl =
+            $"public static {returnTypePrefix}<TResult> SelectExpr_{id}<TIn, TResult>(";
         sb.AppendLine($"/// <summary>");
         sb.AppendLine($"/// generated select expression method {dtoName} (explicit)");
         sb.AppendLine($"/// at {location.GetDisplayLocation()}");
@@ -129,7 +131,9 @@ internal record SelectExprInfoExplicitDto : SelectExprInfo
         sb.AppendLine(
             $"    var matchedQuery = query as object as {returnTypePrefix}<{sourceTypeFullName}>;"
         );
-        sb.AppendLine($"    var converted = matchedQuery.Select({LambdaParameterName} => new {dtoFullName}");
+        sb.AppendLine(
+            $"    var converted = matchedQuery.Select({LambdaParameterName} => new {dtoFullName}"
+        );
         sb.AppendLine($"    {{");
 
         // Generate property assignments

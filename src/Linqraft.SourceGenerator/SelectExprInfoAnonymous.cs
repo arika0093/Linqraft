@@ -50,7 +50,7 @@ internal record SelectExprInfoAnonymous : SelectExprInfo
         sb.AppendLine(
             $"    var matchedQuery = query as object as {returnTypePrefix}<{sourceTypeFullName}>;"
         );
-            sb.AppendLine($"    var converted = matchedQuery.Select({LambdaParameterName} => new");
+        sb.AppendLine($"    var converted = matchedQuery.Select({LambdaParameterName} => new");
         sb.AppendLine($"    {{");
 
         // Generate property assignments

@@ -53,7 +53,9 @@ internal record SelectExprInfoNamed : SelectExprInfo
         sb.AppendLine(
             $"    var matchedQuery = query as object as {returnTypePrefix}<{querySourceTypeFullName}>;"
         );
-        sb.AppendLine($"    var converted = matchedQuery.Select({LambdaParameterName} => new {dtoName}");
+        sb.AppendLine(
+            $"    var converted = matchedQuery.Select({LambdaParameterName} => new {dtoName}"
+        );
         sb.AppendLine($"    {{");
 
         // Generate property assignments using GeneratePropertyAssignment to properly handle null-conditional operators
