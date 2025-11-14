@@ -1,0 +1,13 @@
+{
+  "$schema": "https://json.schemastore.org/launchsettings.json",
+  "profiles": {
+    "Debug:Tests": {
+      "commandName": "DebugRoslynComponent",
+      "targetProject": "../../tests/Linqraft.Tests/Linqraft.Tests.csproj"
+    },
+    "Debug:Examples.Sample": {
+      "commandName": "DebugRoslynComponent",
+      "targetProject": "../../examples/Linqraft.Sample/Linqraft.Sample.csproj"
+    }
+  }
+}

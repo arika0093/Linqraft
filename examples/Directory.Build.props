@@ -1,11 +1,11 @@
 <Project>
   <PropertyGroup>
-    <InterceptorsNamespaces>$(InterceptorsNamespaces);EFCore.ExprGenerator</InterceptorsNamespaces>
+    <InterceptorsNamespaces>$(InterceptorsNamespaces);Linqraft</InterceptorsNamespaces>
     <IsPackable>false</IsPackable>
   </PropertyGroup>
   <ItemGroup>
-    <ProjectReference Include="..\..\src\EFCore.ExprGenerator\EFCore.ExprGenerator.csproj" />
-    <ProjectReference Include="..\..\src\EFCore.ExprGenerator.SourceGenerator\EFCore.ExprGenerator.SourceGenerator.csproj">
+    <ProjectReference Include="..\..\src\Linqraft\Linqraft.csproj" />
+    <ProjectReference Include="..\..\src\Linqraft.SourceGenerator\Linqraft.SourceGenerator.csproj">
       <OutputItemType>Analyzer</OutputItemType>
       <ReferenceOutputAssembly>true</ReferenceOutputAssembly>
     </ProjectReference>

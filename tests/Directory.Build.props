@@ -4,7 +4,7 @@
     <LangVersion>latest</LangVersion>
     <Nullable>enable</Nullable>
     <IsPackable>false</IsPackable>
-    <InterceptorsNamespaces>$(InterceptorsNamespaces);EFCore.ExprGenerator</InterceptorsNamespaces>
+    <InterceptorsNamespaces>$(InterceptorsNamespaces);Linqraft</InterceptorsNamespaces>
   </PropertyGroup>
   <ItemGroup>
     <PackageReference Include="Shouldly" Version="4.*" />
@@ -16,8 +16,8 @@
     </PackageReference>
   </ItemGroup>
   <ItemGroup>
-    <ProjectReference Include="..\..\src\EFCore.ExprGenerator\EFCore.ExprGenerator.csproj" />
-    <ProjectReference Include="..\..\src\EFCore.ExprGenerator.SourceGenerator\EFCore.ExprGenerator.SourceGenerator.csproj">
+    <ProjectReference Include="..\..\src\Linqraft\Linqraft.csproj" />
+    <ProjectReference Include="..\..\src\Linqraft.SourceGenerator\Linqraft.SourceGenerator.csproj">
       <OutputItemType>Analyzer</OutputItemType>
       <ReferenceOutputAssembly>true</ReferenceOutputAssembly>
     </ProjectReference>

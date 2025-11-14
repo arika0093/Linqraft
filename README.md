@@ -1,7 +1,7 @@
 
-# EFCore.ExprGenerator
+# Linqraft
 
-[![NuGet Version](https://img.shields.io/nuget/v/EFCore.ExprGenerator?style=flat-square&logo=NuGet&color=0080CC)](https://www.nuget.org/packages/EFCore.ExprGenerator/) ![GitHub Actions Workflow Status](https://img.shields.io/github/actions/workflow/status/arika0093/EFCore.ExprGenerator/test.yaml?branch=main&label=Test&style=flat-square) ![GitHub last commit (branch)](https://img.shields.io/github/last-commit/arika0093/EFCore.ExprGenerator?style=flat-square)
+[![NuGet Version](https://img.shields.io/nuget/v/Linqraft?style=flat-square&logo=NuGet&color=0080CC)](https://www.nuget.org/packages/Linqraft/) ![GitHub Actions Workflow Status](https://img.shields.io/github/actions/workflow/status/arika0093/Linqraft/test.yaml?branch=main&label=Test&style=flat-square) ![GitHub last commit (branch)](https://img.shields.io/github/last-commit/arika0093/Linqraft?style=flat-square)
 
 Simplifies Select query expressions for EntityFrameworkCore (EF Core) by providing automatic DTO generation and support for null-propagating expressions.
 
@@ -97,10 +97,10 @@ public class OrderItemDto
 
 ## Features
 
-EFCore.ExprGenerator is a Roslyn Source Generator that addresses the problems above. Using this library you can write concise selectors with null-propagation and optionally generate DTO classes automatically.
+Linqraft is a Roslyn Source Generator that addresses the problems above. Using this library you can write concise selectors with null-propagation and optionally generate DTO classes automatically.
 
 ```csharp
-using EFCore.ExprGenerator;
+using Linqraft;
 
 // 💮 auto-generated DTOs, with null-propagation support
 var orders = await dbContext.Orders
@@ -140,7 +140,7 @@ using System.Linq;
 using System.Collections.Generic;
 using Tutorial;
 
-namespace EFCore.ExprGenerator
+namespace Linqraft
 {
     file static partial class GeneratedExpression
     {
@@ -196,10 +196,10 @@ This library uses [C# interceptors](https://learn.microsoft.com/en-us/dotnet/csh
 
 ### Installation
 
-Install `EFCore.ExprGenerator` from NuGet:
+Install `Linqraft` from NuGet:
 
 ```bash
-dotnet add package EFCore.ExprGenerator --prerelease
+dotnet add package Linqraft --prerelease
 ```
 
 ### Examples

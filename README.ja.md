@@ -1,6 +1,6 @@
-# EFCore.ExprGenerator
+# Linqraft
 
-[![NuGet Version](https://img.shields.io/nuget/v/EFCore.ExprGenerator?style=flat-square&logo=NuGet&color=0080CC)](https://www.nuget.org/packages/EFCore.ExprGenerator/) ![GitHub Actions Workflow Status](https://img.shields.io/github/actions/workflow/status/arika0093/EFCore.ExprGenerator/test.yaml?branch=main&label=Test&style=flat-square) ![GitHub last commit (branch)](https://img.shields.io/github/last-commit/arika0093/EFCore.ExprGenerator?style=flat-square)
+[![NuGet Version](https://img.shields.io/nuget/v/Linqraft?style=flat-square&logo=NuGet&color=0080CC)](https://www.nuget.org/packages/Linqraft/) ![GitHub Actions Workflow Status](https://img.shields.io/github/actions/workflow/status/arika0093/Linqraft/test.yaml?branch=main&label=Test&style=flat-square) ![GitHub last commit (branch)](https://img.shields.io/github/last-commit/arika0093/Linqraft?style=flat-square)
 
 EntityFrameworkCore(EFCore)におけるSelectクエリの記述を簡潔にし、DTOクラスの自動生成・nullable式のサポートを提供します。
 
@@ -95,11 +95,11 @@ public class OrderItemDto
 ```
 
 ## 特徴
-EFCore.ExprGeneratorは、上記の問題を解決するために設計されたSource Generatorです。
+Linqraftは、上記の問題を解決するために設計されたSource Generatorです。
 上記の例では、以下のように記述することができます。
 
 ```csharp
-using EFCore.ExprGenerator;
+using Linqraft;
 
 // 💮 auto-generated DTOs, with null-propagation support
 var orders = await dbContext.Orders
@@ -140,7 +140,7 @@ using System.Linq;
 using System.Collections.Generic;
 using Tutorial;
 
-namespace EFCore.ExprGenerator
+namespace Linqraft
 {
     file static partial class GeneratedExpression
     {
@@ -193,10 +193,10 @@ namespace Tutorial
 内部的に[インターセプター](https://learn.microsoft.com/ja-jp/dotnet/csharp/whats-new/csharp-12#interceptors)を使用するため、.NET 8.0以降である必要があります。
 
 ### インストール
-`EFCore.ExprGenerator`をNuGetからインストールします。
+`Linqraft`をNuGetからインストールします。
 
 ```bash
-dotnet add package EFCore.ExprGenerator --prerelease
+dotnet add package Linqraft --prerelease
 ```
 
 ### 利用例

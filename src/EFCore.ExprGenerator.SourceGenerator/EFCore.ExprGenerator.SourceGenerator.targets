@@ -1,6 +1,0 @@
-<Project>
-  <PropertyGroup>
-    <InterceptorsNamespaces>$(InterceptorsNamespaces);EFCore.ExprGenerator</InterceptorsNamespaces>
-    <InterceptorsPreviewNamespaces>$(InterceptorsPreviewNamespaces);EFCore.ExprGenerator</InterceptorsPreviewNamespaces>
-  </PropertyGroup>
-</Project>

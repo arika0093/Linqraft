@@ -3,11 +3,11 @@
     <IsPackable>true</IsPackable>
     <LangVersion>latest</LangVersion>
     <Nullable>enable</Nullable>
-    <RootNamespace>EFCore.ExprGenerator</RootNamespace>
+    <RootNamespace>Linqraft</RootNamespace>
     <RestorePackagesWithLockFile>true</RestorePackagesWithLockFile>
     <PackageDescription>Simplifies the writing of Select queries in EFCore by providing automatic DTO class generation and support for nullable expressions.</PackageDescription>
-    <PackageProjectUrl>https://github.com/arika0093/EFCore.ExprGenerator</PackageProjectUrl>
-    <RepositoryUrl>https://github.com/arika0093/EFCore.ExprGenerator</RepositoryUrl>
+    <PackageProjectUrl>https://github.com/arika0093/Linqraft</PackageProjectUrl>
+    <RepositoryUrl>https://github.com/arika0093/Linqraft</RepositoryUrl>
     <PackageLicenseExpression>Apache-2.0</PackageLicenseExpression>
     <Authors>arika0093</Authors>
     <PackageReadmeFile>README.md</PackageReadmeFile>

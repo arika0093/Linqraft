@@ -50,11 +50,11 @@ public class PredefinedDto
 
 The repository is organized as follows (relevant folders under `src/`):
 
-### `src/EFCore.ExprGenerator/`
+### `src/Linqraft/`
 The runtime library distributed as a NuGet package. Notable file:
 - `DummyExpression.cs`: an empty extension method that acts as a marker for the Source Generator to detect `SelectExpr` usages. It performs no runtime work and exists only to be recognized at compile time.
 
-### `src/EFCore.ExprGenerator.SourceGenerator/`
+### `src/Linqraft.SourceGenerator/`
 The Source Generator implementation that performs the actual code generation. Important files include:
 - `SelectExprGenerator.cs`: the generator entry point
 - `SelectExprGroups.cs`: grouping SelectExpr information (grouped per namespace)
@@ -63,10 +63,10 @@ The Source Generator implementation that performs the actual code generation. Im
   - `SelectExprInfoExplicitDto.cs`: handles explicit DTO SelectExpr information (pattern 2)
   - `SelectExprInfoPredefinedDto.cs`: handles pre-existing DTO SelectExpr information (pattern 3)
 
-### `tests/EFCore.ExprGenerator.Tests/`
+### `tests/Linqraft.Tests/`
 The test project. It contains test cases exercising various scenarios and verifies generated output.
 
-### `examples/EFCore.ExprGenerator.Sample/`
+### `examples/Linqraft.Sample/`
 A sample project demonstrating usage examples.
 
 ## Technical background
@@ -88,7 +88,7 @@ dotnet test --no-build
 If you want to inspect the generated sources on disk, follow these steps:
 
 1. Remove the `(test-project)/.generated` directory if it already exists.
-2. Enable `EmitCompilerGeneratedFiles` in `EFCore.ExprGenerator.Tests.csproj`.
+2. Enable `EmitCompilerGeneratedFiles` in `Linqraft.Tests.csproj`.
 3. The generated code will be emitted to `(test-project)/.generated/**/*.g.cs`.
 
 ## Development guidelines
