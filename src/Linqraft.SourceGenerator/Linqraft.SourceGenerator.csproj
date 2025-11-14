@@ -5,20 +5,24 @@
     <!--Nuget-->
     <IsRoslynComponent>true</IsRoslynComponent>
     <AnalyzerLanguage>cs</AnalyzerLanguage>
-    <IncludeBuildOutput>true</IncludeBuildOutput>
+    <IncludeBuildOutput>false</IncludeBuildOutput>
     <DevelopmentDependency>true</DevelopmentDependency>
-    <IncludeSymbols>true</IncludeSymbols>
+    <IncludeSymbols>false</IncludeSymbols>
     <GeneratePackageOnBuild>true</GeneratePackageOnBuild>
   </PropertyGroup>
   <ItemGroup>
+    <None
+      Include="$(OutputPath)\*.dll"
+      Pack="true"
+      PackagePath="analyzers/dotnet/cs"
+      Visible="false"
+    />
     <None
       Include="Linqraft.SourceGenerator.props"
       Pack="true"
       PackagePath="build"
       Visible="false"
     />
-  </ItemGroup>
-  <ItemGroup>
     <None
       Include="Linqraft.SourceGenerator.targets"
       Pack="true"
