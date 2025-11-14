@@ -94,7 +94,7 @@ internal class SelectExprGroups
             {
                 file static partial class GeneratedExpression
                 {
-                {{indentedExpr}}
+            {{indentedExpr}}
                 }
             }
 
