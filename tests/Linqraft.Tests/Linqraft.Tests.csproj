@@ -4,9 +4,6 @@
     <CompilerGeneratedFilesOutputPath>.generated</CompilerGeneratedFilesOutputPath>
   </PropertyGroup>
   <ItemGroup>
-    <PackageReference Include="Microsoft.EntityFrameworkCore.Sqlite" Version="9.0.10" />
-  </ItemGroup>
-  <ItemGroup>
     <ProjectReference Include="..\..\src\Linqraft\Linqraft.csproj" />
   </ItemGroup>
 </Project>
