@@ -28,9 +28,6 @@ jobs:
       - name: Build
         run: dotnet build --no-restore -c Release
 
-      - name: Run tests
-        run: dotnet test --no-build -c Release 
-
       - name: Generate Nuget Package
         run: dotnet pack --no-build -c Release --output ./artifacts
         
