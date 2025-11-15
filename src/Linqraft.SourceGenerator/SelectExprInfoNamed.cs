@@ -31,6 +31,10 @@ internal record SelectExprInfoNamed : SelectExprInfo
     protected override string GetParentDtoClassName(DtoStructure structure) =>
         GetClassName(structure);
 
+    // Get the namespace where DTOs will be placed
+    // Named types use the DTO's own namespace
+    protected override string GetDtoNamespace() => SourceType.ContainingNamespace?.ToDisplayString() ?? CallerNamespace;
+
     protected override string GenerateSelectExprMethod(
         string dtoName,
         DtoStructure structure,

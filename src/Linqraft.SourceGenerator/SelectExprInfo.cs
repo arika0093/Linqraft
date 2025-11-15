@@ -31,6 +31,9 @@ internal abstract record SelectExprInfo
     // Get parent DTO class name
     protected abstract string GetParentDtoClassName(DtoStructure structure);
 
+    // Get the namespace where DTOs will be placed
+    protected abstract string GetDtoNamespace();
+
     // Generate SelectExpr method
     protected abstract string GenerateSelectExprMethod(
         string dtoName,
@@ -172,7 +175,11 @@ internal abstract record SelectExprInfo
     )
     {
         var spaces = new string(' ', indents);
-        var nestedDtoName = GetClassName(nestedStructure);
+        var nestedClassName = GetClassName(nestedStructure);
+        // For anonymous types (empty class name), don't use namespace qualification
+        var nestedDtoName = string.IsNullOrEmpty(nestedClassName)
+            ? ""
+            : $"global::{GetDtoNamespace()}.{nestedClassName}";
 
         // Use Roslyn to extract Select information
         var selectInfo = ExtractSelectInfoFromSyntax(syntax);
@@ -414,7 +421,11 @@ internal abstract record SelectExprInfo
             "."
         );
 
-        var nestedDtoName = GetClassName(nestedStructure);
+        var nestedClassName = GetClassName(nestedStructure);
+        // For anonymous types (empty class name), don't use namespace qualification
+        var nestedDtoName = string.IsNullOrEmpty(nestedClassName)
+            ? ""
+            : $"global::{GetDtoNamespace()}.{nestedClassName}";
 
         // Find the closing paren for Select(...) to detect any chained methods like .ToList()
         var parenDepth = 0;

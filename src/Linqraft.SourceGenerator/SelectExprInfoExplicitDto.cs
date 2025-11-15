@@ -42,8 +42,8 @@ internal record SelectExprInfoExplicitDto : SelectExprInfo
     )
     {
         var result = new List<GenerateDtoClassInfo>();
-        // Use TResultType's accessibility for explicit DTO
-        var accessibility = GetAccessibilityString(TResultType);
+        // Explicit DTOs should always be public since the user explicitly specifies the type name
+        var accessibility = "public";
         var className = overrideClassName ?? GetClassName(structure);
 
         foreach (var prop in structure.Properties)
@@ -55,10 +55,12 @@ internal record SelectExprInfoExplicitDto : SelectExprInfo
             }
         }
         // Generate current DTO class
+        // Use GetActualDtoNamespace() to handle global namespace correctly
+        var actualNamespace = GetActualDtoNamespace();
         var dtoClassInfo = new GenerateDtoClassInfo
         {
             Accessibility = accessibility,
-            Namespace = TargetNamespace,
+            Namespace = actualNamespace,
             ClassName = className,
             Structure = structure,
             NestedClasses = [.. result],
@@ -80,6 +82,9 @@ internal record SelectExprInfoExplicitDto : SelectExprInfo
 
     // Get parent DTO class name
     protected override string GetParentDtoClassName(DtoStructure structure) => ExplicitDtoName;
+
+    // Get the namespace where DTOs will be placed
+    protected override string GetDtoNamespace() => GetActualDtoNamespace();
 
     // Get the actual namespace where the DTO will be placed
     // This mirrors the logic in SelectExprGroups.TargetNamespace getter

@@ -300,7 +300,7 @@ internal class NestChild2
     public IEnumerable<NestGrandChild2> GrandChilds { get; set; } = [];
 }
 
-internal class NestGrandChild2
+public class NestGrandChild2
 {
     public required string Notes { get; set; }
     public required int Value { get; set; }

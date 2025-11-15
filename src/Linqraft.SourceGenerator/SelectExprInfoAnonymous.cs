@@ -29,6 +29,10 @@ internal record SelectExprInfoAnonymous : SelectExprInfo
     // Get parent DTO class name
     protected override string GetParentDtoClassName(DtoStructure structure) => "";
 
+    // Get the namespace where DTOs will be placed
+    // Anonymous types don't generate separate DTOs, but return caller namespace for consistency
+    protected override string GetDtoNamespace() => CallerNamespace;
+
     // Generate SelectExpr method
     protected override string GenerateSelectExprMethod(
         string dtoName,
