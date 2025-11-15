@@ -186,7 +186,8 @@ namespace Tutorial
 
 </details>
 
-If you are familiar with the TypeScript ORM [Prisma](https://www.prisma.io/), you can use it in exactly the same way. In other words, you can use it like a scripting language where the result is generated as you write it, and with automatic generation of DTO classes, you can use it safely in other places as well.
+If you find [Prisma](https://www.prisma.io/) (TypeScript ORM) useful, this library delivers that same level of convenience with a writing experience tailored for C#.
+In other words, you can use it like a scripting language where the result is generated as you write it, and with automatic generation of DTO classes, you can use it safely in other places as well.
 
 ## Usage
 ### Prerequisites
