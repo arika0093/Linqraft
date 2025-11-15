@@ -62,10 +62,7 @@ internal record DtoProperty(
         if (selectInvocation is not null && selectInvocation.ArgumentList.Arguments.Count > 0)
         {
             var lambdaArg = selectInvocation.ArgumentList.Arguments[0].Expression;
-            if (
-                lambdaArg is LambdaExpressionSyntax nestedLambda
-                && nestedLambda.Body is AnonymousObjectCreationExpressionSyntax nestedAnonymous
-            )
+            if (lambdaArg is LambdaExpressionSyntax nestedLambda)
             {
                 // Get collection element type from the Select's source
                 ITypeSymbol? collectionType = null;
@@ -96,11 +93,26 @@ internal record DtoProperty(
                 )
                 {
                     var elementType = namedCollectionType.TypeArguments[0];
-                    nestedStructure = DtoStructure.AnalyzeAnonymousType(
-                        nestedAnonymous,
-                        semanticModel,
-                        elementType
-                    );
+
+                    // Support both anonymous types and named types
+                    if (
+                        nestedLambda.Body is AnonymousObjectCreationExpressionSyntax nestedAnonymous
+                    )
+                    {
+                        nestedStructure = DtoStructure.AnalyzeAnonymousType(
+                            nestedAnonymous,
+                            semanticModel,
+                            elementType
+                        );
+                    }
+                    else if (nestedLambda.Body is ObjectCreationExpressionSyntax nestedNamed)
+                    {
+                        nestedStructure = DtoStructure.AnalyzeNamedType(
+                            nestedNamed,
+                            semanticModel,
+                            elementType
+                        );
+                    }
                 }
             }
         }

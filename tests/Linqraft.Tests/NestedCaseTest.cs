@@ -196,6 +196,77 @@ public class NestedCaseTest
         second.ChildDescription.ShouldBeNull();
         second.GrandChildDetails.ShouldBeNull();
     }
+
+    [Fact]
+    public void NestedCase_SelectExpr_PredefinedDto_WithNestedNamedTypeAndNullConditional()
+    {
+        // This tests that nested Select with named types (not anonymous types) correctly converts
+        // null-conditional operators (?.) to explicit null checks in expression trees.
+        var testData = new List<NestBase>
+        {
+            new NestBase
+            {
+                Id = 1,
+                Name = "Base1",
+                Child = null,
+                Child2 =
+                [
+                    new NestChild2
+                    {
+                        Summary = "Child2-1",
+                        GrandChilds =
+                        [
+                            new NestGrandChild2 { Notes = "Note1", Value = 10 },
+                            new NestGrandChild2 { Notes = "Note2", Value = 20 },
+                        ],
+                    },
+                    new NestChild2
+                    {
+                        Summary = "Child2-2",
+                        GrandChilds = [], // Empty list
+                    },
+                ],
+            },
+        };
+
+        // Use predefined DTO in nested Select (not anonymous type)
+        var converted = testData
+            .AsQueryable()
+            .SelectExpr(s => new NestBaseWithNamedChildrenDto
+            {
+                Id = s.Id,
+                Name = s.Name,
+                // Nested Select with NAMED type and null-conditional operators
+                Children = s
+                    .Child2.Select(c => new NestChild2PredefinedDto
+                    {
+                        Summary = c.Summary,
+                        // These null-conditional operators must be converted to explicit null checks
+                        FirstGrandChildNote = c.GrandChilds.FirstOrDefault()?.Notes,
+                        FirstGrandChildValue = c.GrandChilds.FirstOrDefault()?.Value,
+                    })
+                    .ToList(),
+            })
+            .ToList();
+
+        converted.Count.ShouldBe(1);
+        var first = converted[0];
+        first.Id.ShouldBe(1);
+        first.Name.ShouldBe("Base1");
+        first.Children.Count.ShouldBe(2);
+
+        // First child has grand children
+        var firstChild = first.Children[0];
+        firstChild.Summary.ShouldBe("Child2-1");
+        firstChild.FirstGrandChildNote.ShouldBe("Note1");
+        firstChild.FirstGrandChildValue.ShouldBe(10);
+
+        // Second child has no grand children (empty list)
+        var secondChild = first.Children[1];
+        secondChild.Summary.ShouldBe("Child2-2");
+        secondChild.FirstGrandChildNote.ShouldBeNull();
+        secondChild.FirstGrandChildValue.ShouldBeNull();
+    }
 }
 
 internal class NestBase
@@ -241,4 +312,18 @@ internal class NestBasePredefinedDto
     public string Name { get; set; } = null!;
     public string? ChildDescription { get; set; }
     public string? GrandChildDetails { get; set; }
+}
+
+internal class NestBaseWithNamedChildrenDto
+{
+    public int Id { get; set; }
+    public string Name { get; set; } = null!;
+    public List<NestChild2PredefinedDto> Children { get; set; } = [];
+}
+
+internal class NestChild2PredefinedDto
+{
+    public string Summary { get; set; } = null!;
+    public string? FirstGrandChildNote { get; set; }
+    public int? FirstGrandChildValue { get; set; }
 }

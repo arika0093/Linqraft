@@ -106,9 +106,27 @@ public class ExplicitDtoComprehensiveTest
 
     private readonly List<SimpleEntity> SimpleTestData =
     [
-        new SimpleEntity { Id = 1, Name = "Item1", NullableDescription = "Desc1", NullableValue = 100 },
-        new SimpleEntity { Id = 2, Name = "Item2", NullableDescription = null, NullableValue = null },
-        new SimpleEntity { Id = 3, Name = "Item3", NullableDescription = "Desc3", NullableValue = null },
+        new SimpleEntity
+        {
+            Id = 1,
+            Name = "Item1",
+            NullableDescription = "Desc1",
+            NullableValue = 100,
+        },
+        new SimpleEntity
+        {
+            Id = 2,
+            Name = "Item2",
+            NullableDescription = null,
+            NullableValue = null,
+        },
+        new SimpleEntity
+        {
+            Id = 3,
+            Name = "Item3",
+            NullableDescription = "Desc3",
+            NullableValue = null,
+        },
     ];
 
     private readonly List<EntityWithNullableChild> NullableChildTestData =
@@ -128,10 +146,10 @@ public class ExplicitDtoComprehensiveTest
                     GreatGrandChild = new GreatGrandChildEntity
                     {
                         Info = "GreatGrandChild1",
-                        Count = 30
-                    }
-                }
-            }
+                        Count = 30,
+                    },
+                },
+            },
         },
         new EntityWithNullableChild
         {
@@ -141,14 +159,14 @@ public class ExplicitDtoComprehensiveTest
             {
                 Description = "Child2",
                 Value = 15,
-                GrandChild = null
-            }
+                GrandChild = null,
+            },
         },
         new EntityWithNullableChild
         {
             Id = 3,
             Name = "Parent3",
-            Child = null
+            Child = null,
         },
     ];
 
@@ -164,26 +182,31 @@ public class ExplicitDtoComprehensiveTest
                 {
                     Name = "Item1",
                     Value = 10,
-                    Child = new CollectionItemChild { Description = "ItemChild1", Score = 100 }
+                    Child = new CollectionItemChild { Description = "ItemChild1", Score = 100 },
                 },
                 new CollectionItem
                 {
                     Name = "Item2",
                     Value = 20,
-                    Child = null
+                    Child = null,
                 },
             ],
             NullableItems =
             [
-                new CollectionItem { Name = "NullableItem1", Value = 5, Child = null },
-            ]
+                new CollectionItem
+                {
+                    Name = "NullableItem1",
+                    Value = 5,
+                    Child = null,
+                },
+            ],
         },
         new EntityWithCollections
         {
             Id = 2,
             Name = "Entity2",
             Items = [],
-            NullableItems = null
+            NullableItems = null,
         },
     ];
 
@@ -201,11 +224,7 @@ public class ExplicitDtoComprehensiveTest
                 {
                     Description = "PrimaryDetail1",
                     Score = 200,
-                    Extra = new ComplexGreatGrandChild
-                    {
-                        Note = "PrimaryExtra1",
-                        Quantity = 300
-                    }
+                    Extra = new ComplexGreatGrandChild { Note = "PrimaryExtra1", Quantity = 300 },
                 },
                 Details =
                 [
@@ -213,15 +232,15 @@ public class ExplicitDtoComprehensiveTest
                     {
                         Description = "Detail1",
                         Score = 50,
-                        Extra = null
+                        Extra = null,
                     },
                     new ComplexGrandChild
                     {
                         Description = "Detail2",
                         Score = 60,
-                        Extra = new ComplexGreatGrandChild { Note = "Extra2", Quantity = 70 }
+                        Extra = new ComplexGreatGrandChild { Note = "Extra2", Quantity = 70 },
                     },
-                ]
+                ],
             },
             Children =
             [
@@ -230,7 +249,7 @@ public class ExplicitDtoComprehensiveTest
                     Name = "Child1",
                     Value = 10,
                     Detail = null,
-                    Details = []
+                    Details = [],
                 },
                 new ComplexChild
                 {
@@ -240,21 +259,26 @@ public class ExplicitDtoComprehensiveTest
                     {
                         Description = "ChildDetail2",
                         Score = 30,
-                        Extra = null
+                        Extra = null,
                     },
                     Details =
                     [
-                        new ComplexGrandChild { Description = "ChildDetails2-1", Score = 40, Extra = null },
-                    ]
+                        new ComplexGrandChild
+                        {
+                            Description = "ChildDetails2-1",
+                            Score = 40,
+                            Extra = null,
+                        },
+                    ],
                 },
-            ]
+            ],
         },
         new ComplexEntity
         {
             Id = 2,
             Name = "Complex2",
             PrimaryChild = null,
-            Children = []
+            Children = [],
         },
     ];
 
@@ -402,11 +426,7 @@ public class ExplicitDtoComprehensiveTest
             .SelectExpr<EntityWithCollections, NestedSelectComplexDto>(e => new
             {
                 e.Id,
-                Items = e.Items.Select(i => new
-                {
-                    i.Name,
-                    i.Value,
-                }).ToList(),
+                Items = e.Items.Select(i => new { i.Name, i.Value }).ToList(),
             })
             .ToList();
 
@@ -424,12 +444,14 @@ public class ExplicitDtoComprehensiveTest
             .SelectExpr<EntityWithCollections, NestedSelectWithNullConditionalDto>(e => new
             {
                 e.Id,
-                Items = e.Items.Select(i => new
-                {
-                    i.Name,
-                    ChildDescription = i.Child?.Description,
-                    ChildScore = i.Child?.Score,
-                }).ToList(),
+                Items = e
+                    .Items.Select(i => new
+                    {
+                        i.Name,
+                        ChildDescription = i.Child?.Description,
+                        ChildScore = i.Child?.Score,
+                    })
+                    .ToList(),
             })
             .ToList();
 
@@ -469,11 +491,13 @@ public class ExplicitDtoComprehensiveTest
             .SelectExpr<ComplexEntity, TwoLevelNestedSelectDto>(e => new
             {
                 e.Id,
-                Children = e.Children.Select(c => new
-                {
-                    c.Name,
-                    DetailDescriptions = c.Details.Select(d => d.Description).ToList(),
-                }).ToList(),
+                Children = e
+                    .Children.Select(c => new
+                    {
+                        c.Name,
+                        DetailDescriptions = c.Details.Select(d => d.Description).ToList(),
+                    })
+                    .ToList(),
             })
             .ToList();
 
@@ -496,7 +520,9 @@ public class ExplicitDtoComprehensiveTest
             {
                 e.Id,
                 PrimaryChildName = e.PrimaryChild?.Name,
-                PrimaryDetailDescriptions = e.PrimaryChild?.Details.Select(d => d.Description).ToList(),
+                PrimaryDetailDescriptions = e
+                    .PrimaryChild?.Details.Select(d => d.Description)
+                    .ToList(),
             })
             .ToList();
 
@@ -516,12 +542,14 @@ public class ExplicitDtoComprehensiveTest
             .SelectExpr<ComplexEntity, NestedSelectWithMultiLevelNullConditionalDto>(e => new
             {
                 e.Id,
-                Children = e.Children.Select(c => new
-                {
-                    c.Name,
-                    DetailDescription = c.Detail?.Description,
-                    ExtraNote = c.Detail?.Extra?.Note,
-                }).ToList(),
+                Children = e
+                    .Children.Select(c => new
+                    {
+                        c.Name,
+                        DetailDescription = c.Detail?.Description,
+                        ExtraNote = c.Detail?.Extra?.Note,
+                    })
+                    .ToList(),
             })
             .ToList();
 
@@ -541,16 +569,20 @@ public class ExplicitDtoComprehensiveTest
             .SelectExpr<ComplexEntity, TwoLevelNestedSelectWithNullConditionalsDto>(e => new
             {
                 e.Id,
-                Children = e.Children.Select(c => new
-                {
-                    c.Name,
-                    Details = c.Details.Select(d => new
+                Children = e
+                    .Children.Select(c => new
                     {
-                        d.Description,
-                        ExtraNote = d.Extra?.Note,
-                        ExtraQuantity = d.Extra?.Quantity,
-                    }).ToList(),
-                }).ToList(),
+                        c.Name,
+                        Details = c
+                            .Details.Select(d => new
+                            {
+                                d.Description,
+                                ExtraNote = d.Extra?.Note,
+                                ExtraQuantity = d.Extra?.Quantity,
+                            })
+                            .ToList(),
+                    })
+                    .ToList(),
             })
             .ToList();
 
@@ -573,23 +605,27 @@ public class ExplicitDtoComprehensiveTest
                 PrimaryChildName = e.PrimaryChild?.Name,
                 PrimaryDetailDescription = e.PrimaryChild?.Detail?.Description,
                 PrimaryExtraNote = e.PrimaryChild?.Detail?.Extra?.Note,
-                Children = e.Children.Select(c => new
-                {
-                    c.Name,
-                    c.Value,
-                    DetailDescription = c.Detail?.Description,
-                    Details = c.Details.Select(d => new
+                Children = e
+                    .Children.Select(c => new
                     {
-                        d.Description,
-                        d.Score,
-                        ExtraNote = d.Extra?.Note,
-                    }).ToList(),
-                }).ToList(),
+                        c.Name,
+                        c.Value,
+                        DetailDescription = c.Detail?.Description,
+                        Details = c
+                            .Details.Select(d => new
+                            {
+                                d.Description,
+                                d.Score,
+                                ExtraNote = d.Extra?.Note,
+                            })
+                            .ToList(),
+                    })
+                    .ToList(),
             })
             .ToList();
 
         result.Count.ShouldBe(2);
-        
+
         // First complex entity
         result[0].PrimaryChildName.ShouldBe("Primary1");
         result[0].PrimaryDetailDescription.ShouldBe("PrimaryDetail1");
@@ -600,7 +636,7 @@ public class ExplicitDtoComprehensiveTest
         result[0].Children[0].Details.ShouldBe([]);
         result[0].Children[1].Details.Count.ShouldBe(1);
         result[0].Children[1].Details[0].ExtraNote.ShouldBeNull();
-        
+
         // Second complex entity
         result[1].PrimaryChildName.ShouldBeNull();
         result[1].PrimaryDetailDescription.ShouldBeNull();
@@ -616,7 +652,9 @@ public class ExplicitDtoComprehensiveTest
             .SelectExpr<EntityWithCollections, NullableCollectionDto>(e => new
             {
                 e.Id,
-                NullableItemNames = e.NullableItems == null ? new List<string>() : e.NullableItems.Select(i => i.Name).ToList(),
+                NullableItemNames = e.NullableItems == null
+                    ? new List<string>()
+                    : e.NullableItems.Select(i => i.Name).ToList(),
             })
             .ToList();
 
@@ -650,19 +688,19 @@ public class ExplicitDtoComprehensiveTest
                                 Extra = new ComplexGreatGrandChild
                                 {
                                     Note = "Extra1",
-                                    Quantity = 5
-                                }
+                                    Quantity = 5,
+                                },
                             },
                             new ComplexGrandChild
                             {
                                 Description = "Detail2",
                                 Score = 200,
-                                Extra = null
+                                Extra = null,
                             },
-                        ]
+                        ],
                     },
-                ]
-            }
+                ],
+            },
         };
 
         var result = testData
@@ -670,16 +708,20 @@ public class ExplicitDtoComprehensiveTest
             .SelectExpr<ComplexEntity, ThreeLevelNestedDto>(e => new
             {
                 e.Id,
-                Children = e.Children.Select(c => new
-                {
-                    c.Name,
-                    Details = c.Details.Select(d => new
+                Children = e
+                    .Children.Select(c => new
                     {
-                        d.Description,
-                        ExtraNote = d.Extra?.Note,
-                        ExtraQuantity = d.Extra?.Quantity,
-                    }).ToList(),
-                }).ToList(),
+                        c.Name,
+                        Details = c
+                            .Details.Select(d => new
+                            {
+                                d.Description,
+                                ExtraNote = d.Extra?.Note,
+                                ExtraQuantity = d.Extra?.Quantity,
+                            })
+                            .ToList(),
+                    })
+                    .ToList(),
             })
             .ToList();
 
@@ -705,8 +747,8 @@ public class ExplicitDtoComprehensiveTest
             {
                 Id = 1,
                 Name = "AllNull",
-                Child = null
-            }
+                Child = null,
+            },
         };
 
         var result = testData
@@ -740,10 +782,10 @@ public class ExplicitDtoComprehensiveTest
                     Name = "Primary",
                     Value = 1,
                     Detail = null,
-                    Details = []
+                    Details = [],
                 },
-                Children = []
-            }
+                Children = [],
+            },
         };
 
         var result = testData
@@ -770,12 +812,14 @@ public class ExplicitDtoComprehensiveTest
             .SelectExpr<EntityWithCollections, MixedNullCollectionDto>(e => new
             {
                 e.Id,
-                Items = e.Items.Select(i => new
-                {
-                    i.Name,
-                    HasChild = i.Child != null,
-                    ChildDescription = i.Child?.Description,
-                }).ToList(),
+                Items = e
+                    .Items.Select(i => new
+                    {
+                        i.Name,
+                        HasChild = i.Child != null,
+                        ChildDescription = i.Child?.Description,
+                    })
+                    .ToList(),
             })
             .ToList();
 
@@ -865,7 +909,10 @@ public class ExplicitDtoComprehensiveTest
             {
                 e.Id,
                 HighValueItems = e.Items.Where(i => i.Value > 15).Select(i => i.Name).ToList(),
-                ItemsWithChildren = e.Items.Where(i => i.Child != null).Select(i => i.Name).ToList(),
+                ItemsWithChildren = e
+                    .Items.Where(i => i.Child != null)
+                    .Select(i => i.Name)
+                    .ToList(),
             })
             .ToList();
 
