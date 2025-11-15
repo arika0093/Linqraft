@@ -190,10 +190,11 @@ namespace Tutorial
 
 ## 使用方法
 ### 前提
-このライブラリは内部的に [C# interceptors](https://learn.microsoft.com/ja-jp/dotnet/csharp/whats-new/csharp-12#interceptors) を使用しているため、C# 12以降を使用する必要があります。
+このライブラリは内部的に [C# interceptors](https://learn.microsoft.com/ja-jp/dotnet/csharp/whats-new/csharp-12#interceptors) を使用しているため、**C# 12以降**を使用する必要があります。
 .NET 7以下を使用している場合は、`LangVersion`プロパティを設定し、[Polysharp](https://github.com/Sergio0694/PolySharp/)を使用してC#の最新機能を有効にしてください。
 
 ```xml
+<!-- .NET 7以前のバージョンのみ必要。.NET 8 以降では不要です -->
 <Project>
     <PropertyGroup>
         <LangVersion>12.0</LangVersion>
