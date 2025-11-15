@@ -304,16 +304,18 @@ public class OrderDto { /* ... */ }
 ```
 BenchmarkDotNet v0.15.7, Windows 11 (10.0.26200.7171/25H2/2025Update/HudsonValley2)
 Intel Core i7-14700F 2.10GHz, 1 CPU, 28 logical and 20 physical cores
-.NET SDK 10.0.100-rc.2.25502.107
-  [Host]     : .NET 9.0.10 (9.0.10, 9.0.1025.47515), X64 RyuJIT x86-64-v3
-  DefaultJob : .NET 9.0.10 (9.0.10, 9.0.1025.47515), X64 RyuJIT x86-64-v3
+.NET SDK 10.0.100
+  [Host]     : .NET 10.0.0 (10.0.0, 10.0.25.52411), X64 RyuJIT x86-64-v3
+  DefaultJob : .NET 10.0.0 (10.0.0, 10.0.25.52411), X64 RyuJIT x86-64-v3
 
-| Method                        | Mean       | Error    | StdDev   | Ratio | RatioSD | Rank | Gen0    | Gen1   | Allocated | Alloc Ratio |
-|------------------------------ |-----------:|---------:|---------:|------:|--------:|-----:|--------:|-------:|----------:|------------:|
-| 'Traditional Manual DTO'      |   962.2 us |  7.11 us |  6.65 us |  0.92 |    0.01 |    1 | 13.6719 | 1.9531 | 245.06 KB |        1.00 |
-| 'Linqraft Auto-Generated DTO' |   968.6 us |  7.40 us |  6.92 us |  0.92 |    0.01 |    1 | 13.6719 | 1.9531 | 245.09 KB |        1.00 |
-| 'Linqraft Anonymous'          | 1,030.7 us |  4.64 us |  4.34 us |  0.98 |    0.01 |    2 | 13.6719 | 1.9531 | 244.92 KB |        1.00 |
-| 'Traditional Anonymous'       | 1,047.7 us | 16.51 us | 15.44 us |  1.00 |    0.02 |    2 | 13.6719 | 1.9531 | 246.14 KB |        1.00 |
+
+| Method                        | Mean     | Error   | StdDev  | Ratio | Rank | Gen0    | Gen1   | Allocated | Alloc Ratio |
+|------------------------------ |---------:|--------:|--------:|------:|-----:|--------:|-------:|----------:|------------:|
+| 'Linqraft Auto-Generated DTO' | 891.1 us | 3.45 us | 3.23 us |  0.91 |    1 | 13.6719 | 1.9531 | 246.06 KB |        1.00 |
+| 'Linqraft Manual DTO'         | 893.8 us | 2.61 us | 2.18 us |  0.91 |    1 | 13.6719 | 1.9531 | 245.59 KB |        0.99 |
+| 'Traditional Manual DTO'      | 913.5 us | 6.94 us | 6.49 us |  0.93 |    1 | 13.6719 | 1.9531 | 245.69 KB |        0.99 |
+| 'Linqraft Anonymous'          | 979.2 us | 4.84 us | 4.53 us |  1.00 |    2 | 13.6719 | 1.9531 |  245.2 KB |        0.99 |
+| 'Traditional Anonymous'       | 981.4 us | 5.68 us | 5.32 us |  1.00 |    2 | 13.6719 | 1.9531 | 247.12 KB |        1.00 |
 ```
 
 </details>

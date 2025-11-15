@@ -193,4 +193,35 @@ public class SelectBenchmark
             .ToListAsync();
         return results.Count;
     }
+
+    // ============================================================
+    // Pattern 5: Linqraft SelectExpr with Manual DTO
+    // (Using Linqraft - Manual DTO definition)
+    // ============================================================
+    [Benchmark(Description = "Linqraft Manual DTO")]
+    public async Task<int> Linqraftl_ManualDto()
+    {
+        var results = await _dbContext
+            .SampleClasses.SelectExpr(s => new ManualSampleClassDto
+            {
+                Id = s.Id,
+                Foo = s.Foo,
+                Bar = s.Bar,
+                Childs = s.Childs.Select(c => new ManualSampleChildDto
+                {
+                    Id = c.Id,
+                    Baz = c.Baz,
+                    ChildId = c.Child?.Id,
+                    ChildQux = c.Child?.Qux,
+                }),
+                Child2Id = s.Child2?.Id,
+                Child2Quux = s.Child2?.Quux,
+                Child3Id = s.Child3.Id,
+                Child3Corge = s.Child3.Corge,
+                Child3ChildId = s.Child3?.Child?.Id,
+                Child3ChildGrault = s.Child3?.Child?.Grault,
+            })
+            .ToListAsync();
+        return results.Count;
+    }
 }
