@@ -190,7 +190,19 @@ namespace Tutorial
 
 ## 使用方法
 ### 前提
-内部的に[インターセプター](https://learn.microsoft.com/ja-jp/dotnet/csharp/whats-new/csharp-12#interceptors)を使用するため、.NET 8.0以降である必要があります。
+このライブラリは内部的に [C# interceptors](https://learn.microsoft.com/ja-jp/dotnet/csharp/whats-new/csharp-12#interceptors) を使用しているため、C# 12以降を使用する必要があります。
+.NET 7以下を使用している場合は、`LangVersion`プロパティを設定し、[Polysharp](https://github.com/Sergio0694/PolySharp/)を使用してC#の最新機能を有効にしてください。
+
+```xml
+<Project>
+    <PropertyGroup>
+        <LangVersion>12.0</LangVersion>
+    </PropertyGroup>
+    <ItemGroup>
+        <PackageReference Include="Polysharp" Version="1.*" />
+    </ItemGroup>
+</Project>
+```
 
 ### インストール
 `Linqraft`をNuGetからインストールします。
