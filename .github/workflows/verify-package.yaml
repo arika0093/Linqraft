@@ -7,9 +7,6 @@ name: Verify NuGet Package
 on:
   workflow_dispatch:
   push:
-    branches:
-      - main
-      - release/**
     paths:
       - 'src/**/*.cs'
       - 'src/**/*.csproj'
