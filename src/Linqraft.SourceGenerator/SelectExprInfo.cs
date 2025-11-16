@@ -682,7 +682,7 @@ internal abstract record SelectExprInfo
             Accessibility.Protected => "protected",
             Accessibility.ProtectedAndInternal => "private protected",
             Accessibility.ProtectedOrInternal => "protected internal",
-            _ => "internal", // Default to internal for safety
+            _ => "public", // Default to public
         };
     }
 }
