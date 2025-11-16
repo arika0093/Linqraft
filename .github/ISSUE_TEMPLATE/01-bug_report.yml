@@ -16,6 +16,7 @@ body:
       placeholder: query.SelectExpr(s => ...);
     validations:
       required: true
+    render: csharp
   - type: textarea
     id: generated-output
     attributes:
@@ -24,6 +25,7 @@ body:
       placeholder: You can see a generated code in Analyzer output window.
     validations:
       required: true
+    render: csharp
   - type: textarea
     id: expected-output
     attributes:
@@ -32,6 +34,7 @@ body:
       placeholder: Generated namespace maybe `MyApp.DTOs`.
     validations:
       required: true
+    render: csharp
   - type: textarea
     id: additional-information
     attributes:
