@@ -34,6 +34,9 @@ internal abstract record SelectExprInfo
     // Get the namespace where DTOs will be placed
     protected abstract string GetDtoNamespace();
 
+    // Get expression type string (for documentation)
+    protected abstract string GetExprTypeString();
+
     // Get the full name for a nested DTO class (can be overridden for nested class support)
     protected virtual string GetNestedDtoFullName(string nestedClassName)
     {
@@ -132,10 +135,13 @@ internal abstract record SelectExprInfo
 
     protected string GenerateMethodHeaderPart(string dtoName, InterceptableLocation location)
     {
+        var typeString = GetExprTypeString();
+        var displayLocationRaw = location.GetDisplayLocation();
+        var locationFileOnly = displayLocationRaw.Split(['/', '\\']).Last();
         return $"""
             /// <summary>
-            /// generated select expression method {dtoName} <br/>
-            /// at {location.GetDisplayLocation()}
+            /// generated select expression method {dtoName} ({typeString}) <br/>
+            /// at {locationFileOnly}
             /// </summary>
             {location.GetInterceptsLocationAttributeSyntax()}
             """;

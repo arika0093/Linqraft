@@ -36,6 +36,9 @@ internal record SelectExprInfoNamed : SelectExprInfo
     protected override string GetDtoNamespace() =>
         SourceType.ContainingNamespace?.ToDisplayString() ?? CallerNamespace;
 
+    // Get expression type string (for documentation)
+    protected override string GetExprTypeString() => "predefined";
+
     protected override string GenerateSelectExprMethod(
         string dtoName,
         DtoStructure structure,

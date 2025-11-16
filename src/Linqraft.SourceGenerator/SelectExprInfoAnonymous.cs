@@ -33,6 +33,9 @@ internal record SelectExprInfoAnonymous : SelectExprInfo
     // Anonymous types don't generate separate DTOs, but return caller namespace for consistency
     protected override string GetDtoNamespace() => CallerNamespace;
 
+    // Get expression type string (for documentation)
+    protected override string GetExprTypeString() => "anonymous";
+
     // Generate SelectExpr method
     protected override string GenerateSelectExprMethod(
         string dtoName,
