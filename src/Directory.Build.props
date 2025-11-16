@@ -13,7 +13,7 @@
     <Authors>arika0093</Authors>
     <PackageReadmeFile>README.nuget.md</PackageReadmeFile>
     <PackageIcon>linqraft.png</PackageIcon>
-    <GenerateDocumentationFile>true</GenerateDocumentationFile>
+    <GenerateDocumentationFile>false</GenerateDocumentationFile>
   </PropertyGroup>
   <ItemGroup>
     <PackageReference

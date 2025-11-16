@@ -145,8 +145,7 @@ namespace Linqraft
     {
         [global::System.Runtime.CompilerServices.InterceptsLocationAttribute(1, "9IBuY2cLVnfIVhZ8DH1V8UkEAABUdXRvcmlhbENhc2VUZXN0LmNz")]
         public static IQueryable<TResult> SelectExpr_8C5CFBF9_FA0FABCE<TIn, TResult>(
-            this IQueryable<TIn> query,
-            Func<TIn, object> selector) where TResult : global::Tutorial.OrderDto
+            this IQueryable<TIn> query, Func<TIn, object> selector)
         {
             var matchedQuery = query as object as IQueryable<global::Tutorial.Order>;
             var converted = matchedQuery.Select(s => new global::Tutorial.OrderDto
@@ -192,12 +191,17 @@ In other words, you can use it like a scripting language where the result is gen
 
 ## Usage
 ### Prerequisites
-This library uses [C# interceptors](https://learn.microsoft.com/en-us/dotnet/csharp/whats-new/csharp-12#interceptors) internally, so use **C# 13 or later**.  
+This library requirements **C# 13.0 or later**. .NET 9 or later is used C# 13.0 natively.
+
+internally it uses the following features:
+* [`required` members](https://learn.microsoft.com/en-us/dotnet/csharp/language-reference/keywords/required): C# 11 feature
+* [C# interceptors](https://learn.microsoft.com/en-us/dotnet/csharp/whats-new/csharp-12#interceptors): C# 12 feature
+* [Overload Resolution Priority](https://learn.microsoft.com/en-us/dotnet/csharp/language-reference/proposals/csharp-13.0/overload-resolution-priority): C# 13 feature
 
 <details>
 <summary>.NET 8 or below setup</summary>
 
-Set the `LangVersion` property and use [Polysharp](https://github.com/Sergio0694/PolySharp/) to enable C# latest features.
+Set the `LangVersion` property to `13.0` or later and use [Polysharp](https://github.com/Sergio0694/PolySharp/) to enable C# latest features.
 
 ```xml
 <Project>

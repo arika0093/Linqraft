@@ -52,8 +52,7 @@ namespace Linqraft
     {
         [global::System.Runtime.CompilerServices.InterceptsLocationAttribute(1, "9IBuY2cLVnfIVhZ8DH1V8UkEAABUdXRvcmlhbENhc2VUZXN0LmNz")]
         public static IQueryable<TResult> SelectExpr_8C5CFBF9_FA0FABCE<TIn, TResult>(
-            this IQueryable<TIn> query,
-            Func<TIn, object> selector) where TResult : global::Tutorial.OrderDto
+            this IQueryable<TIn> query, Func<TIn, object> selector)
         {
             var matchedQuery = query as object as IQueryable<global::Tutorial.Order>;
             var converted = matchedQuery.Select(s => new global::Tutorial.OrderDto

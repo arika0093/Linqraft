@@ -1,4 +1,3 @@
-using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
@@ -6,36 +5,55 @@ using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
 
-namespace Linqraft;
+namespace Linqraft.Core;
 
 /// <summary>
-/// Record for named Select expression information
+/// SelectExprInfo for named (predefined DTO) Select expressions
 /// </summary>
-internal record SelectExprInfoNamed : SelectExprInfo
+public record SelectExprInfoNamed : SelectExprInfo
 {
+    /// <summary>
+    /// The object creation expression for the named type
+    /// </summary>
     public required ObjectCreationExpressionSyntax ObjectCreation { get; init; }
 
-    // Generate DTO classes (including nested DTOs)
+    /// <summary>
+    /// Generates DTO classes (predefined types don't generate new classes)
+    /// </summary>
     public override List<GenerateDtoClassInfo> GenerateDtoClasses() => [];
 
-    // Generate DTO structure for unique ID generation
+    /// <summary>
+    /// Generates the DTO structure for unique ID generation
+    /// </summary>
     protected override DtoStructure GenerateDtoStructure()
     {
         return DtoStructure.AnalyzeNamedType(ObjectCreation, SemanticModel, SourceType)!;
     }
 
-    // Get DTO class name
+    /// <summary>
+    /// Gets the DTO class name (uses the source type name)
+    /// </summary>
     protected override string GetClassName(DtoStructure structure) => structure.SourceTypeName;
 
-    // Get parent DTO class name
+    /// <summary>
+    /// Gets the parent DTO class name
+    /// </summary>
     protected override string GetParentDtoClassName(DtoStructure structure) =>
         GetClassName(structure);
 
-    // Get the namespace where DTOs will be placed
-    // Named types use the DTO's own namespace
+    /// <summary>
+    /// Gets the namespace where DTOs will be placed
+    /// Named types use the DTO's own namespace
+    /// </summary>
     protected override string GetDtoNamespace() =>
         SourceType.ContainingNamespace?.ToDisplayString() ?? CallerNamespace;
 
+    // Get expression type string (for documentation)
+    protected override string GetExprTypeString() => "predefined";
+
+    /// <summary>
+    /// Generates the SelectExpr method code
+    /// </summary>
     protected override string GenerateSelectExprMethod(
         string dtoName,
         DtoStructure structure,
@@ -51,9 +69,8 @@ internal record SelectExprInfoNamed : SelectExprInfo
         var sb = new StringBuilder();
         var id = GetUniqueId();
         sb.AppendLine(GenerateMethodHeaderPart(dtoName, location));
-        sb.AppendLine($"public static {returnTypePrefix}<TResult> SelectExpr_{id}<T, TResult>(");
-        sb.AppendLine($"    this {returnTypePrefix}<T> query,");
-        sb.AppendLine($"    Func<T, TResult> selector)");
+        sb.AppendLine($"public static {returnTypePrefix}<TResult> SelectExpr_{id}<TIn, TResult>(");
+        sb.AppendLine($"    this {returnTypePrefix}<TIn> query, Func<TIn, TResult> selector)");
         sb.AppendLine("{");
         sb.AppendLine(
             $"    var matchedQuery = query as object as {returnTypePrefix}<{querySourceTypeFullName}>;"

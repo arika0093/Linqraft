@@ -81,7 +81,8 @@ This project consists of a C# Source Generator and an interceptor mechanism:
 Always perform a clean build to avoid stale generator caches:
 
 ```bash
-dotnet clean && dotnet build
+dotnet clean
+dotnet build --no-incremental
 dotnet test --no-build
 ```
 
@@ -90,6 +91,8 @@ If you want to inspect the generated sources on disk, follow these steps:
 1. Remove the `(test-project)/.generated` directory if it already exists.
 2. Enable `EmitCompilerGeneratedFiles` in `Linqraft.Tests.csproj`.
 3. The generated code will be emitted to `(test-project)/.generated/**/*.g.cs`.
+
+You can use the `./scripts/clean-test.sh` script as a shortcut.
 
 ## Development guidelines
 

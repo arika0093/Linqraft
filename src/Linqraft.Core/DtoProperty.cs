@@ -1,11 +1,14 @@
-﻿using System.Linq;
+using System.Linq;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
 
-namespace Linqraft;
+namespace Linqraft.Core;
 
-internal record DtoProperty(
+/// <summary>
+/// Represents a property in a DTO structure with metadata for code generation
+/// </summary>
+public record DtoProperty(
     string Name,
     bool IsNullable,
     string OriginalExpression,
@@ -14,8 +17,19 @@ internal record DtoProperty(
     DtoStructure? NestedStructure
 )
 {
+    /// <summary>
+    /// Gets the fully qualified type name of the property
+    /// </summary>
     public string TypeName => TypeSymbol.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat);
 
+    /// <summary>
+    /// Analyzes an expression and creates a DtoProperty from it
+    /// </summary>
+    /// <param name="propertyName">The name of the property</param>
+    /// <param name="expression">The expression syntax to analyze</param>
+    /// <param name="semanticModel">The semantic model for type resolution</param>
+    /// <param name="targetProperty">Optional target property symbol (for predefined DTOs)</param>
+    /// <returns>A DtoProperty instance or null if analysis fails</returns>
     public static DtoProperty? AnalyzeExpression(
         string propertyName,
         ExpressionSyntax expression,
@@ -179,7 +193,7 @@ internal record DtoProperty(
         // We need to exclude ConditionalAccessExpressionSyntax that are inside lambda expressions
         // because those apply to the nested properties, not the outer property
         var conditionalAccesses = expression
-            .DescendantNodes()
+            .DescendantNodesAndSelf()
             .OfType<ConditionalAccessExpressionSyntax>();
 
         foreach (var conditionalAccess in conditionalAccesses)

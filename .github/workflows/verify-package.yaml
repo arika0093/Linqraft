@@ -1,0 +1,81 @@
+# This workflow verifies that the packed NuGet package can be installed and used correctly.
+# It creates a test project, installs the locally packed Linqraft package,
+# and runs a sample program to ensure the Source Generator works as expected.
+name: Verify NuGet Package
+
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - 'src/**/*.cs'
+      - 'src/**/*.csproj'
+      - '.github/workflows/verify-package.yaml'
+
+env:
+  DOTNET_VERSION: '10.0.x'
+
+jobs:
+  verify-package:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: ${{ env.DOTNET_VERSION }}
+          cache: true
+          cache-dependency-path: '**/packages.lock.json'
+
+      - name: Restore dependencies
+        run: dotnet restore --locked-mode
+
+      - name: Build
+        run: dotnet build --no-restore -c Release
+
+      - name: Pack NuGet packages
+        run: dotnet pack --no-build -c Release --output ./local-packages
+
+      - uses: dotnet/nbgv@master
+        id: nbgv
+
+      - name: Setup local NuGet source
+        shell: bash
+        run: dotnet nuget add source "$(pwd)/local-packages" --name LocalPackages || true
+
+      - name: Create test project directory
+        shell: bash
+        run: mkdir -p ./verification-test/PackageVerification
+
+      - name: Copy MimimumSample files
+        shell: bash
+        run: cp -r examples/Linqraft.MinimumSample/* ./verification-test/PackageVerification/
+
+      - name: Add package reference to generated nuget package
+        shell: bash
+        working-directory: ./verification-test/PackageVerification
+        run: dotnet add package Linqraft --version ${{ steps.nbgv.outputs.SemVer2 }} --source "$(pwd)/../../local-packages"
+        
+      - name: Build verification project
+        working-directory: ./verification-test/PackageVerification
+        run: dotnet build
+
+      - name: Run and verify output
+        shell: bash
+        working-directory: ./verification-test/PackageVerification
+        run: |
+          OUTPUT=$(dotnet run --no-build)
+          echo "=== Program Output ==="
+          echo "$OUTPUT"
+          echo "======================"
+
+          # Verify that the output contains expected data
+          if echo "$OUTPUT" | grep -q "John Doe"; then
+            echo "✓ Verification passed: Output contains expected data"
+          else
+            echo "✗ Verification failed: Output does not contain expected data"
+            exit 1
+          fi

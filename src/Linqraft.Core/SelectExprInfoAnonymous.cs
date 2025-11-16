@@ -5,33 +5,49 @@ using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
 
-namespace Linqraft;
+namespace Linqraft.Core;
 
 /// <summary>
-/// Record for anonymous Select expression information
+/// SelectExprInfo for anonymous type Select expressions
 /// </summary>
-internal record SelectExprInfoAnonymous : SelectExprInfo
+public record SelectExprInfoAnonymous : SelectExprInfo
 {
+    /// <summary>
+    /// The anonymous object creation expression
+    /// </summary>
     public required AnonymousObjectCreationExpressionSyntax AnonymousObject { get; init; }
 
-    // Generate DTO classes (including nested DTOs)
+    /// <summary>
+    /// Generates DTO classes (anonymous types don't generate separate classes)
+    /// </summary>
     public override List<GenerateDtoClassInfo> GenerateDtoClasses() => [];
 
-    // Generate DTO structure for unique ID generation
+    /// <summary>
+    /// Generates the DTO structure for unique ID generation
+    /// </summary>
     protected override DtoStructure GenerateDtoStructure()
     {
         return DtoStructure.AnalyzeAnonymousType(AnonymousObject, SemanticModel, SourceType)!;
     }
 
-    // Get DTO class name
+    /// <summary>
+    /// Gets the DTO class name (empty for anonymous types)
+    /// </summary>
     protected override string GetClassName(DtoStructure structure) => "";
 
-    // Get parent DTO class name
+    /// <summary>
+    /// Gets the parent DTO class name (empty for anonymous types)
+    /// </summary>
     protected override string GetParentDtoClassName(DtoStructure structure) => "";
 
-    // Get the namespace where DTOs will be placed
-    // Anonymous types don't generate separate DTOs, but return caller namespace for consistency
+    /// <summary>
+    /// Gets the namespace where DTOs will be placed
+    /// Anonymous types don't generate separate DTOs, but return caller namespace for consistency
+    /// </summary>
     protected override string GetDtoNamespace() => CallerNamespace;
+
+    // Get expression type string (for documentation)
+    protected override string GetExprTypeString() => "anonymous";
 
     // Generate SelectExpr method
     protected override string GenerateSelectExprMethod(
@@ -46,10 +62,8 @@ internal record SelectExprInfoAnonymous : SelectExprInfo
 
         var id = GetUniqueId();
         sb.AppendLine(GenerateMethodHeaderPart("anonymous type", location));
-        sb.AppendLine($"public static {returnTypePrefix}<TResult> SelectExpr_{id}<T, TResult>(");
-        sb.AppendLine($"    this {returnTypePrefix}<T> query,");
-        sb.AppendLine($"    Func<T, TResult> selector");
-        sb.AppendLine($")");
+        sb.AppendLine($"public static {returnTypePrefix}<TResult> SelectExpr_{id}<TIn, TResult>(");
+        sb.AppendLine($"    this {returnTypePrefix}<TIn> query, Func<TIn, TResult> selector)");
         sb.AppendLine($"{{");
         sb.AppendLine(
             $"    var matchedQuery = query as object as {returnTypePrefix}<{sourceTypeFullName}>;"

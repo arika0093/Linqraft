@@ -1,6 +1,5 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
-    <TargetFrameworks>netstandard2.0</TargetFrameworks>
     <EnforceExtendedAnalyzerRules>true</EnforceExtendedAnalyzerRules>
     <!--Nuget-->
     <IsRoslynComponent>true</IsRoslynComponent>
@@ -13,7 +12,7 @@
   </PropertyGroup>
   <ItemGroup>
     <None
-      Include="$(OutputPath)\*.dll"
+      Include="$(OutputPath)\Linqraft.SourceGenerator.dll"
       Pack="true"
       PackagePath="analyzers/dotnet/cs"
       Visible="false"
@@ -35,5 +34,8 @@
       <PrivateAssets>all</PrivateAssets>
       <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
     </PackageReference>
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\Linqraft.Core\Linqraft.Core.csproj" OutputItemType="Analyzer" />
   </ItemGroup>
 </Project>
