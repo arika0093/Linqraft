@@ -50,7 +50,7 @@ internal record SelectExprInfoNamed : SelectExprInfo
 
         var sb = new StringBuilder();
         var id = GetUniqueId();
-        sb.AppendLine(GenerateMethodHeaderPart(dtoName, location));
+        sb.AppendLine(GenerateMethodHeaderPart(dtoName, location, "predefined"));
         sb.AppendLine($"public static {returnTypePrefix}<TResult> SelectExpr_{id}<T, TResult>(");
         sb.AppendLine($"    this {returnTypePrefix}<T> query,");
         sb.AppendLine($"    Func<T, TResult> selector)");

@@ -130,12 +130,18 @@ internal abstract record SelectExprInfo
         return BitConverter.ToString(hash).Replace("-", "")[..8]; // Use first 8 characters
     }
 
-    protected string GenerateMethodHeaderPart(string dtoName, InterceptableLocation location)
+    protected string GenerateMethodHeaderPart(
+        string dtoName,
+        InterceptableLocation location,
+        string type
+    )
     {
+        var displayLocationRaw = location.GetDisplayLocation();
+        var locationFileOnly = displayLocationRaw.Split(['/', '\\']).Last();
         return $"""
             /// <summary>
-            /// generated select expression method {dtoName} <br/>
-            /// at {location.GetDisplayLocation()}
+            /// generated select expression method {dtoName} ({type}) <br/>
+            /// at {locationFileOnly}
             /// </summary>
             {location.GetInterceptsLocationAttributeSyntax()}
             """;

@@ -169,11 +169,7 @@ internal record SelectExprInfoExplicitDto : SelectExprInfo
         var id = GetUniqueId();
         var methodDecl =
             $"public static {returnTypePrefix}<TResult> SelectExpr_{id}<TIn, TResult>(";
-        sb.AppendLine($"/// <summary>");
-        sb.AppendLine($"/// generated select expression method {dtoName} (explicit)");
-        sb.AppendLine($"/// at {location.GetDisplayLocation()}");
-        sb.AppendLine($"/// </summary>");
-        sb.AppendLine($"{location.GetInterceptsLocationAttributeSyntax()}");
+        sb.AppendLine(GenerateMethodHeaderPart(dtoName, location, "explicit"));
         sb.AppendLine($"{methodDecl}");
         sb.AppendLine($"    this {returnTypePrefix}<TIn> query,");
         sb.AppendLine($"    Func<TIn, object> selector) where TResult : {dtoFullName}");
