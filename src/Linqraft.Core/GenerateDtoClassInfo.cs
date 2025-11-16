@@ -3,18 +3,36 @@ using System.Collections.Immutable;
 using System.Linq;
 using System.Text;
 
-namespace Linqraft;
+namespace Linqraft.Core;
 
-internal class GenerateDtoClassInfo
+/// <summary>
+/// Contains information needed to generate a DTO class
+/// </summary>
+public class GenerateDtoClassInfo
 {
+    /// <summary>
+    /// The structure of the DTO (properties and their types)
+    /// </summary>
     public required DtoStructure Structure { get; set; }
 
+    /// <summary>
+    /// The accessibility modifier for the DTO class (e.g., "public", "internal")
+    /// </summary>
     public required string Accessibility { get; set; }
 
+    /// <summary>
+    /// The simple name of the DTO class
+    /// </summary>
     public required string ClassName { get; set; }
 
+    /// <summary>
+    /// The namespace where the DTO class will be placed
+    /// </summary>
     public required string Namespace { get; set; }
 
+    /// <summary>
+    /// Information about nested DTO classes that this DTO depends on
+    /// </summary>
     public required ImmutableList<GenerateDtoClassInfo> NestedClasses { get; set; }
 
     /// <summary>
@@ -28,11 +46,18 @@ internal class GenerateDtoClassInfo
     /// </summary>
     public List<string> ParentAccessibilities { get; set; } = [];
 
+    /// <summary>
+    /// Gets the fully qualified name of the DTO class
+    /// </summary>
     public string FullName =>
         ParentClasses.Count > 0
             ? $"{Namespace}.{string.Join(".", ParentClasses)}.{ClassName}"
             : $"{Namespace}.{ClassName}";
 
+    /// <summary>
+    /// Builds the C# source code for this DTO class
+    /// </summary>
+    /// <returns>The generated C# code as a string</returns>
     public string BuildCode()
     {
         var sb = new StringBuilder();

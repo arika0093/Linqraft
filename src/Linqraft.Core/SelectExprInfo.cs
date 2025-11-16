@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
@@ -6,32 +6,62 @@ using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
 
-namespace Linqraft;
+namespace Linqraft.Core;
 
 /// <summary>
-/// Base record for SelectExpr information
+/// Base class for SelectExpr information, providing common functionality for
+/// analyzing LINQ Select expressions and generating corresponding DTO structures
 /// </summary>
-internal abstract record SelectExprInfo
+public abstract record SelectExprInfo
 {
+    /// <summary>
+    /// The source type being selected from (e.g., T in IQueryable&lt;T&gt;)
+    /// </summary>
     public required ITypeSymbol SourceType { get; init; }
+
+    /// <summary>
+    /// The semantic model for type resolution and analysis
+    /// </summary>
     public required SemanticModel SemanticModel { get; init; }
+
+    /// <summary>
+    /// The invocation expression syntax for the SelectExpr call
+    /// </summary>
     public required InvocationExpressionSyntax Invocation { get; init; }
+
+    /// <summary>
+    /// The name of the lambda parameter (e.g., "s" in s => new { ... })
+    /// </summary>
     public required string LambdaParameterName { get; init; }
+
+    /// <summary>
+    /// The namespace where the SelectExpr is invoked
+    /// </summary>
     public required string CallerNamespace { get; init; }
 
-    // Generate DTO classes (including nested DTOs)
+    /// <summary>
+    /// Generates DTO class information (including nested DTOs)
+    /// </summary>
     public abstract List<GenerateDtoClassInfo> GenerateDtoClasses();
 
-    // Generate DTO structure for unique ID generation
+    /// <summary>
+    /// Generates the DTO structure for analysis and unique ID generation
+    /// </summary>
     protected abstract DtoStructure GenerateDtoStructure();
 
-    // Get DTO class name
+    /// <summary>
+    /// Gets the class name for a DTO structure
+    /// </summary>
     protected abstract string GetClassName(DtoStructure structure);
 
-    // Get parent DTO class name
+    /// <summary>
+    /// Gets the parent (root) DTO class name
+    /// </summary>
     protected abstract string GetParentDtoClassName(DtoStructure structure);
 
-    // Get the namespace where DTOs will be placed
+    /// <summary>
+    /// Gets the namespace where DTOs will be placed
+    /// </summary>
     protected abstract string GetDtoNamespace();
 
     // Get expression type string (for documentation)
@@ -43,14 +73,18 @@ internal abstract record SelectExprInfo
         return $"global::{GetDtoNamespace()}.{nestedClassName}";
     }
 
-    // Generate SelectExpr method
+    /// <summary>
+    /// Generates the SelectExpr method code
+    /// </summary>
     protected abstract string GenerateSelectExprMethod(
         string dtoName,
         DtoStructure structure,
         InterceptableLocation location
     );
 
-    // Generate SelectExpr codes for a given interceptable location
+    /// <summary>
+    /// Generates SelectExpr code for a given interceptable location
+    /// </summary>
     public List<string> GenerateSelectExprCodes(InterceptableLocation location)
     {
         // Analyze anonymous type structure
@@ -69,13 +103,17 @@ internal abstract record SelectExprInfo
         return [selectExprMethod];
     }
 
-    // Get namespace string (returns the namespace where SelectExpr is invoked)
+    /// <summary>
+    /// Gets the namespace string (returns the namespace where SelectExpr is invoked)
+    /// </summary>
     public string GetNamespaceString()
     {
         return CallerNamespace;
     }
 
-    // Check if the invocation source is IEnumerable (not IQueryable)
+    /// <summary>
+    /// Checks if the invocation source is IEnumerable (not IQueryable)
+    /// </summary>
     protected bool IsEnumerableInvocation()
     {
         // Get the type of the expression on which SelectExpr is called
@@ -109,13 +147,17 @@ internal abstract record SelectExprInfo
         return false;
     }
 
-    // Get the return type string based on whether it's IQueryable or IEnumerable
+    /// <summary>
+    /// Gets the return type prefix based on whether it's IQueryable or IEnumerable
+    /// </summary>
     protected string GetReturnTypePrefix()
     {
         return IsEnumerableInvocation() ? "IEnumerable" : "IQueryable";
     }
 
-    // Generate unique ID (including location information)
+    /// <summary>
+    /// Generates a unique ID (including location information)
+    /// </summary>
     protected string GetUniqueId()
     {
         var structureId = GenerateDtoStructure().GetUniqueId();
@@ -123,6 +165,9 @@ internal abstract record SelectExprInfo
         return $"{structureId}_{locationId}";
     }
 
+    /// <summary>
+    /// Gets a unique location identifier
+    /// </summary>
     protected string GetLocationId()
     {
         var location =
@@ -133,6 +178,9 @@ internal abstract record SelectExprInfo
         return BitConverter.ToString(hash).Replace("-", "")[..8]; // Use first 8 characters
     }
 
+    /// <summary>
+    /// Generates the method header part with documentation and interceptor attribute
+    /// </summary>
     protected string GenerateMethodHeaderPart(string dtoName, InterceptableLocation location)
     {
         var typeString = GetExprTypeString();
@@ -147,6 +195,9 @@ internal abstract record SelectExprInfo
             """;
     }
 
+    /// <summary>
+    /// Generates property assignment code for a DTO property
+    /// </summary>
     protected string GeneratePropertyAssignment(DtoProperty property, int indents)
     {
         var expression = property.OriginalExpression;
@@ -180,6 +231,9 @@ internal abstract record SelectExprInfo
         return expression;
     }
 
+    /// <summary>
+    /// Converts nested Select expressions using Roslyn syntax analysis
+    /// </summary>
     protected string ConvertNestedSelectWithRoslyn(
         ExpressionSyntax syntax,
         DtoStructure nestedStructure,
@@ -387,174 +441,9 @@ internal abstract record SelectExprInfo
         );
     }
 
-    protected string ConvertNestedSelect(
-        string expression,
-        DtoStructure nestedStructure,
-        int indents
-    )
-    {
-        var spaces = new string(' ', indents);
-        // Example: s.Childs.Select(c => new { ... }) or s.Childs.Select(c => new { ... }).ToList()
-        // Also handle: s.Childs?.Select(c => new { ... }) ?? []
-
-        // Extract parameter name (e.g., "c")
-        // Consider the possibility of whitespace or generic type parameters after .Select
-        var selectIndex = expression.IndexOf(".Select");
-        if (selectIndex == -1)
-            return expression;
-        // Find '(' after Select (start of lambda)
-        var lambdaStart = expression.IndexOf("(", selectIndex);
-        if (lambdaStart == -1)
-            return expression;
-        var lambdaArrow = expression.IndexOf("=>", lambdaStart);
-        if (lambdaArrow == -1 || lambdaArrow <= lambdaStart + 1)
-            return expression;
-        var paramName = expression.Substring(lambdaStart + 1, lambdaArrow - lambdaStart - 1).Trim();
-        if (string.IsNullOrEmpty(paramName))
-            paramName = "x"; // Default parameter name
-        var baseExpression = expression[..selectIndex];
-
-        // Check if there's a ?. before .Select and remove the ?
-        if (baseExpression.EndsWith("?"))
-        {
-            baseExpression = baseExpression[..^1];
-        }
-
-        // Normalize baseExpression: remove unnecessary whitespace and newlines
-        baseExpression = System.Text.RegularExpressions.Regex.Replace(
-            baseExpression.Trim(),
-            @"\s+",
-            " "
-        );
-        // Remove spaces around dots (property access)
-        baseExpression = System.Text.RegularExpressions.Regex.Replace(
-            baseExpression,
-            @"\s*\.\s*",
-            "."
-        );
-
-        var nestedClassName = GetClassName(nestedStructure);
-        // For anonymous types (empty class name), don't use namespace qualification
-        var nestedDtoName = string.IsNullOrEmpty(nestedClassName)
-            ? ""
-            : GetNestedDtoFullName(nestedClassName);
-
-        // Find the closing paren for Select(...) to detect any chained methods like .ToList()
-        var parenDepth = 0;
-        var selectEnd = lambdaStart;
-        for (int i = lambdaStart; i < expression.Length; i++)
-        {
-            if (expression[i] == '(')
-                parenDepth++;
-            else if (expression[i] == ')')
-            {
-                parenDepth--;
-                if (parenDepth == 0)
-                {
-                    selectEnd = i + 1;
-                    break;
-                }
-            }
-        }
-        // Extract any chained method calls after Select(...) (e.g., ".ToList()", " ?? []")
-        var chainedMethods = selectEnd < expression.Length ? expression[selectEnd..] : "";
-
-        var propertyAssignments = new List<string>();
-        foreach (var prop in nestedStructure.Properties)
-        {
-            var assignment = GeneratePropertyAssignment(prop, indents + 4);
-            propertyAssignments.Add($"{spaces}    {prop.Name} = {assignment},");
-        }
-        var propertiesCode = string.Join("\n", propertyAssignments);
-
-        // Check if the base expression (before .Select) uses ?. (nullable access)
-        // Only check the part before .Select, not inside the lambda
-        var originalBaseExpression = expression[..selectIndex];
-        // Check if it contains ?. OR ends with ? (which means ?.Select)
-        var hasNullableAccess =
-            originalBaseExpression.Contains("?.") || originalBaseExpression.EndsWith("?");
-        if (hasNullableAccess)
-        {
-            // Convert s.OrderItems?.Select(...) ?? [] to:
-            // s.OrderItems != null ? s.OrderItems.Select(...) : []
-
-            // Build null checks for all nullable parts
-            var checks = new List<string>();
-            var accessPath = baseExpression; // baseExpression is already without the ?
-
-            // Check if originalBaseExpression ends with ? (from ?.)
-            if (originalBaseExpression.EndsWith("?"))
-            {
-                // Simple case: s.OrderItems?
-                checks.Add($"{baseExpression} != null");
-            }
-            else
-            {
-                // Complex case with nested ?.
-                var parts = originalBaseExpression.Split(["?."], StringSplitOptions.None);
-                if (parts.Length >= 2)
-                {
-                    var currentPath = parts[0];
-                    for (int i = 1; i < parts.Length; i++)
-                    {
-                        checks.Add($"{currentPath} != null");
-                        var nextPart = parts[i];
-                        var dotIndex = nextPart.IndexOf('.');
-                        var propertyName = dotIndex > 0 ? nextPart[..dotIndex] : nextPart;
-                        currentPath = $"{currentPath}.{propertyName}";
-                    }
-                }
-            }
-
-            var nullCheckPart = string.Join(" && ", checks);
-
-            // Extract the default value from chained methods (e.g., "?? []")
-            var defaultValue = "default";
-            if (chainedMethods.Contains("??"))
-            {
-                var coalesceIndex = chainedMethods.IndexOf("??");
-                var rawDefault = chainedMethods[(coalesceIndex + 2)..].Trim();
-                // Replace [] with appropriate default for expression trees
-                if (rawDefault == "[]")
-                {
-                    if (string.IsNullOrEmpty(nestedDtoName))
-                    {
-                        // For anonymous types, we cannot use Enumerable.Empty with anonymous type
-                        // Instead, we need to use Array.Empty or new[]{} but that also doesn't work
-                        // Best approach: use the Select expression itself to return the right type
-                        // We'll wrap the whole Select in a cast to ensure type safety
-                        defaultValue = "null";
-                    }
-                    else
-                    {
-                        defaultValue = "System.Linq.Enumerable.Empty<" + nestedDtoName + ">()";
-                    }
-                }
-                else
-                {
-                    defaultValue = rawDefault;
-                }
-                chainedMethods = chainedMethods[..coalesceIndex].Trim();
-            }
-
-            var code = $$"""
-                {{nullCheckPart}} ? {{accessPath}}.Select({{paramName}} => new {{nestedDtoName}} {
-                {{propertiesCode}}
-                {{spaces}}}){{chainedMethods}} : {{defaultValue}}
-                """;
-            return code;
-        }
-        else
-        {
-            var code = $$"""
-                {{baseExpression}}.Select({{paramName}} => new {{nestedDtoName}} {
-                {{propertiesCode}}
-                {{spaces}}}){{chainedMethods}}
-                """;
-            return code;
-        }
-    }
-
+    /// <summary>
+    /// Converts nullable access expressions to explicit null checks using Roslyn
+    /// </summary>
     protected string ConvertNullableAccessToExplicitCheckWithRoslyn(
         ExpressionSyntax syntax,
         ITypeSymbol typeSymbol
@@ -610,40 +499,9 @@ internal abstract record SelectExprInfo
         return $"{nullCheckPart} ? {nullableTypeName}{accessPath} : {defaultValue}";
     }
 
-    protected string ConvertNullableAccessToExplicitCheck(string expression, ITypeSymbol typeSymbol)
-    {
-        // Example: c.Child?.Id → c.Child != null ? (int?)c.Child.Id : null
-        // Example: s.Child3?.Child?.Id → s.Child3 != null && s.Child3.Child != null ? (int?)s.Child3.Child.Id : null
-        if (!expression.Contains("?."))
-            return expression;
-        // Replace ?. with . to create the actual access path
-        var accessPath = expression.Replace("?.", ".");
-        // Find where ?. occurs and build null checks
-        var checks = new List<string>();
-        var parts = expression.Split(["?."], StringSplitOptions.None);
-        if (parts.Length < 2)
-            return expression;
-        // All parts except the first require null checks
-        var currentPath = parts[0];
-        for (int i = 1; i < parts.Length; i++)
-        {
-            checks.Add($"{currentPath} != null");
-            // Get the first token (property name) of the next part
-            var nextPart = parts[i];
-            var dotIndex = nextPart.IndexOf('.');
-            var propertyName = dotIndex > 0 ? nextPart[..dotIndex] : nextPart;
-            currentPath = $"{currentPath}.{propertyName}";
-        }
-        if (checks.Count == 0)
-            return expression;
-        // Build null checks
-        var nullCheckPart = string.Join(" && ", checks);
-        var typeSymbolValue = typeSymbol.ToDisplayString();
-        var nullableTypeName = typeSymbolValue != "?" ? $"({typeSymbolValue})" : "";
-        var defaultValue = GetDefaultValueForType(typeSymbol);
-        return $"{nullCheckPart} ? {nullableTypeName}{accessPath} : {defaultValue}";
-    }
-
+    /// <summary>
+    /// Gets the implicit property name from an expression
+    /// </summary>
     protected string? GetImplicitPropertyName(ExpressionSyntax expression)
     {
         // Get property name from member access (e.g., s.Id)
@@ -660,6 +518,9 @@ internal abstract record SelectExprInfo
         return null;
     }
 
+    /// <summary>
+    /// Gets the default value for a type symbol
+    /// </summary>
     protected string GetDefaultValueForType(ITypeSymbol typeSymbol)
     {
         if (
@@ -678,6 +539,9 @@ internal abstract record SelectExprInfo
         };
     }
 
+    /// <summary>
+    /// Gets the accessibility string from a type symbol
+    /// </summary>
     protected string GetAccessibilityString(ITypeSymbol typeSymbol)
     {
         return typeSymbol.DeclaredAccessibility switch

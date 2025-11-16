@@ -1,21 +1,30 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
 
-namespace Linqraft;
+namespace Linqraft.Core;
 
 /// <summary>
-/// DTO structure information
+/// Represents the structure of a DTO with its source type and properties
 /// </summary>
-internal record DtoStructure(ITypeSymbol SourceType, List<DtoProperty> Properties)
+public record DtoStructure(ITypeSymbol SourceType, List<DtoProperty> Properties)
 {
+    /// <summary>
+    /// Gets the simple name of the source type
+    /// </summary>
     public string SourceTypeName => SourceType.Name;
 
+    /// <summary>
+    /// Gets the fully qualified name of the source type
+    /// </summary>
     public string SourceTypeFullName =>
         SourceType.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat);
 
+    /// <summary>
+    /// Generates a unique identifier for this DTO structure based on its properties
+    /// </summary>
     public string GetUniqueId()
     {
         // Generate hash from property structure
@@ -30,6 +39,13 @@ internal record DtoStructure(ITypeSymbol SourceType, List<DtoProperty> Propertie
         return BitConverter.ToString(hash).Replace("-", "")[..8]; // Use first 8 characters
     }
 
+    /// <summary>
+    /// Analyzes a named type (predefined DTO) object creation expression
+    /// </summary>
+    /// <param name="namedObj">The object creation expression to analyze</param>
+    /// <param name="semanticModel">The semantic model for type resolution</param>
+    /// <param name="sourceType">The source type being selected from</param>
+    /// <returns>A DtoStructure representing the named type</returns>
     public static DtoStructure? AnalyzeNamedType(
         ObjectCreationExpressionSyntax namedObj,
         SemanticModel semanticModel,
@@ -97,6 +113,13 @@ internal record DtoStructure(ITypeSymbol SourceType, List<DtoProperty> Propertie
         return new DtoStructure(SourceType: targetType, Properties: properties);
     }
 
+    /// <summary>
+    /// Analyzes an anonymous type object creation expression
+    /// </summary>
+    /// <param name="anonymousObj">The anonymous object creation expression to analyze</param>
+    /// <param name="semanticModel">The semantic model for type resolution</param>
+    /// <param name="sourceType">The source type being selected from</param>
+    /// <returns>A DtoStructure representing the anonymous type</returns>
     public static DtoStructure? AnalyzeAnonymousType(
         AnonymousObjectCreationExpressionSyntax anonymousObj,
         SemanticModel semanticModel,
