@@ -44,9 +44,8 @@ internal class GenerateDtoClassInfo
             {
                 var indent = new string(' ', i * 4);
                 // Use the parent class accessibility if available, otherwise default to public
-                var parentAccessibility = i < ParentAccessibilities.Count
-                    ? ParentAccessibilities[i]
-                    : "public";
+                var parentAccessibility =
+                    i < ParentAccessibilities.Count ? ParentAccessibilities[i] : "public";
                 sb.AppendLine($"{indent}{parentAccessibility} partial class {ParentClasses[i]}");
                 sb.AppendLine($"{indent}{{");
             }

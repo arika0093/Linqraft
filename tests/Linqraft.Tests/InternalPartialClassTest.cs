@@ -15,11 +15,10 @@ public class InternalPartialClassTest
     {
         var data = new List<SampleEntity>
         {
-            new() { Id = 1, Name = "Test" }
+            new() { Id = 1, Name = "Test" },
         };
 
-        var result = data
-            .AsQueryable()
+        var result = data.AsQueryable()
             .SelectExpr<SampleEntity, InternalTestDto>(x => new { x.Id, x.Name })
             .ToList();
 
@@ -40,17 +39,16 @@ public class InternalPartialClassTest
                 Children = new List<ChildEntity>
                 {
                     new() { Name = "Child1", Value = 10 },
-                    new() { Name = "Child2", Value = 20 }
-                }
-            }
+                    new() { Name = "Child2", Value = 20 },
+                },
+            },
         };
 
-        var result = data
-            .AsQueryable()
+        var result = data.AsQueryable()
             .SelectExpr<ParentEntity, InternalParentDto>(x => new
             {
                 x.Id,
-                Children = x.Children.Select(c => new { c.Name, c.Value }).ToList()
+                Children = x.Children.Select(c => new { c.Name, c.Value }).ToList(),
             })
             .ToList();
 

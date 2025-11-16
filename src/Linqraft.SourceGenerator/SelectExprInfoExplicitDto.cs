@@ -50,7 +50,8 @@ internal record SelectExprInfoExplicitDto : SelectExprInfo
 
         // Determine parent classes for nested DTOs
         var currentParentClasses = nestedParentClasses ?? ParentClasses;
-        var currentParentAccessibilities = nestedParentAccessibilities ?? GetParentAccessibilities();
+        var currentParentAccessibilities =
+            nestedParentAccessibilities ?? GetParentAccessibilities();
 
         // Nested DTOs are placed at the same level as the current DTO, not inside it
         // So they share the same parent classes
@@ -59,12 +60,14 @@ internal record SelectExprInfoExplicitDto : SelectExprInfo
             if (prop.NestedStructure is not null)
             {
                 // Recursively generate nested DTO classes with the same parent info
-                result.AddRange(GenerateDtoClasses(
-                    prop.NestedStructure,
-                    overrideClassName: null,
-                    nestedParentClasses: currentParentClasses,
-                    nestedParentAccessibilities: currentParentAccessibilities
-                ));
+                result.AddRange(
+                    GenerateDtoClasses(
+                        prop.NestedStructure,
+                        overrideClassName: null,
+                        nestedParentClasses: currentParentClasses,
+                        nestedParentAccessibilities: currentParentAccessibilities
+                    )
+                );
             }
         }
         // Generate current DTO class
