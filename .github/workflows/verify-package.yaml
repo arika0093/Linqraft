@@ -1,7 +1,6 @@
 # This workflow verifies that the packed NuGet package can be installed and used correctly.
 # It creates a test project, installs the locally packed Linqraft package,
 # and runs a sample program to ensure the Source Generator works as expected.
-
 name: Verify NuGet Package
 
 on:
@@ -45,42 +44,21 @@ jobs:
 
       - name: Setup local NuGet source
         shell: bash
-        run: |
-          dotnet nuget add source "$(pwd)/local-packages" --name LocalPackages || true
+        run: dotnet nuget add source "$(pwd)/local-packages" --name LocalPackages || true
 
       - name: Create test project directory
         shell: bash
-        run: mkdir -p ./verification-test
+        run: mkdir -p ./verification-test/PackageVerification
 
-      - name: Create verification test project directory
+      - name: Copy MimimumSample files
         shell: bash
-        working-directory: ./verification-test
-        run: |
-          mkdir -p PackageVerification
+        run: cp -r examples/Linqraft.MinimumSample/* ./verification-test/PackageVerification/
 
-      - name: Create project file with package reference
+      - name: Add package reference to generated nuget package
         shell: bash
         working-directory: ./verification-test/PackageVerification
-        run: |
-          cat > PackageVerification.csproj << 'EOF'
-          <Project Sdk="Microsoft.NET.Sdk">
-            <PropertyGroup>
-              <OutputType>Exe</OutputType>
-              <TargetFramework>net10.0</TargetFramework>
-              <ImplicitUsings>enable</ImplicitUsings>
-              <Nullable>enable</Nullable>
-            </PropertyGroup>
-            <ItemGroup>
-              <PackageReference Include="Linqraft" Version="${{ steps.nbgv.outputs.SemVer2 }}" />
-            </ItemGroup>
-          </Project>
-          EOF
-
-      - name: Copy Program.cs from MinimumSample
-        shell: bash
-        run: |
-          cp examples/Linqraft.MinimumSample/Program.cs verification-test/PackageVerification/Program.cs
-
+        run: dotnet add package Linqraft --version ${{ steps.nbgv.outputs.SemVer2 }} --source "$(pwd)/../../local-packages"
+        
       - name: Build verification project
         working-directory: ./verification-test/PackageVerification
         run: dotnet build
