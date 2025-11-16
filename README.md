@@ -192,21 +192,21 @@ In other words, you can use it like a scripting language where the result is gen
 
 ## Usage
 ### Prerequisites
-This library uses [C# interceptors](https://learn.microsoft.com/en-us/dotnet/csharp/whats-new/csharp-12#interceptors) internally, so use **C# 13 or later**.  
+This library requirements **C# 13.0 or later**. .NET 9 or later is used C# 13.0 natively,
+
+* [C# interceptors](https://learn.microsoft.com/en-us/dotnet/csharp/whats-new/csharp-12#interceptors): C# 12 feature
+* [Overload Resolution Priority](https://learn.microsoft.com/ja-jp/dotnet/csharp/language-reference/proposals/csharp-13.0/overload-resolution-priority): C# 13 feature
 
 <details>
 <summary>.NET 8 or below setup</summary>
 
-Set the `LangVersion` property and use [Polysharp](https://github.com/Sergio0694/PolySharp/) to enable C# latest features.
+Set the `LangVersion` property to `13.0` or later in your project file:
 
 ```xml
 <Project>
     <PropertyGroup>
         <LangVersion>13.0</LangVersion>
     </PropertyGroup>
-    <ItemGroup>
-        <PackageReference Include="Polysharp" Version="1.*" />
-    </ItemGroup>
 </Project>
 ```
 

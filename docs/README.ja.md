@@ -194,21 +194,21 @@ namespace Tutorial
 
 ## 使用方法
 ### 前提
-このライブラリは内部的に [C# interceptors](https://learn.microsoft.com/ja-jp/dotnet/csharp/whats-new/csharp-12#interceptors) を使用しているため、**C# 13以降**を使用する必要があります。  
+このライブラリは **C# 13.0以降**が必要です。.NET 9以降ではC# 13.0がネイティブで使用されています。
+
+* [C# interceptors](https://learn.microsoft.com/ja-jp/dotnet/csharp/whats-new/csharp-12#interceptors): C# 12の機能
+* [Overload Resolution Priority](https://learn.microsoft.com/ja-jp/dotnet/csharp/language-reference/proposals/csharp-13.0/overload-resolution-priority): C# 13の機能
 
 <details>
 <summary>.NET 8以下の場合に必要な設定</summary>
 
-`LangVersion`プロパティを設定し、[Polysharp](https://github.com/Sergio0694/PolySharp/)を使用してC#の最新機能を有効にしてください。
+`LangVersion`プロパティを`13.0`以上に設定してください。
 
 ```xml
 <Project>
     <PropertyGroup>
         <LangVersion>13.0</LangVersion>
     </PropertyGroup>
-    <ItemGroup>
-        <PackageReference Include="Polysharp" Version="1.*" />
-    </ItemGroup>
 </Project>
 ```
 
