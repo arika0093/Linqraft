@@ -20,4 +20,16 @@ public static class DiagnosticDescriptors
         defaultSeverity: DiagnosticSeverity.Info,
         isEnabledByDefault: true,
         description: "SelectExpr provides compile-time expression tree generation and better performance.");
+
+    /// <summary>
+    /// LQ002: SelectExpr can be enhanced with additional features
+    /// </summary>
+    public static readonly DiagnosticDescriptor EnhanceSelectExpr = new(
+        id: "LQ002",
+        title: "SelectExpr can be enhanced",
+        messageFormat: "Consider enhancing this SelectExpr with auto-generated DTO or separate file",
+        category: Category,
+        defaultSeverity: DiagnosticSeverity.Info,
+        isEnabledByDefault: true,
+        description: "SelectExpr can be enhanced with auto-generated DTO types or separate file definitions.");
 }
