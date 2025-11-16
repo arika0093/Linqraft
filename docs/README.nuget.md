@@ -19,6 +19,7 @@ var orders = await dbContext.Orders
         CustomerName = o.Customer?.Name,
         CustomerCountry = o.Customer?.Address?.Country?.Name,
         CustomerCity = o.Customer?.Address?.City?.Name,
+        // Items type will be also auto-generated
         Items = o.OrderItems.Select(oi => new
         {
             // you can nested Select with null-propagating operator
@@ -91,4 +92,4 @@ namespace Tutorial
 }
 ```
 
-see the [GitHub Repository](https://arika0093.github.io/Linqraft/) for more details.
+See the [GitHub Repository](https://arika0093.github.io/Linqraft/) for more details.
