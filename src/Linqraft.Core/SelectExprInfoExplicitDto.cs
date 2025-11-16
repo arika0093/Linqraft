@@ -7,15 +7,26 @@ using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
 
-namespace Linqraft;
+namespace Linqraft.Core;
 
 /// <summary>
-/// Record for explicit DTO name Select expression information (SelectExpr&lt;TIn, TResult&gt; form)
+/// SelectExprInfo for explicit DTO name Select expressions (SelectExpr&lt;TIn, TResult&gt; form)
 /// </summary>
-internal record SelectExprInfoExplicitDto : SelectExprInfo
+public record SelectExprInfoExplicitDto : SelectExprInfo
 {
+    /// <summary>
+    /// The anonymous object creation expression containing the property selections
+    /// </summary>
     public required AnonymousObjectCreationExpressionSyntax AnonymousObject { get; init; }
+
+    /// <summary>
+    /// The explicit name for the DTO (from TResult type parameter)
+    /// </summary>
     public required string ExplicitDtoName { get; init; }
+
+    /// <summary>
+    /// The target namespace where the DTO will be generated
+    /// </summary>
     public required string TargetNamespace { get; init; }
 
     /// <summary>
@@ -28,7 +39,9 @@ internal record SelectExprInfoExplicitDto : SelectExprInfo
     /// </summary>
     public required ITypeSymbol TResultType { get; init; }
 
-    // Generate DTO classes (including nested DTOs)
+    /// <summary>
+    /// Generates DTO classes (including nested DTOs)
+    /// </summary>
     public override List<GenerateDtoClassInfo> GenerateDtoClasses()
     {
         var structure = GenerateDtoStructure();
@@ -87,7 +100,9 @@ internal record SelectExprInfoExplicitDto : SelectExprInfo
         return result;
     }
 
-    // Get parent class accessibilities from TResultType
+    /// <summary>
+    /// Gets parent class accessibilities from TResultType
+    /// </summary>
     private List<string> GetParentAccessibilities()
     {
         var accessibilities = new List<string>();
@@ -103,20 +118,28 @@ internal record SelectExprInfoExplicitDto : SelectExprInfo
         return accessibilities;
     }
 
-    // Generate DTO structure for unique ID generation
+    /// <summary>
+    /// Generates the DTO structure for unique ID generation
+    /// </summary>
     protected override DtoStructure GenerateDtoStructure()
     {
         return DtoStructure.AnalyzeAnonymousType(AnonymousObject, SemanticModel, SourceType)!;
     }
 
-    // Get DTO class name
+    /// <summary>
+    /// Gets the DTO class name
+    /// </summary>
     protected override string GetClassName(DtoStructure structure) =>
         $"{structure.SourceTypeName}Dto_{structure.GetUniqueId()}";
 
-    // Get parent DTO class name
+    /// <summary>
+    /// Gets the parent DTO class name
+    /// </summary>
     protected override string GetParentDtoClassName(DtoStructure structure) => ExplicitDtoName;
 
-    // Get the namespace where DTOs will be placed
+    /// <summary>
+    /// Gets the namespace where DTOs will be placed
+    /// </summary>
     protected override string GetDtoNamespace() => GetActualDtoNamespace();
 
     // Get expression type string (for documentation)
@@ -134,8 +157,10 @@ internal record SelectExprInfoExplicitDto : SelectExprInfo
         return $"global::{actualNamespace}.{nestedClassName}";
     }
 
-    // Get the actual namespace where the DTO will be placed
-    // This mirrors the logic in SelectExprGroups.TargetNamespace getter
+    /// <summary>
+    /// Gets the actual namespace where the DTO will be placed
+    /// This mirrors the logic in SelectExprGroups.TargetNamespace getter
+    /// </summary>
     private string GetActualDtoNamespace()
     {
         // Determine if this is a global namespace (same logic as SelectExprGroups.IsGlobalNamespace)
@@ -150,7 +175,9 @@ internal record SelectExprInfoExplicitDto : SelectExprInfo
         return TargetNamespace;
     }
 
-    // Generate SelectExpr method
+    /// <summary>
+    /// Generates the SelectExpr method code
+    /// </summary>
     protected override string GenerateSelectExprMethod(
         string dtoName,
         DtoStructure structure,
