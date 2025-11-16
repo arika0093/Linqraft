@@ -43,7 +43,7 @@ class TestClass
     }
 }";
 
-        var expected = DiagnosticResult.CompilerWarning(DiagnosticDescriptors.SelectToSelectExpr.Id)
+        var expected = new DiagnosticResult(DiagnosticDescriptors.SelectToSelectExpr)
             .WithLocation(0);
 
         await new CSharpAnalyzerTest<SelectToSelectExprAnalyzer, DefaultVerifier>
@@ -76,11 +76,11 @@ class TestClass
     void TestMethod()
     {
         var data = new[] { 1, 2, 3 };
-        var result = data.SelectExpr(x => x * 2);
+        var result = data.{|CS1061:SelectExpr|}(x => x * 2);
     }
 }";
 
-        var expected = DiagnosticResult.CompilerWarning(DiagnosticDescriptors.SelectToSelectExpr.Id)
+        var expected = new DiagnosticResult(DiagnosticDescriptors.SelectToSelectExpr)
             .WithLocation(0);
 
         await new CSharpCodeFixTest<SelectToSelectExprAnalyzer, SelectToSelectExprCodeFixProvider, DefaultVerifier>
