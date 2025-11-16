@@ -179,7 +179,7 @@ internal record DtoProperty(
         // We need to exclude ConditionalAccessExpressionSyntax that are inside lambda expressions
         // because those apply to the nested properties, not the outer property
         var conditionalAccesses = expression
-            .DescendantNodes()
+            .DescendantNodesAndSelf()
             .OfType<ConditionalAccessExpressionSyntax>();
 
         foreach (var conditionalAccess in conditionalAccesses)
