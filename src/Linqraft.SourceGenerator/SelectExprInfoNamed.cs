@@ -36,6 +36,9 @@ internal record SelectExprInfoNamed : SelectExprInfo
     protected override string GetDtoNamespace() =>
         SourceType.ContainingNamespace?.ToDisplayString() ?? CallerNamespace;
 
+    // Get expression type string (for documentation)
+    protected override string GetExprTypeString() => "predefined";
+
     protected override string GenerateSelectExprMethod(
         string dtoName,
         DtoStructure structure,
@@ -50,7 +53,7 @@ internal record SelectExprInfoNamed : SelectExprInfo
 
         var sb = new StringBuilder();
         var id = GetUniqueId();
-        sb.AppendLine(GenerateMethodHeaderPart(dtoName, location, "predefined"));
+        sb.AppendLine(GenerateMethodHeaderPart(dtoName, location));
         sb.AppendLine($"public static {returnTypePrefix}<TResult> SelectExpr_{id}<T, TResult>(");
         sb.AppendLine($"    this {returnTypePrefix}<T> query,");
         sb.AppendLine($"    Func<T, TResult> selector)");

@@ -33,6 +33,9 @@ internal record SelectExprInfoAnonymous : SelectExprInfo
     // Anonymous types don't generate separate DTOs, but return caller namespace for consistency
     protected override string GetDtoNamespace() => CallerNamespace;
 
+    // Get expression type string (for documentation)
+    protected override string GetExprTypeString() => "anonymous";
+
     // Generate SelectExpr method
     protected override string GenerateSelectExprMethod(
         string dtoName,
@@ -45,7 +48,7 @@ internal record SelectExprInfoAnonymous : SelectExprInfo
         var sb = new StringBuilder();
 
         var id = GetUniqueId();
-        sb.AppendLine(GenerateMethodHeaderPart("anonymous type", location, "anonymous"));
+        sb.AppendLine(GenerateMethodHeaderPart("anonymous type", location));
         sb.AppendLine($"public static {returnTypePrefix}<TResult> SelectExpr_{id}<T, TResult>(");
         sb.AppendLine($"    this {returnTypePrefix}<T> query,");
         sb.AppendLine($"    Func<T, TResult> selector");

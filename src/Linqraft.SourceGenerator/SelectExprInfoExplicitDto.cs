@@ -119,6 +119,9 @@ internal record SelectExprInfoExplicitDto : SelectExprInfo
     // Get the namespace where DTOs will be placed
     protected override string GetDtoNamespace() => GetActualDtoNamespace();
 
+    // Get expression type string (for documentation)
+    protected override string GetExprTypeString() => "explicit";
+
     // Get the full name for a nested DTO class (including parent classes)
     protected override string GetNestedDtoFullName(string nestedClassName)
     {
@@ -169,7 +172,7 @@ internal record SelectExprInfoExplicitDto : SelectExprInfo
         var id = GetUniqueId();
         var methodDecl =
             $"public static {returnTypePrefix}<TResult> SelectExpr_{id}<TIn, TResult>(";
-        sb.AppendLine(GenerateMethodHeaderPart(dtoName, location, "explicit"));
+        sb.AppendLine(GenerateMethodHeaderPart(dtoName, location));
         sb.AppendLine($"{methodDecl}");
         sb.AppendLine($"    this {returnTypePrefix}<TIn> query,");
         sb.AppendLine($"    Func<TIn, object> selector) where TResult : {dtoFullName}");
