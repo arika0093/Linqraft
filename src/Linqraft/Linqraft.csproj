@@ -7,6 +7,7 @@
     <None Include="Linqraft.targets" Pack="true" PackagePath="build" Visible="false" />
   </ItemGroup>
   <ItemGroup>
+    <ProjectReference Include="..\Linqraft.Analyzer\Linqraft.Analyzer.csproj" />
     <ProjectReference Include="..\Linqraft.SourceGenerator\Linqraft.SourceGenerator.csproj" />
   </ItemGroup>
 </Project>

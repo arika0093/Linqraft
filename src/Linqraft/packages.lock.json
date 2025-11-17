@@ -115,6 +115,13 @@
           "System.Runtime.CompilerServices.Unsafe": "4.5.3"
         }
       },
+      "linqraft.analyzer": {
+        "type": "Project",
+        "dependencies": {
+          "Linqraft.Core": "[1.0.0, )",
+          "Microsoft.CodeAnalysis.CSharp": "[4.13.0, )"
+        }
+      },
       "linqraft.core": {
         "type": "Project",
         "dependencies": {
