@@ -7,4 +7,7 @@
     <LangVersion>13.0</LangVersion>
     <CheckEolTargetFramework>false</CheckEolTargetFramework>
   </PropertyGroup>
+  <ItemGroup>
+    <PackageReference Include="Polysharp" Version="1.*" />
+  </ItemGroup>
 </Project>

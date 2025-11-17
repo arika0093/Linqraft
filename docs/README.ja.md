@@ -204,7 +204,7 @@ namespace Tutorial
 <details>
 <summary>.NET 8以下の場合に必要な設定</summary>
 
-`LangVersion`プロパティを`13.0`以上に設定してください。
+`LangVersion`プロパティを`13.0`以上に設定し、[Polysharp](https://github.com/Sergio0694/PolySharp/)を使用してC#の最新機能を有効にします。
 
 ```xml
 <Project>

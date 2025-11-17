@@ -202,13 +202,16 @@ internally it uses the following features:
 <details>
 <summary>.NET 8 or below setup</summary>
 
-Set the `LangVersion` property to `13.0` or later in your project file:
+Set the `LangVersion` property to `13.0` or later and use [Polysharp](https://github.com/Sergio0694/PolySharp/) to enable C# latest features.
 
 ```xml
 <Project>
     <PropertyGroup>
         <LangVersion>13.0</LangVersion>
     </PropertyGroup>
+    <ItemGroup>
+        <PackageReference Include="Polysharp" Version="1.*" />
+    </ItemGroup>
 </Project>
 ```
 
