@@ -40,6 +40,11 @@ public abstract record SelectExprInfo
     public required string CallerNamespace { get; init; }
 
     /// <summary>
+    /// The Linqraft configuration settings
+    /// </summary>
+    public LinqraftConfiguration Configuration { get; set; } = new();
+
+    /// <summary>
     /// Generates DTO class information (including nested DTOs)
     /// </summary>
     public abstract List<GenerateDtoClassInfo> GenerateDtoClasses();

@@ -1,5 +1,9 @@
 ﻿<Project>
   <ItemGroup>
     <CompilerVisibleProperty Include="RootNamespace" />
+    <CompilerVisibleProperty Include="LinqraftGlobalNamespace" />
+    <CompilerVisibleProperty Include="LinqraftRecordGenerate" />
+    <CompilerVisibleProperty Include="LinqraftPropertyAccessor" />
+    <CompilerVisibleProperty Include="LinqraftHasRequired" />
   </ItemGroup>
 </Project>
