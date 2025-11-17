@@ -220,6 +220,9 @@ Install `Linqraft` from NuGet:
 dotnet add package Linqraft
 ```
 
+> [!NOTE]
+> If you want to use Linqraft in multiple projects, you need to install the package in each project separately.
+
 ## Examples
 ### Anonymous pattern
 
