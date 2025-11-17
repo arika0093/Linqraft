@@ -98,8 +98,6 @@ public class OrderItemDto
 Linqraft is a Roslyn Source Generator that addresses the problems above. Using this library you can write concise selectors with null-propagation and optionally generate DTO classes automatically.
 
 ```csharp
-using Linqraft;
-
 // ✨️ auto-generated DTOs, with null-propagation support
 var orders = await dbContext.Orders
     // Order: input entity type

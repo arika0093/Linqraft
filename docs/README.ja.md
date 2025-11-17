@@ -99,8 +99,6 @@ Linqraftは、上記の問題を解決するために設計されたSource Gener
 上記の例では、以下のように記述することができます。
 
 ```csharp
-using Linqraft;
-
 // ✨️ auto-generated DTOs, with null-propagation support
 var orders = await dbContext.Orders
     // Order: input entity type
