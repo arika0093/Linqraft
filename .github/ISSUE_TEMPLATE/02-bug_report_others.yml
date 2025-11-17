@@ -1,0 +1,34 @@
+name: Bug Report(Others)
+description: File a bug report.
+title: "bug: "
+labels: 
+  - bug
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for taking the time to fill out this bug report!
+  - type: textarea
+    id: occured-scenario
+    attributes:
+      label: Occurred Scenario
+      description: Please describe the scenario in which the issue occurred (e.g., using with specific framework or tool).
+      placeholder: e.g., Using with ASP.NET Core Web API project.
+      render: csharp
+    validations:
+      required: true
+  - type: textarea
+    id: error-message
+    attributes:
+      label: Error Message
+      description: Please provide the error message or exception details you encountered.
+      placeholder: e.g., System.NullReferenceException: Object reference not set to an instance of an object.
+    validations:
+      required: true
+  - type: textarea
+    id: additional-information
+    attributes:
+      label: Additional Information
+      description: Please provide any additional information that might be relevant to the issue.
+    validations:
+      required: false

@@ -1,4 +1,4 @@
-name: Bug Report
+name: Bug Report(Generated Code)
 description: File a bug report.
 title: "bug: "
 labels: 
@@ -32,7 +32,6 @@ body:
       label: Expected Output
       description: Please provide the output you expected to see.
       placeholder: Generated namespace maybe `MyApp.DTOs`.
-      render: csharp
     validations:
       required: true
   - type: textarea
