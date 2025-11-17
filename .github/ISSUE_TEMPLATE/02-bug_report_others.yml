@@ -22,7 +22,7 @@ body:
     attributes:
       label: Error Message
       description: Please provide the error message or exception details you encountered.
-      placeholder: e.g., System.NullReferenceException: Object reference not set to an instance of an object.
+      placeholder: "e.g., System.NullReferenceException: Object reference not set to an instance of an object."
     validations:
       required: true
   - type: textarea
