@@ -307,8 +307,9 @@ public class OrderDto { /* ... */ }
     <LinqraftGlobalNamespace>Linqraft</LinqraftGlobalNamespace>
     <!-- generate records instead of classes -->
     <LinqraftRecordGenerate>false</LinqraftRecordGenerate>
-    <!-- set accessor pattern. GetAndSet, GetAndInit, GetAndInternalSet -->
-    <LinqraftPropertyAccessor>GetAndSet</LinqraftPropertyAccessor>
+    <!-- set accessor pattern. Default, GetAndSet, GetAndInit, GetAndInternalSet -->
+    <!-- default is GetAndSet in class, GetAndInit in record -->
+    <LinqraftPropertyAccessor>Default</LinqraftPropertyAccessor>
     <!-- has required keyword on properties -->
     <LinqraftHasRequired>true</LinqraftHasRequired>
   </PropertyGroup>
