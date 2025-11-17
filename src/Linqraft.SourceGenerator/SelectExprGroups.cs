@@ -12,13 +12,15 @@ internal class SelectExprGroups
 {
     public required List<SelectExprLocations> Exprs { get; set; }
 
+    public required LinqraftConfiguration Configuration { get; set; }
+
     public required string TargetNamespace
     {
         get
         {
             if (IsGlobalNamespace)
             {
-                return "Linqraft";
+                return Configuration.GlobalNamespace;
             }
             return targetNamespace;
         }
@@ -50,7 +52,7 @@ internal class SelectExprGroups
             foreach (var expr in Exprs)
             {
                 var info = expr.Info;
-                var classInfos = info.GenerateDtoClasses();
+                var classInfos = info.GenerateDtoClasses(Configuration);
                 var exprMethods = info.GenerateSelectExprCodes(expr.Location);
                 dtoClassInfos.AddRange(classInfos);
                 selectExprMethods.AddRange(exprMethods);
@@ -61,7 +63,9 @@ internal class SelectExprGroups
                 .GroupBy(c => c.FullName)
                 .Select(g => g.First())
                 .ToList();
-            var dtoClassesCode = dtoClassesDistinct.Select(c => c.BuildCode()).ToList();
+            var dtoClassesCode = dtoClassesDistinct
+                .Select(c => c.BuildCode(Configuration))
+                .ToList();
 
             // Build final source code
             var sourceCode = BuildSourceCode(dtoClassesCode, selectExprMethods);

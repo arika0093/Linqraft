@@ -57,10 +57,17 @@ public class GenerateDtoClassInfo
     /// <summary>
     /// Builds the C# source code for this DTO class
     /// </summary>
+    /// <param name="configuration">Configuration for code generation</param>
     /// <returns>The generated C# code as a string</returns>
-    public string BuildCode()
+    public string BuildCode(LinqraftConfiguration configuration)
     {
         var sb = new StringBuilder();
+
+        // Determine if we're generating a record or class
+        var typeKeyword = configuration.RecordGenerate ? "record" : "class";
+
+        // Determine the property accessor pattern
+        var propertyAccessor = GetPropertyAccessorString(configuration.GetEffectivePropertyAccessor());
 
         // Build nested parent classes if they exist
         if (ParentClasses.Count > 0)
@@ -76,9 +83,9 @@ public class GenerateDtoClassInfo
             }
         }
 
-        // Build the actual DTO class
+        // Build the actual DTO class/record
         var classIndent = new string(' ', ParentClasses.Count * 4);
-        sb.AppendLine($"{classIndent}{Accessibility} partial class {ClassName}");
+        sb.AppendLine($"{classIndent}{Accessibility} partial {typeKeyword} {ClassName}");
         sb.AppendLine($"{classIndent}{{");
 
         foreach (var prop in Structure.Properties)
@@ -122,7 +129,7 @@ public class GenerateDtoClassInfo
             }
 
             sb.AppendLine(
-                $"{classIndent}    public required {propertyType} {prop.Name} {{ get; set; }}"
+                $"{classIndent}    public required {propertyType} {prop.Name} {{ {propertyAccessor} }}"
             );
         }
         sb.AppendLine($"{classIndent}}}");
@@ -138,5 +145,19 @@ public class GenerateDtoClassInfo
         }
 
         return sb.ToString();
+    }
+
+    /// <summary>
+    /// Gets the property accessor string for the given accessor type
+    /// </summary>
+    private static string GetPropertyAccessorString(PropertyAccessor accessor)
+    {
+        return accessor switch
+        {
+            PropertyAccessor.GetAndSet => "get; set;",
+            PropertyAccessor.GetAndInit => "get; init;",
+            PropertyAccessor.GetAndInternalSet => "get; internal set;",
+            _ => "get; set;", // Default fallback
+        };
     }
 }

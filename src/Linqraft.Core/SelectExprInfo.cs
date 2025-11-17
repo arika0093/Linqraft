@@ -42,7 +42,10 @@ public abstract record SelectExprInfo
     /// <summary>
     /// Generates DTO class information (including nested DTOs)
     /// </summary>
-    public abstract List<GenerateDtoClassInfo> GenerateDtoClasses();
+    /// <param name="configuration">Optional configuration for code generation</param>
+    public abstract List<GenerateDtoClassInfo> GenerateDtoClasses(
+        LinqraftConfiguration? configuration = null
+    );
 
     /// <summary>
     /// Generates the DTO structure for analysis and unique ID generation

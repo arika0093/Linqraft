@@ -22,6 +22,55 @@ public partial class SelectExprGenerator : IIncrementalGenerator
         // Generate pre-defined source code
         context.RegisterPostInitializationOutput(ctx => ConstSourceCodes.ExportAll(ctx));
 
+        // Read MSBuild properties for configuration
+        var configurationProvider = context.AnalyzerConfigOptionsProvider.Select(
+            static (provider, _) =>
+            {
+                var config = new LinqraftConfiguration();
+
+                // Read LinqraftGlobalNamespace
+                if (
+                    provider.GlobalOptions.TryGetValue(
+                        "build_property.LinqraftGlobalNamespace",
+                        out var globalNamespace
+                    ) && !string.IsNullOrWhiteSpace(globalNamespace)
+                )
+                {
+                    config = config with { GlobalNamespace = globalNamespace };
+                }
+
+                // Read LinqraftRecordGenerate
+                if (
+                    provider.GlobalOptions.TryGetValue(
+                        "build_property.LinqraftRecordGenerate",
+                        out var recordGenerate
+                    )
+                    && bool.TryParse(recordGenerate, out var recordGenerateBool)
+                )
+                {
+                    config = config with { RecordGenerate = recordGenerateBool };
+                }
+
+                // Read LinqraftPropertyAccessor
+                if (
+                    provider.GlobalOptions.TryGetValue(
+                        "build_property.LinqraftPropertyAccessor",
+                        out var propertyAccessor
+                    )
+                    && System.Enum.TryParse<PropertyAccessor>(
+                        propertyAccessor,
+                        ignoreCase: true,
+                        out var propertyAccessorEnum
+                    )
+                )
+                {
+                    config = config with { PropertyAccessor = propertyAccessorEnum };
+                }
+
+                return config;
+            }
+        );
+
         // Provider to detect SelectExpr method invocations
         var invocations = context
             .SyntaxProvider.CreateSyntaxProvider(
@@ -31,11 +80,15 @@ public partial class SelectExprGenerator : IIncrementalGenerator
             .Where(static info => info is not null)
             .Collect();
 
+        // Combine configuration with invocations
+        var invocationsWithConfig = invocations.Combine(configurationProvider);
+
         // Code generation
         context.RegisterSourceOutput(
-            invocations,
-            (spc, infos) =>
+            invocationsWithConfig,
+            (spc, data) =>
             {
+                var (infos, config) = data;
                 var infoWithoutNulls = infos.Where(info => info is not null).Select(info => info!);
 
                 // record locations by SelectExprInfo Id
@@ -54,6 +107,7 @@ public partial class SelectExprGenerator : IIncrementalGenerator
                         {
                             TargetNamespace = g.Key,
                             Exprs = exprs.ToList(),
+                            Configuration = config,
                         };
                     })
                     .ToList();
