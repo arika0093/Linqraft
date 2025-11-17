@@ -48,8 +48,8 @@ public class ByteArrayCaseTest
             .SelectExpr<ByteArrayEntity, ByteArrayDto2>(u => new
             {
                 u.UserId,
-                u.LoginPassword.HashedPassword,
-                u.LoginPassword.Salt,
+                u.LoginPassword?.HashedPassword,
+                u.LoginPassword?.Salt,
             })
             .ToList();
 

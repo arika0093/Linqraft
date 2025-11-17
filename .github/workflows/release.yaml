@@ -31,6 +31,9 @@ jobs:
       - uses: dotnet/nbgv@master
         id: nbgv
 
+      - name: Get Version Semver to output
+        run: echo '::set-output name=semver::${{ steps.nbgv.outputs.SemVer2 }}'
+
       - name: Restore dependencies
         run: dotnet restore --locked-mode
 
@@ -62,13 +65,13 @@ jobs:
         id: create_release
         uses: softprops/action-gh-release@v2
         with:
-          name: ${{ steps.nbgv.outputs.SemVer2 }}
-          tag_name: ${{ steps.nbgv.outputs.SemVer2 }}
+          name: ${{ needs.package-build.outputs.semver }}
+          tag_name: ${{ needs.package-build.outputs.semver }}
           target_commitish: ${{ github.ref }}
           generate_release_notes: true
           files: ./artifacts/*.nupkg
           # if hyphen contains in the tag name, it will be prerelease
-          prerelease: ${{ contains(steps.nbgv.outputs.SemVer2, '-') }}
+          prerelease: ${{ contains(needs.package-build.outputs.semver, '-') }}
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
