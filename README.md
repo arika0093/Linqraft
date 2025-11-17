@@ -5,8 +5,6 @@
 
 Simplifies Select query expressions for EntityFrameworkCore (EF Core) by providing automatic DTO generation and support for null-propagating expressions.
 
-[English](./README.md) | [Japanese](./docs/README.ja.md)
-
 ## Problem
 
 When querying a table that has many related tables, using `Include` / `ThenInclude` quickly makes code hard to read and maintain.
