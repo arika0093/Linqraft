@@ -1,18 +1,19 @@
 using System.Collections.Generic;
 using System.Linq;
 
-namespace Linqraft.Tests;
+namespace Linqraft.Tests.Configuration;
 
 /// <summary>
 /// Test for Issue #41: Property accessor configuration
-/// Tests the LinqraftPropertyAccessor MSBuild property
+/// This test verifies default behavior (get; set;). To test other accessors,
+/// create additional test projects with LinqraftPropertyAccessor set in .csproj
 /// </summary>
 public class Issue41_PropertyAccessorTest
 {
     [Fact]
     public void Test_DefaultPropertyAccessor()
     {
-        // Default behavior for classes: get; set;
+        // Default behavior for classes: get; set; (mutable properties)
         var rst = SampleData
             .AsQueryable()
             .SelectExpr<PropertyAccessorTestClass, PropertyAccessorTestDto>(s => new { s.Id, s.Name })
@@ -23,7 +24,7 @@ public class Issue41_PropertyAccessorTest
         first.Id.ShouldBe(1);
         first.Name.ShouldBe("Alice");
 
-        // Verify property is settable
+        // Verify property is settable (get; set;)
         first.Id = 100;
         first.Id.ShouldBe(100);
         first.Name = "Updated";

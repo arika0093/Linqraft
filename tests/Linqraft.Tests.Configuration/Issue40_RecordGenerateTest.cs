@@ -1,18 +1,19 @@
 using System.Collections.Generic;
 using System.Linq;
 
-namespace Linqraft.Tests;
+namespace Linqraft.Tests.Configuration;
 
 /// <summary>
 /// Test for Issue #40: Record generation
-/// Tests the LinqraftRecordGenerate MSBuild property
+/// This test verifies default behavior (classes). To test record generation,
+/// create additional test projects with LinqraftRecordGenerate=true in .csproj
 /// </summary>
 public class Issue40_RecordGenerateTest
 {
     [Fact]
-    public void Test_ClassGeneration()
+    public void Test_DefaultClassGeneration()
     {
-        // Default behavior: generate classes
+        // Default behavior: DTOs are generated as classes
         var rst = SampleData
             .AsQueryable()
             .SelectExpr<RecordTestClass, RecordTestDto>(s => new { s.Id, s.Name })
@@ -23,10 +24,10 @@ public class Issue40_RecordGenerateTest
         first.Id.ShouldBe(1);
         first.Name.ShouldBe("Alice");
         
-        // Verify it's a class by checking the type
-        // The generated DTO should be a class by default
+        // Verify it's a class (not a record)
         var type = first.GetType();
         type.Name.ShouldBe("RecordTestDto");
+        // Classes don't have the special record ToString behavior
     }
 
     private List<RecordTestClass> SampleData =

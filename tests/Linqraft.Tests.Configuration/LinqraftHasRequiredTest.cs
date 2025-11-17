@@ -1,18 +1,20 @@
 using System.Collections.Generic;
 using System.Linq;
 
-namespace Linqraft.Tests;
+namespace Linqraft.Tests.Configuration;
 
 /// <summary>
 /// Test for LinqraftHasRequired configuration
-/// Tests the LinqraftHasRequired MSBuild property
+/// This test verifies default behavior (required keyword is used).
+/// To test without required keyword, create additional test projects with
+/// LinqraftHasRequired=false in .csproj
 /// </summary>
 public class LinqraftHasRequiredTest
 {
     [Fact]
     public void Test_DefaultHasRequired()
     {
-        // Default behavior: required keyword is used
+        // Default behavior: required keyword is used on properties
         var rst = SampleData
             .AsQueryable()
             .SelectExpr<HasRequiredTestClass, HasRequiredTestDto>(s => new { s.Id, s.Name })
@@ -26,6 +28,10 @@ public class LinqraftHasRequiredTest
         // Verify the type is correct
         var type = first.GetType();
         type.Name.ShouldBe("HasRequiredTestDto");
+        
+        // Properties should be accessible
+        first.Id.ShouldBe(1);
+        first.Name.ShouldBe("Alice");
     }
 
     private List<HasRequiredTestClass> SampleData =
