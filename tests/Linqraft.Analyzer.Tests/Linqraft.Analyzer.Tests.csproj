@@ -1,32 +1,23 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
-
   <PropertyGroup>
-    <TargetFramework>net8.0</TargetFramework>
     <ImplicitUsings>enable</ImplicitUsings>
-    <Nullable>enable</Nullable>
-    <IsPackable>false</IsPackable>
     <PolySharpIncludeGeneratedTypes></PolySharpIncludeGeneratedTypes>
   </PropertyGroup>
-
   <ItemGroup>
-    <PackageReference Include="coverlet.collector" Version="6.0.4">
-      <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
-      <PrivateAssets>all</PrivateAssets>
-    </PackageReference>
-    <PackageReference Include="Microsoft.NET.Test.Sdk" Version="17.14.1" />
     <PackageReference Include="Microsoft.CodeAnalysis.CSharp" Version="4.13.0" />
     <PackageReference Include="Microsoft.CodeAnalysis.CSharp.Workspaces" Version="4.13.0" />
-    <PackageReference Include="Microsoft.CodeAnalysis.CSharp.Analyzer.Testing.XUnit" Version="1.1.2" />
-    <PackageReference Include="Microsoft.CodeAnalysis.CSharp.CodeFix.Testing.XUnit" Version="1.1.2" />
-    <PackageReference Include="xunit" Version="2.9.3" />
-    <PackageReference Include="xunit.runner.visualstudio" Version="3.1.4">
-      <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
-      <PrivateAssets>all</PrivateAssets>
-    </PackageReference>
+    <PackageReference
+      Include="Microsoft.CodeAnalysis.CSharp.Analyzer.Testing.XUnit"
+      Version="1.1.2"
+    />
+    <PackageReference
+      Include="Microsoft.CodeAnalysis.CSharp.CodeFix.Testing.XUnit"
+      Version="1.1.2"
+    />
+    <PackageReference Include="xunit.runner.visualstudio" Version="2.8.2" />
     <!-- Exclude PolySharp to avoid conflicts with Linqraft.Analyzer -->
     <PackageReference Remove="PolySharp" />
   </ItemGroup>
-
   <ItemGroup>
     <ProjectReference Include="..\..\src\Linqraft.Analyzer\Linqraft.Analyzer.csproj">
       <ReferenceOutputAssembly>true</ReferenceOutputAssembly>
@@ -34,11 +25,8 @@
       <UndefineProperties>TargetFramework</UndefineProperties>
     </ProjectReference>
     <ProjectReference Include="..\..\src\Linqraft\Linqraft.csproj" />
-    <Compile Remove="obj\**\*.cs" />
   </ItemGroup>
-
   <ItemGroup>
     <Using Include="Xunit" />
   </ItemGroup>
-
 </Project>
