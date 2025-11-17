@@ -20,10 +20,7 @@ public record SelectExprInfoNamed : SelectExprInfo
     /// <summary>
     /// Generates DTO classes (predefined types don't generate new classes)
     /// </summary>
-    /// <param name="configuration">Optional configuration for code generation</param>
-    public override List<GenerateDtoClassInfo> GenerateDtoClasses(
-        LinqraftConfiguration? configuration = null
-    ) => [];
+    public override List<GenerateDtoClassInfo> GenerateDtoClasses() => [];
 
     /// <summary>
     /// Generates the DTO structure for unique ID generation

@@ -52,7 +52,7 @@ internal class SelectExprGroups
             foreach (var expr in Exprs)
             {
                 var info = expr.Info;
-                var classInfos = info.GenerateDtoClasses(Configuration);
+                var classInfos = info.GenerateDtoClasses();
                 var exprMethods = info.GenerateSelectExprCodes(expr.Location);
                 dtoClassInfos.AddRange(classInfos);
                 selectExprMethods.AddRange(exprMethods);

@@ -42,20 +42,16 @@ public record SelectExprInfoExplicitDto : SelectExprInfo
     /// <summary>
     /// Generates DTO classes (including nested DTOs)
     /// </summary>
-    /// <param name="configuration">Optional configuration for code generation</param>
-    public override List<GenerateDtoClassInfo> GenerateDtoClasses(
-        LinqraftConfiguration? configuration = null
-    )
+    public override List<GenerateDtoClassInfo> GenerateDtoClasses()
     {
         var structure = GenerateDtoStructure();
         var parentClassName = GetParentDtoClassName(structure);
-        return GenerateDtoClasses(structure, parentClassName, configuration);
+        return GenerateDtoClasses(structure, parentClassName);
     }
 
     private List<GenerateDtoClassInfo> GenerateDtoClasses(
         DtoStructure structure,
         string? overrideClassName = null,
-        LinqraftConfiguration? configuration = null,
         List<string>? nestedParentClasses = null,
         List<string>? nestedParentAccessibilities = null
     )
@@ -81,7 +77,6 @@ public record SelectExprInfoExplicitDto : SelectExprInfo
                     GenerateDtoClasses(
                         prop.NestedStructure,
                         overrideClassName: null,
-                        configuration: configuration,
                         nestedParentClasses: currentParentClasses,
                         nestedParentAccessibilities: currentParentAccessibilities
                     )
@@ -90,7 +85,7 @@ public record SelectExprInfoExplicitDto : SelectExprInfo
         }
         // Generate current DTO class
         // Use GetActualDtoNamespace() to handle global namespace correctly
-        var actualNamespace = GetActualDtoNamespace(configuration);
+        var actualNamespace = GetActualDtoNamespace();
         var dtoClassInfo = new GenerateDtoClassInfo
         {
             Accessibility = accessibility,
@@ -145,7 +140,7 @@ public record SelectExprInfoExplicitDto : SelectExprInfo
     /// <summary>
     /// Gets the namespace where DTOs will be placed
     /// </summary>
-    protected override string GetDtoNamespace() => GetActualDtoNamespace(null);
+    protected override string GetDtoNamespace() => GetActualDtoNamespace();
 
     // Get expression type string (for documentation)
     protected override string GetExprTypeString() => "explicit";
@@ -153,7 +148,7 @@ public record SelectExprInfoExplicitDto : SelectExprInfo
     // Get the full name for a nested DTO class (including parent classes)
     protected override string GetNestedDtoFullName(string nestedClassName)
     {
-        var actualNamespace = GetActualDtoNamespace(null);
+        var actualNamespace = GetActualDtoNamespace();
         // Nested DTOs are placed within the same parent classes as the main DTO
         if (ParentClasses.Count > 0)
         {
@@ -166,7 +161,7 @@ public record SelectExprInfoExplicitDto : SelectExprInfo
     /// Gets the actual namespace where the DTO will be placed
     /// This mirrors the logic in SelectExprGroups.TargetNamespace getter
     /// </summary>
-    private string GetActualDtoNamespace(LinqraftConfiguration? configuration)
+    private string GetActualDtoNamespace()
     {
         // Determine if this is a global namespace (same logic as SelectExprGroups.IsGlobalNamespace)
         var sourceNamespace = GetNamespaceString();
@@ -175,7 +170,7 @@ public record SelectExprInfoExplicitDto : SelectExprInfo
 
         if (isGlobalNamespace)
         {
-            return configuration?.GlobalNamespace ?? "Linqraft";
+            return Configuration?.GlobalNamespace ?? "Linqraft";
         }
         return TargetNamespace;
     }
@@ -190,7 +185,7 @@ public record SelectExprInfoExplicitDto : SelectExprInfo
     )
     {
         var sourceTypeFullName = structure.SourceTypeFullName;
-        var actualNamespace = GetActualDtoNamespace(null);
+        var actualNamespace = GetActualDtoNamespace();
 
         // Build full DTO name with parent classes if nested
         var dtoFullName =

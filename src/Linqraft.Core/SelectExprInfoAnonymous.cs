@@ -20,10 +20,7 @@ public record SelectExprInfoAnonymous : SelectExprInfo
     /// <summary>
     /// Generates DTO classes (anonymous types don't generate separate classes)
     /// </summary>
-    /// <param name="configuration">Optional configuration for code generation</param>
-    public override List<GenerateDtoClassInfo> GenerateDtoClasses(
-        LinqraftConfiguration? configuration = null
-    ) => [];
+    public override List<GenerateDtoClassInfo> GenerateDtoClasses() => [];
 
     /// <summary>
     /// Generates the DTO structure for unique ID generation
