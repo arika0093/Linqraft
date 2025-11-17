@@ -62,10 +62,8 @@ public record SelectExprInfoAnonymous : SelectExprInfo
 
         var id = GetUniqueId();
         sb.AppendLine(GenerateMethodHeaderPart("anonymous type", location));
-        sb.AppendLine($"public static {returnTypePrefix}<TResult> SelectExpr_{id}<T, TResult>(");
-        sb.AppendLine($"    this {returnTypePrefix}<T> query,");
-        sb.AppendLine($"    Func<T, TResult> selector");
-        sb.AppendLine($")");
+        sb.AppendLine($"public static {returnTypePrefix}<TResult> SelectExpr_{id}<TIn, TResult>(");
+        sb.AppendLine($"    this {returnTypePrefix}<TIn> query, Func<TIn, TResult> selector)");
         sb.AppendLine($"{{");
         sb.AppendLine(
             $"    var matchedQuery = query as object as {returnTypePrefix}<{sourceTypeFullName}>;"

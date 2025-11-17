@@ -201,8 +201,7 @@ public record SelectExprInfoExplicitDto : SelectExprInfo
             $"public static {returnTypePrefix}<TResult> SelectExpr_{id}<TIn, TResult>(";
         sb.AppendLine(GenerateMethodHeaderPart(dtoName, location));
         sb.AppendLine($"{methodDecl}");
-        sb.AppendLine($"    this {returnTypePrefix}<TIn> query,");
-        sb.AppendLine($"    Func<TIn, object> selector) where TResult : {dtoFullName}");
+        sb.AppendLine($"    this {returnTypePrefix}<TIn> query, Func<TIn, object> selector)");
         sb.AppendLine($"{{");
         sb.AppendLine(
             $"    var matchedQuery = query as object as {returnTypePrefix}<{sourceTypeFullName}>;"
