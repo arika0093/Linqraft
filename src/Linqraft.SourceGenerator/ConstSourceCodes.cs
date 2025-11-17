@@ -50,11 +50,8 @@ internal static class ConstSourceCodes
                 /// <summary>
                 /// Create select expression method, usable nullable operators, and generate instance DTOs.
                 /// </summary>
-                public static IQueryable<TResult> SelectExpr<T, TResult>(
-                    this IQueryable<T> query,
-                    Func<T, TResult> selector
-                )
-                    where T : class
+                public static IQueryable<TResult> SelectExpr<TIn, TResult>(this IQueryable<TIn> query, Func<TIn, TResult> selector)
+                    where TIn : class
                 {
                     throw new NotImplementedException();
                 }
@@ -63,11 +60,8 @@ internal static class ConstSourceCodes
                 /// Create select expression method, usable nullable operators, and generate instance DTOs.
                 /// </summary>
                 [global::System.Runtime.CompilerServices.OverloadResolutionPriority(-1)]
-                public static IQueryable<TResult> SelectExpr<T, TResult>(
-                    this IQueryable<T> query,
-                    Func<T, object> selector
-                )
-                    where T : class
+                public static IQueryable<TResult> SelectExpr<TIn, TResult>(this IQueryable<TIn> query, Func<TIn, object> selector)
+                    where TIn : class
                 {
                     throw new NotImplementedException();
                 }
@@ -76,11 +70,8 @@ internal static class ConstSourceCodes
                 /// Create select expression method, with generate instance DTOs.
                 /// Works with IEnumerable where nullable operators are supported natively.
                 /// </summary>
-                public static IEnumerable<TResult> SelectExpr<T, TResult>(
-                    this IEnumerable<T> query,
-                    Func<T, TResult> selector
-                )
-                    where T : class
+                public static IEnumerable<TResult> SelectExpr<TIn, TResult>(this IEnumerable<TIn> query, Func<TIn, TResult> selector)
+                    where TIn : class
                 {
                     throw new NotImplementedException();
                 }
@@ -90,11 +81,8 @@ internal static class ConstSourceCodes
                 /// Works with IEnumerable where nullable operators are supported natively.
                 /// </summary>
                 [global::System.Runtime.CompilerServices.OverloadResolutionPriority(-1)]
-                public static IEnumerable<TResult> SelectExpr<T, TResult>(
-                    this IEnumerable<T> query,
-                    Func<T, object> selector
-                )
-                    where T : class
+                public static IEnumerable<TResult> SelectExpr<TIn, TResult>(this IEnumerable<TIn> query, Func<TIn, object> selector)
+                    where TIn : class
                 {
                     throw new NotImplementedException();
                 }
