@@ -81,7 +81,8 @@ This project consists of a C# Source Generator and an interceptor mechanism:
 Always perform a clean build to avoid stale generator caches:
 
 ```bash
-dotnet clean && dotnet build
+dotnet clean
+dotnet build --no-incremental
 dotnet test --no-build
 ```
 
