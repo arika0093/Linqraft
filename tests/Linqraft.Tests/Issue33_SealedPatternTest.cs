@@ -5,7 +5,7 @@ using System.Linq;
 
 namespace Linqraft.Tests;
 
-public class Issue33_SealedPatternTest
+public partial class Issue33_SealedPatternTest
 {
     [Fact]
     public void SealedPattern_DisposableDto_ShouldWork()
