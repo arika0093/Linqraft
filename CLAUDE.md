@@ -92,6 +92,8 @@ If you want to inspect the generated sources on disk, follow these steps:
 2. Enable `EmitCompilerGeneratedFiles` in `Linqraft.Tests.csproj`.
 3. The generated code will be emitted to `(test-project)/.generated/**/*.g.cs`.
 
+You can use the `./scripts/clean-test.sh` script as a shortcut.
+
 ## Development guidelines
 
 ### Test-driven development recommended
