@@ -377,6 +377,33 @@ public partial class OrderDto
 - When `LinqraftRecordGenerate` is `false` (classes): uses `GetAndSet`
 - When `LinqraftRecordGenerate` is `true` (records): uses `GetAndInit`
 
+### LinqraftHasRequired
+
+Controls whether the `required` keyword is added to generated DTO properties. By default, `required` is used.
+
+```xml
+<PropertyGroup>
+    <LinqraftHasRequired>false</LinqraftHasRequired>
+</PropertyGroup>
+```
+
+**Example:**
+```csharp
+// With LinqraftHasRequired=true (default):
+public partial class OrderDto
+{
+    public required int Id { get; set; }
+    public required string Name { get; set; }
+}
+
+// With LinqraftHasRequired=false:
+public partial class OrderDto
+{
+    public int Id { get; set; }
+    public string Name { get; set; }
+}
+```
+
 These configurations can be combined as needed:
 
 ```xml
@@ -384,6 +411,7 @@ These configurations can be combined as needed:
     <LinqraftGlobalNamespace>MyApp.Generated</LinqraftGlobalNamespace>
     <LinqraftRecordGenerate>true</LinqraftRecordGenerate>
     <LinqraftPropertyAccessor>GetAndInit</LinqraftPropertyAccessor>
+    <LinqraftHasRequired>true</LinqraftHasRequired>
 </PropertyGroup>
 ```
 

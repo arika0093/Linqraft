@@ -69,6 +69,9 @@ public class GenerateDtoClassInfo
         // Determine the property accessor pattern
         var propertyAccessor = GetPropertyAccessorString(configuration.GetEffectivePropertyAccessor());
 
+        // Determine the required keyword
+        var requiredKeyword = configuration.HasRequired ? "required " : "";
+
         // Build nested parent classes if they exist
         if (ParentClasses.Count > 0)
         {
@@ -129,7 +132,7 @@ public class GenerateDtoClassInfo
             }
 
             sb.AppendLine(
-                $"{classIndent}    public required {propertyType} {prop.Name} {{ {propertyAccessor} }}"
+                $"{classIndent}    public {requiredKeyword}{propertyType} {prop.Name} {{ {propertyAccessor} }}"
             );
         }
         sb.AppendLine($"{classIndent}}}");

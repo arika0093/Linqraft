@@ -24,6 +24,12 @@ public record LinqraftConfiguration
     public PropertyAccessor PropertyAccessor { get; init; } = PropertyAccessor.Default;
 
     /// <summary>
+    /// Whether to use the 'required' keyword on generated DTO properties.
+    /// Default is true
+    /// </summary>
+    public bool HasRequired { get; init; } = true;
+
+    /// <summary>
     /// Gets the actual property accessor to use based on configuration
     /// </summary>
     public PropertyAccessor GetEffectivePropertyAccessor()

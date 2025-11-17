@@ -67,6 +67,18 @@ public partial class SelectExprGenerator : IIncrementalGenerator
                     config = config with { PropertyAccessor = propertyAccessorEnum };
                 }
 
+                // Read LinqraftHasRequired
+                if (
+                    provider.GlobalOptions.TryGetValue(
+                        "build_property.LinqraftHasRequired",
+                        out var hasRequired
+                    )
+                    && bool.TryParse(hasRequired, out var hasRequiredBool)
+                )
+                {
+                    config = config with { HasRequired = hasRequiredBool };
+                }
+
                 return config;
             }
         );
