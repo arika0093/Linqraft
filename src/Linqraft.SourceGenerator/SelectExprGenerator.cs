@@ -24,61 +24,7 @@ public partial class SelectExprGenerator : IIncrementalGenerator
 
         // Read MSBuild properties for configuration
         var configurationProvider = context.AnalyzerConfigOptionsProvider.Select(
-            static (provider, _) =>
-            {
-                var config = new LinqraftConfiguration();
-
-                // Read LinqraftGlobalNamespace
-                if (
-                    provider.GlobalOptions.TryGetValue(
-                        "build_property.LinqraftGlobalNamespace",
-                        out var globalNamespace
-                    ) && !string.IsNullOrWhiteSpace(globalNamespace)
-                )
-                {
-                    config = config with { GlobalNamespace = globalNamespace };
-                }
-
-                // Read LinqraftRecordGenerate
-                if (
-                    provider.GlobalOptions.TryGetValue(
-                        "build_property.LinqraftRecordGenerate",
-                        out var recordGenerate
-                    ) && bool.TryParse(recordGenerate, out var recordGenerateBool)
-                )
-                {
-                    config = config with { RecordGenerate = recordGenerateBool };
-                }
-
-                // Read LinqraftPropertyAccessor
-                if (
-                    provider.GlobalOptions.TryGetValue(
-                        "build_property.LinqraftPropertyAccessor",
-                        out var propertyAccessor
-                    )
-                    && System.Enum.TryParse<PropertyAccessor>(
-                        propertyAccessor,
-                        ignoreCase: true,
-                        out var propertyAccessorEnum
-                    )
-                )
-                {
-                    config = config with { PropertyAccessor = propertyAccessorEnum };
-                }
-
-                // Read LinqraftHasRequired
-                if (
-                    provider.GlobalOptions.TryGetValue(
-                        "build_property.LinqraftHasRequired",
-                        out var hasRequired
-                    ) && bool.TryParse(hasRequired, out var hasRequiredBool)
-                )
-                {
-                    config = config with { HasRequired = hasRequiredBool };
-                }
-
-                return config;
-            }
+            static (provider, _) => LinqraftConfiguration.GenerateFromGlobalOptions(provider)
         );
 
         // Provider to detect SelectExpr method invocations
