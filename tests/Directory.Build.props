@@ -35,6 +35,13 @@
     </ProjectReference>
   </ItemGroup>
   <ItemGroup>
+    <CompilerVisibleProperty Include="RootNamespace" />
+    <CompilerVisibleProperty Include="LinqraftGlobalNamespace" />
+    <CompilerVisibleProperty Include="LinqraftRecordGenerate" />
+    <CompilerVisibleProperty Include="LinqraftPropertyAccessor" />
+    <CompilerVisibleProperty Include="LinqraftHasRequired" />
+  </ItemGroup>
+  <ItemGroup>
     <Using Include="Xunit" />
     <Using Include="Shouldly" />
   </ItemGroup>

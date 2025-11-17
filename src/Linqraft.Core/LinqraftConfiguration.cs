@@ -75,7 +75,7 @@ public record LinqraftConfiguration
         {
             linqraftOptions = linqraftOptions with { GlobalNamespace = globalNamespace! };
         }
-        if (!bool.TryParse(recordGenerateStr, out var recordGenerate))
+        if (bool.TryParse(recordGenerateStr, out var recordGenerate))
         {
             linqraftOptions = linqraftOptions with { RecordGenerate = recordGenerate };
         }
@@ -89,7 +89,7 @@ public record LinqraftConfiguration
         {
             linqraftOptions = linqraftOptions with { PropertyAccessor = propertyAccessorEnum };
         }
-        if (!bool.TryParse(hasRequiredStr, out var hasRequired))
+        if (bool.TryParse(hasRequiredStr, out var hasRequired))
         {
             linqraftOptions = linqraftOptions with { HasRequired = hasRequired };
         }
