@@ -1,4 +1,4 @@
-name: Bug Report
+name: Bug Report(Generated Code)
 description: File a bug report.
 title: "bug: "
 labels: 
@@ -21,7 +21,9 @@ body:
     id: generated-output
     attributes:
       label: Generated Output
-      description: Please provide the generated output you actually got.
+      description: |
+        Please provide the generated output you actually got.
+        You can remove generated code file name and InterceptsLocationAttribute information.
       placeholder: You can see a generated code in Analyzer output window.
       render: csharp
     validations:
@@ -32,7 +34,6 @@ body:
       label: Expected Output
       description: Please provide the output you expected to see.
       placeholder: Generated namespace maybe `MyApp.DTOs`.
-      render: csharp
     validations:
       required: true
   - type: textarea

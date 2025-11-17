@@ -1,10 +1,10 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using Linqraft.Core;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
-using Linqraft.Core;
 
 namespace Linqraft;
 
@@ -12,13 +12,15 @@ internal class SelectExprGroups
 {
     public required List<SelectExprLocations> Exprs { get; set; }
 
+    public required LinqraftConfiguration Configuration { get; set; }
+
     public required string TargetNamespace
     {
         get
         {
             if (IsGlobalNamespace)
             {
-                return "Linqraft";
+                return Configuration.GlobalNamespace;
             }
             return targetNamespace;
         }
@@ -61,7 +63,9 @@ internal class SelectExprGroups
                 .GroupBy(c => c.FullName)
                 .Select(g => g.First())
                 .ToList();
-            var dtoClassesCode = dtoClassesDistinct.Select(c => c.BuildCode()).ToList();
+            var dtoClassesCode = dtoClassesDistinct
+                .Select(c => c.BuildCode(Configuration))
+                .ToList();
 
             // Build final source code
             var sourceCode = BuildSourceCode(dtoClassesCode, selectExprMethods);

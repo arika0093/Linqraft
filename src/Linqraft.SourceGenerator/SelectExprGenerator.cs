@@ -1,10 +1,10 @@
 ﻿using System.Collections.Generic;
 using System.Linq;
 using System.Xml;
+using Linqraft.Core;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
-using Linqraft.Core;
 
 namespace Linqraft;
 
@@ -22,6 +22,11 @@ public partial class SelectExprGenerator : IIncrementalGenerator
         // Generate pre-defined source code
         context.RegisterPostInitializationOutput(ctx => ConstSourceCodes.ExportAll(ctx));
 
+        // Read MSBuild properties for configuration
+        var configurationProvider = context.AnalyzerConfigOptionsProvider.Select(
+            static (provider, _) => LinqraftConfiguration.GenerateFromGlobalOptions(provider)
+        );
+
         // Provider to detect SelectExpr method invocations
         var invocations = context
             .SyntaxProvider.CreateSyntaxProvider(
@@ -31,12 +36,22 @@ public partial class SelectExprGenerator : IIncrementalGenerator
             .Where(static info => info is not null)
             .Collect();
 
+        // Combine configuration with invocations
+        var invocationsWithConfig = invocations.Combine(configurationProvider);
+
         // Code generation
         context.RegisterSourceOutput(
-            invocations,
-            (spc, infos) =>
+            invocationsWithConfig,
+            (spc, data) =>
             {
+                var (infos, config) = data;
                 var infoWithoutNulls = infos.Where(info => info is not null).Select(info => info!);
+
+                // assign configuration to each SelectExprInfo
+                foreach (var info in infoWithoutNulls)
+                {
+                    info.Configuration = config;
+                }
 
                 // record locations by SelectExprInfo Id
                 var exprGroups = infoWithoutNulls
@@ -53,7 +68,8 @@ public partial class SelectExprGenerator : IIncrementalGenerator
                         return new SelectExprGroups
                         {
                             TargetNamespace = g.Key,
-                            Exprs = exprs.ToList(),
+                            Exprs = [.. exprs],
+                            Configuration = config,
                         };
                     })
                     .ToList();

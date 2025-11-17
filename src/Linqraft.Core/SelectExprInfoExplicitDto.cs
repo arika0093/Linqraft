@@ -170,7 +170,7 @@ public record SelectExprInfoExplicitDto : SelectExprInfo
 
         if (isGlobalNamespace)
         {
-            return "Linqraft";
+            return Configuration?.GlobalNamespace ?? "Linqraft";
         }
         return TargetNamespace;
     }

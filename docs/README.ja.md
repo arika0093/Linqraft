@@ -295,6 +295,26 @@ var orders = await dbContext.Orders
 public class OrderDto { /* ... */ }
 ```
 
+## 設定
+
+生成されるコードをカスタマイズするためにいくつかのMSBuildプロパティをサポートしています。
+
+```xml
+<Project>
+  <!-- The values listed are the default values. -->
+  <PropertyGroup>
+    <!-- set namespace if based-class is in global namespace -->
+    <LinqraftGlobalNamespace>Linqraft</LinqraftGlobalNamespace>
+    <!-- generate records instead of classes -->
+    <LinqraftRecordGenerate>false</LinqraftRecordGenerate>
+    <!-- set accessor pattern. GetAndSet, GetAndInit, GetAndInternalSet -->
+    <LinqraftPropertyAccessor>GetAndSet</LinqraftPropertyAccessor>
+    <!-- has required keyword on properties -->
+    <LinqraftHasRequired>true</LinqraftHasRequired>
+  </PropertyGroup>
+</Project>
+```
+
 ## パフォーマンス
 
 <details>

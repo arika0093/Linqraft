@@ -170,6 +170,16 @@ public record DtoStructure(ITypeSymbol SourceType, List<DtoProperty> Properties)
             return identifier.Identifier.Text;
         }
 
+        // Handle conditional access (e.g., s.Child?.Property)
+        if (expression is ConditionalAccessExpressionSyntax conditionalAccess)
+        {
+            // Get the property name from the WhenNotNull part
+            if (conditionalAccess.WhenNotNull is MemberBindingExpressionSyntax memberBinding)
+            {
+                return memberBinding.Name.Identifier.Text;
+            }
+        }
+
         // Do not process other complex expressions
         return null;
     }
