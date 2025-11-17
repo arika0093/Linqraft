@@ -303,116 +303,20 @@ public class OrderDto { /* ... */ }
 
 Linqraft supports several MSBuild properties to customize the generated code:
 
-### LinqraftGlobalNamespace
-
-Specifies the namespace where global namespace DTOs should exist. By default, DTOs for global namespace SelectExpr calls are placed in the `Linqraft` namespace.
-
 ```xml
-<PropertyGroup>
-    <LinqraftGlobalNamespace>MyApp.Generated</LinqraftGlobalNamespace>
-</PropertyGroup>
-```
-
-**Example:**
-```csharp
-// Without namespace declaration (global namespace)
-var result = data
-    .AsQueryable()
-    .SelectExpr<MyClass, MyDto>(x => new { x.Id, x.Name })
-    .ToList();
-
-// Generated DTO will be in MyApp.Generated namespace instead of Linqraft
-```
-
-### LinqraftRecordGenerate
-
-Generates records instead of classes for DTOs. By default, classes are generated.
-
-```xml
-<PropertyGroup>
-    <LinqraftRecordGenerate>true</LinqraftRecordGenerate>
-</PropertyGroup>
-```
-
-**Example:**
-```csharp
-// Generated code will be:
-// public partial record OrderDto { ... }
-// instead of:
-// public partial class OrderDto { ... }
-```
-
-### LinqraftPropertyAccessor
-
-Controls the property accessor pattern for generated DTOs. Available options:
-
-- `GetAndSet` (default for classes): `{ get; set; }` - mutable properties
-- `GetAndInit` (default for records): `{ get; init; }` - init-only properties
-- `GetAndInternalSet`: `{ get; internal set; }` - read-only outside assembly
-
-```xml
-<PropertyGroup>
-    <LinqraftPropertyAccessor>GetAndInit</LinqraftPropertyAccessor>
-</PropertyGroup>
-```
-
-**Example:**
-```csharp
-// With GetAndInit:
-public partial class OrderDto
-{
-    public required int Id { get; init; }
-    public required string Name { get; init; }
-}
-
-// With GetAndInternalSet:
-public partial class OrderDto
-{
-    public required int Id { get; internal set; }
-    public required string Name { get; internal set; }
-}
-```
-
-**Default behavior:**
-- When `LinqraftRecordGenerate` is `false` (classes): uses `GetAndSet`
-- When `LinqraftRecordGenerate` is `true` (records): uses `GetAndInit`
-
-### LinqraftHasRequired
-
-Controls whether the `required` keyword is added to generated DTO properties. By default, `required` is used.
-
-```xml
-<PropertyGroup>
-    <LinqraftHasRequired>false</LinqraftHasRequired>
-</PropertyGroup>
-```
-
-**Example:**
-```csharp
-// With LinqraftHasRequired=true (default):
-public partial class OrderDto
-{
-    public required int Id { get; set; }
-    public required string Name { get; set; }
-}
-
-// With LinqraftHasRequired=false:
-public partial class OrderDto
-{
-    public int Id { get; set; }
-    public string Name { get; set; }
-}
-```
-
-These configurations can be combined as needed:
-
-```xml
-<PropertyGroup>
-    <LinqraftGlobalNamespace>MyApp.Generated</LinqraftGlobalNamespace>
-    <LinqraftRecordGenerate>true</LinqraftRecordGenerate>
-    <LinqraftPropertyAccessor>GetAndInit</LinqraftPropertyAccessor>
+<Project>
+  <!-- The values listed are the default values. -->
+  <PropertyGroup>
+    <!-- set namespace if based-class is in global namespace -->
+    <LinqraftGlobalNamespace>Linqraft</LinqraftGlobalNamespace>
+    <!-- generate records instead of classes -->
+    <LinqraftRecordGenerate>false</LinqraftRecordGenerate>
+    <!-- set accessor pattern. GetAndSet, GetAndInit, GetAndInternalSet -->
+    <LinqraftPropertyAccessor>GetAndSet</LinqraftPropertyAccessor>
+    <!-- has required keyword on properties -->
     <LinqraftHasRequired>true</LinqraftHasRequired>
-</PropertyGroup>
+  </PropertyGroup>
+</Project>
 ```
 
 ## Performance
