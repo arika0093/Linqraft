@@ -7,8 +7,6 @@ Simplifies Select query expressions for EntityFrameworkCore (EF Core) by providi
 For Example:
 
 ```csharp
-using Linqraft;
-
 var orders = await dbContext.Orders
     // Order: input entity type
     // OrderDto: output DTO type (auto-generated)
