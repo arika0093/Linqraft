@@ -1,6 +1,8 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
-    <EmitCompilerGeneratedFiles>true</EmitCompilerGeneratedFiles>
-    <CompilerGeneratedFilesOutputPath>.generated</CompilerGeneratedFilesOutputPath>
+    <LinqraftGlobalNamespace>GlobalGenerated</LinqraftGlobalNamespace>
+    <LinqraftRecordGenerate>true</LinqraftRecordGenerate>
+    <LinqraftPropertyAccessor>GetAndInternalSet</LinqraftPropertyAccessor>
+    <LinqraftHasRequired>false</LinqraftHasRequired>
   </PropertyGroup>
 </Project>
