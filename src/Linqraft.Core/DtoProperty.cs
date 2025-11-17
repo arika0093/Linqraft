@@ -38,10 +38,9 @@ public record DtoProperty(
     )
     {
         var typeInfo = semanticModel.GetTypeInfo(expression);
-        if (typeInfo.Type is null)
+        var propertyType = typeInfo.Type ?? typeInfo.ConvertedType;
+        if (propertyType is null)
             return null;
-
-        var propertyType = typeInfo.Type;
 
         // If targetProperty is provided (for predefined DTOs), use its type information
         NullableAnnotation nullableAnnotation;
