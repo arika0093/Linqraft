@@ -21,7 +21,9 @@ body:
     id: generated-output
     attributes:
       label: Generated Output
-      description: Please provide the generated output you actually got.
+      description: |
+        Please provide the generated output you actually got.
+        You can remove generated code file name and InterceptsLocationAttribute information.
       placeholder: You can see a generated code in Analyzer output window.
       render: csharp
     validations:
