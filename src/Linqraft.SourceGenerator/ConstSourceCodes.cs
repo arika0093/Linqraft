@@ -40,52 +40,49 @@ internal static class ConstSourceCodes
         using System.Collections.Generic;
         using System.Linq;
 
-        namespace Linqraft
+        /// <summary>
+        /// Dummy expression methods for Linqraft to compile correctly.
+        /// </summary>
+        internal static class DummyExpression
         {
             /// <summary>
-            /// Dummy expression methods for Linqraft to compile correctly.
+            /// Create select expression method, usable nullable operators, and generate instance DTOs.
             /// </summary>
-            public static class DummyExpression
+            public static IQueryable<TResult> SelectExpr<TIn, TResult>(this IQueryable<TIn> query, Func<TIn, TResult> selector)
+                where TIn : class
             {
-                /// <summary>
-                /// Create select expression method, usable nullable operators, and generate instance DTOs.
-                /// </summary>
-                public static IQueryable<TResult> SelectExpr<TIn, TResult>(this IQueryable<TIn> query, Func<TIn, TResult> selector)
-                    where TIn : class
-                {
-                    throw new NotImplementedException();
-                }
+                throw new NotImplementedException();
+            }
 
-                /// <summary>
-                /// Create select expression method, usable nullable operators, and generate instance DTOs.
-                /// </summary>
-                [global::System.Runtime.CompilerServices.OverloadResolutionPriority(-1)]
-                public static IQueryable<TResult> SelectExpr<TIn, TResult>(this IQueryable<TIn> query, Func<TIn, object> selector)
-                    where TIn : class
-                {
-                    throw new NotImplementedException();
-                }
+            /// <summary>
+            /// Create select expression method, usable nullable operators, and generate instance DTOs.
+            /// </summary>
+            [global::System.Runtime.CompilerServices.OverloadResolutionPriority(-1)]
+            public static IQueryable<TResult> SelectExpr<TIn, TResult>(this IQueryable<TIn> query, Func<TIn, object> selector)
+                where TIn : class
+            {
+                throw new NotImplementedException();
+            }
 
-                /// <summary>
-                /// Create select expression method, with generate instance DTOs.
-                /// Works with IEnumerable where nullable operators are supported natively.
-                /// </summary>
-                public static IEnumerable<TResult> SelectExpr<TIn, TResult>(this IEnumerable<TIn> query, Func<TIn, TResult> selector)
-                    where TIn : class
-                {
-                    throw new NotImplementedException();
-                }
+            /// <summary>
+            /// Create select expression method, with generate instance DTOs.
+            /// Works with IEnumerable where nullable operators are supported natively.
+            /// </summary>
+            public static IEnumerable<TResult> SelectExpr<TIn, TResult>(this IEnumerable<TIn> query, Func<TIn, TResult> selector)
+                where TIn : class
+            {
+                throw new NotImplementedException();
+            }
 
-                /// <summary>
-                /// Create select expression method, with generate instance DTOs.
-                /// Works with IEnumerable where nullable operators are supported natively.
-                /// </summary>
-                [global::System.Runtime.CompilerServices.OverloadResolutionPriority(-1)]
-                public static IEnumerable<TResult> SelectExpr<TIn, TResult>(this IEnumerable<TIn> query, Func<TIn, object> selector)
-                    where TIn : class
-                {
-                    throw new NotImplementedException();
-                }
+            /// <summary>
+            /// Create select expression method, with generate instance DTOs.
+            /// Works with IEnumerable where nullable operators are supported natively.
+            /// </summary>
+            [global::System.Runtime.CompilerServices.OverloadResolutionPriority(-1)]
+            public static IEnumerable<TResult> SelectExpr<TIn, TResult>(this IEnumerable<TIn> query, Func<TIn, object> selector)
+                where TIn : class
+            {
+                throw new NotImplementedException();
             }
         }
 
