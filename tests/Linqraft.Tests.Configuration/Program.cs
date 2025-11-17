@@ -66,7 +66,33 @@ public class LinqraftConfigurationTest
                 CustomerCountry = s.Customer?.Address?.Country?.Name,
                 CustomerCity = s.Customer?.Address?.City?.Name,
                 Items = s
-                    .OrderItems.Select(oi => new { ProductName = oi.Product?.Name, Quantity = oi.Quantity })
+                    .OrderItems.Select(oi => new
+                    {
+                        ProductName = oi.Product?.Name,
+                        Quantity = oi.Quantity,
+                    })
+                    .ToList(),
+            })
+            .ToList();
+    }
+
+    [Fact]
+    public void Test002()
+    {
+        var results = Orders
+            .AsQueryable()
+            .SelectExpr<Order, OrderDto>(s => new
+            {
+                Id = s.Id,
+                CustomerName = s.Customer?.Name,
+                CustomerCountry = s.Customer?.Address?.Country?.Name,
+                CustomerCity = s.Customer?.Address?.City?.Name,
+                Items = s
+                    .OrderItems.Select(oi => new
+                    {
+                        ProductName = oi.Product?.Name,
+                        Quantity = oi.Quantity,
+                    })
                     .ToList(),
             })
             .ToList();

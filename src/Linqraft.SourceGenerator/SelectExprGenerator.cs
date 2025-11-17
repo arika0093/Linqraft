@@ -1,10 +1,10 @@
 ﻿using System.Collections.Generic;
 using System.Linq;
 using System.Xml;
+using Linqraft.Core;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
-using Linqraft.Core;
 
 namespace Linqraft;
 
@@ -44,8 +44,7 @@ public partial class SelectExprGenerator : IIncrementalGenerator
                     provider.GlobalOptions.TryGetValue(
                         "build_property.LinqraftRecordGenerate",
                         out var recordGenerate
-                    )
-                    && bool.TryParse(recordGenerate, out var recordGenerateBool)
+                    ) && bool.TryParse(recordGenerate, out var recordGenerateBool)
                 )
                 {
                     config = config with { RecordGenerate = recordGenerateBool };
@@ -72,8 +71,7 @@ public partial class SelectExprGenerator : IIncrementalGenerator
                     provider.GlobalOptions.TryGetValue(
                         "build_property.LinqraftHasRequired",
                         out var hasRequired
-                    )
-                    && bool.TryParse(hasRequired, out var hasRequiredBool)
+                    ) && bool.TryParse(hasRequired, out var hasRequiredBool)
                 )
                 {
                     config = config with { HasRequired = hasRequiredBool };

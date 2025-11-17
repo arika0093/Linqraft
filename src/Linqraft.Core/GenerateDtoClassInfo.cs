@@ -67,7 +67,9 @@ public class GenerateDtoClassInfo
         var typeKeyword = configuration.RecordGenerate ? "record" : "class";
 
         // Determine the property accessor pattern
-        var propertyAccessor = GetPropertyAccessorString(configuration.GetEffectivePropertyAccessor());
+        var propertyAccessor = GetPropertyAccessorString(
+            configuration.GetEffectivePropertyAccessor()
+        );
 
         // Determine the required keyword
         var requiredKeyword = configuration.HasRequired ? "required " : "";
