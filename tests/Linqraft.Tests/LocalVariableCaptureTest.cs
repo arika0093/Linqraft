@@ -12,10 +12,10 @@ public class LocalVariableCaptureTest
         var val = 100;
         var converted = TestData
             .AsQueryable()
-            .SelectExpr((x, capture) => new
+            .SelectExpr(x => new
             {
                 x.Id,
-                NewValue = x.Value + capture.val,
+                NewValue = x.Value + val,
             }, new { val })
             .ToList();
 
@@ -33,12 +33,12 @@ public class LocalVariableCaptureTest
         var suffix = " units";
         var converted = TestData
             .AsQueryable()
-            .SelectExpr((x, c) => new
+            .SelectExpr(x => new
             {
                 x.Id,
-                NewValue = x.Value + c.val,
-                DoubledValue = x.Value * c.multiplier,
-                Description = x.Name + c.suffix,
+                NewValue = x.Value + val,
+                DoubledValue = x.Value * multiplier,
+                Description = x.Name + suffix,
             }, new { val, multiplier, suffix })
             .ToList();
 
@@ -56,10 +56,10 @@ public class LocalVariableCaptureTest
         var val = 100;
         var converted = TestData
             .AsQueryable()
-            .SelectExpr<TestItem, ExplicitDto1>((x, capture) => new
+            .SelectExpr<TestItem, ExplicitDto1>(x => new
             {
                 x.Id,
-                NewValue = x.Value + capture.val,
+                NewValue = x.Value + val,
             }, new { val })
             .ToList();
 
@@ -77,11 +77,11 @@ public class LocalVariableCaptureTest
         var multiplier = 2;
         var converted = TestData
             .AsQueryable()
-            .SelectExpr<TestItem, ExplicitDto2>((x, c) => new
+            .SelectExpr<TestItem, ExplicitDto2>(x => new
             {
                 x.Id,
-                NewValue = x.Value + c.val,
-                DoubledValue = x.Value * c.multiplier,
+                NewValue = x.Value + val,
+                DoubledValue = x.Value * multiplier,
             }, new { val, multiplier })
             .ToList();
 
@@ -99,10 +99,10 @@ public class LocalVariableCaptureTest
         var val = 100;
         var converted = TestData
             .AsQueryable()
-            .SelectExpr((x, capture) => new PredefinedDto1
+            .SelectExpr(x => new PredefinedDto1
             {
                 Id = x.Id,
-                NewValue = x.Value + capture.val,
+                NewValue = x.Value + val,
             }, new { val })
             .ToList();
 
@@ -120,11 +120,11 @@ public class LocalVariableCaptureTest
         var multiplier = 2;
         var converted = TestData
             .AsQueryable()
-            .SelectExpr((x, c) => new PredefinedDto2
+            .SelectExpr(x => new PredefinedDto2
             {
                 Id = x.Id,
-                NewValue = x.Value + c.val,
-                DoubledValue = x.Value * c.multiplier,
+                NewValue = x.Value + val,
+                DoubledValue = x.Value * multiplier,
             }, new { val, multiplier })
             .ToList();
 
@@ -141,13 +141,14 @@ public class LocalVariableCaptureTest
     {
         var baseValue = 50;
         var offset = 60;
+        var total = baseValue + offset;
         var converted = TestData
             .AsQueryable()
-            .SelectExpr((x, c) => new
+            .SelectExpr(x => new
             {
                 x.Id,
-                ComputedValue = x.Value + c.total,
-            }, new { total = baseValue + offset })
+                ComputedValue = x.Value + total,
+            }, new { total })
             .ToList();
 
         converted.Count.ShouldBe(2);
@@ -159,15 +160,15 @@ public class LocalVariableCaptureTest
     [Fact]
     public void CapturedVariable_WithDateTime()
     {
-        var currentDate = new DateTime(2024, 1, 1);
+        var date = new DateTime(2024, 1, 1);
         var converted = TestData
             .AsQueryable()
-            .SelectExpr((x, c) => new
+            .SelectExpr(x => new
             {
                 x.Id,
                 x.Name,
-                ProcessedDate = c.date,
-            }, new { date = currentDate })
+                ProcessedDate = date,
+            }, new { date })
             .ToList();
 
         converted.Count.ShouldBe(2);
@@ -181,10 +182,10 @@ public class LocalVariableCaptureTest
         var val = 100;
         var converted = TestData
             .AsEnumerable()
-            .SelectExpr((x, capture) => new
+            .SelectExpr(x => new
             {
                 x.Id,
-                NewValue = x.Value + capture.val,
+                NewValue = x.Value + val,
             }, new { val })
             .ToList();
 

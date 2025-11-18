@@ -114,8 +114,8 @@ public partial class SelectExprGenerator : IIncrementalGenerator
         // Extract lambda parameter name
         var lambdaParamName = GetLambdaParameterName(lambda);
 
-        // Extract capture parameter info (if present)
-        var (captureParamName, captureArgExpr) = GetCaptureInfo(lambda, invocation);
+        // Extract capture argument info (if present)
+        var (captureArgExpr, captureType) = GetCaptureInfo(invocation, context.SemanticModel);
 
         // Check if this is a generic invocation with explicit type arguments
         // SelectExpr<TIn, TResult> or SelectExpr<TIn, TResult, TCapture> form
@@ -125,10 +125,10 @@ public partial class SelectExprGenerator : IIncrementalGenerator
             && genericName.TypeArgumentList.Arguments.Count >= 2
         )
         {
-            // This is the SelectExpr<TIn, TResult> or SelectExpr<TIn, TResult, TCapture> form
+            // This is the SelectExpr<TIn, TResult> form (possibly with capture)
             if (lambda.Body is AnonymousObjectCreationExpressionSyntax anon)
             {
-                return GetExplicitDtoSelectExprInfo(context, anon, genericName, lambdaParamName, captureParamName, captureArgExpr);
+                return GetExplicitDtoSelectExprInfo(context, anon, genericName, lambdaParamName, captureArgExpr, captureType);
             }
         }
 
@@ -137,9 +137,9 @@ public partial class SelectExprGenerator : IIncrementalGenerator
         switch (body)
         {
             case AnonymousObjectCreationExpressionSyntax anon:
-                return GetAnonymousSelectExprInfo(context, anon, lambdaParamName, captureParamName, captureArgExpr);
+                return GetAnonymousSelectExprInfo(context, anon, lambdaParamName, captureArgExpr, captureType);
             case ObjectCreationExpressionSyntax objCreation:
-                return GetNamedSelectExprInfo(context, objCreation, lambdaParamName, captureParamName, captureArgExpr);
+                return GetNamedSelectExprInfo(context, objCreation, lambdaParamName, captureArgExpr, captureType);
             default:
                 return null;
         }
@@ -160,39 +160,31 @@ public partial class SelectExprGenerator : IIncrementalGenerator
         };
     }
 
-    private static (string? captureParamName, ExpressionSyntax? captureArgExpr) GetCaptureInfo(
-        LambdaExpressionSyntax lambda,
-        InvocationExpressionSyntax invocation
+    private static (ExpressionSyntax? captureArgExpr, ITypeSymbol? captureType) GetCaptureInfo(
+        InvocationExpressionSyntax invocation,
+        SemanticModel semanticModel
     )
     {
-        // Check if lambda has 2 parameters (second one is the capture parameter)
-        string? captureParamName = null;
-        if (lambda is ParenthesizedLambdaExpressionSyntax parenLambda
-            && parenLambda.ParameterList.Parameters.Count == 2)
-        {
-            captureParamName = parenLambda.ParameterList.Parameters[1].Identifier.Text;
-        }
-        else
-        {
-            return (null, null);
-        }
-
         // Check if invocation has 2 arguments (second one is the capture argument)
         ExpressionSyntax? captureArgExpr = null;
+        ITypeSymbol? captureType = null;
         if (invocation.ArgumentList.Arguments.Count == 2)
         {
             captureArgExpr = invocation.ArgumentList.Arguments[1].Expression;
+            // Get the type of the capture argument
+            var typeInfo = semanticModel.GetTypeInfo(captureArgExpr);
+            captureType = typeInfo.Type ?? typeInfo.ConvertedType;
         }
 
-        return (captureParamName, captureArgExpr);
+        return (captureArgExpr, captureType);
     }
 
     private static SelectExprInfoAnonymous? GetAnonymousSelectExprInfo(
         GeneratorSyntaxContext context,
         AnonymousObjectCreationExpressionSyntax anonymousObj,
         string lambdaParameterName,
-        string? captureParameterName,
-        ExpressionSyntax? captureArgumentExpression
+        ExpressionSyntax? captureArgumentExpression,
+        ITypeSymbol? captureArgumentType
     )
     {
         var invocation = (InvocationExpressionSyntax)context.Node;
@@ -227,8 +219,9 @@ public partial class SelectExprGenerator : IIncrementalGenerator
             Invocation = invocation,
             LambdaParameterName = lambdaParameterName,
             CallerNamespace = callerNamespace,
-            CaptureParameterName = captureParameterName,
+            CaptureParameterName = null, // No longer used - capture is via closure
             CaptureArgumentExpression = captureArgumentExpression,
+            CaptureArgumentType = captureArgumentType,
         };
     }
 
@@ -236,8 +229,8 @@ public partial class SelectExprGenerator : IIncrementalGenerator
         GeneratorSyntaxContext context,
         ObjectCreationExpressionSyntax obj,
         string lambdaParameterName,
-        string? captureParameterName,
-        ExpressionSyntax? captureArgumentExpression
+        ExpressionSyntax? captureArgumentExpression,
+        ITypeSymbol? captureArgumentType
     )
     {
         var invocation = (InvocationExpressionSyntax)context.Node;
@@ -272,8 +265,9 @@ public partial class SelectExprGenerator : IIncrementalGenerator
             Invocation = invocation,
             LambdaParameterName = lambdaParameterName,
             CallerNamespace = callerNamespace,
-            CaptureParameterName = captureParameterName,
+            CaptureParameterName = null, // No longer used - capture is via closure
             CaptureArgumentExpression = captureArgumentExpression,
+            CaptureArgumentType = captureArgumentType,
         };
     }
 
@@ -282,8 +276,8 @@ public partial class SelectExprGenerator : IIncrementalGenerator
         AnonymousObjectCreationExpressionSyntax anonymousObj,
         GenericNameSyntax genericName,
         string lambdaParameterName,
-        string? captureParameterName,
-        ExpressionSyntax? captureArgumentExpression
+        ExpressionSyntax? captureArgumentExpression,
+        ITypeSymbol? captureArgumentType
     )
     {
         var invocation = (InvocationExpressionSyntax)context.Node;
@@ -344,8 +338,9 @@ public partial class SelectExprGenerator : IIncrementalGenerator
             CallerNamespace = targetNamespace,
             ParentClasses = parentClasses,
             TResultType = tResultType,
-            CaptureParameterName = captureParameterName,
+            CaptureParameterName = null, // No longer used - capture is via closure
             CaptureArgumentExpression = captureArgumentExpression,
+            CaptureArgumentType = captureArgumentType,
         };
     }
 }

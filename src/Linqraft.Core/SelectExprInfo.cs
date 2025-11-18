@@ -57,6 +57,12 @@ public abstract record SelectExprInfo
     public ExpressionSyntax? CaptureArgumentExpression { get; init; }
 
     /// <summary>
+    /// The type symbol of the capture argument
+    /// Null if no capture parameter is used
+    /// </summary>
+    public ITypeSymbol? CaptureArgumentType { get; init; }
+
+    /// <summary>
     /// Generates DTO class information (including nested DTOs)
     /// </summary>
     public abstract List<GenerateDtoClassInfo> GenerateDtoClasses();
