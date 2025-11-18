@@ -175,16 +175,11 @@ public record DtoStructure(ITypeSymbol SourceType, List<DtoProperty> Properties)
                     .FirstOrDefault();
             }
 
-            // Get accessibility for this property if available
-            string? accessibility = null;
-            propertyAccessibilities?.TryGetValue(propertyName, out accessibility);
-
             var property = DtoProperty.AnalyzeExpression(
                 propertyName,
                 expression,
                 semanticModel,
-                targetProperty,
-                accessibility: accessibility
+                targetProperty
             );
             if (property is not null)
             {

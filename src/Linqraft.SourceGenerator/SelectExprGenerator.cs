@@ -128,7 +128,14 @@ public partial class SelectExprGenerator : IIncrementalGenerator
             // This is the SelectExpr<TIn, TResult> form (possibly with capture)
             if (lambda.Body is AnonymousObjectCreationExpressionSyntax anon)
             {
-                return GetExplicitDtoSelectExprInfo(context, anon, genericName, lambdaParamName, captureArgExpr, captureType);
+                return GetExplicitDtoSelectExprInfo(
+                    context,
+                    anon,
+                    genericName,
+                    lambdaParamName,
+                    captureArgExpr,
+                    captureType
+                );
             }
         }
 
@@ -137,9 +144,21 @@ public partial class SelectExprGenerator : IIncrementalGenerator
         switch (body)
         {
             case AnonymousObjectCreationExpressionSyntax anon:
-                return GetAnonymousSelectExprInfo(context, anon, lambdaParamName, captureArgExpr, captureType);
+                return GetAnonymousSelectExprInfo(
+                    context,
+                    anon,
+                    lambdaParamName,
+                    captureArgExpr,
+                    captureType
+                );
             case ObjectCreationExpressionSyntax objCreation:
-                return GetNamedSelectExprInfo(context, objCreation, lambdaParamName, captureArgExpr, captureType);
+                return GetNamedSelectExprInfo(
+                    context,
+                    objCreation,
+                    lambdaParamName,
+                    captureArgExpr,
+                    captureType
+                );
             default:
                 return null;
         }
