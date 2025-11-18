@@ -16,7 +16,7 @@ jobs:
   package-build:
     runs-on: ubuntu-latest
     outputs:
-      VERSION: ${{ steps.version.outputs.VERSION }}
+      version: ${{ steps.version.outputs.semver }}
     steps:
       - name: Checkout repository
         uses: actions/checkout@v5
@@ -35,7 +35,7 @@ jobs:
 
       - name: export version to env
         id: version
-        run: echo "VERSION=${{ steps.nbgv.outputs.SemVer2 }}" >> $GITHUB_ENV
+        run: echo "semver=${{ steps.nbgv.outputs.SemVer2 }}" >> "$GITHUB_OUTPUT"
 
       - name: Restore dependencies
         run: dotnet restore --locked-mode
@@ -67,13 +67,13 @@ jobs:
         id: create_release
         uses: softprops/action-gh-release@v2
         with:
-          name: ${{ needs.package-build.outputs.VERSION }}
-          tag_name: ${{ needs.package-build.outputs.VERSION }}
+          name: ${{ needs.package-build.outputs.version }}
+          tag_name: ${{ needs.package-build.outputs.version }}
           target_commitish: ${{ github.ref }}
           generate_release_notes: true
           files: ./artifacts/*.nupkg
           # if hyphen contains in the tag name, it will be prerelease
-          prerelease: ${{ contains(needs.package-build.outputs.VERSION, '-') }}
+          prerelease: ${{ contains(needs.package-build.outputs.version, '-') }}
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
