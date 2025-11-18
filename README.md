@@ -255,16 +255,6 @@ var orders = await dbContext.Orders
     .ToListAsync();
 ```
 
-You can extend the generated DTO classes as needed since they are output as `partial` classes.
-
-```csharp
-// extend generated DTO class if needed
-public partial class OrderDto
-{
-    public string GetDisplayName() => $"{Id}: {CustomerName}";
-}
-```
-
 Similarly, you can use only the auto-generation feature by specifying `IEnumerable` types.
 
 ```csharp
@@ -300,8 +290,8 @@ var orders = await dbContext.Orders
 public class OrderDto { /* ... */ }
 ```
 
-## Configuration
-
+## Customize Auto-Generated Code
+### Global Properties
 Linqraft supports several MSBuild properties to customize the generated code:
 
 ```xml
@@ -319,6 +309,45 @@ Linqraft supports several MSBuild properties to customize the generated code:
     <LinqraftHasRequired>true</LinqraftHasRequired>
   </PropertyGroup>
 </Project>
+```
+
+### Partial Classes
+You can extend the generated DTO classes as needed since they are output as `partial` classes.
+
+```csharp
+// extend generated DTO class if needed
+public partial class OrderDto
+{
+    public string GetDisplayName() => $"{Id}: {CustomerName}";
+}
+```
+
+### Property Accessibility Control
+If you want to make specific properties of the auto-generated DTO class `internal`, you can do so by predefining the properties as partial classes.
+
+```csharp
+public partial class ParentDto
+{
+    // This property will not be generated, so you can control its accessibility
+    internal string InternalData { get; set; }
+}
+
+var orders = await dbContext.Orders
+    .SelectExpr(o => new OrderDto
+    {
+        Id = o.Id,
+        PublicComment = o.Comment,
+        InternalData = o.InternalField,
+    })
+    .ToListAsync();
+
+// Generated code will look like this:
+public partial class ParentDto
+{
+    public required int Id { get; set; }
+    public required string PublicComment { get; set; }
+    // InternalData is not generated 
+}
 ```
 
 ## Performance

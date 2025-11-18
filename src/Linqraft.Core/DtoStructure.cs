@@ -119,11 +119,13 @@ public record DtoStructure(ITypeSymbol SourceType, List<DtoProperty> Properties)
     /// <param name="anonymousObj">The anonymous object creation expression to analyze</param>
     /// <param name="semanticModel">The semantic model for type resolution</param>
     /// <param name="sourceType">The source type being selected from</param>
+    /// <param name="propertyAccessibilities">Optional dictionary mapping property names to accessibility modifiers</param>
     /// <returns>A DtoStructure representing the anonymous type</returns>
     public static DtoStructure? AnalyzeAnonymousType(
         AnonymousObjectCreationExpressionSyntax anonymousObj,
         SemanticModel semanticModel,
-        ITypeSymbol sourceType
+        ITypeSymbol sourceType,
+        Dictionary<string, string>? propertyAccessibilities = null
     )
     {
         var properties = new List<DtoProperty>();
@@ -147,7 +149,16 @@ public record DtoStructure(ITypeSymbol SourceType, List<DtoProperty> Properties)
                 }
                 propertyName = name;
             }
-            var property = DtoProperty.AnalyzeExpression(propertyName, expression, semanticModel);
+            // Get accessibility for this property if available
+            string? accessibility = null;
+            propertyAccessibilities?.TryGetValue(propertyName, out accessibility);
+            
+            var property = DtoProperty.AnalyzeExpression(
+                propertyName,
+                expression,
+                semanticModel,
+                accessibility: accessibility
+            );
             if (property is not null)
             {
                 properties.Add(property);
