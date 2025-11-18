@@ -422,13 +422,13 @@ Intel Core i7-14700F 2.10GHz, 1 CPU, 28 logical and 20 physical cores
   DefaultJob : .NET 10.0.0 (10.0.0, 10.0.25.52411), X64 RyuJIT x86-64-v3
 
 
-| Method                        | Mean     | Error   | StdDev  | Ratio | Rank | Gen0    | Gen1   | Allocated | Alloc Ratio |
-|------------------------------ |---------:|--------:|--------:|------:|-----:|--------:|-------:|----------:|------------:|
-| 'Linqraft Auto-Generated DTO' | 891.1 us | 3.45 us | 3.23 us |  0.91 |    1 | 13.6719 | 1.9531 | 246.06 KB |        1.00 |
-| 'Linqraft Manual DTO'         | 893.8 us | 2.61 us | 2.18 us |  0.91 |    1 | 13.6719 | 1.9531 | 245.59 KB |        0.99 |
-| 'Traditional Manual DTO'      | 913.5 us | 6.94 us | 6.49 us |  0.93 |    1 | 13.6719 | 1.9531 | 245.69 KB |        0.99 |
-| 'Linqraft Anonymous'          | 979.2 us | 4.84 us | 4.53 us |  1.00 |    2 | 13.6719 | 1.9531 |  245.2 KB |        0.99 |
-| 'Traditional Anonymous'       | 981.4 us | 5.68 us | 5.32 us |  1.00 |    2 | 13.6719 | 1.9531 | 247.12 KB |        1.00 |
+| Method                        | Mean       | Error    | StdDev   | Median     | Ratio | RatioSD | Rank | Gen0    | Gen1   | Allocated | Alloc Ratio |
+|------------------------------ |-----------:|---------:|---------:|-----------:|------:|--------:|-----:|--------:|-------:|----------:|------------:|
+| 'Linqraft Auto-Generated DTO' |   927.3 us | 18.45 us | 32.80 us |   920.6 us |  0.91 |    0.05 |    1 | 13.6719 | 1.9531 | 245.75 KB |        1.00 |
+| 'Traditional Manual DTO'      |   930.8 us | 18.58 us | 45.57 us |   912.2 us |  0.92 |    0.06 |    1 | 13.6719 | 1.9531 | 245.45 KB |        0.99 |
+| 'Linqraft Manual DTO'         |   944.1 us | 18.77 us | 29.77 us |   934.3 us |  0.93 |    0.05 |    1 | 13.6719 | 1.9531 | 245.63 KB |        1.00 |
+| 'Linqraft Anonymous'          |   999.4 us | 19.41 us | 30.22 us |   996.7 us |  0.98 |    0.05 |    1 | 13.6719 | 1.9531 | 245.61 KB |        1.00 |
+| 'Traditional Anonymous'       | 1,018.5 us | 20.37 us | 45.13 us | 1,010.8 us |  1.00 |    0.06 |    1 | 13.6719 | 1.9531 | 246.78 KB |        1.00 |
 ```
 
 </details>
