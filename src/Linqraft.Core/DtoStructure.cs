@@ -128,6 +128,17 @@ public record DtoStructure(ITypeSymbol SourceType, List<DtoProperty> Properties)
         Dictionary<string, string>? propertyAccessibilities = null
     )
     {
+        // Get the type info of the anonymous object itself
+        // This will have complete type information including for expressions with capture parameters
+        var anonymousTypeInfo = semanticModel.GetTypeInfo(anonymousObj);
+        var anonymousType = anonymousTypeInfo.Type ?? anonymousTypeInfo.ConvertedType;
+
+        // Build a dictionary of property names to their types from the anonymous type
+        var anonymousProperties = anonymousType
+            ?.GetMembers()
+            .OfType<IPropertySymbol>()
+            .ToDictionary(p => p.Name, p => p.Type);
+
         var properties = new List<DtoProperty>();
         foreach (var initializer in anonymousObj.Initializers)
         {
@@ -149,14 +160,30 @@ public record DtoStructure(ITypeSymbol SourceType, List<DtoProperty> Properties)
                 }
                 propertyName = name;
             }
+
+            // Try to get the property type from the anonymous type first
+            IPropertySymbol? targetProperty = null;
+            if (
+                anonymousProperties != null
+                && anonymousProperties.TryGetValue(propertyName, out var propType)
+            )
+            {
+                // Create a temporary property symbol for type information
+                targetProperty = anonymousType
+                    ?.GetMembers(propertyName)
+                    .OfType<IPropertySymbol>()
+                    .FirstOrDefault();
+            }
+
             // Get accessibility for this property if available
             string? accessibility = null;
             propertyAccessibilities?.TryGetValue(propertyName, out accessibility);
-            
+
             var property = DtoProperty.AnalyzeExpression(
                 propertyName,
                 expression,
                 semanticModel,
+                targetProperty,
                 accessibility: accessibility
             );
             if (property is not null)

@@ -68,15 +68,16 @@ public record SelectExprInfoAnonymous : SelectExprInfo
 
         if (hasCapture)
         {
-            // Generate method with capture parameter
+            // Generate method with capture parameter using dynamic to access properties
             sb.AppendLine($"public static {returnTypePrefix}<TResult> SelectExpr_{id}<TIn, TResult, TCapture>(");
-            sb.AppendLine($"    this {returnTypePrefix}<TIn> query, Func<TIn, TCapture, TResult> selector, TCapture capture)");
+            sb.AppendLine($"    this {returnTypePrefix}<TIn> query, Func<TIn, TCapture, TResult> selector, TCapture captureParam)");
             sb.AppendLine($"{{");
             sb.AppendLine(
                 $"    var matchedQuery = query as object as {returnTypePrefix}<{sourceTypeFullName}>;"
             );
             
-            // Use the capture parameter directly without redefining it
+            // Cast the capture parameter to dynamic so property access works
+            sb.AppendLine($"    dynamic {CaptureParameterName} = captureParam;");
             sb.AppendLine($"    var converted = matchedQuery.Select({LambdaParameterName} => new");
         }
         else
