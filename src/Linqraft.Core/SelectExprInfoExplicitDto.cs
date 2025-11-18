@@ -66,6 +66,18 @@ public record SelectExprInfoExplicitDto : SelectExprInfo
         var currentParentAccessibilities =
             nestedParentAccessibilities ?? GetParentAccessibilities();
 
+        // Get existing properties from the TResultType (only for the main DTO, not nested)
+        var existingProperties = new HashSet<string>();
+        if (overrideClassName == ExplicitDtoName)
+        {
+            // This is the main DTO, check for existing properties
+            var properties = TResultType.GetMembers().OfType<IPropertySymbol>();
+            foreach (var property in properties)
+            {
+                existingProperties.Add(property.Name);
+            }
+        }
+
         // Nested DTOs are placed at the same level as the current DTO, not inside it
         // So they share the same parent classes
         foreach (var prop in structure.Properties)
@@ -95,6 +107,7 @@ public record SelectExprInfoExplicitDto : SelectExprInfo
             NestedClasses = [.. result],
             ParentClasses = currentParentClasses,
             ParentAccessibilities = currentParentAccessibilities,
+            ExistingProperties = existingProperties,
         };
         result.Add(dtoClassInfo);
         return result;
@@ -123,7 +136,49 @@ public record SelectExprInfoExplicitDto : SelectExprInfo
     /// </summary>
     protected override DtoStructure GenerateDtoStructure()
     {
-        return DtoStructure.AnalyzeAnonymousType(AnonymousObject, SemanticModel, SourceType)!;
+        var propertyAccessibilities = ExtractPropertyAccessibilities();
+        return DtoStructure.AnalyzeAnonymousType(
+            AnonymousObject,
+            SemanticModel,
+            SourceType,
+            propertyAccessibilities
+        )!;
+    }
+
+    /// <summary>
+    /// Extracts property accessibilities from the TResult type (if it exists as a partial class)
+    /// </summary>
+    private Dictionary<string, string> ExtractPropertyAccessibilities()
+    {
+        var accessibilities = new Dictionary<string, string>();
+        
+        // Get all properties from the TResultType
+        var properties = TResultType.GetMembers().OfType<IPropertySymbol>();
+        
+        foreach (var property in properties)
+        {
+            var accessibility = GetAccessibilityString(property);
+            accessibilities[property.Name] = accessibility;
+        }
+        
+        return accessibilities;
+    }
+
+    /// <summary>
+    /// Gets the accessibility string from a property symbol
+    /// </summary>
+    private string GetAccessibilityString(IPropertySymbol propertySymbol)
+    {
+        return propertySymbol.DeclaredAccessibility switch
+        {
+            Accessibility.Public => "public",
+            Accessibility.Internal => "internal",
+            Accessibility.Private => "private",
+            Accessibility.Protected => "protected",
+            Accessibility.ProtectedAndInternal => "private protected",
+            Accessibility.ProtectedOrInternal => "protected internal",
+            _ => "public", // Default to public
+        };
     }
 
     /// <summary>
