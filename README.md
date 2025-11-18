@@ -198,27 +198,19 @@ Since the generated DTO classes are treated as regular classes, they can be safe
 see: [examples/Linqraft.ApiSample](./examples/Linqraft.ApiSample) for details.
 
 ```csharp
-[Route("api/[controller]")]
 [ApiController]
 public partial class OrderController : ControllerBase
 {
     [HttpGet]
     public ActionResult<List<OrderDto>> GetOrdersAsync()
     {
-        return SampleData
-            .GetOrdersFromOtherSource()
+        return SampleData.GetOrdersFromOtherSource()
             .AsQueryable()
             .SelectExpr<Order, OrderDto>(s => new
             {
                 Id = s.Id,
                 CustomerName = s.Customer?.Name,
-                CustomerCountry = s.Customer?.Address?.Country?.Name,
-                CustomerCity = s.Customer?.Address?.City?.Name,
-                Items = s.OrderItems.Select(oi => new
-                {
-                    ProductName = oi.Product?.Name,
-                    Quantity = oi.Quantity,
-                }),
+                // ...
             })
             .ToList();
     }
