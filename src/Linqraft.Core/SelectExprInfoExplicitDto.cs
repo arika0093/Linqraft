@@ -147,7 +147,6 @@ public record SelectExprInfoExplicitDto : SelectExprInfo
 
     /// <summary>
     /// Extracts property accessibilities from the TResult type (if it exists as a partial class)
-    /// Checks both the LinqraftAccessibility attribute and the actual property accessibility
     /// </summary>
     private Dictionary<string, string> ExtractPropertyAccessibilities()
     {
@@ -158,50 +157,11 @@ public record SelectExprInfoExplicitDto : SelectExprInfo
         
         foreach (var property in properties)
         {
-            // First, check if the property has a LinqraftAccessibility attribute
-            var attributeAccessibility = GetAccessibilityFromAttribute(property);
-            
-            if (attributeAccessibility != null)
-            {
-                // Use the attribute value if present
-                accessibilities[property.Name] = attributeAccessibility;
-            }
-            else
-            {
-                // Fall back to the actual property accessibility
-                var accessibility = GetAccessibilityString(property);
-                accessibilities[property.Name] = accessibility;
-            }
+            var accessibility = GetAccessibilityString(property);
+            accessibilities[property.Name] = accessibility;
         }
         
         return accessibilities;
-    }
-
-    /// <summary>
-    /// Extracts the accessibility from the LinqraftAccessibility attribute if present
-    /// </summary>
-    private string? GetAccessibilityFromAttribute(IPropertySymbol propertySymbol)
-    {
-        // Look for the LinqraftAccessibilityAttribute
-        var attribute = propertySymbol.GetAttributes()
-            .FirstOrDefault(attr => 
-                attr.AttributeClass?.Name == "LinqraftAccessibilityAttribute" ||
-                attr.AttributeClass?.ToDisplayString() == "Linqraft.LinqraftAccessibilityAttribute");
-        
-        if (attribute == null)
-            return null;
-        
-        // Get the accessibility value from the attribute constructor argument
-        if (attribute.ConstructorArguments.Length > 0)
-        {
-            var accessibilityValue = attribute.ConstructorArguments[0].Value?.ToString();
-            if (!string.IsNullOrEmpty(accessibilityValue))
-            {
-                return accessibilityValue;
-            }
-        }
-        
-        return null;
     }
 
     /// <summary>

@@ -4,14 +4,7 @@
 
 This feature allows you to control the accessibility of individual properties in auto-generated DTOs when using the **Explicit Pattern** (`SelectExpr<TIn, TResult>`).
 
-There are **two approaches** you can use:
-
-1. **Approach A: Predefined Properties** - Define partial classes with the desired accessibility
-2. **Approach B: Attribute-Based** - Use the `[LinqraftAccessibility]` attribute to mark accessibility
-
-## Approach A: Predefined Properties
-
-### How It Works
+## How It Works
 
 When you define a partial class for your DTO with properties having specific accessibility modifiers (e.g., `internal`, `protected internal`), the source generator will:
 
@@ -21,7 +14,11 @@ When you define a partial class for your DTO with properties having specific acc
 4. Only generate properties that are NOT predefined
 5. Respect the `required` keyword visibility constraints
 
-### Example
+## Example
+
+### Basic Usage
+
+Define a partial class with the properties you want to control:
 
 ```csharp
 // Your partial class with controlled accessibility
@@ -51,110 +48,14 @@ public partial class SampleDto
 }
 ```
 
-## Approach B: Attribute-Based
+### Extending with Methods
 
-### How It Works
-
-Use the `[LinqraftAccessibility]` attribute to mark properties with their desired accessibility level. This approach is useful when:
-- You want to keep all properties in the generated code visible in the DTO definition
-- You prefer explicit marking over relying on actual accessibility modifiers
-- You want to override the default `public` accessibility without creating a separate partial class
-
-### Example
-
-```csharp
-using Linqraft;
-
-// DTO with attribute-marked accessibility
-public partial class SampleDto
-{
-    [LinqraftAccessibility("internal")]
-    public int Id { get; set; }
-    
-    [LinqraftAccessibility("internal")]
-    public string InternalProperty { get; set; } = "";
-    
-    // No attribute means it will use the actual accessibility (public in this case)
-    public string PublicProperty { get; set; } = "";
-}
-
-// Use the DTO in a query
-var result = data.AsQueryable()
-    .SelectExpr<Sample, SampleDto>(s => new
-    {
-        s.Id,
-        InternalProperty = s.InternalProperty,
-        PublicProperty = s.PublicProperty,
-    })
-    .ToList();
-```
-
-The generator will create:
-
-```csharp
-// Generated partial class
-public partial class SampleDto
-{
-    // Id and InternalProperty are NOT generated (already defined with attribute)
-    public required string PublicProperty { get; set; }
-}
-```
-
-### Valid Accessibility Values
-
-The `[LinqraftAccessibility]` attribute accepts these values:
-- `"public"`
-- `"internal"`
-- `"protected"`
-- `"protected internal"`
-- `"private protected"`
-- `"private"`
-
-### Attribute Priority
-
-When both an attribute and actual accessibility are present:
-1. The `[LinqraftAccessibility]` attribute takes precedence
-2. If no attribute is present, the actual property accessibility is used
-3. Properties with the attribute are excluded from generation (like predefined properties)
-
-## Comparison of Approaches
-
-| Feature | Approach A (Predefined) | Approach B (Attribute) |
-|---------|------------------------|------------------------|
-| **Simplicity** | Very simple - just use C# modifiers | Requires attribute, slightly more verbose |
-| **Visibility** | Properties are hidden from generated code | Properties are visible but marked |
-| **Override public** | Requires separate definition | Can mark public property as internal |
-| **IDE Support** | Standard C# | IntelliSense shows attribute |
-| **Type Safety** | Compile-time checked | String-based (runtime checked) |
-| **Best For** | Most scenarios | When you want explicit marking |
-
-## Combined Usage
-
-You can mix both approaches in the same DTO:
-
-```csharp
-public partial class MixedDto
-{
-    // Approach B: Use attribute
-    [LinqraftAccessibility("internal")]
-    public int AttributeMarked { get; set; }
-    
-    // Approach A: Use actual accessibility
-    internal string ActuallyInternal { get; set; } = "";
-}
-```
-
-Both properties will be treated as `internal` and excluded from generation.
-
-## Extending with Methods
-
-Both approaches allow you to extend the DTO with methods:
+You can add methods to your partial class that use the internal properties:
 
 ```csharp
 public partial class SampleDto
 {
-    [LinqraftAccessibility("internal")]
-    public string InternalProperty { get; set; } = "";
+    internal string InternalProperty { get; set; } = "";
     
     // Add methods that access internal properties
     public bool HasInternalValue()
