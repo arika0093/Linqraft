@@ -228,7 +228,7 @@ public partial class OrderController : ControllerBase
 This library requirements **C# 13.0 or later**. .NET 9 or later is used C# 13.0 natively.
 
 internally it uses the following features:
-* [`required` members](https://learn.microsoft.com/en-us/dotnet/csharp/language-reference/keywords/required): C# 11 feature
+* [required members](https://learn.microsoft.com/en-us/dotnet/csharp/language-reference/keywords/required): C# 11 feature
 * [C# interceptors](https://learn.microsoft.com/en-us/dotnet/csharp/whats-new/csharp-12#interceptors): C# 12 feature
 * [Overload Resolution Priority](https://learn.microsoft.com/en-us/dotnet/csharp/language-reference/proposals/csharp-13.0/overload-resolution-priority): C# 13 feature
 
