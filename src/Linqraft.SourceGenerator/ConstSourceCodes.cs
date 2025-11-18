@@ -84,6 +84,46 @@ internal static class ConstSourceCodes
             {
                 throw new NotImplementedException();
             }
+
+            /// <summary>
+            /// Create select expression method with captured local variables, usable nullable operators, and generate instance DTOs.
+            /// </summary>
+            public static IQueryable<TResult> SelectExpr<TIn, TResult, TCapture>(this IQueryable<TIn> query, Func<TIn, TCapture, TResult> selector, TCapture capture)
+                where TIn : class
+            {
+                throw new NotImplementedException();
+            }
+
+            /// <summary>
+            /// Create select expression method with captured local variables, usable nullable operators, and generate instance DTOs.
+            /// </summary>
+            [global::System.Runtime.CompilerServices.OverloadResolutionPriority(-1)]
+            public static IQueryable<TResult> SelectExpr<TIn, TResult, TCapture>(this IQueryable<TIn> query, Func<TIn, TCapture, object> selector, TCapture capture)
+                where TIn : class
+            {
+                throw new NotImplementedException();
+            }
+
+            /// <summary>
+            /// Create select expression method with captured local variables, with generate instance DTOs.
+            /// Works with IEnumerable where nullable operators are supported natively.
+            /// </summary>
+            public static IEnumerable<TResult> SelectExpr<TIn, TResult, TCapture>(this IEnumerable<TIn> query, Func<TIn, TCapture, TResult> selector, TCapture capture)
+                where TIn : class
+            {
+                throw new NotImplementedException();
+            }
+
+            /// <summary>
+            /// Create select expression method with captured local variables, with generate instance DTOs.
+            /// Works with IEnumerable where nullable operators are supported natively.
+            /// </summary>
+            [global::System.Runtime.CompilerServices.OverloadResolutionPriority(-1)]
+            public static IEnumerable<TResult> SelectExpr<TIn, TResult, TCapture>(this IEnumerable<TIn> query, Func<TIn, TCapture, object> selector, TCapture capture)
+                where TIn : class
+            {
+                throw new NotImplementedException();
+            }
         }
 
         {{OverloadResolutionPriorityAttribute}}

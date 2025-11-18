@@ -62,13 +62,35 @@ public record SelectExprInfoAnonymous : SelectExprInfo
 
         var id = GetUniqueId();
         sb.AppendLine(GenerateMethodHeaderPart("anonymous type", location));
-        sb.AppendLine($"public static {returnTypePrefix}<TResult> SelectExpr_{id}<TIn, TResult>(");
-        sb.AppendLine($"    this {returnTypePrefix}<TIn> query, Func<TIn, TResult> selector)");
-        sb.AppendLine($"{{");
-        sb.AppendLine(
-            $"    var matchedQuery = query as object as {returnTypePrefix}<{sourceTypeFullName}>;"
-        );
-        sb.AppendLine($"    var converted = matchedQuery.Select({LambdaParameterName} => new");
+
+        // Determine if we have capture parameters
+        var hasCapture = CaptureParameterName != null && CaptureArgumentExpression != null;
+
+        if (hasCapture)
+        {
+            // Generate method with capture parameter
+            sb.AppendLine($"public static {returnTypePrefix}<TResult> SelectExpr_{id}<TIn, TResult, TCapture>(");
+            sb.AppendLine($"    this {returnTypePrefix}<TIn> query, Func<TIn, TCapture, TResult> selector, TCapture capture)");
+            sb.AppendLine($"{{");
+            sb.AppendLine(
+                $"    var matchedQuery = query as object as {returnTypePrefix}<{sourceTypeFullName}>;"
+            );
+            
+            // Use the capture parameter directly without redefining it
+            sb.AppendLine($"    var converted = matchedQuery.Select({LambdaParameterName} => new");
+        }
+        else
+        {
+            // Generate method without capture parameter
+            sb.AppendLine($"public static {returnTypePrefix}<TResult> SelectExpr_{id}<TIn, TResult>(");
+            sb.AppendLine($"    this {returnTypePrefix}<TIn> query, Func<TIn, TResult> selector)");
+            sb.AppendLine($"{{");
+            sb.AppendLine(
+                $"    var matchedQuery = query as object as {returnTypePrefix}<{sourceTypeFullName}>;"
+            );
+            sb.AppendLine($"    var converted = matchedQuery.Select({LambdaParameterName} => new");
+        }
+
         sb.AppendLine($"    {{");
 
         // Generate property assignments

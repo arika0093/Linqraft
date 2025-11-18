@@ -69,15 +69,39 @@ public record SelectExprInfoNamed : SelectExprInfo
         var sb = new StringBuilder();
         var id = GetUniqueId();
         sb.AppendLine(GenerateMethodHeaderPart(dtoName, location));
-        sb.AppendLine($"public static {returnTypePrefix}<TResult> SelectExpr_{id}<TIn, TResult>(");
-        sb.AppendLine($"    this {returnTypePrefix}<TIn> query, Func<TIn, TResult> selector)");
-        sb.AppendLine("{");
-        sb.AppendLine(
-            $"    var matchedQuery = query as object as {returnTypePrefix}<{querySourceTypeFullName}>;"
-        );
-        sb.AppendLine(
-            $"    var converted = matchedQuery.Select({LambdaParameterName} => new {dtoName}"
-        );
+
+        // Determine if we have capture parameters
+        var hasCapture = CaptureParameterName != null && CaptureArgumentExpression != null;
+
+        if (hasCapture)
+        {
+            // Generate method with capture parameter
+            sb.AppendLine($"public static {returnTypePrefix}<TResult> SelectExpr_{id}<TIn, TResult, TCapture>(");
+            sb.AppendLine($"    this {returnTypePrefix}<TIn> query, Func<TIn, TCapture, TResult> selector, TCapture capture)");
+            sb.AppendLine("{");
+            sb.AppendLine(
+                $"    var matchedQuery = query as object as {returnTypePrefix}<{querySourceTypeFullName}>;"
+            );
+
+            // Use the capture parameter directly without redefining it
+            sb.AppendLine(
+                $"    var converted = matchedQuery.Select({LambdaParameterName} => new {dtoName}"
+            );
+        }
+        else
+        {
+            // Generate method without capture parameter
+            sb.AppendLine($"public static {returnTypePrefix}<TResult> SelectExpr_{id}<TIn, TResult>(");
+            sb.AppendLine($"    this {returnTypePrefix}<TIn> query, Func<TIn, TResult> selector)");
+            sb.AppendLine("{");
+            sb.AppendLine(
+                $"    var matchedQuery = query as object as {returnTypePrefix}<{querySourceTypeFullName}>;"
+            );
+            sb.AppendLine(
+                $"    var converted = matchedQuery.Select({LambdaParameterName} => new {dtoName}"
+            );
+        }
+
         sb.AppendLine($"    {{");
 
         // Generate property assignments using GeneratePropertyAssignment to properly handle null-conditional operators
