@@ -8,6 +8,7 @@ internal static class ConstSourceCodes
     {
         context.AddSource("InterceptsLocationAttribute.g.cs", InterceptsLocationAttribute);
         context.AddSource("DummyExpression.g.cs", DummyExpression);
+        context.AddSource("LinqraftAccessibilityAttribute.g.cs", LinqraftAccessibilityAttribute);
     }
 
     [StringSyntax("csharp")]
@@ -96,6 +97,48 @@ internal static class ConstSourceCodes
             file sealed class OverloadResolutionPriorityAttribute(int priority) : global::System.Attribute
             {
                 public int Priority { get; } = priority;
+            }
+        }
+        """;
+
+    [StringSyntax("csharp")]
+    private const string LinqraftAccessibilityAttribute = $$"""
+        {{CommonHeader}}
+        using System;
+
+        namespace Linqraft
+        {
+            /// <summary>
+            /// Specifies the accessibility level for a property in a generated DTO.
+            /// This attribute provides an alternative to predefining properties with specific accessibility modifiers.
+            /// </summary>
+            /// <remarks>
+            /// Usage example:
+            /// <code>
+            /// public partial class SampleDto
+            /// {
+            ///     [LinqraftAccessibility("internal")]
+            ///     public string InternalProperty { get; set; }
+            /// }
+            /// </code>
+            /// Valid accessibility values: "public", "internal", "protected", "protected internal", "private protected", "private"
+            /// </remarks>
+            [AttributeUsage(AttributeTargets.Property, AllowMultiple = false, Inherited = false)]
+            public sealed class LinqraftAccessibilityAttribute : Attribute
+            {
+                /// <summary>
+                /// Gets the accessibility level for the property.
+                /// </summary>
+                public string Accessibility { get; }
+
+                /// <summary>
+                /// Initializes a new instance of the LinqraftAccessibilityAttribute class.
+                /// </summary>
+                /// <param name="accessibility">The accessibility level (e.g., "public", "internal", "protected internal")</param>
+                public LinqraftAccessibilityAttribute(string accessibility)
+                {
+                    Accessibility = accessibility;
+                }
             }
         }
         """;
