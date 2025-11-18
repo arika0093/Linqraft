@@ -114,18 +114,28 @@ public partial class SelectExprGenerator : IIncrementalGenerator
         // Extract lambda parameter name
         var lambdaParamName = GetLambdaParameterName(lambda);
 
+        // Extract capture argument info (if present)
+        var (captureArgExpr, captureType) = GetCaptureInfo(invocation, context.SemanticModel);
+
         // Check if this is a generic invocation with explicit type arguments
-        // SelectExpr<TIn, TResult> form
+        // SelectExpr<TIn, TResult> or SelectExpr<TIn, TResult, TCapture> form
         if (
             invocation.Expression is MemberAccessExpressionSyntax memberAccess
             && memberAccess.Name is GenericNameSyntax genericName
-            && genericName.TypeArgumentList.Arguments.Count == 2
+            && genericName.TypeArgumentList.Arguments.Count >= 2
         )
         {
-            // This is the new SelectExpr<TIn, TResult> form
+            // This is the SelectExpr<TIn, TResult> form (possibly with capture)
             if (lambda.Body is AnonymousObjectCreationExpressionSyntax anon)
             {
-                return GetExplicitDtoSelectExprInfo(context, anon, genericName, lambdaParamName);
+                return GetExplicitDtoSelectExprInfo(
+                    context,
+                    anon,
+                    genericName,
+                    lambdaParamName,
+                    captureArgExpr,
+                    captureType
+                );
             }
         }
 
@@ -134,9 +144,21 @@ public partial class SelectExprGenerator : IIncrementalGenerator
         switch (body)
         {
             case AnonymousObjectCreationExpressionSyntax anon:
-                return GetAnonymousSelectExprInfo(context, anon, lambdaParamName);
+                return GetAnonymousSelectExprInfo(
+                    context,
+                    anon,
+                    lambdaParamName,
+                    captureArgExpr,
+                    captureType
+                );
             case ObjectCreationExpressionSyntax objCreation:
-                return GetNamedSelectExprInfo(context, objCreation, lambdaParamName);
+                return GetNamedSelectExprInfo(
+                    context,
+                    objCreation,
+                    lambdaParamName,
+                    captureArgExpr,
+                    captureType
+                );
             default:
                 return null;
         }
@@ -157,10 +179,31 @@ public partial class SelectExprGenerator : IIncrementalGenerator
         };
     }
 
+    private static (ExpressionSyntax? captureArgExpr, ITypeSymbol? captureType) GetCaptureInfo(
+        InvocationExpressionSyntax invocation,
+        SemanticModel semanticModel
+    )
+    {
+        // Check if invocation has 2 arguments (second one is the capture argument)
+        ExpressionSyntax? captureArgExpr = null;
+        ITypeSymbol? captureType = null;
+        if (invocation.ArgumentList.Arguments.Count == 2)
+        {
+            captureArgExpr = invocation.ArgumentList.Arguments[1].Expression;
+            // Get the type of the capture argument
+            var typeInfo = semanticModel.GetTypeInfo(captureArgExpr);
+            captureType = typeInfo.Type ?? typeInfo.ConvertedType;
+        }
+
+        return (captureArgExpr, captureType);
+    }
+
     private static SelectExprInfoAnonymous? GetAnonymousSelectExprInfo(
         GeneratorSyntaxContext context,
         AnonymousObjectCreationExpressionSyntax anonymousObj,
-        string lambdaParameterName
+        string lambdaParameterName,
+        ExpressionSyntax? captureArgumentExpression,
+        ITypeSymbol? captureArgumentType
     )
     {
         var invocation = (InvocationExpressionSyntax)context.Node;
@@ -195,13 +238,18 @@ public partial class SelectExprGenerator : IIncrementalGenerator
             Invocation = invocation,
             LambdaParameterName = lambdaParameterName,
             CallerNamespace = callerNamespace,
+            CaptureParameterName = null, // No longer used - capture is via closure
+            CaptureArgumentExpression = captureArgumentExpression,
+            CaptureArgumentType = captureArgumentType,
         };
     }
 
     private static SelectExprInfoNamed? GetNamedSelectExprInfo(
         GeneratorSyntaxContext context,
         ObjectCreationExpressionSyntax obj,
-        string lambdaParameterName
+        string lambdaParameterName,
+        ExpressionSyntax? captureArgumentExpression,
+        ITypeSymbol? captureArgumentType
     )
     {
         var invocation = (InvocationExpressionSyntax)context.Node;
@@ -236,6 +284,9 @@ public partial class SelectExprGenerator : IIncrementalGenerator
             Invocation = invocation,
             LambdaParameterName = lambdaParameterName,
             CallerNamespace = callerNamespace,
+            CaptureParameterName = null, // No longer used - capture is via closure
+            CaptureArgumentExpression = captureArgumentExpression,
+            CaptureArgumentType = captureArgumentType,
         };
     }
 
@@ -243,7 +294,9 @@ public partial class SelectExprGenerator : IIncrementalGenerator
         GeneratorSyntaxContext context,
         AnonymousObjectCreationExpressionSyntax anonymousObj,
         GenericNameSyntax genericName,
-        string lambdaParameterName
+        string lambdaParameterName,
+        ExpressionSyntax? captureArgumentExpression,
+        ITypeSymbol? captureArgumentType
     )
     {
         var invocation = (InvocationExpressionSyntax)context.Node;
@@ -265,7 +318,7 @@ public partial class SelectExprGenerator : IIncrementalGenerator
 
         // Get TResult (second type parameter) - this is the explicit DTO name
         var typeArguments = genericName.TypeArgumentList.Arguments;
-        if (typeArguments.Count != 2)
+        if (typeArguments.Count < 2)
             return null;
 
         var tResultType = semanticModel.GetTypeInfo(typeArguments[1]).Type;
@@ -304,6 +357,9 @@ public partial class SelectExprGenerator : IIncrementalGenerator
             CallerNamespace = targetNamespace,
             ParentClasses = parentClasses,
             TResultType = tResultType,
+            CaptureParameterName = null, // No longer used - capture is via closure
+            CaptureArgumentExpression = captureArgumentExpression,
+            CaptureArgumentType = captureArgumentType,
         };
     }
 }

@@ -252,18 +252,70 @@ public record SelectExprInfoExplicitDto : SelectExprInfo
         var sb = new StringBuilder();
 
         var id = GetUniqueId();
-        var methodDecl =
-            $"public static {returnTypePrefix}<TResult> SelectExpr_{id}<TIn, TResult>(";
         sb.AppendLine(GenerateMethodHeaderPart(dtoName, location));
-        sb.AppendLine($"{methodDecl}");
-        sb.AppendLine($"    this {returnTypePrefix}<TIn> query, Func<TIn, object> selector)");
-        sb.AppendLine($"{{");
-        sb.AppendLine(
-            $"    var matchedQuery = query as object as {returnTypePrefix}<{sourceTypeFullName}>;"
-        );
-        sb.AppendLine(
-            $"    var converted = matchedQuery.Select({LambdaParameterName} => new {dtoFullName}"
-        );
+
+        // Determine if we have capture parameters
+        var hasCapture = CaptureArgumentExpression != null && CaptureArgumentType != null;
+
+        if (hasCapture)
+        {
+            // Generate method with capture parameter that creates closure variables
+            sb.AppendLine(
+                $"public static {returnTypePrefix}<TResult> SelectExpr_{id}<TIn, TResult>("
+            );
+            sb.AppendLine(
+                $"    this {returnTypePrefix}<TIn> query, Func<TIn, object> selector, object captureParam)"
+            );
+            sb.AppendLine($"{{");
+            sb.AppendLine(
+                $"    var matchedQuery = query as object as {returnTypePrefix}<{sourceTypeFullName}>;"
+            );
+
+            // For anonymous types, use dynamic to extract properties as closure variables
+            var isAnonymousType =
+                CaptureArgumentType != null && CaptureArgumentType.IsAnonymousType;
+            if (isAnonymousType && CaptureArgumentType != null)
+            {
+                // For anonymous types, get the properties and create closure variables using dynamic
+                var properties = CaptureArgumentType.GetMembers().OfType<IPropertySymbol>();
+                sb.AppendLine($"    dynamic captureObj = captureParam;");
+                foreach (var prop in properties)
+                {
+                    var propTypeName = prop.Type.ToDisplayString(
+                        SymbolDisplayFormat.FullyQualifiedFormat
+                    );
+                    sb.AppendLine($"    {propTypeName} {prop.Name} = captureObj.{prop.Name};");
+                }
+            }
+            else
+            {
+                // For non-anonymous types, just cast it
+                var captureTypeName =
+                    CaptureArgumentType?.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat)
+                    ?? "object";
+                sb.AppendLine($"    var capture = ({captureTypeName})captureParam;");
+            }
+
+            sb.AppendLine(
+                $"    var converted = matchedQuery.Select({LambdaParameterName} => new {dtoFullName}"
+            );
+        }
+        else
+        {
+            // Generate method without capture parameter
+            sb.AppendLine(
+                $"public static {returnTypePrefix}<TResult> SelectExpr_{id}<TIn, TResult>("
+            );
+            sb.AppendLine($"    this {returnTypePrefix}<TIn> query, Func<TIn, object> selector)");
+            sb.AppendLine($"{{");
+            sb.AppendLine(
+                $"    var matchedQuery = query as object as {returnTypePrefix}<{sourceTypeFullName}>;"
+            );
+            sb.AppendLine(
+                $"    var converted = matchedQuery.Select({LambdaParameterName} => new {dtoFullName}"
+            );
+        }
+
         sb.AppendLine($"    {{");
 
         // Generate property assignments

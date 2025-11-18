@@ -39,8 +39,12 @@ public class ByteArrayCaseTest
             new()
             {
                 UserId = Guid.Parse("00000000-0000-0000-0000-000000000001"),
-                LoginPassword = new() { HashedPassword = new byte[] { 1, 2, 3 }, Salt = new byte[] { 4, 5, 6 } }
-            }
+                LoginPassword = new()
+                {
+                    HashedPassword = new byte[] { 1, 2, 3 },
+                    Salt = new byte[] { 4, 5, 6 },
+                },
+            },
         };
 
         var converted = dataWithNonNull
@@ -65,13 +69,13 @@ public class ByteArrayCaseTest
         new()
         {
             UserId = Guid.Parse("00000000-0000-0000-0000-000000000001"),
-            LoginPassword = new() { HashedPassword = new byte[] { 1, 2, 3 }, Salt = new byte[] { 4, 5, 6 } }
+            LoginPassword = new()
+            {
+                HashedPassword = new byte[] { 1, 2, 3 },
+                Salt = new byte[] { 4, 5, 6 },
+            },
         },
-        new()
-        {
-            UserId = Guid.Parse("00000000-0000-0000-0000-000000000002"),
-            LoginPassword = null
-        },
+        new() { UserId = Guid.Parse("00000000-0000-0000-0000-000000000002"), LoginPassword = null },
     ];
 }
 
