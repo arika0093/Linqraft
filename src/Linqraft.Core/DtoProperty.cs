@@ -21,7 +21,19 @@ public record DtoProperty(
     /// <summary>
     /// Gets the fully qualified type name of the property
     /// </summary>
-    public string TypeName => TypeSymbol.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat);
+    public string TypeName
+    {
+        get
+        {
+            var typeName = TypeSymbol.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat);
+            // Fallback to a safe type if the type name is empty or invalid
+            if (string.IsNullOrWhiteSpace(typeName) || typeName == "?")
+            {
+                return "object";
+            }
+            return typeName;
+        }
+    }
 
     /// <summary>
     /// Analyzes an expression and creates a DtoProperty from it

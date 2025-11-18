@@ -79,6 +79,50 @@ internal static class ConstSourceCodes
         {{SelectExprErrorMessage}}
         """); 
             }
+
+            /// <summary>
+            /// Create select expression method with captured local variables, usable nullable operators, and generate instance DTOs.
+            /// Pass local variables as an anonymous object: new { var1, var2, ... }
+            /// </summary>
+            public static IQueryable<TResult> SelectExpr<TIn, TResult>(this IQueryable<TIn> query, Func<TIn, TResult> selector, object capture)
+                where TIn : class
+            {
+                throw new NotImplementedException();
+            }
+
+            /// <summary>
+            /// Create select expression method with captured local variables, usable nullable operators, and generate instance DTOs.
+            /// Pass local variables as an anonymous object: new { var1, var2, ... }
+            /// </summary>
+            [global::System.Runtime.CompilerServices.OverloadResolutionPriority(-1)]
+            public static IQueryable<TResult> SelectExpr<TIn, TResult>(this IQueryable<TIn> query, Func<TIn, object> selector, object capture)
+                where TIn : class
+            {
+                throw new NotImplementedException();
+            }
+
+            /// <summary>
+            /// Create select expression method with captured local variables, with generate instance DTOs.
+            /// Works with IEnumerable where nullable operators are supported natively.
+            /// Pass local variables as an anonymous object: new { var1, var2, ... }
+            /// </summary>
+            public static IEnumerable<TResult> SelectExpr<TIn, TResult>(this IEnumerable<TIn> query, Func<TIn, TResult> selector, object capture)
+                where TIn : class
+            {
+                throw new NotImplementedException();
+            }
+
+            /// <summary>
+            /// Create select expression method with captured local variables, with generate instance DTOs.
+            /// Works with IEnumerable where nullable operators are supported natively.
+            /// Pass local variables as an anonymous object: new { var1, var2, ... }
+            /// </summary>
+            [global::System.Runtime.CompilerServices.OverloadResolutionPriority(-1)]
+            public static IEnumerable<TResult> SelectExpr<TIn, TResult>(this IEnumerable<TIn> query, Func<TIn, object> selector, object capture)
+                where TIn : class
+            {
+                throw new NotImplementedException();
+            }
         }
 
         {{OverloadResolutionPriorityAttribute}}

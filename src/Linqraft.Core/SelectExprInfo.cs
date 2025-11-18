@@ -45,6 +45,24 @@ public abstract record SelectExprInfo
     public LinqraftConfiguration Configuration { get; set; } = new();
 
     /// <summary>
+    /// The name of the capture parameter (e.g., "capture" in (x, capture) => new { ... })
+    /// Null if no capture parameter is used
+    /// </summary>
+    public string? CaptureParameterName { get; init; }
+
+    /// <summary>
+    /// The expression syntax for the capture argument
+    /// Null if no capture parameter is used
+    /// </summary>
+    public ExpressionSyntax? CaptureArgumentExpression { get; init; }
+
+    /// <summary>
+    /// The type symbol of the capture argument
+    /// Null if no capture parameter is used
+    /// </summary>
+    public ITypeSymbol? CaptureArgumentType { get; init; }
+
+    /// <summary>
     /// Generates DTO class information (including nested DTOs)
     /// </summary>
     public abstract List<GenerateDtoClassInfo> GenerateDtoClasses();

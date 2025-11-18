@@ -291,24 +291,26 @@ public class OrderDto { /* ... */ }
 ```
 
 ## Customize Auto-Generated Code
-### Global Properties
-Linqraft supports several MSBuild properties to customize the generated code:
+### Pass Local-Variables
+local variables cannot be used directly inside `SelectExpr` because it is "translated" into another method. To use local variables, use capture arguments.
 
-```xml
-<Project>
-  <!-- The values listed are the default values. -->
-  <PropertyGroup>
-    <!-- set namespace if based-class is in global namespace -->
-    <LinqraftGlobalNamespace>Linqraft</LinqraftGlobalNamespace>
-    <!-- generate records instead of classes -->
-    <LinqraftRecordGenerate>false</LinqraftRecordGenerate>
-    <!-- set accessor pattern. Default, GetAndSet, GetAndInit, GetAndInternalSet -->
-    <!-- default is GetAndSet in class, GetAndInit in record -->
-    <LinqraftPropertyAccessor>Default</LinqraftPropertyAccessor>
-    <!-- has required keyword on properties -->
-    <LinqraftHasRequired>true</LinqraftHasRequired>
-  </PropertyGroup>
-</Project>
+```csharp
+var val = 10;
+var multiplier = 2;
+var suffix = " units";
+var converted = dbContext.Entities
+    .SelectExpr(
+        x => new {
+            x.Id,
+            // cannot use local variable 'val' directly
+            NewValue = x.Value + val,
+            DoubledValue = x.Value * multiplier,
+            Description = x.Name + suffix,
+        },
+        // you need to pass local variables as an object.
+        new { val, multiplier, suffix }
+    ).ToList();
+
 ```
 
 ### Partial Classes
@@ -348,6 +350,26 @@ public partial class ParentDto
     public required string PublicComment { get; set; }
     // InternalData is not generated 
 }
+```
+
+### Global Properties
+Linqraft supports several MSBuild properties to customize the generated code:
+
+```xml
+<Project>
+  <!-- The values listed are the default values. -->
+  <PropertyGroup>
+    <!-- set namespace if based-class is in global namespace -->
+    <LinqraftGlobalNamespace>Linqraft</LinqraftGlobalNamespace>
+    <!-- generate records instead of classes -->
+    <LinqraftRecordGenerate>false</LinqraftRecordGenerate>
+    <!-- set accessor pattern. Default, GetAndSet, GetAndInit, GetAndInternalSet -->
+    <!-- default is GetAndSet in class, GetAndInit in record -->
+    <LinqraftPropertyAccessor>Default</LinqraftPropertyAccessor>
+    <!-- has required keyword on properties -->
+    <LinqraftHasRequired>true</LinqraftHasRequired>
+  </PropertyGroup>
+</Project>
 ```
 
 ## Performance
