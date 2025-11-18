@@ -14,7 +14,8 @@ public record DtoProperty(
     string OriginalExpression,
     ExpressionSyntax OriginalSyntax,
     ITypeSymbol TypeSymbol,
-    DtoStructure? NestedStructure
+    DtoStructure? NestedStructure,
+    string? Accessibility = null
 )
 {
     /// <summary>
@@ -29,12 +30,14 @@ public record DtoProperty(
     /// <param name="expression">The expression syntax to analyze</param>
     /// <param name="semanticModel">The semantic model for type resolution</param>
     /// <param name="targetProperty">Optional target property symbol (for predefined DTOs)</param>
+    /// <param name="accessibility">Optional accessibility modifier (e.g., "public", "internal")</param>
     /// <returns>A DtoProperty instance or null if analysis fails</returns>
     public static DtoProperty? AnalyzeExpression(
         string propertyName,
         ExpressionSyntax expression,
         SemanticModel semanticModel,
-        IPropertySymbol? targetProperty = null
+        IPropertySymbol? targetProperty = null,
+        string? accessibility = null
     )
     {
         var typeInfo = semanticModel.GetTypeInfo(expression);
@@ -136,7 +139,8 @@ public record DtoProperty(
             OriginalExpression: expression.ToString(),
             OriginalSyntax: expression,
             TypeSymbol: propertyType,
-            NestedStructure: nestedStructure
+            NestedStructure: nestedStructure,
+            Accessibility: accessibility
         );
     }
 
