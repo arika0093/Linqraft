@@ -11,18 +11,20 @@ builder.Services.AddControllers();
 
 var app = builder.Build();
 
-// Configure the HTTP request pipeline.
-if (app.Environment.IsDevelopment())
+app.MapOpenApi();
+app.UseSwaggerUI(options =>
 {
-    app.MapOpenApi();
-}
+    options.SwaggerEndpoint("/openapi/v1.json", "v1");
+    options.RoutePrefix = "";
+});
 
+// sample usage of SelectExpr in an Minimal API endpoint
 app.MapGet(
-    "/sample",
+    "/api/minimal/get-orders",
     () =>
     {
-        var Orders = new List<Order>();
-        return Orders
+        return SampleData
+            .GetOrdersFromOtherSource()
             .AsQueryable()
             .SelectExpr<Order, OrderDtoMinimal>(s => new
             {
@@ -30,13 +32,11 @@ app.MapGet(
                 CustomerName = s.Customer?.Name,
                 CustomerCountry = s.Customer?.Address?.Country?.Name,
                 CustomerCity = s.Customer?.Address?.City?.Name,
-                Items = s
-                    .OrderItems.Select(oi => new
-                    {
-                        ProductName = oi.Product?.Name,
-                        Quantity = oi.Quantity,
-                    })
-                    .ToList(),
+                Items = s.OrderItems.Select(oi => new
+                {
+                    ProductName = oi.Product?.Name,
+                    Quantity = oi.Quantity,
+                }),
             })
             .ToList();
     }

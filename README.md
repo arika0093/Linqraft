@@ -190,8 +190,46 @@ namespace Tutorial
 
 </details>
 
-If you find [Prisma](https://www.prisma.io/) (TypeScript ORM) useful, this library delivers that same level of convenience with a writing experience tailored for C#.
-In other words, you can use it like a scripting language where the result is generated as you write it, and with automatic generation of DTO classes, you can use it safely in other places as well.
+Since the generated DTO classes are treated as regular classes, they can be safely used for passing as arguments to other methods or as return values of APIs.
+
+<details>
+<summary>Generated DTO used in Web API example</summary>
+
+see: [examples/Linqraft.ApiSample](./examples/Linqraft.ApiSample) for details.
+
+```csharp
+[Route("api/[controller]")]
+[ApiController]
+public partial class OrderController : ControllerBase
+{
+    [HttpGet]
+    public ActionResult<List<OrderDto>> GetOrdersAsync()
+    {
+        return SampleData
+            .GetOrdersFromOtherSource()
+            .AsQueryable()
+            .SelectExpr<Order, OrderDto>(s => new
+            {
+                Id = s.Id,
+                CustomerName = s.Customer?.Name,
+                CustomerCountry = s.Customer?.Address?.Country?.Name,
+                CustomerCity = s.Customer?.Address?.City?.Name,
+                Items = s.OrderItems.Select(oi => new
+                {
+                    ProductName = oi.Product?.Name,
+                    Quantity = oi.Quantity,
+                }),
+            })
+            .ToList();
+    }
+}
+```
+
+</details>
+
+> [!TIP]
+> If you find [Prisma](https://www.prisma.io/) (TypeScript ORM) useful, this library delivers that same level of convenience with a writing experience tailored for C#.  
+> In other words, you can use it like a scripting language where the result is generated as you write it, and with automatic generation of DTO classes, you can use it safely in other places as well.
 
 ## Usage
 ### Prerequisites
