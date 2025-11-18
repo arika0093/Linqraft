@@ -47,6 +47,11 @@ public class GenerateDtoClassInfo
     public List<string> ParentAccessibilities { get; set; } = [];
 
     /// <summary>
+    /// Set of property names that already exist in a predefined partial class (should not be generated)
+    /// </summary>
+    public HashSet<string> ExistingProperties { get; set; } = new();
+
+    /// <summary>
     /// Gets the fully qualified name of the DTO class
     /// </summary>
     public string FullName =>
@@ -95,6 +100,12 @@ public class GenerateDtoClassInfo
 
         foreach (var prop in Structure.Properties)
         {
+            // Skip properties that already exist in the predefined partial class
+            if (ExistingProperties.Contains(prop.Name))
+            {
+                continue;
+            }
+
             var propertyType = prop.TypeName;
 
             // For nested structures, recursively generate DTOs (add first)
@@ -133,8 +144,17 @@ public class GenerateDtoClassInfo
                 propertyType = $"{propertyType}?";
             }
 
+            // Use property-specific accessibility if available, otherwise default to public
+            var propAccessibility = prop.Accessibility ?? "public";
+            
+            // Only use 'required' if property is at least as visible as the class
+            // This prevents CS9032 error (required member cannot be less visible than containing type)
+            var propRequiredKeyword = ShouldUseRequired(configuration, propAccessibility, Accessibility)
+                ? "required "
+                : "";
+            
             sb.AppendLine(
-                $"{classIndent}    public {requiredKeyword}{propertyType} {prop.Name} {{ {propertyAccessor} }}"
+                $"{classIndent}    {propAccessibility} {propRequiredKeyword}{propertyType} {prop.Name} {{ {propertyAccessor} }}"
             );
         }
         sb.AppendLine($"{classIndent}}}");
@@ -163,6 +183,45 @@ public class GenerateDtoClassInfo
             PropertyAccessor.GetAndInit => "get; init;",
             PropertyAccessor.GetAndInternalSet => "get; internal set;",
             _ => "get; set;", // Default fallback
+        };
+    }
+
+    /// <summary>
+    /// Determines if the 'required' keyword should be used for a property based on visibility
+    /// Required members cannot be less visible than the containing type
+    /// </summary>
+    private static bool ShouldUseRequired(
+        LinqraftConfiguration configuration,
+        string propertyAccessibility,
+        string classAccessibility
+    )
+    {
+        // If required is not configured, don't use it
+        if (!configuration.HasRequired)
+            return false;
+
+        // Get visibility levels (higher = more visible)
+        var propLevel = GetAccessibilityLevel(propertyAccessibility);
+        var classLevel = GetAccessibilityLevel(classAccessibility);
+
+        // Property must be at least as visible as the class
+        return propLevel >= classLevel;
+    }
+
+    /// <summary>
+    /// Gets the visibility level of an accessibility modifier (higher = more visible)
+    /// </summary>
+    private static int GetAccessibilityLevel(string accessibility)
+    {
+        return accessibility switch
+        {
+            "public" => 5,
+            "protected internal" => 4,
+            "protected" => 3,
+            "internal" => 2,
+            "private protected" => 1,
+            "private" => 0,
+            _ => 5, // Default to public
         };
     }
 }

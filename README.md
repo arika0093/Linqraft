@@ -5,8 +5,6 @@
 
 Simplifies Select query expressions for EntityFrameworkCore (EF Core) by providing automatic DTO generation and support for null-propagating expressions.
 
-[English](./README.md) | [Japanese](./docs/README.ja.md)
-
 ## Problem
 
 When querying a table that has many related tables, using `Include` / `ThenInclude` quickly makes code hard to read and maintain.
@@ -222,6 +220,9 @@ Install `Linqraft` from NuGet:
 dotnet add package Linqraft
 ```
 
+> [!NOTE]
+> If you want to use Linqraft in multiple projects, you need to install the package in each project separately.
+
 ## Examples
 ### Anonymous pattern
 
@@ -252,16 +253,6 @@ var orders = await dbContext.Orders
         // ...
     })
     .ToListAsync();
-```
-
-You can extend the generated DTO classes as needed since they are output as `partial` classes.
-
-```csharp
-// extend generated DTO class if needed
-public partial class OrderDto
-{
-    public string GetDisplayName() => $"{Id}: {CustomerName}";
-}
 ```
 
 Similarly, you can use only the auto-generation feature by specifying `IEnumerable` types.
@@ -299,8 +290,69 @@ var orders = await dbContext.Orders
 public class OrderDto { /* ... */ }
 ```
 
-## Configuration
+## Customize Auto-Generated Code
+### Pass Local-Variables
+local variables cannot be used directly inside `SelectExpr` because it is "translated" into another method. To use local variables, use capture arguments.
 
+```csharp
+var val = 10;
+var multiplier = 2;
+var suffix = " units";
+var converted = dbContext.Entities
+    .SelectExpr(
+        x => new {
+            x.Id,
+            // cannot use local variable 'val' directly
+            NewValue = x.Value + val,
+            DoubledValue = x.Value * multiplier,
+            Description = x.Name + suffix,
+        },
+        // you need to pass local variables as an object.
+        new { val, multiplier, suffix }
+    ).ToList();
+
+```
+
+### Partial Classes
+You can extend the generated DTO classes as needed since they are output as `partial` classes.
+
+```csharp
+// extend generated DTO class if needed
+public partial class OrderDto
+{
+    public string GetDisplayName() => $"{Id}: {CustomerName}";
+}
+```
+
+### Property Accessibility Control
+If you want to make specific properties of the auto-generated DTO class `internal`, you can do so by predefining the properties as partial classes.
+
+```csharp
+public partial class ParentDto
+{
+    // This property will not be generated, so you can control its accessibility
+    internal string InternalData { get; set; }
+}
+
+var orders = await dbContext.Orders
+    .SelectExpr(o => new OrderDto
+    {
+        Id = o.Id,
+        PublicComment = o.Comment,
+        InternalData = o.InternalField,
+    })
+    .ToListAsync();
+
+// Generated code will look like this:
+public partial class ParentDto
+{
+    public required int Id { get; set; }
+    public required string PublicComment { get; set; }
+    // InternalData is not generated 
+}
+```
+
+### Global Properties
 Linqraft supports several MSBuild properties to customize the generated code:
 
 ```xml

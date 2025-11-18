@@ -66,6 +66,18 @@ public record SelectExprInfoExplicitDto : SelectExprInfo
         var currentParentAccessibilities =
             nestedParentAccessibilities ?? GetParentAccessibilities();
 
+        // Get existing properties from the TResultType (only for the main DTO, not nested)
+        var existingProperties = new HashSet<string>();
+        if (overrideClassName == ExplicitDtoName)
+        {
+            // This is the main DTO, check for existing properties
+            var properties = TResultType.GetMembers().OfType<IPropertySymbol>();
+            foreach (var property in properties)
+            {
+                existingProperties.Add(property.Name);
+            }
+        }
+
         // Nested DTOs are placed at the same level as the current DTO, not inside it
         // So they share the same parent classes
         foreach (var prop in structure.Properties)
@@ -95,6 +107,7 @@ public record SelectExprInfoExplicitDto : SelectExprInfo
             NestedClasses = [.. result],
             ParentClasses = currentParentClasses,
             ParentAccessibilities = currentParentAccessibilities,
+            ExistingProperties = existingProperties,
         };
         result.Add(dtoClassInfo);
         return result;
@@ -123,7 +136,49 @@ public record SelectExprInfoExplicitDto : SelectExprInfo
     /// </summary>
     protected override DtoStructure GenerateDtoStructure()
     {
-        return DtoStructure.AnalyzeAnonymousType(AnonymousObject, SemanticModel, SourceType)!;
+        var propertyAccessibilities = ExtractPropertyAccessibilities();
+        return DtoStructure.AnalyzeAnonymousType(
+            AnonymousObject,
+            SemanticModel,
+            SourceType,
+            propertyAccessibilities
+        )!;
+    }
+
+    /// <summary>
+    /// Extracts property accessibilities from the TResult type (if it exists as a partial class)
+    /// </summary>
+    private Dictionary<string, string> ExtractPropertyAccessibilities()
+    {
+        var accessibilities = new Dictionary<string, string>();
+        
+        // Get all properties from the TResultType
+        var properties = TResultType.GetMembers().OfType<IPropertySymbol>();
+        
+        foreach (var property in properties)
+        {
+            var accessibility = GetAccessibilityString(property);
+            accessibilities[property.Name] = accessibility;
+        }
+        
+        return accessibilities;
+    }
+
+    /// <summary>
+    /// Gets the accessibility string from a property symbol
+    /// </summary>
+    private string GetAccessibilityString(IPropertySymbol propertySymbol)
+    {
+        return propertySymbol.DeclaredAccessibility switch
+        {
+            Accessibility.Public => "public",
+            Accessibility.Internal => "internal",
+            Accessibility.Private => "private",
+            Accessibility.Protected => "protected",
+            Accessibility.ProtectedAndInternal => "private protected",
+            Accessibility.ProtectedOrInternal => "protected internal",
+            _ => "public", // Default to public
+        };
     }
 
     /// <summary>
@@ -197,18 +252,70 @@ public record SelectExprInfoExplicitDto : SelectExprInfo
         var sb = new StringBuilder();
 
         var id = GetUniqueId();
-        var methodDecl =
-            $"public static {returnTypePrefix}<TResult> SelectExpr_{id}<TIn, TResult>(";
         sb.AppendLine(GenerateMethodHeaderPart(dtoName, location));
-        sb.AppendLine($"{methodDecl}");
-        sb.AppendLine($"    this {returnTypePrefix}<TIn> query, Func<TIn, object> selector)");
-        sb.AppendLine($"{{");
-        sb.AppendLine(
-            $"    var matchedQuery = query as object as {returnTypePrefix}<{sourceTypeFullName}>;"
-        );
-        sb.AppendLine(
-            $"    var converted = matchedQuery.Select({LambdaParameterName} => new {dtoFullName}"
-        );
+
+        // Determine if we have capture parameters
+        var hasCapture = CaptureArgumentExpression != null && CaptureArgumentType != null;
+
+        if (hasCapture)
+        {
+            // Generate method with capture parameter that creates closure variables
+            sb.AppendLine(
+                $"public static {returnTypePrefix}<TResult> SelectExpr_{id}<TIn, TResult>("
+            );
+            sb.AppendLine(
+                $"    this {returnTypePrefix}<TIn> query, Func<TIn, object> selector, object captureParam)"
+            );
+            sb.AppendLine($"{{");
+            sb.AppendLine(
+                $"    var matchedQuery = query as object as {returnTypePrefix}<{sourceTypeFullName}>;"
+            );
+
+            // For anonymous types, use dynamic to extract properties as closure variables
+            var isAnonymousType =
+                CaptureArgumentType != null && CaptureArgumentType.IsAnonymousType;
+            if (isAnonymousType && CaptureArgumentType != null)
+            {
+                // For anonymous types, get the properties and create closure variables using dynamic
+                var properties = CaptureArgumentType.GetMembers().OfType<IPropertySymbol>();
+                sb.AppendLine($"    dynamic captureObj = captureParam;");
+                foreach (var prop in properties)
+                {
+                    var propTypeName = prop.Type.ToDisplayString(
+                        SymbolDisplayFormat.FullyQualifiedFormat
+                    );
+                    sb.AppendLine($"    {propTypeName} {prop.Name} = captureObj.{prop.Name};");
+                }
+            }
+            else
+            {
+                // For non-anonymous types, just cast it
+                var captureTypeName =
+                    CaptureArgumentType?.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat)
+                    ?? "object";
+                sb.AppendLine($"    var capture = ({captureTypeName})captureParam;");
+            }
+
+            sb.AppendLine(
+                $"    var converted = matchedQuery.Select({LambdaParameterName} => new {dtoFullName}"
+            );
+        }
+        else
+        {
+            // Generate method without capture parameter
+            sb.AppendLine(
+                $"public static {returnTypePrefix}<TResult> SelectExpr_{id}<TIn, TResult>("
+            );
+            sb.AppendLine($"    this {returnTypePrefix}<TIn> query, Func<TIn, object> selector)");
+            sb.AppendLine($"{{");
+            sb.AppendLine(
+                $"    var matchedQuery = query as object as {returnTypePrefix}<{sourceTypeFullName}>;"
+            );
+            sb.AppendLine(
+                $"    var converted = matchedQuery.Select({LambdaParameterName} => new {dtoFullName}"
+            );
+        }
+
         sb.AppendLine($"    {{");
 
         // Generate property assignments

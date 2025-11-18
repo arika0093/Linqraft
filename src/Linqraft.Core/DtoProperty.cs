@@ -14,13 +14,26 @@ public record DtoProperty(
     string OriginalExpression,
     ExpressionSyntax OriginalSyntax,
     ITypeSymbol TypeSymbol,
-    DtoStructure? NestedStructure
+    DtoStructure? NestedStructure,
+    string? Accessibility = null
 )
 {
     /// <summary>
     /// Gets the fully qualified type name of the property
     /// </summary>
-    public string TypeName => TypeSymbol.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat);
+    public string TypeName
+    {
+        get
+        {
+            var typeName = TypeSymbol.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat);
+            // Fallback to a safe type if the type name is empty or invalid
+            if (string.IsNullOrWhiteSpace(typeName) || typeName == "?")
+            {
+                return "object";
+            }
+            return typeName;
+        }
+    }
 
     /// <summary>
     /// Analyzes an expression and creates a DtoProperty from it
@@ -29,12 +42,14 @@ public record DtoProperty(
     /// <param name="expression">The expression syntax to analyze</param>
     /// <param name="semanticModel">The semantic model for type resolution</param>
     /// <param name="targetProperty">Optional target property symbol (for predefined DTOs)</param>
+    /// <param name="accessibility">Optional accessibility modifier (e.g., "public", "internal")</param>
     /// <returns>A DtoProperty instance or null if analysis fails</returns>
     public static DtoProperty? AnalyzeExpression(
         string propertyName,
         ExpressionSyntax expression,
         SemanticModel semanticModel,
-        IPropertySymbol? targetProperty = null
+        IPropertySymbol? targetProperty = null,
+        string? accessibility = null
     )
     {
         var typeInfo = semanticModel.GetTypeInfo(expression);
@@ -136,7 +151,8 @@ public record DtoProperty(
             OriginalExpression: expression.ToString(),
             OriginalSyntax: expression,
             TypeSymbol: propertyType,
-            NestedStructure: nestedStructure
+            NestedStructure: nestedStructure,
+            Accessibility: accessibility
         );
     }
 
