@@ -373,7 +373,7 @@ public partial class ParentDto
 }
 
 var orders = await dbContext.Orders
-    .SelectExpr(o => new OrderDto
+    .SelectExpr<Parent, ParentDto>(o => new 
     {
         Id = o.Id,
         PublicComment = o.Comment,
@@ -386,7 +386,6 @@ public partial class ParentDto
 {
     public required int Id { get; set; }
     public required string PublicComment { get; set; }
-    // InternalData is not generated 
 }
 ```
 
