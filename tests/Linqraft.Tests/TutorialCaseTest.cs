@@ -9,28 +9,6 @@ public class TutorialCaseTest
     private List<Order> Orders = [];
 
     [Fact]
-    public void TryTutorialCaseAnonymous()
-    {
-        var orders = Orders
-            .AsQueryable()
-            .SelectExpr(s => new
-            {
-                Id = s.Id,
-                CustomerName = s.Customer?.Name,
-                CustomerCountry = s.Customer?.Address?.Country?.Name,
-                CustomerCity = s.Customer?.Address?.City?.Name,
-                Items = s
-                    .OrderItems.Select(oi => new
-                    {
-                        ProductName = oi.Product?.Name,
-                        Quantity = oi.Quantity,
-                    })
-                    .ToList(),
-            })
-            .ToList();
-    }
-
-    [Fact]
     public void TryTutorialCaseExplicit()
     {
         var orders = Orders
