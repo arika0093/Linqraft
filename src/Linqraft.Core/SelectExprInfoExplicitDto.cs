@@ -136,13 +136,7 @@ public record SelectExprInfoExplicitDto : SelectExprInfo
     /// </summary>
     protected override DtoStructure GenerateDtoStructure()
     {
-        var propertyAccessibilities = ExtractPropertyAccessibilities();
-        return DtoStructure.AnalyzeAnonymousType(
-            AnonymousObject,
-            SemanticModel,
-            SourceType,
-            propertyAccessibilities
-        )!;
+        return DtoStructure.AnalyzeAnonymousType(AnonymousObject, SemanticModel, SourceType)!;
     }
 
     /// <summary>
@@ -151,16 +145,16 @@ public record SelectExprInfoExplicitDto : SelectExprInfo
     private Dictionary<string, string> ExtractPropertyAccessibilities()
     {
         var accessibilities = new Dictionary<string, string>();
-        
+
         // Get all properties from the TResultType
         var properties = TResultType.GetMembers().OfType<IPropertySymbol>();
-        
+
         foreach (var property in properties)
         {
             var accessibility = GetAccessibilityString(property);
             accessibilities[property.Name] = accessibility;
         }
-        
+
         return accessibilities;
     }
 
