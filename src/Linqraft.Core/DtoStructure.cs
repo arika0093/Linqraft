@@ -119,13 +119,11 @@ public record DtoStructure(ITypeSymbol SourceType, List<DtoProperty> Properties)
     /// <param name="anonymousObj">The anonymous object creation expression to analyze</param>
     /// <param name="semanticModel">The semantic model for type resolution</param>
     /// <param name="sourceType">The source type being selected from</param>
-    /// <param name="propertyAccessibilities">Optional dictionary mapping property names to accessibility modifiers</param>
     /// <returns>A DtoStructure representing the anonymous type</returns>
     public static DtoStructure? AnalyzeAnonymousType(
         AnonymousObjectCreationExpressionSyntax anonymousObj,
         SemanticModel semanticModel,
-        ITypeSymbol sourceType,
-        Dictionary<string, string>? propertyAccessibilities = null
+        ITypeSymbol sourceType
     )
     {
         // Get the type info of the anonymous object itself
