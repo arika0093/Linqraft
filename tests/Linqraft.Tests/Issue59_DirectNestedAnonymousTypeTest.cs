@@ -146,6 +146,43 @@ public class Issue59DirectNestedAnonymousTypeTest
     }
 
     [Fact]
+    public void ExplicitDto_SingleDirectNestedAnonymousType2()
+    {
+        var result = TestData
+            .AsQueryable()
+            .SelectExpr<Quote, SingleNestedDto2>(q => new
+            {
+                q.Id,
+                q.ReferenceId,
+                Channel = new
+                {
+                    q.Channel.Id,
+                    q.Channel.ReferenceId,
+                    NameInfo = new { q.Channel.Name },
+                    AdditionalInfo = new { q.Channel.IsActive },
+                },
+            })
+            .ToList();
+
+        result.Count.ShouldBe(2);
+        result[0].Id.ShouldBe(1);
+        result[0].ReferenceId.ShouldBe("REF001");
+        result[0].Channel.GetType().Name.ShouldStartWith("ChannelDto_");
+        result[0].Channel.Id.ShouldBe(10);
+        result[0].Channel.ReferenceId.ShouldBe("CH001");
+        result[0].Channel.NameInfo.Name.ShouldBe("Online");
+        result[0].Channel.NameInfo.GetType().Name.ShouldStartWith("ChannelDto_NameInfo_");
+        result[0].Channel.AdditionalInfo.IsActive.ShouldBeTrue();
+        result[0]
+            .Channel.AdditionalInfo.GetType()
+            .Name.ShouldStartWith("ChannelDto_AdditionalInfo_");
+
+        result[1].Channel.Id.ShouldBe(11);
+        result[1].Channel.NameInfo.Name.ShouldBe("Phone");
+        result[1].Channel.AdditionalInfo.IsActive.ShouldBeFalse();
+    }
+
+    [Fact]
     public void ExplicitDto_MultipleDirectNestedAnonymousTypes()
     {
         var result = TestData
