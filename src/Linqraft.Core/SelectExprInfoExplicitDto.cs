@@ -136,13 +136,7 @@ public record SelectExprInfoExplicitDto : SelectExprInfo
     /// </summary>
     protected override DtoStructure GenerateDtoStructure()
     {
-        var propertyAccessibilities = ExtractPropertyAccessibilities();
-        return DtoStructure.AnalyzeAnonymousType(
-            AnonymousObject,
-            SemanticModel,
-            SourceType,
-            propertyAccessibilities
-        )!;
+        return DtoStructure.AnalyzeAnonymousType(AnonymousObject, SemanticModel, SourceType)!;
     }
 
     /// <summary>
