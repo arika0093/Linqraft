@@ -151,16 +151,16 @@ public record SelectExprInfoExplicitDto : SelectExprInfo
     private Dictionary<string, string> ExtractPropertyAccessibilities()
     {
         var accessibilities = new Dictionary<string, string>();
-        
+
         // Get all properties from the TResultType
         var properties = TResultType.GetMembers().OfType<IPropertySymbol>();
-        
+
         foreach (var property in properties)
         {
             var accessibility = GetAccessibilityString(property);
             accessibilities[property.Name] = accessibility;
         }
-        
+
         return accessibilities;
     }
 

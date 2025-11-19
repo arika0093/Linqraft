@@ -8,7 +8,7 @@ namespace Linqraft.Tests;
 /// Tests for property-level accessibility control in explicit DTO pattern.
 /// Validates that predefined partial class properties with specific accessibility modifiers
 /// are respected by the source generator.
-/// 
+///
 /// Feature: Users can control property accessibility by predefining properties in a partial class.
 /// The generator will:
 /// 1. Detect existing properties from the TResult type parameter
@@ -16,19 +16,19 @@ namespace Linqraft.Tests;
 /// 3. Skip generating those properties (avoiding CS0102 duplicate definition errors)
 /// 4. Only generate properties that are not predefined
 /// 5. Respect the required keyword visibility constraints (CS9032)
-/// 
+///
 /// Example:
 /// public partial class SampleDto
 /// {
 ///     internal string InternalProperty { get; set; }
 /// }
-/// 
+///
 /// var result = query.SelectExpr&lt;Entity, SampleDto&gt;(x => new
 /// {
 ///     InternalProperty = x.InternalProperty,  // Uses predefined internal property
 ///     PublicProperty = x.PublicProperty,      // Generated as public
 /// });
-/// 
+///
 /// Generated code:
 /// public partial class SampleDto
 /// {
@@ -43,7 +43,12 @@ public class PropertyAccessibilityTest
     {
         var data = new List<TestEntity>
         {
-            new() { Id = 1, PublicName = "Public", InternalValue = "Internal" },
+            new()
+            {
+                Id = 1,
+                PublicName = "Public",
+                InternalValue = "Internal",
+            },
         };
 
         var result = data.AsQueryable()
@@ -95,15 +100,16 @@ public class PropertyAccessibilityTest
     {
         var data = new List<TestEntity>
         {
-            new() { Id = 1, PublicName = "Name1", InternalValue = "Value1" },
+            new()
+            {
+                Id = 1,
+                PublicName = "Name1",
+                InternalValue = "Value1",
+            },
         };
 
         var result = data.AsQueryable()
-            .SelectExpr<TestEntity, AllInternalPropertiesDto>(x => new
-            {
-                x.Id,
-                x.InternalValue,
-            })
+            .SelectExpr<TestEntity, AllInternalPropertiesDto>(x => new { x.Id, x.InternalValue })
             .ToList();
 
         Assert.Single(result);
@@ -147,7 +153,12 @@ public class PropertyAccessibilityTest
     {
         var data = new List<TestEntity>
         {
-            new() { Id = 1, PublicName = "Test", InternalValue = "Internal" },
+            new()
+            {
+                Id = 1,
+                PublicName = "Test",
+                InternalValue = "Internal",
+            },
         };
 
         var result = data.AsQueryable()

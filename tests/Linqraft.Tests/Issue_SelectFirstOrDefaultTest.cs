@@ -14,10 +14,10 @@ public class Issue_SelectFirstOrDefaultTest
             .SelectExpr<Sample, SampleDto>(s => new
             {
                 s.Id,
-                LatestFilteredData = s.MyData
-                    .OrderByDescending(d => d.CreatedAt)
+                LatestFilteredData = s
+                    .MyData.OrderByDescending(d => d.CreatedAt)
                     .Select(d => new { d.Foo, d.Bar })
-                    .FirstOrDefault()
+                    .FirstOrDefault(),
             })
             .ToList();
 
@@ -40,16 +40,27 @@ public class Issue_SelectFirstOrDefaultTest
             Id = 1,
             MyData =
             [
-                new() { Foo = "Foo1", Bar = 100, CreatedAt = new DateTime(2024, 1, 1) },
-                new() { Foo = "Foo2", Bar = 200, CreatedAt = new DateTime(2024, 1, 2) },
-                new() { Foo = "Foo3", Bar = 300, CreatedAt = new DateTime(2024, 1, 3) },
-            ]
+                new()
+                {
+                    Foo = "Foo1",
+                    Bar = 100,
+                    CreatedAt = new DateTime(2024, 1, 1),
+                },
+                new()
+                {
+                    Foo = "Foo2",
+                    Bar = 200,
+                    CreatedAt = new DateTime(2024, 1, 2),
+                },
+                new()
+                {
+                    Foo = "Foo3",
+                    Bar = 300,
+                    CreatedAt = new DateTime(2024, 1, 3),
+                },
+            ],
         },
-        new()
-        {
-            Id = 2,
-            MyData = []
-        },
+        new() { Id = 2, MyData = [] },
     ];
 }
 

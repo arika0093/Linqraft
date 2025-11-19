@@ -120,7 +120,8 @@ public class GenerateDtoClassInfo
                     nc.ClassName == nestedClassName
                 );
 
-                var nestedDtoFullName = containedNestClasses?.FullName ?? $"{Namespace}.{nestedClassName}";
+                var nestedDtoFullName =
+                    containedNestClasses?.FullName ?? $"{Namespace}.{nestedClassName}";
 
                 // Check if this is a direct anonymous type (not wrapped in a collection)
                 // Anonymous types from Roslyn look like: global::<anonymous type: ...>
@@ -153,13 +154,17 @@ public class GenerateDtoClassInfo
 
             // Use property-specific accessibility if available, otherwise default to public
             var propAccessibility = prop.Accessibility ?? "public";
-            
+
             // Only use 'required' if property is at least as visible as the class
             // This prevents CS9032 error (required member cannot be less visible than containing type)
-            var propRequiredKeyword = ShouldUseRequired(configuration, propAccessibility, Accessibility)
+            var propRequiredKeyword = ShouldUseRequired(
+                configuration,
+                propAccessibility,
+                Accessibility
+            )
                 ? "required "
                 : "";
-            
+
             sb.AppendLine(
                 $"{classIndent}    {propAccessibility} {propRequiredKeyword}{propertyType} {prop.Name} {{ {propertyAccessor} }}"
             );

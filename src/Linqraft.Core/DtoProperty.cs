@@ -144,6 +144,39 @@ public record DtoProperty(
                 }
             }
         }
+        // Detect direct anonymous type creation (e.g., Channel = new { Id = ..., Name = ... })
+        // This handles nested anonymous types that are not inside a Select call
+        else if (expression is AnonymousObjectCreationExpressionSyntax directAnonymous)
+        {
+            // Get the source type from the anonymous type properties
+            // We need to find the base type from which properties are being accessed
+            ITypeSymbol? sourceTypeForNested = null;
+
+            // Try to infer the source type from the first property that has a member access
+            foreach (var initializer in directAnonymous.Initializers)
+            {
+                var initExpr = initializer.Expression;
+                if (initExpr is MemberAccessExpressionSyntax memberAccess)
+                {
+                    // Get the type of the expression being accessed (e.g., q.Channel)
+                    var baseTypeInfo = semanticModel.GetTypeInfo(memberAccess.Expression);
+                    if (baseTypeInfo.Type is not null)
+                    {
+                        sourceTypeForNested = baseTypeInfo.Type;
+                        break;
+                    }
+                }
+            }
+
+            // If we couldn't infer the source type, use the property type itself
+            sourceTypeForNested ??= propertyType;
+
+            nestedStructure = DtoStructure.AnalyzeAnonymousType(
+                directAnonymous,
+                semanticModel,
+                sourceTypeForNested
+            );
+        }
 
         return new DtoProperty(
             Name: propertyName,
