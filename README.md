@@ -434,8 +434,10 @@ Alternatively, you can also output the generated code to files by adding the fol
 Short answer: I have no objection to doing so, but I think it's good to have a simpler option as well.
 
 Long answer:   
-Separating DTO classes from query logic can be a good approach in some cases. However, in my opinion, it often ends up being unnecessarily verbose.  
+Separating DTO classes from query logic can be a good approach in some cases. However, in my opinion, it often ends up being unnecessarily verbose.
+
 For example, when retrieving moderately complex data from a database to return as an API response, the DTOs used for the result are essentially disposable (and arguably should be). In such cases, separating the query and DTO components may actually reduce code readability and maintainability rather than improve them. I've lost count of how many times I've had to modify both the query definition and the DTO definition simultaneously.
+
 Using Linqraft to integrate queries and DTOs, and automatically generating DTOs when needed, can sometimes be more efficient. At the very least, having that option available is valuable.
 
 Also, you can always copy the generated code and decouple it whenever you want.
