@@ -8,7 +8,8 @@ namespace Linqraft.Tests;
 /// This tests the scenario where nested anonymous types are used directly (not within a Select call)
 /// </summary>
 public class Issue59DirectNestedAnonymousTypeTest
-{    private readonly List<Quote> TestData =
+{
+    private readonly List<Quote> TestData =
     [
         new Quote
         {
@@ -19,28 +20,28 @@ public class Issue59DirectNestedAnonymousTypeTest
                 Id = 10,
                 ReferenceId = "CH001",
                 Name = "Online",
-                IsActive = true
+                IsActive = true,
             },
             VehicleCategory = new VehicleCategory
             {
                 Id = 20,
                 ReferenceId = "VC001",
                 Name = "Sedan",
-                IsActive = true
+                IsActive = true,
             },
             PickUpLocation = new Location
             {
                 Id = 30,
                 ReferenceId = "LOC001",
                 Name = "Airport",
-                IsActive = true
+                IsActive = true,
             },
             DropOffLocation = new Location
             {
                 Id = 40,
                 ReferenceId = "LOC002",
                 Name = "Downtown",
-                IsActive = true
+                IsActive = true,
             },
             QuoteExtras =
             [
@@ -56,8 +57,8 @@ public class Issue59DirectNestedAnonymousTypeTest
                         Id = 200,
                         ReferenceId = "EX001",
                         Name = "GPS",
-                        IsActive = true
-                    }
+                        IsActive = true,
+                    },
                 },
                 new QuoteExtra
                 {
@@ -71,10 +72,10 @@ public class Issue59DirectNestedAnonymousTypeTest
                         Id = 201,
                         ReferenceId = "EX002",
                         Name = "Child Seat",
-                        IsActive = false
-                    }
-                }
-            ]
+                        IsActive = false,
+                    },
+                },
+            ],
         },
         new Quote
         {
@@ -85,31 +86,31 @@ public class Issue59DirectNestedAnonymousTypeTest
                 Id = 11,
                 ReferenceId = "CH002",
                 Name = "Phone",
-                IsActive = false
+                IsActive = false,
             },
             VehicleCategory = new VehicleCategory
             {
                 Id = 21,
                 ReferenceId = "VC002",
                 Name = "SUV",
-                IsActive = true
+                IsActive = true,
             },
             PickUpLocation = new Location
             {
                 Id = 31,
                 ReferenceId = "LOC003",
                 Name = "Hotel",
-                IsActive = true
+                IsActive = true,
             },
             DropOffLocation = new Location
             {
                 Id = 41,
                 ReferenceId = "LOC004",
                 Name = "Station",
-                IsActive = false
+                IsActive = false,
             },
-            QuoteExtras = []
-        }
+            QuoteExtras = [],
+        },
     ];
 
     [Fact]
@@ -126,8 +127,8 @@ public class Issue59DirectNestedAnonymousTypeTest
                     q.Channel.Id,
                     q.Channel.ReferenceId,
                     q.Channel.Name,
-                    q.Channel.IsActive
-                }
+                    q.Channel.IsActive,
+                },
             })
             .ToList();
 
@@ -156,24 +157,16 @@ public class Issue59DirectNestedAnonymousTypeTest
                 {
                     q.Channel.Id,
                     q.Channel.Name,
-                    q.Channel.IsActive
+                    q.Channel.IsActive,
                 },
                 VehicleCategory = new
                 {
                     q.VehicleCategory.Id,
                     q.VehicleCategory.Name,
-                    q.VehicleCategory.IsActive
+                    q.VehicleCategory.IsActive,
                 },
-                PickUpLocation = new
-                {
-                    q.PickUpLocation.Id,
-                    q.PickUpLocation.Name
-                },
-                DropOffLocation = new
-                {
-                    q.DropOffLocation.Id,
-                    q.DropOffLocation.Name
-                }
+                PickUpLocation = new { q.PickUpLocation.Id, q.PickUpLocation.Name },
+                DropOffLocation = new { q.DropOffLocation.Id, q.DropOffLocation.Name },
             })
             .ToList();
 
@@ -204,18 +197,20 @@ public class Issue59DirectNestedAnonymousTypeTest
             .SelectExpr<Quote, CollectionWithNestedDto>(q => new
             {
                 q.Id,
-                QuoteExtras = q.QuoteExtras.Select(qe => new
-                {
-                    qe.Id,
-                    qe.Quantity,
-                    qe.TotalPrice,
-                    Extra = new
+                QuoteExtras = q
+                    .QuoteExtras.Select(qe => new
                     {
-                        qe.Extra.Id,
-                        qe.Extra.Name,
-                        qe.Extra.IsActive
-                    }
-                }).ToList()
+                        qe.Id,
+                        qe.Quantity,
+                        qe.TotalPrice,
+                        Extra = new
+                        {
+                            qe.Extra.Id,
+                            qe.Extra.Name,
+                            qe.Extra.IsActive,
+                        },
+                    })
+                    .ToList(),
             })
             .ToList();
 
@@ -253,44 +248,46 @@ public class Issue59DirectNestedAnonymousTypeTest
                     q.Channel.Id,
                     q.Channel.ReferenceId,
                     q.Channel.Name,
-                    q.Channel.IsActive
+                    q.Channel.IsActive,
                 },
                 VehicleCategory = new
                 {
                     q.VehicleCategory.Id,
                     q.VehicleCategory.ReferenceId,
                     q.VehicleCategory.Name,
-                    q.VehicleCategory.IsActive
+                    q.VehicleCategory.IsActive,
                 },
                 PickUpLocation = new
                 {
                     q.PickUpLocation.Id,
                     q.PickUpLocation.ReferenceId,
                     q.PickUpLocation.Name,
-                    q.PickUpLocation.IsActive
+                    q.PickUpLocation.IsActive,
                 },
                 DropOffLocation = new
                 {
                     q.DropOffLocation.Id,
                     q.DropOffLocation.ReferenceId,
                     q.DropOffLocation.Name,
-                    q.DropOffLocation.IsActive
+                    q.DropOffLocation.IsActive,
                 },
-                QuoteExtras = q.QuoteExtras.Select(qe => new
-                {
-                    qe.Id,
-                    qe.ReferenceId,
-                    qe.Quantity,
-                    qe.CalculatedPrice,
-                    qe.TotalPrice,
-                    Extra = new
+                QuoteExtras = q
+                    .QuoteExtras.Select(qe => new
                     {
-                        qe.Extra.Id,
-                        qe.Extra.ReferenceId,
-                        qe.Extra.Name,
-                        qe.Extra.IsActive
-                    }
-                }).ToList()
+                        qe.Id,
+                        qe.ReferenceId,
+                        qe.Quantity,
+                        qe.CalculatedPrice,
+                        qe.TotalPrice,
+                        Extra = new
+                        {
+                            qe.Extra.Id,
+                            qe.Extra.ReferenceId,
+                            qe.Extra.Name,
+                            qe.Extra.IsActive,
+                        },
+                    })
+                    .ToList(),
             })
             .ToList();
 
@@ -334,11 +331,7 @@ public class Issue59DirectNestedAnonymousTypeTest
             .SelectExpr<Quote, FirstOrDefaultNestedDto>(q => new
             {
                 q.Id,
-                Channel = new
-                {
-                    q.Channel.Id,
-                    q.Channel.Name
-                }
+                Channel = new { q.Channel.Id, q.Channel.Name },
             })
             .FirstOrDefault();
 
@@ -362,14 +355,14 @@ public class Issue59DirectNestedAnonymousTypeTest
                 {
                     q.PickUpLocation.Id,
                     q.PickUpLocation.Name,
-                    q.PickUpLocation.IsActive
+                    q.PickUpLocation.IsActive,
                 },
                 DropOff = new
                 {
                     q.DropOffLocation.Id,
                     q.DropOffLocation.Name,
-                    q.DropOffLocation.IsActive
-                }
+                    q.DropOffLocation.IsActive,
+                },
             })
             .ToList();
 

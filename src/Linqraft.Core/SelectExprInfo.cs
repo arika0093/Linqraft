@@ -233,11 +233,7 @@ public abstract record SelectExprInfo
             if (syntax is AnonymousObjectCreationExpressionSyntax)
             {
                 // Convert direct anonymous type to nested DTO
-                return ConvertDirectAnonymousTypeToDto(
-                    syntax,
-                    property.NestedStructure,
-                    indents
-                );
+                return ConvertDirectAnonymousTypeToDto(syntax, property.NestedStructure, indents);
             }
 
             // For nested Select (collection) case
