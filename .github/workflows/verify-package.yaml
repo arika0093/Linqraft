@@ -6,6 +6,8 @@ name: Verify NuGet Package
 on:
   workflow_dispatch:
   push:
+    branches-ignore:
+      - release/*
     paths:
       - 'src/**/*.cs'
       - 'src/**/*.csproj'
