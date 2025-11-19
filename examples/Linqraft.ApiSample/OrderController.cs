@@ -3,15 +3,16 @@ using Microsoft.AspNetCore.Mvc;
 
 namespace Linqraft.ApiSample;
 
-[Route("api/[controller]")]
+[Route("api/controller/")]
 [ApiController]
-public partial class ValuesController : ControllerBase
+public partial class OrderController : ControllerBase
 {
     [HttpGet]
-    public ActionResult<List<OrderDto>> Get()
+    [Route("get-orders")]
+    public ActionResult<List<OrderDto>> GetOrdersAsync()
     {
-        var Orders = new List<Order>();
-        return Orders
+        return SampleData
+            .GetOrdersFromOtherSource()
             .AsQueryable()
             .SelectExpr<Order, OrderDto>(s => new
             {
@@ -19,13 +20,11 @@ public partial class ValuesController : ControllerBase
                 CustomerName = s.Customer?.Name,
                 CustomerCountry = s.Customer?.Address?.Country?.Name,
                 CustomerCity = s.Customer?.Address?.City?.Name,
-                Items = s
-                    .OrderItems.Select(oi => new
-                    {
-                        ProductName = oi.Product?.Name,
-                        Quantity = oi.Quantity,
-                    })
-                    .ToList(),
+                Items = s.OrderItems.Select(oi => new
+                {
+                    ProductName = oi.Product?.Name,
+                    Quantity = oi.Quantity,
+                }),
             })
             .ToList();
     }
