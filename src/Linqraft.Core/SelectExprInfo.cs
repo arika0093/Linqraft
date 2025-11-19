@@ -226,9 +226,17 @@ public abstract record SelectExprInfo
         var expression = property.OriginalExpression;
         var syntax = property.OriginalSyntax;
 
-        // For nested Select (collection) case
+        // For nested structure cases
         if (property.NestedStructure is not null)
         {
+            // Check if this is a direct anonymous type (not a Select call)
+            if (syntax is AnonymousObjectCreationExpressionSyntax)
+            {
+                // Convert direct anonymous type to nested DTO
+                return ConvertDirectAnonymousTypeToDto(syntax, property.NestedStructure, indents);
+            }
+
+            // For nested Select (collection) case
             var converted = ConvertNestedSelectWithRoslyn(
                 syntax,
                 property.NestedStructure,
@@ -252,6 +260,40 @@ public abstract record SelectExprInfo
         }
         // Regular property access
         return expression;
+    }
+
+    /// <summary>
+    /// Converts a direct anonymous type expression to a nested DTO object creation
+    /// </summary>
+    protected string ConvertDirectAnonymousTypeToDto(
+        ExpressionSyntax syntax,
+        DtoStructure nestedStructure,
+        int indents
+    )
+    {
+        var spaces = new string(' ', indents);
+        var nestedClassName = GetClassName(nestedStructure);
+        // For anonymous types (empty class name), don't use namespace qualification
+        var nestedDtoName = string.IsNullOrEmpty(nestedClassName)
+            ? ""
+            : GetNestedDtoFullName(nestedClassName);
+
+        // Generate property assignments for nested DTO
+        var propertyAssignments = new List<string>();
+        foreach (var prop in nestedStructure.Properties)
+        {
+            var assignment = GeneratePropertyAssignment(prop, indents + 4);
+            propertyAssignments.Add($"{spaces}    {prop.Name} = {assignment},");
+        }
+        var propertiesCode = string.Join("\n", propertyAssignments);
+
+        // Build the new DTO object creation expression
+        var code = $$"""
+            new {{nestedDtoName}} {
+            {{propertiesCode}}
+            {{spaces}}}
+            """;
+        return code;
     }
 
     /// <summary>
