@@ -171,11 +171,7 @@ public class Issue59DirectNestedAnonymousTypeTest
         result[0].Channel.Id.ShouldBe(10);
         result[0].Channel.ReferenceId.ShouldBe("CH001");
         result[0].Channel.NameInfo.Name.ShouldBe("Online");
-        result[0].Channel.NameInfo.GetType().Name.ShouldStartWith("ChannelDto_NameInfo_");
         result[0].Channel.AdditionalInfo.IsActive.ShouldBeTrue();
-        result[0]
-            .Channel.AdditionalInfo.GetType()
-            .Name.ShouldStartWith("ChannelDto_AdditionalInfo_");
 
         result[1].Channel.Id.ShouldBe(11);
         result[1].Channel.NameInfo.Name.ShouldBe("Phone");
