@@ -190,35 +190,6 @@ namespace Tutorial
 
 </details>
 
-Since the generated DTO classes are treated as regular classes, they can be safely used for passing as arguments to other methods or as return values of APIs.
-
-<details>
-<summary>Generated DTO used in Web API example</summary>
-
-see: [examples/Linqraft.ApiSample](./examples/Linqraft.ApiSample) for details.
-
-```csharp
-[ApiController]
-public partial class OrderController : ControllerBase
-{
-    [HttpGet]
-    public ActionResult<List<OrderDto>> GetOrdersAsync()
-    {
-        return SampleData.GetOrdersFromOtherSource()
-            .AsQueryable()
-            .SelectExpr<Order, OrderDto>(s => new
-            {
-                Id = s.Id,
-                CustomerName = s.Customer?.Name,
-                // ...
-            })
-            .ToList();
-    }
-}
-```
-
-</details>
-
 > [!TIP]
 > If you find [Prisma](https://www.prisma.io/) (TypeScript ORM) useful, this library delivers that same level of convenience with a writing experience tailored for C#.  
 > In other words, you can use it like a scripting language where the result is generated as you write it, and with automatic generation of DTO classes, you can use it safely in other places as well.
@@ -239,12 +210,12 @@ Set the `LangVersion` property to `13.0` or later and use [Polysharp](https://gi
 
 ```xml
 <Project>
-    <PropertyGroup>
-        <LangVersion>13.0</LangVersion>
-    </PropertyGroup>
-    <ItemGroup>
-        <PackageReference Include="Polysharp" Version="1.*" />
-    </ItemGroup>
+  <PropertyGroup>
+    <LangVersion>13.0</LangVersion>
+  </PropertyGroup>
+  <ItemGroup>
+    <PackageReference Include="Polysharp" Version="1.*" />
+  </ItemGroup>
 </Project>
 ```
 
@@ -436,8 +407,38 @@ Intel Core i7-14700F 2.10GHz, 1 CPU, 28 logical and 20 physical cores
 Compared to the manual approach, the performance is nearly identical.
 for more details, see [Linqraft.Benchmark](./examples/Linqraft.Benchmark) for details.
 
-## Notes
-The translation of anonymous-type selectors into Select-compatible expressions is done by source generation and some heuristics. Very complex expressions or certain C# constructs may not be supported. If you encounter unsupported cases, please open an issue with a minimal repro.
+## Frequently Asked Questions
+### Can I use Linqraft with EF Core only?
+No. It can be used with any LINQ provider that supports `IEnumerable` and `IQueryable`.
+
+### Can the generated DTOs be used elsewhere?
+Yes. You can use the generated DTOs anywhere, such as API result models, Swagger documentation, function return types, arguments, variables, and more.
+For example, see [here](./examples/Linqraft.ApiSample) for an example of using it in an API.
+
+### Can I access the generated code?
+Yes. `Go to Definition (F12)` on the generated DTO class name will take you to the generated code.
+Alternatively, you can also output the generated code to files by adding the following settings to your project.
+
+```xml
+<Project>
+  <PropertyGroup>
+    <!-- flag to emit generated files -->
+    <EmitCompilerGeneratedFiles>true</EmitCompilerGeneratedFiles>
+    <!-- output path for generated files -->
+    <CompilerGeneratedFilesOutputPath>Generated</CompilerGeneratedFilesOutputPath>
+  </PropertyGroup>
+</Project>
+```
+
+### DTO classes should be separated from query parts.
+Short answer: I have no objection to doing so, but I think it's good to have a simpler option as well.
+
+Long answer:   
+Separating DTO classes from query logic can be a good approach in some cases. However, in my opinion, it often ends up being unnecessarily verbose.  
+For example, when retrieving moderately complex data from a database to return as an API response, the DTOs used for the result are essentially disposable (and arguably should be). In such cases, separating the query and DTO components may actually reduce code readability and maintainability rather than improve them. I've lost count of how many times I've had to modify both the query definition and the DTO definition simultaneously.
+Using Linqraft to integrate queries and DTOs, and automatically generating DTOs when needed, can sometimes be more efficient. At the very least, having that option available is valuable.
+
+Also, you can always copy the generated code and decouple it whenever you want.
 
 ## License
 This project is licensed under the Apache License 2.0.
