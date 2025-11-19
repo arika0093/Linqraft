@@ -3,10 +3,13 @@
 on:
   workflow_dispatch:
   push:
+    branches-ignore:
+      - release/*
     paths:
       - '**.csproj'
       - '**.cs'
-      - '**.yaml'
+      - '**./Directories.Build.props'
+      - '.github/workflows/test.yaml'
 
 jobs:
   build:

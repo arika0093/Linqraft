@@ -1,0 +1,55 @@
+name: Package Release to GitHub and Nuget
+
+on:
+  workflow_dispatch:
+  push:
+    branches-ignore:
+      - main
+      - release/*
+    paths:
+      - '**.csproj'
+      - '**.cs'
+      - '**./Directories.Build.props'
+      - '.github/workflows/format.yaml'
+        
+permissions:
+  contents: write
+
+jobs:
+  format-code:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v5
+
+      - name: Install dotnet-format tool
+        run: dotnet tool install -g csharpier
+
+      - name: Add Path to env
+        run: echo "$HOME/.dotnet/tools" >> $GITHUB_PATH
+
+      - name: Run csharpier format
+        run: csharpier format .
+
+      - name: Check for uncommitted changes
+        id: check_changes
+        run: |
+          if [ -n "$(git status --porcelain)" ]; then
+            echo "has_changes=true" >> $GITHUB_OUTPUT
+          else
+            echo "has_changes=false" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Commit and Push changes
+        if: steps.check_changes.outputs.has_changes == 'true'
+        run: |
+          git config --global user.name "github-actions[bot]"
+          git config --global user.email "github-actions[bot]@users.noreply.github.com"
+          git add .
+          git commit -m "chore: apply code formatting"
+          git push origin HEAD:${{ github.ref }}
