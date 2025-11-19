@@ -113,13 +113,6 @@ public class GenerateDtoClassInfo
             {
                 var nestStructure = prop.NestedStructure;
 
-                // Extract the base collection type (e.g., IEnumerable from IEnumerable<T>)
-                var baseType = propertyType;
-                if (propertyType.Contains("<"))
-                {
-                    baseType = propertyType[..propertyType.IndexOf("<")];
-                }
-
                 // Try to find nested class info by full name match
                 var nestedClassName =
                     $"{nestStructure.SourceTypeName}Dto_{nestStructure.GetUniqueId()}";
@@ -127,14 +120,28 @@ public class GenerateDtoClassInfo
                     nc.ClassName == nestedClassName
                 );
 
-                if (containedNestClasses is not null)
+                var nestedDtoFullName = containedNestClasses?.FullName ?? $"{Namespace}.{nestedClassName}";
+
+                // Check if this is a direct anonymous type (not wrapped in a collection)
+                // Anonymous types from Roslyn look like: global::<anonymous type: ...>
+                // Collection of anonymous types look like: List<anonymous type> or IEnumerable<anonymous type>
+                if (propertyType.StartsWith("global::<anonymous"))
                 {
-                    propertyType = $"{baseType}<{containedNestClasses.FullName}>";
+                    // Direct anonymous type (e.g., from .Select(...).FirstOrDefault())
+                    // Replace the entire anonymous type with the generated DTO class name
+                    propertyType = $"global::{nestedDtoFullName}";
+                }
+                else if (propertyType.Contains("<"))
+                {
+                    // Collection type (e.g., List<...>, IEnumerable<...>)
+                    // Extract the base collection type and replace the element type
+                    var baseType = propertyType[..propertyType.IndexOf("<")];
+                    propertyType = $"{baseType}<{nestedDtoFullName}>";
                 }
                 else
                 {
-                    // Fallback: use generated class name directly
-                    propertyType = $"{baseType}<{Namespace}.{nestedClassName}>";
+                    // Single item, non-anonymous type (shouldn't happen often, but handle it)
+                    propertyType = $"global::{nestedDtoFullName}";
                 }
             }
 
