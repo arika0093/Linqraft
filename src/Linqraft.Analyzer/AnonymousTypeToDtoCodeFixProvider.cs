@@ -130,15 +130,15 @@ public class AnonymousTypeToDtoCodeFixProvider : CodeFixProvider
         // Add DTO class to the end of the file
         if (namespaceDecl != null)
         {
-            // Add inside the namespace
+            // Add inside the namespace - get the updated namespace from newRoot
             var dtoClass = SyntaxFactory.ParseMemberDeclaration(dtoClassCode);
             if (dtoClass != null)
             {
-                var newNamespaceDecl = namespaceDecl.AddMembers(dtoClass);
-                newRoot = newRoot.ReplaceNode(
-                    newRoot.DescendantNodes().OfType<BaseNamespaceDeclarationSyntax>().First(),
-                    newNamespaceDecl
-                );
+                var updatedNamespaceDecl = newRoot.DescendantNodes()
+                    .OfType<BaseNamespaceDeclarationSyntax>()
+                    .First();
+                var newNamespaceDecl = updatedNamespaceDecl.AddMembers(dtoClass);
+                newRoot = newRoot.ReplaceNode(updatedNamespaceDecl, newNamespaceDecl);
             }
         }
         else

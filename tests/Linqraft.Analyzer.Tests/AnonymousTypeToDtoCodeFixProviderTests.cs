@@ -4,8 +4,7 @@ using Microsoft.CodeAnalysis.Testing;
 using Xunit;
 using VerifyCS = Microsoft.CodeAnalysis.CSharp.Testing.XUnit.CodeFixVerifier<
     Linqraft.Analyzer.AnonymousTypeToDtoAnalyzer,
-    Linqraft.Analyzer.AnonymousTypeToDtoCodeFixProvider
->;
+    Linqraft.Analyzer.AnonymousTypeToDtoCodeFixProvider>;
 
 namespace Linqraft.Analyzer.Tests;
 
@@ -38,6 +37,11 @@ namespace TestNamespace
             var result = new ResultDto { Id = 1, Name = ""Test"" };
         }
     }
+public partial class ResultDto
+{
+    public required int Id { get; set; }
+    public required string Name { get; set; }
+}
 }";
 
         var expected = VerifyCS
@@ -89,6 +93,11 @@ namespace TestNamespace
             var data = new DataDto { Id = source.Id, Name = source.Name };
         }
     }
+public partial class DataDto
+{
+    public required int Id { get; set; }
+    public required string Name { get; set; }
+}
 }";
 
         var expected = VerifyCS
@@ -126,6 +135,11 @@ namespace TestNamespace
             return new UserDto { Id = 1, Name = ""Test"" };
         }
     }
+public partial class UserDto
+{
+    public required int Id { get; set; }
+    public required string Name { get; set; }
+}
 }";
 
         var expected = VerifyCS
@@ -165,6 +179,12 @@ namespace TestNamespace
             var result = new ResultDto { Id = id, Name = ""Test"", Active = true };
         }
     }
+public partial class ResultDto
+{
+    public required int Id { get; set; }
+    public required string Name { get; set; }
+    public required bool Active { get; set; }
+}
 }";
 
         var expected = VerifyCS
