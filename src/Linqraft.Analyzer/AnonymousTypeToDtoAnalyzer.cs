@@ -7,8 +7,11 @@ using Microsoft.CodeAnalysis.Diagnostics;
 namespace Linqraft.Analyzer;
 
 /// <summary>
-/// Analyzer that detects anonymous type usages that can be converted to DTOs
+/// Analyzer that detects anonymous type usages that can be converted to DTOs.
 /// </summary>
+/// <remarks>
+/// See documentation: https://github.com/arika0093/Linqraft/blob/main/docs/Analyzers.md#lqrf001-anonymoustypetodtoanalyzer
+/// </remarks>
 [DiagnosticAnalyzer(LanguageNames.CSharp)]
 public class AnonymousTypeToDtoAnalyzer : DiagnosticAnalyzer
 {
@@ -28,7 +31,8 @@ public class AnonymousTypeToDtoAnalyzer : DiagnosticAnalyzer
         Category,
         DiagnosticSeverity.Info,
         isEnabledByDefault: true,
-        description: Description
+        description: Description,
+        helpLinkUri: "https://github.com/arika0093/Linqraft/blob/main/docs/Analyzers.md#lqrf001-anonymoustypetodtoanalyzer"
     );
 
     public override ImmutableArray<DiagnosticDescriptor> SupportedDiagnostics =>

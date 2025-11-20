@@ -10,8 +10,11 @@ using Microsoft.CodeAnalysis.Diagnostics;
 namespace Linqraft.Analyzer;
 
 /// <summary>
-/// Analyzer that detects SelectExpr calls without type arguments that can be converted to typed versions
+/// Analyzer that detects SelectExpr calls without type arguments that can be converted to typed versions.
 /// </summary>
+/// <remarks>
+/// See documentation: https://github.com/arika0093/Linqraft/blob/main/docs/Analyzers.md#lqrs001-selectexprtotypedanalyzer
+/// </remarks>
 [DiagnosticAnalyzer(LanguageNames.CSharp)]
 public class SelectExprToTypedAnalyzer : DiagnosticAnalyzer
 {
@@ -32,7 +35,8 @@ public class SelectExprToTypedAnalyzer : DiagnosticAnalyzer
         Category,
         DiagnosticSeverity.Info,
         isEnabledByDefault: true,
-        description: Description
+        description: Description,
+        helpLinkUri: "https://github.com/arika0093/Linqraft/blob/main/docs/Analyzers.md#lqrs001-selectexprtotypedanalyzer"
     );
 
     public override ImmutableArray<DiagnosticDescriptor> SupportedDiagnostics =>
