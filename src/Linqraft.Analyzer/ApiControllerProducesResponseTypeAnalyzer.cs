@@ -77,10 +77,10 @@ public class ApiControllerProducesResponseTypeAnalyzer : DiagnosticAnalyzer
             return;
         }
 
-        // Report diagnostic
+        // Report diagnostic at the SelectExpr invocation location
         var diagnostic = Diagnostic.Create(
             Rule,
-            methodDeclaration.Identifier.GetLocation(),
+            selectExprInfo.Value.Invocation.GetLocation(),
             selectExprInfo.Value.DtoTypeName
         );
         context.ReportDiagnostic(diagnostic);

@@ -52,10 +52,10 @@ class SampleDto
 public class SampleController : ControllerBase
 {
     [HttpGet]
-    public IActionResult {|#0:SampleGet|}()
+    public IActionResult SampleGet()
     {
         var query = new List<Sample>().AsQueryable();
-        var result = query.SelectExpr<Sample, SampleDto>(x => new { x.Id });
+        var result = {|#0:query.SelectExpr<Sample, SampleDto>(x => new { x.Id })|};
         return Ok(result);
     }
 }
@@ -288,8 +288,8 @@ class SampleDto
 public class SampleController : ControllerBase
 {
     [HttpGet]
-    public IActionResult {|#0:SampleGet|}() =>
-        Ok(new List<Sample>().AsQueryable().SelectExpr<Sample, SampleDto>(x => new { x.Id }).ToList());
+    public IActionResult SampleGet() =>
+        Ok({|#0:new List<Sample>().AsQueryable().SelectExpr<Sample, SampleDto>(x => new { x.Id })|}.ToList());
 }
 
 static class Extensions
@@ -336,11 +336,11 @@ class OtherDto
 public class SampleController : ControllerBase
 {
     [HttpGet]
-    public IActionResult {|#0:SampleGet|}()
+    public IActionResult SampleGet()
     {
         var query = new List<Sample>().AsQueryable();
         // First SelectExpr should trigger the diagnostic
-        var result1 = query.SelectExpr<Sample, SampleDto>(x => new { x.Id });
+        var result1 = {|#0:query.SelectExpr<Sample, SampleDto>(x => new { x.Id })|};
         var result2 = query.SelectExpr<Sample, OtherDto>(x => new { x.Id });
         return Ok(result1);
     }
