@@ -213,6 +213,49 @@ namespace TestNamespace
         await RunCodeFixTestAsync(test, expected, fixedCode);
     }
 
+    [Fact]
+    public async Task CodeFix_FileScopedNamespace_GeneratesDtoWithoutIndent()
+    {
+        var test =
+            @"
+namespace TestNamespace;
+
+class Test
+{
+    void Method()
+    {
+        var result = {|#0:new { Id = 1, Name = ""Test"" }|};
+    }
+}";
+
+        var fixedCode =
+            @"namespace TestNamespace;
+class Test
+{
+    void Method()
+    {
+        var result = new ResultDto
+        {
+            Id = 1,
+            Name = ""Test""
+        };
+    }
+}
+
+public partial class ResultDto
+{
+    public required int Id { get; set; }
+    public required string Name { get; set; }
+}";
+
+        var expected = new DiagnosticResult(
+            AnonymousTypeToDtoAnalyzer.DiagnosticId,
+            DiagnosticSeverity.Info
+        ).WithLocation(0);
+
+        await RunCodeFixTestAsync(test, expected, fixedCode);
+    }
+
     private static async Task RunCodeFixTestAsync(
         string source,
         DiagnosticResult expected,
