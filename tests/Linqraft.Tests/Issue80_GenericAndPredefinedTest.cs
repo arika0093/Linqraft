@@ -2,6 +2,8 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 
+namespace Linqraft.Tests;
+
 public class Issue80_GenericAndPredefinedTest
 {
     [Fact]
