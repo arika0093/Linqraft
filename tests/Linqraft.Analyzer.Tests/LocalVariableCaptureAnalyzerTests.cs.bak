@@ -29,7 +29,13 @@ class Test
     }
 }
 
-" + TestSourceCodes.SelectExprWithFunc;
+static class Extensions
+{
+    public static IQueryable<TResult> SelectExpr<TSource, TResult>(
+        this IQueryable<TSource> source,
+        System.Func<TSource, TResult> selector)
+        => source.Select(x => selector(x));
+}";
 
         var expected = VerifyCS
             .Diagnostic(LocalVariableCaptureAnalyzer.DiagnosticId)
@@ -62,7 +68,13 @@ class Test
     }
 }
 
-" + TestSourceCodes.SelectExprWithFunc;
+static class Extensions
+{
+    public static IQueryable<TResult> SelectExpr<TSource, TResult>(
+        this IQueryable<TSource> source,
+        System.Func<TSource, TResult> selector)
+        => source.Select(x => selector(x));
+}";
 
         var expected1 = VerifyCS
             .Diagnostic(LocalVariableCaptureAnalyzer.DiagnosticId)
@@ -97,7 +109,14 @@ class Test
     }
 }
 
-" + TestSourceCodes.SelectExprWithFuncAndCapture;
+static class Extensions
+{
+    public static IQueryable<TResult> SelectExpr<TSource, TResult>(
+        this IQueryable<TSource> source,
+        System.Func<TSource, TResult> selector,
+        object capture)
+        => source.Select(x => selector(x));
+}";
 
         await VerifyCS.VerifyAnalyzerAsync(test);
     }
@@ -119,7 +138,13 @@ class Test
     }
 }
 
-" + TestSourceCodes.SelectExprWithFunc;
+static class Extensions
+{
+    public static IQueryable<TResult> SelectExpr<TSource, TResult>(
+        this IQueryable<TSource> source,
+        System.Func<TSource, TResult> selector)
+        => source.Select(x => selector(x));
+}";
 
         var expected = VerifyCS
             .Diagnostic(LocalVariableCaptureAnalyzer.DiagnosticId)
@@ -153,7 +178,13 @@ class Test
     }
 }
 
-" + TestSourceCodes.SelectExprWithFunc;
+static class Extensions
+{
+    public static IQueryable<TResult> SelectExpr<TSource, TResult>(
+        this IQueryable<TSource> source,
+        System.Func<TSource, TResult> selector)
+        => source.Select(x => selector(x));
+}";
 
         await VerifyCS.VerifyAnalyzerAsync(test);
     }
@@ -180,7 +211,13 @@ class Test
     }
 }
 
-" + TestSourceCodes.SelectExprWithFunc;
+static class Extensions
+{
+    public static IQueryable<TResult> SelectExpr<TSource, TResult>(
+        this IQueryable<TSource> source,
+        System.Func<TSource, TResult> selector)
+        => source.Select(x => selector(x));
+}";
 
         await VerifyCS.VerifyAnalyzerAsync(test);
     }
@@ -211,7 +248,13 @@ class Test
     }
 }
 
-" + TestSourceCodes.SelectExprWithFunc;
+static class Extensions
+{
+    public static IQueryable<TResult> SelectExpr<TSource, TResult>(
+        this IQueryable<TSource> source,
+        System.Func<TSource, TResult> selector)
+        => source.Select(x => selector(x));
+}";
 
         var expected1 = VerifyCS
             .Diagnostic(LocalVariableCaptureAnalyzer.DiagnosticId)
@@ -258,7 +301,13 @@ class Test
     }
 }
 
-" + TestSourceCodes.SelectExprWithFuncObject;
+static class Extensions
+{
+    public static IQueryable<TResult> SelectExpr<TSource, TResult>(
+        this IQueryable<TSource> source,
+        System.Func<TSource, object> selector)
+        => throw new System.NotImplementedException();
+}";
 
         var expected = VerifyCS
             .Diagnostic(LocalVariableCaptureAnalyzer.DiagnosticId)
@@ -292,7 +341,13 @@ class Test
     }
 }
 
-" + TestSourceCodes.SelectExprEnumerableWithFunc;
+static class Extensions
+{
+    public static IEnumerable<TResult> SelectExpr<TSource, TResult>(
+        this IEnumerable<TSource> source,
+        System.Func<TSource, TResult> selector)
+        => source.Select(x => selector(x));
+}";
 
         var expected = VerifyCS
             .Diagnostic(LocalVariableCaptureAnalyzer.DiagnosticId)
@@ -330,7 +385,13 @@ class Test
     }
 }
 
-" + TestSourceCodes.SelectExprWithFunc;
+static class Extensions
+{
+    public static IQueryable<TResult> SelectExpr<TSource, TResult>(
+        this IQueryable<TSource> source,
+        System.Func<TSource, TResult> selector)
+        => source.Select(x => selector(x));
+}";
 
         var expected1 = VerifyCS
             .Diagnostic(LocalVariableCaptureAnalyzer.DiagnosticId)
@@ -372,7 +433,13 @@ class Test
     }
 }
 
-" + TestSourceCodes.SelectExprWithFunc;
+static class Extensions
+{
+    public static IQueryable<TResult> SelectExpr<TSource, TResult>(
+        this IQueryable<TSource> source,
+        System.Func<TSource, TResult> selector)
+        => source.Select(x => selector(x));
+}";
 
         var expected = VerifyCS
             .Diagnostic(LocalVariableCaptureAnalyzer.DiagnosticId)
@@ -405,7 +472,13 @@ class Test
     }
 }
 
-" + TestSourceCodes.SelectExprWithFunc;
+static class Extensions
+{
+    public static IQueryable<TResult> SelectExpr<TSource, TResult>(
+        this IQueryable<TSource> source,
+        System.Func<TSource, TResult> selector)
+        => source.Select(x => selector(x));
+}";
 
         await VerifyCS.VerifyAnalyzerAsync(test);
     }
@@ -433,7 +506,13 @@ class Test
     }
 }
 
-" + TestSourceCodes.SelectExprWithFunc;
+static class Extensions
+{
+    public static IQueryable<TResult> SelectExpr<TSource, TResult>(
+        this IQueryable<TSource> source,
+        System.Func<TSource, TResult> selector)
+        => source.Select(x => selector(x));
+}";
 
         // Note: Constants might still be flagged depending on how Roslyn treats them
         // This test documents the current behavior
@@ -464,7 +543,13 @@ class Test
     }
 }
 
-" + TestSourceCodes.SelectExprWithFunc;
+static class Extensions
+{
+    public static IQueryable<TResult> SelectExpr<TSource, TResult>(
+        this IQueryable<TSource> source,
+        System.Func<TSource, TResult> selector)
+        => source.Select(x => selector(x));
+}";
 
         var expected = VerifyCS
             .Diagnostic(LocalVariableCaptureAnalyzer.DiagnosticId)
@@ -499,7 +584,13 @@ class Test
     }
 }
 
-" + TestSourceCodes.SelectExprWithFunc;
+static class Extensions
+{
+    public static IQueryable<TResult> SelectExpr<TSource, TResult>(
+        this IQueryable<TSource> source,
+        System.Func<TSource, TResult> selector)
+        => source.Select(x => selector(x));
+}";
 
         var expected = VerifyCS
             .Diagnostic(LocalVariableCaptureAnalyzer.DiagnosticId)
@@ -541,7 +632,13 @@ class Test
     }
 }
 
-" + TestSourceCodes.SelectExprWithFunc;
+static class Extensions
+{
+    public static IQueryable<TResult> SelectExpr<TSource, TResult>(
+        this IQueryable<TSource> source,
+        System.Func<TSource, TResult> selector)
+        => source.Select(x => selector(x));
+}";
 
         var expected1 = VerifyCS
             .Diagnostic(LocalVariableCaptureAnalyzer.DiagnosticId)
@@ -594,7 +691,14 @@ class Test
     }
 }
 
-" + TestSourceCodes.SelectExprWithFuncAndCapture;
+static class Extensions
+{
+    public static IQueryable<TResult> SelectExpr<TSource, TResult>(
+        this IQueryable<TSource> source,
+        System.Func<TSource, TResult> selector,
+        object capture)
+        => source.Select(x => selector(x));
+}";
 
         var expected = VerifyCS
             .Diagnostic(LocalVariableCaptureAnalyzer.DiagnosticId)
@@ -629,7 +733,13 @@ class Test
     }
 }
 
-" + TestSourceCodes.SelectExprWithFunc;
+static class Extensions
+{
+    public static IQueryable<TResult> SelectExpr<TSource, TResult>(
+        this IQueryable<TSource> source,
+        System.Func<TSource, TResult> selector)
+        => source.Select(x => selector(x));
+}";
 
         var expected = VerifyCS
             .Diagnostic(LocalVariableCaptureAnalyzer.DiagnosticId)
@@ -664,7 +774,13 @@ class Test
     }
 }
 
-" + TestSourceCodes.SelectExprWithFunc;
+static class Extensions
+{
+    public static IQueryable<TResult> SelectExpr<TSource, TResult>(
+        this IQueryable<TSource> source,
+        System.Func<TSource, TResult> selector)
+        => source.Select(x => selector(x));
+}";
 
         var expected = VerifyCS
             .Diagnostic(LocalVariableCaptureAnalyzer.DiagnosticId)
@@ -699,7 +815,13 @@ class Test
     }
 }
 
-" + TestSourceCodes.SelectExprWithFunc;
+static class Extensions
+{
+    public static IQueryable<TResult> SelectExpr<TSource, TResult>(
+        this IQueryable<TSource> source,
+        System.Func<TSource, TResult> selector)
+        => source.Select(x => selector(x));
+}";
 
         var expected = VerifyCS
             .Diagnostic(LocalVariableCaptureAnalyzer.DiagnosticId)
@@ -737,7 +859,13 @@ class Test
     }
 }
 
-" + TestSourceCodes.SelectExprWithFunc;
+static class Extensions
+{
+    public static IQueryable<TResult> SelectExpr<TSource, TResult>(
+        this IQueryable<TSource> source,
+        System.Func<TSource, TResult> selector)
+        => source.Select(x => selector(x));
+}";
 
         var expected = VerifyCS
             .Diagnostic(LocalVariableCaptureAnalyzer.DiagnosticId)

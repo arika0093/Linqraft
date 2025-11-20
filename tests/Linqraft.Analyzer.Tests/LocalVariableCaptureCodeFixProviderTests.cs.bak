@@ -29,7 +29,19 @@ class Test
     }
 }
 
-" + TestSourceCodes.SelectExprWithFuncAndBothOverloads;
+static class Extensions
+{
+    public static IQueryable<TResult> SelectExpr<TSource, TResult>(
+        this IQueryable<TSource> source,
+        System.Func<TSource, TResult> selector)
+        => source.Select(x => selector(x));
+
+    public static IQueryable<TResult> SelectExpr<TSource, TResult>(
+        this IQueryable<TSource> source,
+        System.Func<TSource, TResult> selector,
+        object capture)
+        => source.Select(x => selector(x));
+}";
 
         var fixedCode =
             @"
@@ -46,7 +58,19 @@ class Test
     }
 }
 
-" + TestSourceCodes.SelectExprWithFuncAndBothOverloads;
+static class Extensions
+{
+    public static IQueryable<TResult> SelectExpr<TSource, TResult>(
+        this IQueryable<TSource> source,
+        System.Func<TSource, TResult> selector)
+        => source.Select(x => selector(x));
+
+    public static IQueryable<TResult> SelectExpr<TSource, TResult>(
+        this IQueryable<TSource> source,
+        System.Func<TSource, TResult> selector,
+        object capture)
+        => source.Select(x => selector(x));
+}";
 
         var expected = VerifyCS
             .Diagnostic(LocalVariableCaptureAnalyzer.DiagnosticId)
@@ -78,7 +102,19 @@ class Test
     }
 }
 
-" + TestSourceCodes.SelectExprWithFuncAndBothOverloads;
+static class Extensions
+{
+    public static IQueryable<TResult> SelectExpr<TSource, TResult>(
+        this IQueryable<TSource> source,
+        System.Func<TSource, TResult> selector)
+        => source.Select(x => selector(x));
+
+    public static IQueryable<TResult> SelectExpr<TSource, TResult>(
+        this IQueryable<TSource> source,
+        System.Func<TSource, TResult> selector,
+        object capture)
+        => source.Select(x => selector(x));
+}";
 
         var fixedCode =
             @"
@@ -99,7 +135,19 @@ class Test
     }
 }
 
-" + TestSourceCodes.SelectExprWithFuncAndBothOverloads;
+static class Extensions
+{
+    public static IQueryable<TResult> SelectExpr<TSource, TResult>(
+        this IQueryable<TSource> source,
+        System.Func<TSource, TResult> selector)
+        => source.Select(x => selector(x));
+
+    public static IQueryable<TResult> SelectExpr<TSource, TResult>(
+        this IQueryable<TSource> source,
+        System.Func<TSource, TResult> selector,
+        object capture)
+        => source.Select(x => selector(x));
+}";
 
         var expected1 = VerifyCS
             .Diagnostic(LocalVariableCaptureAnalyzer.DiagnosticId)
@@ -131,7 +179,19 @@ class Test
     }
 }
 
-" + TestSourceCodes.SelectExprWithFuncAndBothOverloads;
+static class Extensions
+{
+    public static IQueryable<TResult> SelectExpr<TSource, TResult>(
+        this IQueryable<TSource> source,
+        System.Func<TSource, TResult> selector)
+        => source.Select(x => selector(x));
+
+    public static IQueryable<TResult> SelectExpr<TSource, TResult>(
+        this IQueryable<TSource> source,
+        System.Func<TSource, TResult> selector,
+        object capture)
+        => source.Select(x => selector(x));
+}";
 
         var fixedCode =
             @"
@@ -147,7 +207,19 @@ class Test
     }
 }
 
-" + TestSourceCodes.SelectExprWithFuncAndBothOverloads;
+static class Extensions
+{
+    public static IQueryable<TResult> SelectExpr<TSource, TResult>(
+        this IQueryable<TSource> source,
+        System.Func<TSource, TResult> selector)
+        => source.Select(x => selector(x));
+
+    public static IQueryable<TResult> SelectExpr<TSource, TResult>(
+        this IQueryable<TSource> source,
+        System.Func<TSource, TResult> selector,
+        object capture)
+        => source.Select(x => selector(x));
+}";
 
         var expected = VerifyCS
             .Diagnostic(LocalVariableCaptureAnalyzer.DiagnosticId)
@@ -183,7 +255,19 @@ class Test
     }
 }
 
-" + TestSourceCodes.SelectExprWithFuncAndBothOverloads;
+static class Extensions
+{
+    public static IQueryable<TResult> SelectExpr<TSource, TResult>(
+        this IQueryable<TSource> source,
+        System.Func<TSource, TResult> selector)
+        => source.Select(x => selector(x));
+
+    public static IQueryable<TResult> SelectExpr<TSource, TResult>(
+        this IQueryable<TSource> source,
+        System.Func<TSource, TResult> selector,
+        object capture)
+        => source.Select(x => selector(x));
+}";
 
         var fixedCode =
             @"
@@ -208,7 +292,19 @@ class Test
     }
 }
 
-" + TestSourceCodes.SelectExprWithFuncAndBothOverloads;
+static class Extensions
+{
+    public static IQueryable<TResult> SelectExpr<TSource, TResult>(
+        this IQueryable<TSource> source,
+        System.Func<TSource, TResult> selector)
+        => source.Select(x => selector(x));
+
+    public static IQueryable<TResult> SelectExpr<TSource, TResult>(
+        this IQueryable<TSource> source,
+        System.Func<TSource, TResult> selector,
+        object capture)
+        => source.Select(x => selector(x));
+}";
 
         var expected1 = VerifyCS
             .Diagnostic(LocalVariableCaptureAnalyzer.DiagnosticId)
@@ -253,7 +349,19 @@ class Test
     }
 }
 
-" + TestSourceCodes.SelectExprWithFuncObjectAndBothOverloads;
+static class Extensions
+{
+    public static IQueryable<TResult> SelectExpr<TSource, TResult>(
+        this IQueryable<TSource> source,
+        System.Func<TSource, object> selector)
+        => throw new System.NotImplementedException();
+
+    public static IQueryable<TResult> SelectExpr<TSource, TResult>(
+        this IQueryable<TSource> source,
+        System.Func<TSource, object> selector,
+        object capture)
+        => throw new System.NotImplementedException();
+}";
 
         var fixedCode =
             @"
@@ -282,7 +390,19 @@ class Test
     }
 }
 
-" + TestSourceCodes.SelectExprWithFuncObjectAndBothOverloads;
+static class Extensions
+{
+    public static IQueryable<TResult> SelectExpr<TSource, TResult>(
+        this IQueryable<TSource> source,
+        System.Func<TSource, object> selector)
+        => throw new System.NotImplementedException();
+
+    public static IQueryable<TResult> SelectExpr<TSource, TResult>(
+        this IQueryable<TSource> source,
+        System.Func<TSource, object> selector,
+        object capture)
+        => throw new System.NotImplementedException();
+}";
 
         var expected = VerifyCS
             .Diagnostic(LocalVariableCaptureAnalyzer.DiagnosticId)
@@ -319,7 +439,19 @@ class Test
     }
 }
 
-" + TestSourceCodes.SelectExprWithFuncAndBothOverloads;
+static class Extensions
+{
+    public static IQueryable<TResult> SelectExpr<TSource, TResult>(
+        this IQueryable<TSource> source,
+        System.Func<TSource, TResult> selector)
+        => source.Select(x => selector(x));
+
+    public static IQueryable<TResult> SelectExpr<TSource, TResult>(
+        this IQueryable<TSource> source,
+        System.Func<TSource, TResult> selector,
+        object capture)
+        => source.Select(x => selector(x));
+}";
 
         var fixedCode =
             @"
@@ -345,7 +477,19 @@ class Test
     }
 }
 
-" + TestSourceCodes.SelectExprWithFuncAndBothOverloads;
+static class Extensions
+{
+    public static IQueryable<TResult> SelectExpr<TSource, TResult>(
+        this IQueryable<TSource> source,
+        System.Func<TSource, TResult> selector)
+        => source.Select(x => selector(x));
+
+    public static IQueryable<TResult> SelectExpr<TSource, TResult>(
+        this IQueryable<TSource> source,
+        System.Func<TSource, TResult> selector,
+        object capture)
+        => source.Select(x => selector(x));
+}";
 
         var expected1 = VerifyCS
             .Diagnostic(LocalVariableCaptureAnalyzer.DiagnosticId)
@@ -385,7 +529,19 @@ class Test
     }
 }
 
-" + TestSourceCodes.SelectExprWithFuncAndBothOverloads;
+static class Extensions
+{
+    public static IQueryable<TResult> SelectExpr<TSource, TResult>(
+        this IQueryable<TSource> source,
+        System.Func<TSource, TResult> selector)
+        => source.Select(x => selector(x));
+
+    public static IQueryable<TResult> SelectExpr<TSource, TResult>(
+        this IQueryable<TSource> source,
+        System.Func<TSource, TResult> selector,
+        object capture)
+        => source.Select(x => selector(x));
+}";
 
         var fixedCode =
             @"
@@ -409,7 +565,19 @@ class Test
     }
 }
 
-" + TestSourceCodes.SelectExprWithFuncAndBothOverloads;
+static class Extensions
+{
+    public static IQueryable<TResult> SelectExpr<TSource, TResult>(
+        this IQueryable<TSource> source,
+        System.Func<TSource, TResult> selector)
+        => source.Select(x => selector(x));
+
+    public static IQueryable<TResult> SelectExpr<TSource, TResult>(
+        this IQueryable<TSource> source,
+        System.Func<TSource, TResult> selector,
+        object capture)
+        => source.Select(x => selector(x));
+}";
 
         var expected = VerifyCS
             .Diagnostic(LocalVariableCaptureAnalyzer.DiagnosticId)
@@ -443,7 +611,19 @@ class Test
     }
 }
 
-" + TestSourceCodes.SelectExprWithFuncAndBothOverloads;
+static class Extensions
+{
+    public static IQueryable<TResult> SelectExpr<TSource, TResult>(
+        this IQueryable<TSource> source,
+        System.Func<TSource, TResult> selector)
+        => source.Select(x => selector(x));
+
+    public static IQueryable<TResult> SelectExpr<TSource, TResult>(
+        this IQueryable<TSource> source,
+        System.Func<TSource, TResult> selector,
+        object capture)
+        => source.Select(x => selector(x));
+}";
 
         var fixedCode =
             @"
@@ -466,7 +646,19 @@ class Test
     }
 }
 
-" + TestSourceCodes.SelectExprWithFuncAndBothOverloads;
+static class Extensions
+{
+    public static IQueryable<TResult> SelectExpr<TSource, TResult>(
+        this IQueryable<TSource> source,
+        System.Func<TSource, TResult> selector)
+        => source.Select(x => selector(x));
+
+    public static IQueryable<TResult> SelectExpr<TSource, TResult>(
+        this IQueryable<TSource> source,
+        System.Func<TSource, TResult> selector,
+        object capture)
+        => source.Select(x => selector(x));
+}";
 
         var expected = VerifyCS
             .Diagnostic(LocalVariableCaptureAnalyzer.DiagnosticId)
@@ -507,7 +699,19 @@ class Test
     }
 }
 
-" + TestSourceCodes.SelectExprWithFuncAndBothOverloads;
+static class Extensions
+{
+    public static IQueryable<TResult> SelectExpr<TSource, TResult>(
+        this IQueryable<TSource> source,
+        System.Func<TSource, TResult> selector)
+        => source.Select(x => selector(x));
+
+    public static IQueryable<TResult> SelectExpr<TSource, TResult>(
+        this IQueryable<TSource> source,
+        System.Func<TSource, TResult> selector,
+        object capture)
+        => source.Select(x => selector(x));
+}";
 
         var fixedCode =
             @"
@@ -537,7 +741,19 @@ class Test
     }
 }
 
-" + TestSourceCodes.SelectExprWithFuncAndBothOverloads;
+static class Extensions
+{
+    public static IQueryable<TResult> SelectExpr<TSource, TResult>(
+        this IQueryable<TSource> source,
+        System.Func<TSource, TResult> selector)
+        => source.Select(x => selector(x));
+
+    public static IQueryable<TResult> SelectExpr<TSource, TResult>(
+        this IQueryable<TSource> source,
+        System.Func<TSource, TResult> selector,
+        object capture)
+        => source.Select(x => selector(x));
+}";
 
         var expected1 = VerifyCS
             .Diagnostic(LocalVariableCaptureAnalyzer.DiagnosticId)
@@ -591,7 +807,14 @@ class Test
     }
 }
 
-" + TestSourceCodes.SelectExprWithFuncAndCaptureOnly;
+static class Extensions
+{
+    public static IQueryable<TResult> SelectExpr<TSource, TResult>(
+        this IQueryable<TSource> source,
+        System.Func<TSource, TResult> selector,
+        object capture)
+        => source.Select(x => selector(x));
+}";
 
         var fixedCode =
             @"
@@ -619,7 +842,14 @@ class Test
     }
 }
 
-" + TestSourceCodes.SelectExprWithFuncAndCaptureOnly;
+static class Extensions
+{
+    public static IQueryable<TResult> SelectExpr<TSource, TResult>(
+        this IQueryable<TSource> source,
+        System.Func<TSource, TResult> selector,
+        object capture)
+        => source.Select(x => selector(x));
+}";
 
         var expected = VerifyCS
             .Diagnostic(LocalVariableCaptureAnalyzer.DiagnosticId)
@@ -657,7 +887,19 @@ class Test
     }
 }
 
-" + TestSourceCodes.SelectExprWithFuncAndBothOverloads;
+static class Extensions
+{
+    public static IQueryable<TResult> SelectExpr<TSource, TResult>(
+        this IQueryable<TSource> source,
+        System.Func<TSource, TResult> selector)
+        => source.Select(x => selector(x));
+
+    public static IQueryable<TResult> SelectExpr<TSource, TResult>(
+        this IQueryable<TSource> source,
+        System.Func<TSource, TResult> selector,
+        object capture)
+        => source.Select(x => selector(x));
+}";
 
         var fixedCode =
             @"
@@ -685,7 +927,19 @@ class Test
     }
 }
 
-" + TestSourceCodes.SelectExprWithFuncAndBothOverloads;
+static class Extensions
+{
+    public static IQueryable<TResult> SelectExpr<TSource, TResult>(
+        this IQueryable<TSource> source,
+        System.Func<TSource, TResult> selector)
+        => source.Select(x => selector(x));
+
+    public static IQueryable<TResult> SelectExpr<TSource, TResult>(
+        this IQueryable<TSource> source,
+        System.Func<TSource, TResult> selector,
+        object capture)
+        => source.Select(x => selector(x));
+}";
 
         var expected = VerifyCS
             .Diagnostic(LocalVariableCaptureAnalyzer.DiagnosticId)
@@ -726,7 +980,19 @@ class Test
     }
 }
 
-" + TestSourceCodes.SelectExprWithFuncAndBothOverloads;
+static class Extensions
+{
+    public static IQueryable<TResult> SelectExpr<TSource, TResult>(
+        this IQueryable<TSource> source,
+        System.Func<TSource, TResult> selector)
+        => source.Select(x => selector(x));
+
+    public static IQueryable<TResult> SelectExpr<TSource, TResult>(
+        this IQueryable<TSource> source,
+        System.Func<TSource, TResult> selector,
+        object capture)
+        => source.Select(x => selector(x));
+}";
 
         var fixedCode =
             @"
@@ -757,7 +1023,19 @@ class Test
     }
 }
 
-" + TestSourceCodes.SelectExprWithFuncAndBothOverloads;
+static class Extensions
+{
+    public static IQueryable<TResult> SelectExpr<TSource, TResult>(
+        this IQueryable<TSource> source,
+        System.Func<TSource, TResult> selector)
+        => source.Select(x => selector(x));
+
+    public static IQueryable<TResult> SelectExpr<TSource, TResult>(
+        this IQueryable<TSource> source,
+        System.Func<TSource, TResult> selector,
+        object capture)
+        => source.Select(x => selector(x));
+}";
 
         var expected = VerifyCS
             .Diagnostic(LocalVariableCaptureAnalyzer.DiagnosticId)
@@ -799,7 +1077,19 @@ class Test
     }
 }
 
-" + TestSourceCodes.SelectExprWithFuncAndBothOverloads;
+static class Extensions
+{
+    public static IQueryable<TResult> SelectExpr<TSource, TResult>(
+        this IQueryable<TSource> source,
+        System.Func<TSource, TResult> selector)
+        => source.Select(x => selector(x));
+
+    public static IQueryable<TResult> SelectExpr<TSource, TResult>(
+        this IQueryable<TSource> source,
+        System.Func<TSource, TResult> selector,
+        object capture)
+        => source.Select(x => selector(x));
+}";
 
         var fixedCode =
             @"
@@ -831,7 +1121,19 @@ class Test
     }
 }
 
-" + TestSourceCodes.SelectExprWithFuncAndBothOverloads;
+static class Extensions
+{
+    public static IQueryable<TResult> SelectExpr<TSource, TResult>(
+        this IQueryable<TSource> source,
+        System.Func<TSource, TResult> selector)
+        => source.Select(x => selector(x));
+
+    public static IQueryable<TResult> SelectExpr<TSource, TResult>(
+        this IQueryable<TSource> source,
+        System.Func<TSource, TResult> selector,
+        object capture)
+        => source.Select(x => selector(x));
+}";
 
         var expected = VerifyCS
             .Diagnostic(LocalVariableCaptureAnalyzer.DiagnosticId)
@@ -882,7 +1184,19 @@ class Test
     }
 }
 
-" + TestSourceCodes.SelectExprWithFuncAndBothOverloads;
+static class Extensions
+{
+    public static IQueryable<TResult> SelectExpr<TSource, TResult>(
+        this IQueryable<TSource> source,
+        System.Func<TSource, TResult> selector)
+        => source.Select(x => selector(x));
+
+    public static IQueryable<TResult> SelectExpr<TSource, TResult>(
+        this IQueryable<TSource> source,
+        System.Func<TSource, TResult> selector,
+        object capture)
+        => source.Select(x => selector(x));
+}";
 
         var fixedCode =
             @"
@@ -925,7 +1239,19 @@ class Test
     }
 }
 
-" + TestSourceCodes.SelectExprWithFuncAndBothOverloads;
+static class Extensions
+{
+    public static IQueryable<TResult> SelectExpr<TSource, TResult>(
+        this IQueryable<TSource> source,
+        System.Func<TSource, TResult> selector)
+        => source.Select(x => selector(x));
+
+    public static IQueryable<TResult> SelectExpr<TSource, TResult>(
+        this IQueryable<TSource> source,
+        System.Func<TSource, TResult> selector,
+        object capture)
+        => source.Select(x => selector(x));
+}";
 
         var expected1 = VerifyCS
             .Diagnostic(LocalVariableCaptureAnalyzer.DiagnosticId)

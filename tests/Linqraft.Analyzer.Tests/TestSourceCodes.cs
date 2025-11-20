@@ -96,4 +96,56 @@ internal static class TestSourceCodes
                 => source.Select(x => selector(x));
         }
         """;
+
+    /// <summary>
+    /// SelectExpr extension method with both regular and capture overloads for code fix tests
+    /// </summary>
+    public const string SelectExprWithFuncAndBothOverloads = """
+        static class Extensions
+        {
+            public static IQueryable<TResult> SelectExpr<TSource, TResult>(
+                this IQueryable<TSource> source,
+                System.Func<TSource, TResult> selector)
+                => source.Select(x => selector(x));
+
+            public static IQueryable<TResult> SelectExpr<TSource, TResult>(
+                this IQueryable<TSource> source,
+                System.Func<TSource, TResult> selector,
+                object capture)
+                => source.Select(x => selector(x));
+        }
+        """;
+
+    /// <summary>
+    /// SelectExpr extension method with Func<TSource, object> and both overloads for code fix tests
+    /// </summary>
+    public const string SelectExprWithFuncObjectAndBothOverloads = """
+        static class Extensions
+        {
+            public static IQueryable<TResult> SelectExpr<TSource, TResult>(
+                this IQueryable<TSource> source,
+                System.Func<TSource, object> selector)
+                => throw new System.NotImplementedException();
+
+            public static IQueryable<TResult> SelectExpr<TSource, TResult>(
+                this IQueryable<TSource> source,
+                System.Func<TSource, object> selector,
+                object capture)
+                => throw new System.NotImplementedException();
+        }
+        """;
+
+    /// <summary>
+    /// SelectExpr extension method with only the capture overload (for certain code fix tests)
+    /// </summary>
+    public const string SelectExprWithFuncAndCaptureOnly = """
+        static class Extensions
+        {
+            public static IQueryable<TResult> SelectExpr<TSource, TResult>(
+                this IQueryable<TSource> source,
+                System.Func<TSource, TResult> selector,
+                object capture)
+                => source.Select(x => selector(x));
+        }
+        """;
 }

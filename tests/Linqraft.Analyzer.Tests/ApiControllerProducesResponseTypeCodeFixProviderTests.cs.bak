@@ -56,7 +56,13 @@ public class SampleController : ControllerBase
     }
 }
 
-" + TestSourceCodes.SelectExprWithExpressionObject;
+static class Extensions
+{
+    public static IQueryable<TResult> SelectExpr<TSource, TResult>(
+        this IQueryable<TSource> source,
+        System.Linq.Expressions.Expression<System.Func<TSource, object>> selector)
+        => throw new System.NotImplementedException();
+}";
 
         var after =
             @"
@@ -87,7 +93,13 @@ public class SampleController : ControllerBase
     }
 }
 
-" + TestSourceCodes.SelectExprWithExpressionObject;
+static class Extensions
+{
+    public static IQueryable<TResult> SelectExpr<TSource, TResult>(
+        this IQueryable<TSource> source,
+        System.Linq.Expressions.Expression<System.Func<TSource, object>> selector)
+        => throw new System.NotImplementedException();
+}";
 
         await RunCodeFixTestAsync(before, after);
     }
@@ -119,7 +131,13 @@ public class SampleController : ControllerBase
         Ok({|#0:new List<Sample>().AsQueryable().SelectExpr<Sample, SampleDto>(x => new { x.Id })|}.ToList());
 }
 
-" + TestSourceCodes.SelectExprWithExpressionObject;
+static class Extensions
+{
+    public static IQueryable<TResult> SelectExpr<TSource, TResult>(
+        this IQueryable<TSource> source,
+        System.Linq.Expressions.Expression<System.Func<TSource, object>> selector)
+        => throw new System.NotImplementedException();
+}";
 
         var after =
             @"
@@ -146,7 +164,13 @@ public class SampleController : ControllerBase
         Ok(new List<Sample>().AsQueryable().SelectExpr<Sample, SampleDto>(x => new { x.Id }).ToList());
 }
 
-" + TestSourceCodes.SelectExprWithExpressionObject;
+static class Extensions
+{
+    public static IQueryable<TResult> SelectExpr<TSource, TResult>(
+        this IQueryable<TSource> source,
+        System.Linq.Expressions.Expression<System.Func<TSource, object>> selector)
+        => throw new System.NotImplementedException();
+}";
 
         await RunCodeFixTestAsync(before, after);
     }
@@ -182,7 +206,13 @@ public class OrderController : ControllerBase
     }
 }
 
-" + TestSourceCodes.SelectExprWithExpressionObject;
+static class Extensions
+{
+    public static IQueryable<TResult> SelectExpr<TSource, TResult>(
+        this IQueryable<TSource> source,
+        System.Linq.Expressions.Expression<System.Func<TSource, object>> selector)
+        => throw new System.NotImplementedException();
+}";
 
         var after =
             @"
@@ -213,7 +243,13 @@ public class OrderController : ControllerBase
     }
 }
 
-" + TestSourceCodes.SelectExprWithExpressionObject;
+static class Extensions
+{
+    public static IQueryable<TResult> SelectExpr<TSource, TResult>(
+        this IQueryable<TSource> source,
+        System.Linq.Expressions.Expression<System.Func<TSource, object>> selector)
+        => throw new System.NotImplementedException();
+}";
 
         await RunCodeFixTestAsync(before, after);
     }
@@ -249,7 +285,13 @@ public class SampleController : ControllerBase
     }
 }
 
-" + TestSourceCodes.SelectExprWithExpressionObject;
+static class Extensions
+{
+    public static IQueryable<TResult> SelectExpr<TSource, TResult>(
+        this IQueryable<TSource> source,
+        System.Linq.Expressions.Expression<System.Func<TSource, object>> selector)
+        => throw new System.NotImplementedException();
+}";
 
         var after =
             @"
@@ -280,7 +322,13 @@ public class SampleController : ControllerBase
     }
 }
 
-" + TestSourceCodes.SelectExprWithExpressionObject;
+static class Extensions
+{
+    public static IQueryable<TResult> SelectExpr<TSource, TResult>(
+        this IQueryable<TSource> source,
+        System.Linq.Expressions.Expression<System.Func<TSource, object>> selector)
+        => throw new System.NotImplementedException();
+}";
 
         await RunCodeFixTestAsync(before, after);
     }
@@ -316,7 +364,13 @@ public class SampleController : ControllerBase
     }
 }
 
-" + TestSourceCodes.SelectExprWithExpressionObject;
+static class Extensions
+{
+    public static IQueryable<TResult> SelectExpr<TSource, TResult>(
+        this IQueryable<TSource> source,
+        System.Linq.Expressions.Expression<System.Func<TSource, object>> selector)
+        => throw new System.NotImplementedException();
+}";
 
         var after =
             @"
@@ -347,7 +401,13 @@ public class SampleController : ControllerBase
     }
 }
 
-" + TestSourceCodes.SelectExprWithExpressionObject;
+static class Extensions
+{
+    public static IQueryable<TResult> SelectExpr<TSource, TResult>(
+        this IQueryable<TSource> source,
+        System.Linq.Expressions.Expression<System.Func<TSource, object>> selector)
+        => throw new System.NotImplementedException();
+}";
 
         await RunCodeFixTestAsync(before, after);
     }
