@@ -17,13 +17,14 @@ public class ApiControllerProducesResponseTypeCodeFixProviderTests
         {
             TestCode = before,
             FixedCode = after,
-            ReferenceAssemblies = ReferenceAssemblies.Net.Net90.AddPackages(
-                [new PackageIdentity("Microsoft.AspNetCore.Mvc.Core", "2.2.5")]
-            ),
+            ReferenceAssemblies = ReferenceAssemblies.Net.Net90.AddPackages([
+                new PackageIdentity("Microsoft.AspNetCore.Mvc.Core", "2.2.5"),
+            ]),
         };
 
         await test.RunAsync();
     }
+
     [Fact(Skip = "Investigating attribute detection issue in test framework")]
     public async Task CodeFix_AddsProducesResponseTypeAttribute()
     {

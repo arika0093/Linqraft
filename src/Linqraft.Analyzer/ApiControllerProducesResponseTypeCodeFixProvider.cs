@@ -15,7 +15,10 @@ namespace Linqraft.Analyzer;
 /// <summary>
 /// Code fix provider that adds ProducesResponseType attribute to ApiController methods
 /// </summary>
-[ExportCodeFixProvider(LanguageNames.CSharp, Name = nameof(ApiControllerProducesResponseTypeCodeFixProvider))]
+[ExportCodeFixProvider(
+    LanguageNames.CSharp,
+    Name = nameof(ApiControllerProducesResponseTypeCodeFixProvider)
+)]
 [Shared]
 public class ApiControllerProducesResponseTypeCodeFixProvider : CodeFixProvider
 {
@@ -96,9 +99,7 @@ public class ApiControllerProducesResponseTypeCodeFixProvider : CodeFixProvider
     private static string? FindDtoTypeName(MethodDeclarationSyntax methodDeclaration)
     {
         // Find SelectExpr with type arguments
-        var invocations = methodDeclaration
-            .DescendantNodes()
-            .OfType<InvocationExpressionSyntax>();
+        var invocations = methodDeclaration.DescendantNodes().OfType<InvocationExpressionSyntax>();
 
         foreach (var invocation in invocations)
         {

@@ -91,7 +91,10 @@ public class ApiControllerProducesResponseTypeAnalyzer : DiagnosticAnalyzer
         SemanticModel semanticModel
     )
     {
-        var classDeclaration = methodDeclaration.Ancestors().OfType<ClassDeclarationSyntax>().FirstOrDefault();
+        var classDeclaration = methodDeclaration
+            .Ancestors()
+            .OfType<ClassDeclarationSyntax>()
+            .FirstOrDefault();
         if (classDeclaration == null)
         {
             return false;
@@ -180,15 +183,15 @@ public class ApiControllerProducesResponseTypeAnalyzer : DiagnosticAnalyzer
             foreach (var attribute in attributeList.Attributes)
             {
                 var name = attribute.Name;
-                
+
                 // Extract the identifier name
                 var identifierText = name switch
                 {
                     IdentifierNameSyntax identifier => identifier.Identifier.ValueText,
-                    QualifiedNameSyntax qualified => qualified.Right is IdentifierNameSyntax rightId 
-                        ? rightId.Identifier.ValueText 
+                    QualifiedNameSyntax qualified => qualified.Right is IdentifierNameSyntax rightId
+                        ? rightId.Identifier.ValueText
                         : null,
-                    _ => null
+                    _ => null,
                 };
 
                 if (identifierText is "ProducesResponseType" or "ProducesResponseTypeAttribute")
@@ -211,9 +214,7 @@ public class ApiControllerProducesResponseTypeAnalyzer : DiagnosticAnalyzer
         }
 
         // Find all invocation expressions in the method
-        var invocations = methodDeclaration
-            .DescendantNodes()
-            .OfType<InvocationExpressionSyntax>();
+        var invocations = methodDeclaration.DescendantNodes().OfType<InvocationExpressionSyntax>();
 
         foreach (var invocation in invocations)
         {
