@@ -44,7 +44,7 @@ public class AnonymousTypeToDtoCodeFixProvider : CodeFixProvider
         // Option 1: Add DTO to end of current file (appears first/on top)
         context.RegisterCodeFix(
             CodeAction.Create(
-                title: "Convert to DTO class (add to current file)",
+                title: "Convert to Class (add to current file)",
                 createChangedDocument: c => ConvertToDtoInSameFileAsync(context.Document, anonymousObject, c),
                 equivalenceKey: "ConvertToDtoSameFile"
             ),
@@ -54,7 +54,7 @@ public class AnonymousTypeToDtoCodeFixProvider : CodeFixProvider
         // Option 2: Create new file for DTO
         context.RegisterCodeFix(
             CodeAction.Create(
-                title: "Convert to DTO class (new file)",
+                title: "Convert to Class (new file)",
                 createChangedSolution: c => ConvertToDtoNewFileAsync(context.Document, anonymousObject, c),
                 equivalenceKey: "ConvertToDtoNewFile"
             ),
@@ -62,7 +62,85 @@ public class AnonymousTypeToDtoCodeFixProvider : CodeFixProvider
         );
     }
 
-    private async Task<Solution> ConvertToDtoAsync(
+    private async Task<Document> ConvertToDtoInSameFileAsync(
+        Document document,
+        AnonymousObjectCreationExpressionSyntax anonymousObject,
+        CancellationToken cancellationToken
+    )
+    {
+        var semanticModel = await document.GetSemanticModelAsync(cancellationToken).ConfigureAwait(false);
+        if (semanticModel == null) return document;
+
+        // Get type info for the anonymous object
+        var typeInfo = semanticModel.GetTypeInfo(anonymousObject, cancellationToken);
+        var anonymousType = typeInfo.Type;
+        if (anonymousType == null) return document;
+
+        // Analyze the anonymous type structure
+        var dtoStructure = DtoStructure.AnalyzeAnonymousType(
+            anonymousObject,
+            semanticModel,
+            anonymousType
+        );
+        if (dtoStructure == null) return document;
+
+        // Generate DTO class name
+        var dtoClassName = GenerateDtoClassName(anonymousObject);
+
+        // Get the namespace from the document
+        var root = await document.GetSyntaxRootAsync(cancellationToken).ConfigureAwait(false);
+        if (root == null) return document;
+
+        var namespaceDecl = root.DescendantNodes().OfType<BaseNamespaceDeclarationSyntax>().FirstOrDefault();
+        var namespaceName = namespaceDecl?.Name.ToString() ?? "Generated";
+
+        // Create DTO class info
+        var dtoClassInfo = new GenerateDtoClassInfo
+        {
+            Structure = dtoStructure,
+            Accessibility = "public",
+            ClassName = dtoClassName,
+            Namespace = namespaceName,
+            NestedClasses = ImmutableList<GenerateDtoClassInfo>.Empty
+        };
+
+        // Generate configuration
+        var configuration = new LinqraftConfiguration();
+
+        // Build DTO class code (without namespace wrapper)
+        var dtoClassCode = dtoClassInfo.BuildCode(configuration);
+
+        // Replace anonymous object with DTO instantiation
+        var newRoot = ReplaceAnonymousWithDtoSync(root, anonymousObject, dtoClassName);
+
+        // Add DTO class to the end of the file
+        if (namespaceDecl != null)
+        {
+            // Add inside the namespace
+            var dtoClass = SyntaxFactory.ParseMemberDeclaration(dtoClassCode);
+            if (dtoClass != null)
+            {
+                var newNamespaceDecl = namespaceDecl.AddMembers(dtoClass);
+                newRoot = newRoot.ReplaceNode(
+                    newRoot.DescendantNodes().OfType<BaseNamespaceDeclarationSyntax>().First(),
+                    newNamespaceDecl
+                );
+            }
+        }
+        else
+        {
+            // Add at file level
+            var dtoClass = SyntaxFactory.ParseMemberDeclaration(dtoClassCode);
+            if (dtoClass != null && newRoot is CompilationUnitSyntax compilationUnit)
+            {
+                newRoot = compilationUnit.AddMembers(dtoClass);
+            }
+        }
+
+        return document.WithSyntaxRoot(newRoot);
+    }
+
+    private async Task<Solution> ConvertToDtoNewFileAsync(
         Document document,
         AnonymousObjectCreationExpressionSyntax anonymousObject,
         CancellationToken cancellationToken
@@ -142,6 +220,51 @@ public class AnonymousTypeToDtoCodeFixProvider : CodeFixProvider
         }
 
         return project.Solution;
+    }
+
+    private static SyntaxNode ReplaceAnonymousWithDtoSync(
+        SyntaxNode root,
+        AnonymousObjectCreationExpressionSyntax anonymousObject,
+        string dtoClassName
+    )
+    {
+        // Build the new object creation expression
+        var initializers = new List<ExpressionSyntax>();
+        foreach (var init in anonymousObject.Initializers)
+        {
+            string propertyName;
+            ExpressionSyntax valueExpression;
+
+            if (init.NameEquals != null)
+            {
+                propertyName = init.NameEquals.Name.Identifier.Text;
+                valueExpression = init.Expression;
+            }
+            else
+            {
+                propertyName = GetPropertyNameFromExpression(init.Expression);
+                valueExpression = init.Expression;
+            }
+
+            var assignment = SyntaxFactory.AssignmentExpression(
+                SyntaxKind.SimpleAssignmentExpression,
+                SyntaxFactory.IdentifierName(propertyName),
+                valueExpression
+            );
+            initializers.Add(assignment);
+        }
+
+        var newObjectCreation = SyntaxFactory.ObjectCreationExpression(
+            SyntaxFactory.IdentifierName(dtoClassName)
+        )
+        .WithInitializer(
+            SyntaxFactory.InitializerExpression(
+                SyntaxKind.ObjectInitializerExpression,
+                SyntaxFactory.SeparatedList(initializers)
+            )
+        );
+
+        return root.ReplaceNode(anonymousObject, newObjectCreation);
     }
 
     private static string GenerateDtoClassName(AnonymousObjectCreationExpressionSyntax anonymousObject)
