@@ -68,13 +68,19 @@ public class ApiControllerProducesResponseTypeCodeFixProvider : CodeFixProvider
         if (root == null)
             return document;
 
-        // Find the SelectExpr invocation to get the DTO type
-        var dtoTypeName = FindDtoTypeName(methodDeclaration);
-        if (dtoTypeName == null)
+        var semanticModel = await document
+            .GetSemanticModelAsync(cancellationToken)
+            .ConfigureAwait(false);
+        if (semanticModel == null)
+            return document;
+
+        // Find the SelectExpr invocation to get the DTO type and check if it returns a collection
+        var selectExprInfo = FindSelectExprInfo(methodDeclaration, semanticModel);
+        if (selectExprInfo == null)
             return document;
 
         // Create the ProducesResponseType attribute
-        var attribute = CreateProducesResponseTypeAttribute(dtoTypeName);
+        var attribute = CreateProducesResponseTypeAttribute(selectExprInfo.Value.ResponseTypeName);
 
         // Create the attribute list with proper formatting
         var attributeList = SyntaxFactory
@@ -96,7 +102,10 @@ public class ApiControllerProducesResponseTypeCodeFixProvider : CodeFixProvider
         return document.WithSyntaxRoot(newRoot);
     }
 
-    private static string? FindDtoTypeName(MethodDeclarationSyntax methodDeclaration)
+    private static SelectExprInfo? FindSelectExprInfo(
+        MethodDeclarationSyntax methodDeclaration,
+        SemanticModel semanticModel
+    )
     {
         // Find SelectExpr with type arguments
         var invocations = methodDeclaration.DescendantNodes().OfType<InvocationExpressionSyntax>();
@@ -112,7 +121,23 @@ public class ApiControllerProducesResponseTypeCodeFixProvider : CodeFixProvider
                 )
                 {
                     // Get the DTO type name (second type argument)
-                    return genericName.TypeArgumentList.Arguments[1].ToString();
+                    var dtoTypeName = genericName.TypeArgumentList.Arguments[1].ToString();
+
+                    // Find the outermost expression containing SelectExpr to determine the final return type
+                    var expressionToAnalyze = FindOutermostExpression(invocation);
+
+                    // Get the type of the expression using semantic model
+                    var typeInfo = semanticModel.GetTypeInfo(expressionToAnalyze);
+                    var resultType = typeInfo.Type;
+
+                    // Determine the response type to use
+                    var responseType = DetermineResponseType(resultType, dtoTypeName);
+
+                    return new SelectExprInfo
+                    {
+                        DtoTypeName = dtoTypeName,
+                        ResponseTypeName = responseType,
+                    };
                 }
             }
         }
@@ -120,19 +145,116 @@ public class ApiControllerProducesResponseTypeCodeFixProvider : CodeFixProvider
         return null;
     }
 
-    private static AttributeSyntax CreateProducesResponseTypeAttribute(string dtoTypeName)
+    private static string DetermineResponseType(ITypeSymbol? type, string dtoTypeName)
     {
-        // Create: [ProducesResponseType(typeof(List<TDto>), 200)]
-        var typeofExpression = SyntaxFactory.TypeOfExpression(
-            SyntaxFactory.GenericName(
-                SyntaxFactory.Identifier("List"),
-                SyntaxFactory.TypeArgumentList(
-                    SyntaxFactory.SingletonSeparatedList<TypeSyntax>(
-                        SyntaxFactory.IdentifierName(dtoTypeName)
-                    )
-                )
+        if (type == null)
+            return $"List<{dtoTypeName}>"; // Default to List if we can't determine the type
+
+        // Check if it's an array
+        if (type is IArrayTypeSymbol)
+            return $"{dtoTypeName}[]";
+
+        // Check if it's a collection type
+        if (IsCollectionType(type))
+        {
+            // For collection types, return List<TDto>
+            return $"List<{dtoTypeName}>";
+        }
+
+        // For single result types (like FirstOrDefault), return just the DTO type
+        return dtoTypeName;
+    }
+
+    private static ExpressionSyntax FindOutermostExpression(InvocationExpressionSyntax selectExprInvocation)
+    {
+        // Traverse up the syntax tree to find the outermost expression
+        // This handles cases like: query.SelectExpr(...).ToList(), query.SelectExpr(...).FirstOrDefault(), etc.
+        SyntaxNode current = selectExprInvocation;
+        SyntaxNode? lastExpression = selectExprInvocation;
+
+        while (current.Parent != null)
+        {
+            var parent = current.Parent;
+
+            // Keep going up if we're still in a method chain or invocation
+            if (
+                parent is MemberAccessExpressionSyntax
+                || parent is InvocationExpressionSyntax
+                || parent is ArgumentSyntax
             )
-        );
+            {
+                if (parent is ExpressionSyntax expr)
+                {
+                    lastExpression = expr;
+                }
+                current = parent;
+            }
+            else
+            {
+                break;
+            }
+        }
+
+        return (ExpressionSyntax)lastExpression;
+    }
+
+    private static bool IsCollectionType(ITypeSymbol? type)
+    {
+        if (type == null)
+            return true; // Default to collection if we can't determine the type
+
+        // Check if it's an array
+        if (type is IArrayTypeSymbol)
+            return true;
+
+        // Check if it's a named type (generic or not)
+        if (type is INamedTypeSymbol namedType)
+        {
+            // Get the original definition for generic types
+            var originalDefinition = namedType.OriginalDefinition;
+            var typeName = originalDefinition.ToDisplayString();
+
+            // Check for common collection types
+            var collectionTypes = new[]
+            {
+                "System.Collections.Generic.IEnumerable<T>",
+                "System.Collections.Generic.ICollection<T>",
+                "System.Collections.Generic.IList<T>",
+                "System.Collections.Generic.List<T>",
+                "System.Collections.Generic.IReadOnlyCollection<T>",
+                "System.Collections.Generic.IReadOnlyList<T>",
+                "System.Linq.IQueryable<T>",
+                "System.Linq.IOrderedQueryable<T>",
+            };
+
+            if (collectionTypes.Contains(typeName))
+                return true;
+
+            // Check if it implements IEnumerable<T>
+            foreach (var iface in namedType.AllInterfaces)
+            {
+                if (iface.OriginalDefinition.ToDisplayString() == "System.Collections.Generic.IEnumerable<T>")
+                {
+                    return true;
+                }
+            }
+        }
+
+        return false;
+    }
+
+    private struct SelectExprInfo
+    {
+        public string DtoTypeName { get; set; }
+        public string ResponseTypeName { get; set; }
+    }
+
+    private static AttributeSyntax CreateProducesResponseTypeAttribute(string responseTypeName)
+    {
+        // Parse the response type name to create the appropriate TypeSyntax
+        TypeSyntax typeSyntax = SyntaxFactory.ParseTypeName(responseTypeName);
+
+        var typeofExpression = SyntaxFactory.TypeOfExpression(typeSyntax);
 
         var arguments = SyntaxFactory.AttributeArgumentList(
             SyntaxFactory.SeparatedList(

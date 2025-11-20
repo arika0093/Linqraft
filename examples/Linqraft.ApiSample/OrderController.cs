@@ -48,7 +48,7 @@ public partial class OrderController : ControllerBase
                     Quantity = oi.Quantity,
                 }),
             })
-            .ToList();
+            .ToArray();
         return Ok(results);
     }
 }
