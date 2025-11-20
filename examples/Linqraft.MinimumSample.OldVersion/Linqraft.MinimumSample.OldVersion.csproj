@@ -6,6 +6,7 @@
     <Nullable>enable</Nullable>
     <LangVersion>13.0</LangVersion>
     <CheckEolTargetFramework>false</CheckEolTargetFramework>
+    <SuppressTfmSupportBuildWarnings>true</SuppressTfmSupportBuildWarnings>
   </PropertyGroup>
   <ItemGroup>
     <PackageReference Include="Polysharp" Version="1.*" />
