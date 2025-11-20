@@ -141,7 +141,7 @@ public class AnonymousTypeToDtoCodeFixProvider : CodeFixProvider
                 var newNamespaceDecl = updatedNamespaceDecl.AddMembers(dtoClass);
                 newRoot = newRoot
                     .ReplaceNode(updatedNamespaceDecl, newNamespaceDecl)
-                    .NormalizeWhitespace();
+                    .NormalizeWhitespace(eol: '\n');
             }
         }
         else
@@ -150,7 +150,7 @@ public class AnonymousTypeToDtoCodeFixProvider : CodeFixProvider
             var dtoClass = SyntaxFactory.ParseMemberDeclaration(dtoClassCode);
             if (dtoClass != null && newRoot is CompilationUnitSyntax compilationUnit)
             {
-                newRoot = compilationUnit.AddMembers(dtoClass).NormalizeWhitespace();
+                newRoot = compilationUnit.AddMembers(dtoClass).NormalizeWhitespace(eol: '\n');
             }
         }
 
