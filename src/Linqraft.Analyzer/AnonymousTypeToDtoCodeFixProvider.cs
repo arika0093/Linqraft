@@ -139,7 +139,9 @@ public class AnonymousTypeToDtoCodeFixProvider : CodeFixProvider
                     .OfType<BaseNamespaceDeclarationSyntax>()
                     .First();
                 var newNamespaceDecl = updatedNamespaceDecl.AddMembers(dtoClass);
-                newRoot = newRoot.ReplaceNode(updatedNamespaceDecl, newNamespaceDecl).NormalizeWhitespace(eol: "\n");
+                newRoot = newRoot
+                    .ReplaceNode(updatedNamespaceDecl, newNamespaceDecl)
+                    .NormalizeWhitespace(eol: "\n");
             }
         }
         else
