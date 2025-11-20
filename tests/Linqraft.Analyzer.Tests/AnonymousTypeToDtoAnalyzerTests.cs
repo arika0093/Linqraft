@@ -621,26 +621,20 @@ class Test
     public async Task AnonymousType_InsideSelectExprWithoutTypeArgs_ReportsDiagnostic()
     {
         var test =
-            @"
+            $@"
 using System.Linq;
 using System.Collections.Generic;
 
 class Test
-{
+{{
     void Method()
-    {
-        var list = new List<int> { 1, 2, 3 };
-        var result = list.AsQueryable().SelectExpr(x => {|#0:new { Value = x }|});
-    }
-}
+    {{
+        var list = new List<int> {{ 1, 2, 3 }};
+        var result = list.AsQueryable().SelectExpr(x => {{|#0:new {{ Value = x }}|}});
+    }}
+}}
 
-static class Extensions
-{
-    public static IQueryable<TResult> SelectExpr<TSource, TResult>(
-        this IQueryable<TSource> source,
-        System.Linq.Expressions.Expression<System.Func<TSource, TResult>> selector)
-        => source.Select(selector);
-}";
+{TestSourceCodes.SelectExprWithExpression}";
 
         // Diagnostic expected because SelectExpr has no explicit type arguments
         var expected = VerifyCS
@@ -655,36 +649,30 @@ static class Extensions
     public async Task AnonymousType_InsideSelectExprWithTypeArgs_NoDiagnostic()
     {
         var test =
-            @"
+            $@"
 using System.Linq;
 using System.Collections.Generic;
 
 class Sample
-{
-    public int Id { get; set; }
-}
+{{
+    public int Id {{ get; set; }}
+}}
 
 class SampleDto
-{
-    public int Id { get; set; }
-}
+{{
+    public int Id {{ get; set; }}
+}}
 
 class Test
-{
+{{
     void Method()
-    {
+    {{
         var list = new List<Sample>();
-        var result = list.AsQueryable().SelectExpr<Sample, SampleDto>(x => new { x.Id });
-    }
-}
+        var result = list.AsQueryable().SelectExpr<Sample, SampleDto>(x => new {{ x.Id }});
+    }}
+}}
 
-static class Extensions
-{
-    public static IQueryable<TResult> SelectExpr<TSource, TResult>(
-        this IQueryable<TSource> source,
-        System.Linq.Expressions.Expression<System.Func<TSource, object>> selector)
-        => throw new System.NotImplementedException();
-}";
+{TestSourceCodes.SelectExprWithExpressionObject}";
 
         // No diagnostic expected because it's inside SelectExpr
         await VerifyCS.VerifyAnalyzerAsync(test);
@@ -694,41 +682,35 @@ static class Extensions
     public async Task AnonymousType_InsideNestedSelectExprWithoutTypeArgs_ReportsDiagnostic()
     {
         var test =
-            @"
+            $@"
 using System.Linq;
 using System.Collections.Generic;
 
 class Parent
-{
-    public int Id { get; set; }
-    public List<Child> Children { get; set; }
-}
+{{
+    public int Id {{ get; set; }}
+    public List<Child> Children {{ get; set; }}
+}}
 
 class Child
-{
-    public string Name { get; set; }
-}
+{{
+    public string Name {{ get; set; }}
+}}
 
 class Test
-{
+{{
     void Method()
-    {
+    {{
         var list = new List<Parent>();
-        var result = list.AsQueryable().SelectExpr(x => {|#0:new
-        {
+        var result = list.AsQueryable().SelectExpr(x => {{|#0:new
+        {{
             x.Id,
-            ChildNames = x.Children.Select(c => {|#1:new { c.Name }|}).ToList()
-        }|});
-    }
-}
+            ChildNames = x.Children.Select(c => {{|#1:new {{ c.Name }}|}}).ToList()
+        }}|}});
+    }}
+}}
 
-static class Extensions
-{
-    public static IQueryable<TResult> SelectExpr<TSource, TResult>(
-        this IQueryable<TSource> source,
-        System.Linq.Expressions.Expression<System.Func<TSource, TResult>> selector)
-        => source.Select(selector);
-}";
+{TestSourceCodes.SelectExprWithExpression}";
 
         // Diagnostic expected for both anonymous types because SelectExpr has no explicit type arguments
         var expected1 = VerifyCS
