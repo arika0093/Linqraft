@@ -29,7 +29,10 @@
     />
   </ItemGroup>
   <ItemGroup>
-    <ProjectReference Include="..\Linqraft.SourceGenerator\Linqraft.SourceGenerator.csproj" PrivateAssets="all" />
+    <ProjectReference
+      Include="..\Linqraft.SourceGenerator\Linqraft.SourceGenerator.csproj"
+      PrivateAssets="all"
+    />
     <ProjectReference Include="..\Linqraft.Analyzer\Linqraft.Analyzer.csproj" PrivateAssets="all" />
   </ItemGroup>
 </Project>

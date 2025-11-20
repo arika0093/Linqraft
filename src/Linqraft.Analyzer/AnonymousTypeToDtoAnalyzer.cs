@@ -76,7 +76,9 @@ public class AnonymousTypeToDtoAnalyzer : DiagnosticAnalyzer
         context.ReportDiagnostic(diagnostic);
     }
 
-    private static bool IsInConvertibleContext(AnonymousObjectCreationExpressionSyntax anonymousObject)
+    private static bool IsInConvertibleContext(
+        AnonymousObjectCreationExpressionSyntax anonymousObject
+    )
     {
         var parent = anonymousObject.Parent;
 

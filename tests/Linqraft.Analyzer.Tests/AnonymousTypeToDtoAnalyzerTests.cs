@@ -2,8 +2,7 @@ using System.Threading.Tasks;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.Testing;
 using Xunit;
-using VerifyCS = Microsoft.CodeAnalysis.CSharp.Testing.XUnit.AnalyzerVerifier<
-    Linqraft.Analyzer.AnonymousTypeToDtoAnalyzer>;
+using VerifyCS = Microsoft.CodeAnalysis.CSharp.Testing.XUnit.AnalyzerVerifier<Linqraft.Analyzer.AnonymousTypeToDtoAnalyzer>;
 
 namespace Linqraft.Analyzer.Tests;
 
@@ -12,7 +11,8 @@ public class AnonymousTypeToDtoAnalyzerTests
     [Fact]
     public async Task AnonymousType_InVariableDeclaration_ReportsDiagnostic()
     {
-        var test = @"
+        var test =
+            @"
 class Test
 {
     void Method()
@@ -21,7 +21,8 @@ class Test
     }
 }";
 
-        var expected = VerifyCS.Diagnostic(AnonymousTypeToDtoAnalyzer.DiagnosticId)
+        var expected = VerifyCS
+            .Diagnostic(AnonymousTypeToDtoAnalyzer.DiagnosticId)
             .WithLocation(0)
             .WithSeverity(DiagnosticSeverity.Info);
 
@@ -31,7 +32,8 @@ class Test
     [Fact]
     public async Task AnonymousType_InReturnStatement_ReportsDiagnostic()
     {
-        var test = @"
+        var test =
+            @"
 class Test
 {
     object Method()
@@ -40,7 +42,8 @@ class Test
     }
 }";
 
-        var expected = VerifyCS.Diagnostic(AnonymousTypeToDtoAnalyzer.DiagnosticId)
+        var expected = VerifyCS
+            .Diagnostic(AnonymousTypeToDtoAnalyzer.DiagnosticId)
             .WithLocation(0)
             .WithSeverity(DiagnosticSeverity.Info);
 
@@ -50,7 +53,8 @@ class Test
     [Fact]
     public async Task AnonymousType_InAssignment_ReportsDiagnostic()
     {
-        var test = @"
+        var test =
+            @"
 class Test
 {
     void Method()
@@ -60,7 +64,8 @@ class Test
     }
 }";
 
-        var expected = VerifyCS.Diagnostic(AnonymousTypeToDtoAnalyzer.DiagnosticId)
+        var expected = VerifyCS
+            .Diagnostic(AnonymousTypeToDtoAnalyzer.DiagnosticId)
             .WithLocation(0)
             .WithSeverity(DiagnosticSeverity.Info);
 
@@ -70,7 +75,8 @@ class Test
     [Fact]
     public async Task AnonymousType_InMethodArgument_ReportsDiagnostic()
     {
-        var test = @"
+        var test =
+            @"
 class Test
 {
     void Method()
@@ -81,7 +87,8 @@ class Test
     void Process(object obj) { }
 }";
 
-        var expected = VerifyCS.Diagnostic(AnonymousTypeToDtoAnalyzer.DiagnosticId)
+        var expected = VerifyCS
+            .Diagnostic(AnonymousTypeToDtoAnalyzer.DiagnosticId)
             .WithLocation(0)
             .WithSeverity(DiagnosticSeverity.Info);
 
@@ -91,7 +98,8 @@ class Test
     [Fact]
     public async Task AnonymousType_InLambda_ReportsDiagnostic()
     {
-        var test = @"
+        var test =
+            @"
 using System;
 using System.Linq;
 using System.Collections.Generic;
@@ -105,7 +113,8 @@ class Test
     }
 }";
 
-        var expected = VerifyCS.Diagnostic(AnonymousTypeToDtoAnalyzer.DiagnosticId)
+        var expected = VerifyCS
+            .Diagnostic(AnonymousTypeToDtoAnalyzer.DiagnosticId)
             .WithLocation(0)
             .WithSeverity(DiagnosticSeverity.Info);
 
@@ -115,7 +124,8 @@ class Test
     [Fact]
     public async Task AnonymousType_Empty_NoDiagnostic()
     {
-        var test = @"
+        var test =
+            @"
 class Test
 {
     void Method()
@@ -130,7 +140,8 @@ class Test
     [Fact]
     public async Task AnonymousType_WithMultipleProperties_ReportsDiagnostic()
     {
-        var test = @"
+        var test =
+            @"
 class Test
 {
     void Method()
@@ -139,7 +150,8 @@ class Test
     }
 }";
 
-        var expected = VerifyCS.Diagnostic(AnonymousTypeToDtoAnalyzer.DiagnosticId)
+        var expected = VerifyCS
+            .Diagnostic(AnonymousTypeToDtoAnalyzer.DiagnosticId)
             .WithLocation(0)
             .WithSeverity(DiagnosticSeverity.Info);
 
@@ -149,7 +161,8 @@ class Test
     [Fact]
     public async Task AnonymousType_InConditional_ReportsDiagnostic()
     {
-        var test = @"
+        var test =
+            @"
 class Test
 {
     void Method()
@@ -159,10 +172,12 @@ class Test
     }
 }";
 
-        var expected1 = VerifyCS.Diagnostic(AnonymousTypeToDtoAnalyzer.DiagnosticId)
+        var expected1 = VerifyCS
+            .Diagnostic(AnonymousTypeToDtoAnalyzer.DiagnosticId)
             .WithLocation(0)
             .WithSeverity(DiagnosticSeverity.Info);
-        var expected2 = VerifyCS.Diagnostic(AnonymousTypeToDtoAnalyzer.DiagnosticId)
+        var expected2 = VerifyCS
+            .Diagnostic(AnonymousTypeToDtoAnalyzer.DiagnosticId)
             .WithLocation(1)
             .WithSeverity(DiagnosticSeverity.Info);
 
@@ -172,7 +187,8 @@ class Test
     [Fact]
     public async Task AnonymousType_InArrayInitializer_ReportsDiagnostic()
     {
-        var test = @"
+        var test =
+            @"
 class Test
 {
     void Method()
@@ -181,10 +197,12 @@ class Test
     }
 }";
 
-        var expected1 = VerifyCS.Diagnostic(AnonymousTypeToDtoAnalyzer.DiagnosticId)
+        var expected1 = VerifyCS
+            .Diagnostic(AnonymousTypeToDtoAnalyzer.DiagnosticId)
             .WithLocation(0)
             .WithSeverity(DiagnosticSeverity.Info);
-        var expected2 = VerifyCS.Diagnostic(AnonymousTypeToDtoAnalyzer.DiagnosticId)
+        var expected2 = VerifyCS
+            .Diagnostic(AnonymousTypeToDtoAnalyzer.DiagnosticId)
             .WithLocation(1)
             .WithSeverity(DiagnosticSeverity.Info);
 
@@ -196,7 +214,8 @@ class Test
     [Fact]
     public async Task AnonymousType_WithNullableAccess_ReportsDiagnostic()
     {
-        var test = @"
+        var test =
+            @"
 class Child
 {
     public string Name { get; set; }
@@ -218,7 +237,8 @@ class Test
     }
 }";
 
-        var expected = VerifyCS.Diagnostic(AnonymousTypeToDtoAnalyzer.DiagnosticId)
+        var expected = VerifyCS
+            .Diagnostic(AnonymousTypeToDtoAnalyzer.DiagnosticId)
             .WithLocation(0)
             .WithSeverity(DiagnosticSeverity.Info);
 
@@ -228,7 +248,8 @@ class Test
     [Fact]
     public async Task AnonymousType_WithNestedNullableAccess_ReportsDiagnostic()
     {
-        var test = @"
+        var test =
+            @"
 class GrandChild
 {
     public string Details { get; set; }
@@ -260,7 +281,8 @@ class Test
     }
 }";
 
-        var expected = VerifyCS.Diagnostic(AnonymousTypeToDtoAnalyzer.DiagnosticId)
+        var expected = VerifyCS
+            .Diagnostic(AnonymousTypeToDtoAnalyzer.DiagnosticId)
             .WithLocation(0)
             .WithSeverity(DiagnosticSeverity.Info);
 
@@ -270,7 +292,8 @@ class Test
     [Fact]
     public async Task AnonymousType_WithCollectionProperty_ReportsDiagnostic()
     {
-        var test = @"
+        var test =
+            @"
 using System.Collections.Generic;
 
 class Item
@@ -294,7 +317,8 @@ class Test
     }
 }";
 
-        var expected = VerifyCS.Diagnostic(AnonymousTypeToDtoAnalyzer.DiagnosticId)
+        var expected = VerifyCS
+            .Diagnostic(AnonymousTypeToDtoAnalyzer.DiagnosticId)
             .WithLocation(0)
             .WithSeverity(DiagnosticSeverity.Info);
 
@@ -304,7 +328,8 @@ class Test
     [Fact]
     public async Task AnonymousType_WithNestedSelect_ReportsDiagnostic()
     {
-        var test = @"
+        var test =
+            @"
 using System.Collections.Generic;
 using System.Linq;
 
@@ -334,7 +359,8 @@ class Test
     }
 }";
 
-        var expected = VerifyCS.Diagnostic(AnonymousTypeToDtoAnalyzer.DiagnosticId)
+        var expected = VerifyCS
+            .Diagnostic(AnonymousTypeToDtoAnalyzer.DiagnosticId)
             .WithLocation(0)
             .WithSeverity(DiagnosticSeverity.Info);
 
@@ -344,7 +370,8 @@ class Test
     [Fact]
     public async Task AnonymousType_WithNestedAnonymousTypeInSelect_ReportsMultipleDiagnostics()
     {
-        var test = @"
+        var test =
+            @"
 using System.Collections.Generic;
 using System.Linq;
 
@@ -373,10 +400,12 @@ class Test
     }
 }";
 
-        var expected1 = VerifyCS.Diagnostic(AnonymousTypeToDtoAnalyzer.DiagnosticId)
+        var expected1 = VerifyCS
+            .Diagnostic(AnonymousTypeToDtoAnalyzer.DiagnosticId)
             .WithLocation(0)
             .WithSeverity(DiagnosticSeverity.Info);
-        var expected2 = VerifyCS.Diagnostic(AnonymousTypeToDtoAnalyzer.DiagnosticId)
+        var expected2 = VerifyCS
+            .Diagnostic(AnonymousTypeToDtoAnalyzer.DiagnosticId)
             .WithLocation(1)
             .WithSeverity(DiagnosticSeverity.Info);
 
@@ -386,7 +415,8 @@ class Test
     [Fact]
     public async Task AnonymousType_WithComplexTypes_ReportsDiagnostic()
     {
-        var test = @"
+        var test =
+            @"
 using System;
 
 class Test
@@ -408,7 +438,8 @@ class Test
     }
 }";
 
-        var expected = VerifyCS.Diagnostic(AnonymousTypeToDtoAnalyzer.DiagnosticId)
+        var expected = VerifyCS
+            .Diagnostic(AnonymousTypeToDtoAnalyzer.DiagnosticId)
             .WithLocation(0)
             .WithSeverity(DiagnosticSeverity.Info);
 
@@ -418,7 +449,8 @@ class Test
     [Fact]
     public async Task AnonymousType_WithNullableValueTypes_ReportsDiagnostic()
     {
-        var test = @"
+        var test =
+            @"
 class Entity
 {
     public int Id { get; set; }
@@ -442,7 +474,8 @@ class Test
     }
 }";
 
-        var expected = VerifyCS.Diagnostic(AnonymousTypeToDtoAnalyzer.DiagnosticId)
+        var expected = VerifyCS
+            .Diagnostic(AnonymousTypeToDtoAnalyzer.DiagnosticId)
             .WithLocation(0)
             .WithSeverity(DiagnosticSeverity.Info);
 
@@ -452,7 +485,8 @@ class Test
     [Fact]
     public async Task AnonymousType_InLinqQuery_ReportsDiagnostic()
     {
-        var test = @"
+        var test =
+            @"
 using System.Collections.Generic;
 using System.Linq;
 
@@ -475,7 +509,8 @@ class Test
     }
 }";
 
-        var expected = VerifyCS.Diagnostic(AnonymousTypeToDtoAnalyzer.DiagnosticId)
+        var expected = VerifyCS
+            .Diagnostic(AnonymousTypeToDtoAnalyzer.DiagnosticId)
             .WithLocation(0)
             .WithSeverity(DiagnosticSeverity.Info);
 
@@ -485,7 +520,8 @@ class Test
     [Fact]
     public async Task AnonymousType_WithByteArray_ReportsDiagnostic()
     {
-        var test = @"
+        var test =
+            @"
 class Entity
 {
     public int Id { get; set; }
@@ -501,7 +537,8 @@ class Test
     }
 }";
 
-        var expected = VerifyCS.Diagnostic(AnonymousTypeToDtoAnalyzer.DiagnosticId)
+        var expected = VerifyCS
+            .Diagnostic(AnonymousTypeToDtoAnalyzer.DiagnosticId)
             .WithLocation(0)
             .WithSeverity(DiagnosticSeverity.Info);
 
@@ -511,7 +548,8 @@ class Test
     [Fact]
     public async Task AnonymousType_WithExpressionCalculations_ReportsDiagnostic()
     {
-        var test = @"
+        var test =
+            @"
 class Entity
 {
     public int Price { get; set; }
@@ -535,7 +573,8 @@ class Test
     }
 }";
 
-        var expected = VerifyCS.Diagnostic(AnonymousTypeToDtoAnalyzer.DiagnosticId)
+        var expected = VerifyCS
+            .Diagnostic(AnonymousTypeToDtoAnalyzer.DiagnosticId)
             .WithLocation(0)
             .WithSeverity(DiagnosticSeverity.Info);
 
@@ -545,7 +584,8 @@ class Test
     [Fact]
     public async Task AnonymousType_WithStringInterpolation_ReportsDiagnostic()
     {
-        var test = @"
+        var test =
+            @"
 class Person
 {
     public string FirstName { get; set; }
@@ -568,7 +608,8 @@ class Test
     }
 }";
 
-        var expected = VerifyCS.Diagnostic(AnonymousTypeToDtoAnalyzer.DiagnosticId)
+        var expected = VerifyCS
+            .Diagnostic(AnonymousTypeToDtoAnalyzer.DiagnosticId)
             .WithLocation(0)
             .WithSeverity(DiagnosticSeverity.Info);
 

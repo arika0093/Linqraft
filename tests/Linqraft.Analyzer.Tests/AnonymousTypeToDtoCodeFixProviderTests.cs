@@ -4,7 +4,8 @@ using Microsoft.CodeAnalysis.Testing;
 using Xunit;
 using VerifyCS = Microsoft.CodeAnalysis.CSharp.Testing.XUnit.CodeFixVerifier<
     Linqraft.Analyzer.AnonymousTypeToDtoAnalyzer,
-    Linqraft.Analyzer.AnonymousTypeToDtoCodeFixProvider>;
+    Linqraft.Analyzer.AnonymousTypeToDtoCodeFixProvider
+>;
 
 namespace Linqraft.Analyzer.Tests;
 
@@ -13,7 +14,8 @@ public class AnonymousTypeToDtoCodeFixProviderTests
     [Fact]
     public async Task CodeFix_SimpleAnonymousType_GeneratesDto()
     {
-        var test = @"
+        var test =
+            @"
 namespace TestNamespace
 {
     class Test
@@ -25,7 +27,8 @@ namespace TestNamespace
     }
 }";
 
-        var fixedCode = @"
+        var fixedCode =
+            @"
 namespace TestNamespace
 {
     class Test
@@ -37,7 +40,8 @@ namespace TestNamespace
     }
 }";
 
-        var expected = VerifyCS.Diagnostic(AnonymousTypeToDtoAnalyzer.DiagnosticId)
+        var expected = VerifyCS
+            .Diagnostic(AnonymousTypeToDtoAnalyzer.DiagnosticId)
             .WithLocation(0)
             .WithSeverity(DiagnosticSeverity.Info);
 
@@ -47,7 +51,8 @@ namespace TestNamespace
     [Fact]
     public async Task CodeFix_AnonymousTypeWithImplicitProperties_GeneratesDto()
     {
-        var test = @"
+        var test =
+            @"
 namespace TestNamespace
 {
     class Source
@@ -66,7 +71,8 @@ namespace TestNamespace
     }
 }";
 
-        var fixedCode = @"
+        var fixedCode =
+            @"
 namespace TestNamespace
 {
     class Source
@@ -85,7 +91,8 @@ namespace TestNamespace
     }
 }";
 
-        var expected = VerifyCS.Diagnostic(AnonymousTypeToDtoAnalyzer.DiagnosticId)
+        var expected = VerifyCS
+            .Diagnostic(AnonymousTypeToDtoAnalyzer.DiagnosticId)
             .WithLocation(0)
             .WithSeverity(DiagnosticSeverity.Info);
 
@@ -95,7 +102,8 @@ namespace TestNamespace
     [Fact]
     public async Task CodeFix_AnonymousTypeInMethodWithGetPrefix_GeneratesDto()
     {
-        var test = @"
+        var test =
+            @"
 namespace TestNamespace
 {
     class Test
@@ -107,7 +115,8 @@ namespace TestNamespace
     }
 }";
 
-        var fixedCode = @"
+        var fixedCode =
+            @"
 namespace TestNamespace
 {
     class Test
@@ -119,7 +128,8 @@ namespace TestNamespace
     }
 }";
 
-        var expected = VerifyCS.Diagnostic(AnonymousTypeToDtoAnalyzer.DiagnosticId)
+        var expected = VerifyCS
+            .Diagnostic(AnonymousTypeToDtoAnalyzer.DiagnosticId)
             .WithLocation(0)
             .WithSeverity(DiagnosticSeverity.Info);
 
@@ -129,7 +139,8 @@ namespace TestNamespace
     [Fact]
     public async Task CodeFix_AnonymousTypeWithMixedProperties_GeneratesDto()
     {
-        var test = @"
+        var test =
+            @"
 namespace TestNamespace
 {
     class Test
@@ -142,7 +153,8 @@ namespace TestNamespace
     }
 }";
 
-        var fixedCode = @"
+        var fixedCode =
+            @"
 namespace TestNamespace
 {
     class Test
@@ -155,7 +167,8 @@ namespace TestNamespace
     }
 }";
 
-        var expected = VerifyCS.Diagnostic(AnonymousTypeToDtoAnalyzer.DiagnosticId)
+        var expected = VerifyCS
+            .Diagnostic(AnonymousTypeToDtoAnalyzer.DiagnosticId)
             .WithLocation(0)
             .WithSeverity(DiagnosticSeverity.Info);
 

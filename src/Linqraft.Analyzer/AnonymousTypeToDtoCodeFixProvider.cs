@@ -23,29 +23,34 @@ public class AnonymousTypeToDtoCodeFixProvider : CodeFixProvider
     public sealed override ImmutableArray<string> FixableDiagnosticIds =>
         ImmutableArray.Create(AnonymousTypeToDtoAnalyzer.DiagnosticId);
 
-    public sealed override FixAllProvider GetFixAllProvider() => WellKnownFixAllProviders.BatchFixer;
+    public sealed override FixAllProvider GetFixAllProvider() =>
+        WellKnownFixAllProviders.BatchFixer;
 
     public sealed override async Task RegisterCodeFixesAsync(CodeFixContext context)
     {
-        var root = await context.Document.GetSyntaxRootAsync(context.CancellationToken).ConfigureAwait(false);
-        if (root == null) return;
+        var root = await context
+            .Document.GetSyntaxRootAsync(context.CancellationToken)
+            .ConfigureAwait(false);
+        if (root == null)
+            return;
 
         var diagnostic = context.Diagnostics.First();
         var diagnosticSpan = diagnostic.Location.SourceSpan;
 
         var anonymousObject = root.FindToken(diagnosticSpan.Start)
-            .Parent
-            ?.AncestorsAndSelf()
+            .Parent?.AncestorsAndSelf()
             .OfType<AnonymousObjectCreationExpressionSyntax>()
             .First();
 
-        if (anonymousObject == null) return;
+        if (anonymousObject == null)
+            return;
 
         // Option 1: Add DTO to end of current file (appears first/on top)
         context.RegisterCodeFix(
             CodeAction.Create(
                 title: "Convert to Class (add to current file)",
-                createChangedDocument: c => ConvertToDtoInSameFileAsync(context.Document, anonymousObject, c),
+                createChangedDocument: c =>
+                    ConvertToDtoInSameFileAsync(context.Document, anonymousObject, c),
                 equivalenceKey: "ConvertToDtoSameFile"
             ),
             diagnostic
@@ -55,7 +60,8 @@ public class AnonymousTypeToDtoCodeFixProvider : CodeFixProvider
         context.RegisterCodeFix(
             CodeAction.Create(
                 title: "Convert to Class (new file)",
-                createChangedSolution: c => ConvertToDtoNewFileAsync(context.Document, anonymousObject, c),
+                createChangedSolution: c =>
+                    ConvertToDtoNewFileAsync(context.Document, anonymousObject, c),
                 equivalenceKey: "ConvertToDtoNewFile"
             ),
             diagnostic
@@ -68,13 +74,17 @@ public class AnonymousTypeToDtoCodeFixProvider : CodeFixProvider
         CancellationToken cancellationToken
     )
     {
-        var semanticModel = await document.GetSemanticModelAsync(cancellationToken).ConfigureAwait(false);
-        if (semanticModel == null) return document;
+        var semanticModel = await document
+            .GetSemanticModelAsync(cancellationToken)
+            .ConfigureAwait(false);
+        if (semanticModel == null)
+            return document;
 
         // Get type info for the anonymous object
         var typeInfo = semanticModel.GetTypeInfo(anonymousObject, cancellationToken);
         var anonymousType = typeInfo.Type;
-        if (anonymousType == null) return document;
+        if (anonymousType == null)
+            return document;
 
         // Analyze the anonymous type structure
         var dtoStructure = DtoStructure.AnalyzeAnonymousType(
@@ -82,16 +92,20 @@ public class AnonymousTypeToDtoCodeFixProvider : CodeFixProvider
             semanticModel,
             anonymousType
         );
-        if (dtoStructure == null) return document;
+        if (dtoStructure == null)
+            return document;
 
         // Generate DTO class name
         var dtoClassName = GenerateDtoClassName(anonymousObject);
 
         // Get the namespace from the document
         var root = await document.GetSyntaxRootAsync(cancellationToken).ConfigureAwait(false);
-        if (root == null) return document;
+        if (root == null)
+            return document;
 
-        var namespaceDecl = root.DescendantNodes().OfType<BaseNamespaceDeclarationSyntax>().FirstOrDefault();
+        var namespaceDecl = root.DescendantNodes()
+            .OfType<BaseNamespaceDeclarationSyntax>()
+            .FirstOrDefault();
         var namespaceName = namespaceDecl?.Name.ToString() ?? "Generated";
 
         // Create DTO class info
@@ -101,7 +115,7 @@ public class AnonymousTypeToDtoCodeFixProvider : CodeFixProvider
             Accessibility = "public",
             ClassName = dtoClassName,
             Namespace = namespaceName,
-            NestedClasses = ImmutableList<GenerateDtoClassInfo>.Empty
+            NestedClasses = ImmutableList<GenerateDtoClassInfo>.Empty,
         };
 
         // Generate configuration
@@ -146,13 +160,17 @@ public class AnonymousTypeToDtoCodeFixProvider : CodeFixProvider
         CancellationToken cancellationToken
     )
     {
-        var semanticModel = await document.GetSemanticModelAsync(cancellationToken).ConfigureAwait(false);
-        if (semanticModel == null) return document.Project.Solution;
+        var semanticModel = await document
+            .GetSemanticModelAsync(cancellationToken)
+            .ConfigureAwait(false);
+        if (semanticModel == null)
+            return document.Project.Solution;
 
         // Get type info for the anonymous object
         var typeInfo = semanticModel.GetTypeInfo(anonymousObject, cancellationToken);
         var anonymousType = typeInfo.Type;
-        if (anonymousType == null) return document.Project.Solution;
+        if (anonymousType == null)
+            return document.Project.Solution;
 
         // Analyze the anonymous type structure
         var dtoStructure = DtoStructure.AnalyzeAnonymousType(
@@ -160,14 +178,18 @@ public class AnonymousTypeToDtoCodeFixProvider : CodeFixProvider
             semanticModel,
             anonymousType
         );
-        if (dtoStructure == null) return document.Project.Solution;
+        if (dtoStructure == null)
+            return document.Project.Solution;
 
         // Generate DTO class name
         var dtoClassName = GenerateDtoClassName(anonymousObject);
 
         // Get the namespace from the document
         var root = await document.GetSyntaxRootAsync(cancellationToken).ConfigureAwait(false);
-        var namespaceDecl = root?.DescendantNodes().OfType<BaseNamespaceDeclarationSyntax>().FirstOrDefault();
+        var namespaceDecl = root
+            ?.DescendantNodes()
+            .OfType<BaseNamespaceDeclarationSyntax>()
+            .FirstOrDefault();
         var namespaceName = namespaceDecl?.Name.ToString() ?? "Generated";
 
         // Create DTO class info
@@ -177,7 +199,7 @@ public class AnonymousTypeToDtoCodeFixProvider : CodeFixProvider
             Accessibility = "public",
             ClassName = dtoClassName,
             Namespace = namespaceName,
-            NestedClasses = ImmutableList<GenerateDtoClassInfo>.Empty
+            NestedClasses = ImmutableList<GenerateDtoClassInfo>.Empty,
         };
 
         // Generate configuration
@@ -203,12 +225,13 @@ public class AnonymousTypeToDtoCodeFixProvider : CodeFixProvider
 
         // Replace anonymous object with DTO instantiation
         var newRoot = await ReplaceAnonymousWithDto(
-            document,
-            anonymousObject,
-            dtoClassName,
-            namespaceName,
-            cancellationToken
-        ).ConfigureAwait(false);
+                document,
+                anonymousObject,
+                dtoClassName,
+                namespaceName,
+                cancellationToken
+            )
+            .ConfigureAwait(false);
 
         if (newRoot != null)
         {
@@ -254,20 +277,21 @@ public class AnonymousTypeToDtoCodeFixProvider : CodeFixProvider
             initializers.Add(assignment);
         }
 
-        var newObjectCreation = SyntaxFactory.ObjectCreationExpression(
-            SyntaxFactory.IdentifierName(dtoClassName)
-        )
-        .WithInitializer(
-            SyntaxFactory.InitializerExpression(
-                SyntaxKind.ObjectInitializerExpression,
-                SyntaxFactory.SeparatedList(initializers)
-            )
-        );
+        var newObjectCreation = SyntaxFactory
+            .ObjectCreationExpression(SyntaxFactory.IdentifierName(dtoClassName))
+            .WithInitializer(
+                SyntaxFactory.InitializerExpression(
+                    SyntaxKind.ObjectInitializerExpression,
+                    SyntaxFactory.SeparatedList(initializers)
+                )
+            );
 
         return root.ReplaceNode(anonymousObject, newObjectCreation);
     }
 
-    private static string GenerateDtoClassName(AnonymousObjectCreationExpressionSyntax anonymousObject)
+    private static string GenerateDtoClassName(
+        AnonymousObjectCreationExpressionSyntax anonymousObject
+    )
     {
         // Try to infer a name from the context
         var parent = anonymousObject.Parent;
@@ -292,7 +316,10 @@ public class AnonymousTypeToDtoCodeFixProvider : CodeFixProvider
         }
 
         // Check for return statement with method name
-        var methodDecl = anonymousObject.Ancestors().OfType<MethodDeclarationSyntax>().FirstOrDefault();
+        var methodDecl = anonymousObject
+            .Ancestors()
+            .OfType<MethodDeclarationSyntax>()
+            .FirstOrDefault();
         if (methodDecl != null)
         {
             var methodName = methodDecl.Identifier.Text;
@@ -310,11 +337,15 @@ public class AnonymousTypeToDtoCodeFixProvider : CodeFixProvider
 
     private static string ToPascalCase(string name)
     {
-        if (string.IsNullOrEmpty(name)) return name;
+        if (string.IsNullOrEmpty(name))
+            return name;
         return char.ToUpperInvariant(name[0]) + name.Substring(1);
     }
 
-    private static string BuildDtoFile(GenerateDtoClassInfo dtoClassInfo, LinqraftConfiguration configuration)
+    private static string BuildDtoFile(
+        GenerateDtoClassInfo dtoClassInfo,
+        LinqraftConfiguration configuration
+    )
     {
         var code = dtoClassInfo.BuildCode(configuration);
 
@@ -332,7 +363,8 @@ public class AnonymousTypeToDtoCodeFixProvider : CodeFixProvider
     )
     {
         var root = await document.GetSyntaxRootAsync(cancellationToken).ConfigureAwait(false);
-        if (root == null) return null;
+        if (root == null)
+            return null;
 
         // Build the new object creation expression
         var initializers = new List<ExpressionSyntax>();
@@ -364,15 +396,14 @@ public class AnonymousTypeToDtoCodeFixProvider : CodeFixProvider
         }
 
         // Create object creation: new DtoClassName { ... }
-        var newObjectCreation = SyntaxFactory.ObjectCreationExpression(
-            SyntaxFactory.IdentifierName(dtoClassName)
-        )
-        .WithInitializer(
-            SyntaxFactory.InitializerExpression(
-                SyntaxKind.ObjectInitializerExpression,
-                SyntaxFactory.SeparatedList(initializers)
-            )
-        );
+        var newObjectCreation = SyntaxFactory
+            .ObjectCreationExpression(SyntaxFactory.IdentifierName(dtoClassName))
+            .WithInitializer(
+                SyntaxFactory.InitializerExpression(
+                    SyntaxKind.ObjectInitializerExpression,
+                    SyntaxFactory.SeparatedList(initializers)
+                )
+            );
 
         // Replace the anonymous object with the new object creation
         var newRoot = root.ReplaceNode(anonymousObject, newObjectCreation);
@@ -385,10 +416,10 @@ public class AnonymousTypeToDtoCodeFixProvider : CodeFixProvider
         {
             MemberAccessExpressionSyntax memberAccess => memberAccess.Name.Identifier.Text,
             IdentifierNameSyntax identifier => identifier.Identifier.Text,
-            ConditionalAccessExpressionSyntax conditionalAccess when
-                conditionalAccess.WhenNotNull is MemberBindingExpressionSyntax memberBinding
-                    => memberBinding.Name.Identifier.Text,
-            _ => "Property"
+            ConditionalAccessExpressionSyntax conditionalAccess
+                when conditionalAccess.WhenNotNull is MemberBindingExpressionSyntax memberBinding =>
+                memberBinding.Name.Identifier.Text,
+            _ => "Property",
         };
     }
 }
