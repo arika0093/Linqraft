@@ -37,8 +37,8 @@ body:
   - type: dropdown
     id: diagnostic-severity
     attributes:
-      label: Diagnostic Severity
-      description: Please select the severity level you expect for the analyzer diagnostic.
+      label: Please select the severity level you expect for the analyzer diagnostic.
+      multiple: false
       options:
         - Error
         - Warning
@@ -52,7 +52,7 @@ body:
       label: Request Code Fix
       description: Would you like to request a code fix (automatic code correction) for this analyzer feature?
       options:
-        - label: Yes
+        - label: "Yes"
           required: false
   - type: textarea
     id: codefix-description
