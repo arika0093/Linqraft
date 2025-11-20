@@ -315,7 +315,9 @@ public class AnonymousTypeToDtoCodeFixProvider : CodeFixProvider
                     SyntaxKind.ObjectInitializerExpression,
                     SyntaxFactory.SeparatedList(initializers)
                 )
-            );
+            )
+            .WithLeadingTrivia(anonymousObject.GetLeadingTrivia())
+            .WithTrailingTrivia(anonymousObject.GetTrailingTrivia());
 
         return root.ReplaceNode(anonymousObject, newObjectCreation);
     }
@@ -403,7 +405,9 @@ public class AnonymousTypeToDtoCodeFixProvider : CodeFixProvider
                                 SyntaxKind.ObjectInitializerExpression,
                                 SyntaxFactory.SeparatedList(nestedInitializers)
                             )
-                        );
+                        )
+                        .WithLeadingTrivia(nestedAnonymous.GetLeadingTrivia())
+                        .WithTrailingTrivia(nestedAnonymous.GetTrailingTrivia());
                 }
             }
         }

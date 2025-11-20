@@ -379,6 +379,83 @@ public partial class ResultDto
         await RunCodeFixTestAsync(test, expected, fixedCode);
     }
 
+    [Fact]
+    public async Task CodeFix_GlobalNamespace_WithNestedAnonymousType_GeneratesDtoCorrectly()
+    {
+        var test =
+            @"
+class Item
+{
+    public string Name { get; set; }
+    public int Value { get; set; }
+}
+
+class Test
+{
+    void Method()
+    {
+        var item = new Item();
+        var result = {|#0:new
+        {
+            Id = 1,
+            ItemData = {|#1:new
+            {
+                item.Name,
+                item.Value
+            }|}
+        }|};
+    }
+}";
+
+        var fixedCode =
+            @"class Item
+{
+    public string Name { get; set; }
+    public int Value { get; set; }
+}
+
+class Test
+{
+    void Method()
+    {
+        var item = new Item();
+        var result = new ResultDto
+        {
+            Id = 1,
+            ItemData = new ItemDto_B1D867F4
+            {
+                Name = item.Name,
+                Value = item.Value
+            }
+        };
+    }
+}
+
+public partial class ItemDto_B1D867F4
+{
+    public required string Name { get; set; }
+    public required int Value { get; set; }
+}
+
+public partial class ResultDto
+{
+    public required int Id { get; set; }
+    public required global::ItemDto_B1D867F4? ItemData { get; set; }
+}";
+
+        var expected0 = new DiagnosticResult(
+            AnonymousTypeToDtoAnalyzer.DiagnosticId,
+            DiagnosticSeverity.Hidden
+        ).WithLocation(0);
+
+        var expected1 = new DiagnosticResult(
+            AnonymousTypeToDtoAnalyzer.DiagnosticId,
+            DiagnosticSeverity.Hidden
+        ).WithLocation(1);
+
+        await RunCodeFixTestAsync(test, [expected0, expected1], fixedCode);
+    }
+
     // TODO: This test is currently skipped due to formatting differences in the test framework output
     // The functionality works correctly, but the test expectations need to be adjusted
     // [Fact]

@@ -54,10 +54,20 @@ public class GenerateDtoClassInfo
     /// <summary>
     /// Gets the fully qualified name of the DTO class
     /// </summary>
-    public string FullName =>
-        ParentClasses.Count > 0
-            ? $"{Namespace}.{string.Join(".", ParentClasses)}.{ClassName}"
-            : $"{Namespace}.{ClassName}";
+    public string FullName
+    {
+        get
+        {
+            if (ParentClasses.Count > 0)
+            {
+                var parentPath = string.Join(".", ParentClasses);
+                return string.IsNullOrEmpty(Namespace)
+                    ? $"{parentPath}.{ClassName}"
+                    : $"{Namespace}.{parentPath}.{ClassName}";
+            }
+            return string.IsNullOrEmpty(Namespace) ? ClassName : $"{Namespace}.{ClassName}";
+        }
+    }
 
     /// <summary>
     /// Builds the C# source code for this DTO class
