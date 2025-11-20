@@ -117,51 +117,57 @@ public partial class SelectExprGenerator : IIncrementalGenerator
         // Extract capture argument info (if present)
         var (captureArgExpr, captureType) = GetCaptureInfo(invocation, context.SemanticModel);
 
-        // Check if this is a generic invocation with explicit type arguments
-        // SelectExpr<TIn, TResult> or SelectExpr<TIn, TResult, TCapture> form
+        // check
+        // 1. SelectExpr with predefined DTO type
+        // 2. SelectExpr with explicit DTO type in generic arguments
+        // 3. SelectExpr with anonymous object creation
+        var body = lambda.Body;
+
+        // 1. Check if this is a generic invocation with predefined DTO type
+        // If generics are used, but the body is an ObjectCreationExpression, this takes precedence.
+        if(body is ObjectCreationExpressionSyntax objCreation)
+        {
+            return GetNamedSelectExprInfo(
+                context,
+                objCreation,
+                lambdaParamName,
+                captureArgExpr,
+                captureType
+            );
+        }
+
+        // 2. Check for SelectExpr<TIn, TResult>
         if (
             invocation.Expression is MemberAccessExpressionSyntax memberAccess
             && memberAccess.Name is GenericNameSyntax genericName
             && genericName.TypeArgumentList.Arguments.Count >= 2
+            && body is AnonymousObjectCreationExpressionSyntax anonSyntax
         )
         {
-            // This is the SelectExpr<TIn, TResult> form (possibly with capture)
-            if (lambda.Body is AnonymousObjectCreationExpressionSyntax anon)
-            {
-                return GetExplicitDtoSelectExprInfo(
-                    context,
-                    anon,
-                    genericName,
-                    lambdaParamName,
-                    captureArgExpr,
-                    captureType
-                );
-            }
+            return GetExplicitDtoSelectExprInfo(
+                context,
+                anonSyntax,
+                genericName,
+                lambdaParamName,
+                captureArgExpr,
+                captureType
+            );
         }
 
-        // Check if lambda body is an object initializer
-        var body = lambda.Body;
-        switch (body)
-        {
-            case AnonymousObjectCreationExpressionSyntax anon:
-                return GetAnonymousSelectExprInfo(
-                    context,
-                    anon,
-                    lambdaParamName,
-                    captureArgExpr,
-                    captureType
-                );
-            case ObjectCreationExpressionSyntax objCreation:
-                return GetNamedSelectExprInfo(
-                    context,
-                    objCreation,
-                    lambdaParamName,
-                    captureArgExpr,
-                    captureType
-                );
-            default:
-                return null;
-        }
+        // 3. Check for anonymous object creation
+        if(body is AnonymousObjectCreationExpressionSyntax anon)
+		{
+            return GetAnonymousSelectExprInfo(
+                context,
+                anon,
+                lambdaParamName,
+                captureArgExpr,
+                captureType
+            );
+		}
+        
+        // Not a supported form
+        return null;
     }
 
     private static string GetLambdaParameterName(LambdaExpressionSyntax lambda)
