@@ -93,9 +93,10 @@ public class NestedCaseTest
         var child2First = first.Child2Summaries.First();
         child2First.Summary.ShouldBe("Child2-1 of Base1");
         child2First.GrandChild2.Count().ShouldBe(2);
-        child2First.GrandChild2Notes.ShouldBe(
-            ["GrandChild2-1 of Child2-1 of Base1", "GrandChild2-2 of Child2-1 of Base1"]
-        );
+        child2First.GrandChild2Notes.ShouldBe([
+            "GrandChild2-1 of Child2-1 of Base1",
+            "GrandChild2-2 of Child2-1 of Base1",
+        ]);
         child2First.GrandChild2Values.ShouldBe([1, 2]);
     }
 
@@ -133,9 +134,10 @@ public class NestedCaseTest
         var child2First = first.Child2Summaries.First();
         child2First.Summary.ShouldBe("Child2-1 of Base1");
         child2First.GrandChild2.Count().ShouldBe(2);
-        child2First.GrandChild2Notes.ShouldBe(
-            ["GrandChild2-1 of Child2-1 of Base1", "GrandChild2-2 of Child2-1 of Base1"]
-        );
+        child2First.GrandChild2Notes.ShouldBe([
+            "GrandChild2-1 of Child2-1 of Base1",
+            "GrandChild2-2 of Child2-1 of Base1",
+        ]);
         child2First.GrandChild2Values.ShouldBe([1, 2]);
     }
 
