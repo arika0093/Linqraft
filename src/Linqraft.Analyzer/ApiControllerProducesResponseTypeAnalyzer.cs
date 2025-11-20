@@ -153,28 +153,48 @@ public class ApiControllerProducesResponseTypeAnalyzer : DiagnosticAnalyzer
         SemanticModel semanticModel
     )
     {
+        // First try semantic model approach (more reliable)
         var methodSymbol = semanticModel.GetDeclaredSymbol(methodDeclaration);
-        if (methodSymbol == null)
+        if (methodSymbol != null)
         {
-            return false;
+            foreach (var attribute in methodSymbol.GetAttributes())
+            {
+                var attributeClass = attribute.AttributeClass;
+                if (attributeClass != null)
+                {
+                    var attributeName = attributeClass.Name;
+                    if (
+                        attributeName == "ProducesResponseTypeAttribute" // Semantic model includes the "Attribute" suffix
+                        || attributeName == "ProducesResponseType"
+                    )
+                    {
+                        return true;
+                    }
+                }
+            }
         }
 
-        // Check if the method has ProducesResponseType attribute using semantic model
-        foreach (var attribute in methodSymbol.GetAttributes())
+        // Fallback to syntax-based check
+        foreach (var attributeList in methodDeclaration.AttributeLists)
         {
-            var attributeClass = attribute.AttributeClass;
-            if (attributeClass == null)
+            foreach (var attribute in attributeList.Attributes)
             {
-                continue;
-            }
+                var name = attribute.Name;
+                
+                // Extract the identifier name
+                var identifierText = name switch
+                {
+                    IdentifierNameSyntax identifier => identifier.Identifier.ValueText,
+                    QualifiedNameSyntax qualified => qualified.Right is IdentifierNameSyntax rightId 
+                        ? rightId.Identifier.ValueText 
+                        : null,
+                    _ => null
+                };
 
-            var attributeName = attributeClass.Name;
-            if (
-                attributeName == "ProducesResponseType"
-                || attributeName == "ProducesResponseTypeAttribute"
-            )
-            {
-                return true;
+                if (identifierText is "ProducesResponseType" or "ProducesResponseTypeAttribute")
+                {
+                    return true;
+                }
             }
         }
 
