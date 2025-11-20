@@ -489,13 +489,16 @@ public abstract record SelectExprInfo
         }
     }
 
+    /// <summary>
+    /// Extracts LINQ method invocation information (Select or SelectMany) from syntax
+    /// </summary>
     private (
         string baseExpression,
         string paramName,
         string chainedMethods,
         bool hasNullableAccess,
         string? coalescingDefaultValue
-    )? ExtractSelectManyInfoFromSyntax(ExpressionSyntax syntax)
+    )? ExtractLinqInvocationInfo(ExpressionSyntax syntax, string methodName)
     {
         string? coalescingDefaultValue = null;
         var currentSyntax = syntax;
@@ -513,7 +516,7 @@ public abstract record SelectExprInfo
             currentSyntax = binaryExpr.Left;
         }
 
-        // Check for conditional access (?.SelectMany)
+        // Check for conditional access (?.)
         bool hasNullableAccess = false;
         ConditionalAccessExpressionSyntax? conditionalAccess = null;
         if (currentSyntax is ConditionalAccessExpressionSyntax condAccess)
@@ -523,26 +526,26 @@ public abstract record SelectExprInfo
             currentSyntax = condAccess.WhenNotNull;
         }
 
-        // Find the SelectMany invocation
-        InvocationExpressionSyntax? selectManyInvocation = null;
+        // Find the LINQ method invocation
+        InvocationExpressionSyntax? linqInvocation = null;
         string chainedMethods = "";
 
         if (currentSyntax is InvocationExpressionSyntax invocation)
         {
-            // Check if this is .SelectMany() or .SelectMany().ToList()
+            // Check if this is the LINQ method or chained (e.g., .Select().ToList())
             if (
                 invocation.Expression is MemberAccessExpressionSyntax memberAccess
-                && memberAccess.Name.Identifier.Text == "SelectMany"
+                && memberAccess.Name.Identifier.Text == methodName
             )
             {
-                selectManyInvocation = invocation;
+                linqInvocation = invocation;
             }
             else if (
                 invocation.Expression is MemberBindingExpressionSyntax memberBinding
-                && memberBinding.Name.Identifier.Text == "SelectMany"
+                && memberBinding.Name.Identifier.Text == methodName
             )
             {
-                selectManyInvocation = invocation;
+                linqInvocation = invocation;
             }
             else if (invocation.Expression is MemberAccessExpressionSyntax chainedMember)
             {
@@ -552,30 +555,30 @@ public abstract record SelectExprInfo
                 {
                     if (
                         innerInvocation.Expression is MemberAccessExpressionSyntax innerMember
-                        && innerMember.Name.Identifier.Text == "SelectMany"
+                        && innerMember.Name.Identifier.Text == methodName
                     )
                     {
-                        selectManyInvocation = innerInvocation;
+                        linqInvocation = innerInvocation;
                     }
                     else if (
                         innerInvocation.Expression is MemberBindingExpressionSyntax innerBinding
-                        && innerBinding.Name.Identifier.Text == "SelectMany"
+                        && innerBinding.Name.Identifier.Text == methodName
                     )
                     {
-                        selectManyInvocation = innerInvocation;
+                        linqInvocation = innerInvocation;
                     }
                 }
             }
         }
 
-        if (selectManyInvocation is null)
+        if (linqInvocation is null)
             return null;
 
         // Extract lambda parameter name using Roslyn
         string paramName = "x"; // Default
-        if (selectManyInvocation.ArgumentList.Arguments.Count > 0)
+        if (linqInvocation.ArgumentList.Arguments.Count > 0)
         {
-            var arg = selectManyInvocation.ArgumentList.Arguments[0].Expression;
+            var arg = linqInvocation.ArgumentList.Arguments[0].Expression;
             if (arg is SimpleLambdaExpressionSyntax simpleLambda)
             {
                 paramName = simpleLambda.Parameter.Identifier.Text;
@@ -589,18 +592,18 @@ public abstract record SelectExprInfo
             }
         }
 
-        // Extract base expression (the collection being selected from)
+        // Extract base expression (the collection being operated on)
         string baseExpression;
         if (hasNullableAccess && conditionalAccess is not null)
         {
             baseExpression = conditionalAccess.Expression.ToString();
         }
-        else if (selectManyInvocation.Expression is MemberAccessExpressionSyntax selectManyMember)
+        else if (linqInvocation.Expression is MemberAccessExpressionSyntax linqMember)
         {
-            baseExpression = selectManyMember.Expression.ToString();
+            baseExpression = linqMember.Expression.ToString();
         }
         else if (
-            selectManyInvocation.Expression is MemberBindingExpressionSyntax
+            linqInvocation.Expression is MemberBindingExpressionSyntax
             && conditionalAccess is not null
         )
         {
@@ -626,129 +629,20 @@ public abstract record SelectExprInfo
         string chainedMethods,
         bool hasNullableAccess,
         string? coalescingDefaultValue
+    )? ExtractSelectManyInfoFromSyntax(ExpressionSyntax syntax)
+    {
+        return ExtractLinqInvocationInfo(syntax, "SelectMany");
+    }
+
+    private (
+        string baseExpression,
+        string paramName,
+        string chainedMethods,
+        bool hasNullableAccess,
+        string? coalescingDefaultValue
     )? ExtractSelectInfoFromSyntax(ExpressionSyntax syntax)
     {
-        string? coalescingDefaultValue = null;
-        var currentSyntax = syntax;
-
-        // Check for coalescing operator (??)
-        if (
-            syntax is BinaryExpressionSyntax
-            {
-                RawKind: (int)SyntaxKind.CoalesceExpression
-            } binaryExpr
-        )
-        {
-            var rightSide = binaryExpr.Right.ToString().Trim();
-            coalescingDefaultValue = rightSide == "[]" ? null : rightSide;
-            currentSyntax = binaryExpr.Left;
-        }
-
-        // Check for conditional access (?.Select)
-        bool hasNullableAccess = false;
-        ConditionalAccessExpressionSyntax? conditionalAccess = null;
-        if (currentSyntax is ConditionalAccessExpressionSyntax condAccess)
-        {
-            hasNullableAccess = true;
-            conditionalAccess = condAccess;
-            currentSyntax = condAccess.WhenNotNull;
-        }
-
-        // Find the Select invocation
-        InvocationExpressionSyntax? selectInvocation = null;
-        string chainedMethods = "";
-
-        if (currentSyntax is InvocationExpressionSyntax invocation)
-        {
-            // Check if this is .Select() or .Select().ToList()
-            if (
-                invocation.Expression is MemberAccessExpressionSyntax memberAccess
-                && memberAccess.Name.Identifier.Text == "Select"
-            )
-            {
-                selectInvocation = invocation;
-            }
-            else if (
-                invocation.Expression is MemberBindingExpressionSyntax memberBinding
-                && memberBinding.Name.Identifier.Text == "Select"
-            )
-            {
-                selectInvocation = invocation;
-            }
-            else if (invocation.Expression is MemberAccessExpressionSyntax chainedMember)
-            {
-                // This is a chained method like .ToList()
-                chainedMethods = $".{chainedMember.Name}{invocation.ArgumentList}";
-                if (chainedMember.Expression is InvocationExpressionSyntax innerInvocation)
-                {
-                    if (
-                        innerInvocation.Expression is MemberAccessExpressionSyntax innerMember
-                        && innerMember.Name.Identifier.Text == "Select"
-                    )
-                    {
-                        selectInvocation = innerInvocation;
-                    }
-                    else if (
-                        innerInvocation.Expression is MemberBindingExpressionSyntax innerBinding
-                        && innerBinding.Name.Identifier.Text == "Select"
-                    )
-                    {
-                        selectInvocation = innerInvocation;
-                    }
-                }
-            }
-        }
-
-        if (selectInvocation is null)
-            return null;
-
-        // Extract lambda parameter name using Roslyn
-        string paramName = "x"; // Default
-        if (selectInvocation.ArgumentList.Arguments.Count > 0)
-        {
-            var arg = selectInvocation.ArgumentList.Arguments[0].Expression;
-            if (arg is SimpleLambdaExpressionSyntax simpleLambda)
-            {
-                paramName = simpleLambda.Parameter.Identifier.Text;
-            }
-            else if (
-                arg is ParenthesizedLambdaExpressionSyntax parenLambda
-                && parenLambda.ParameterList.Parameters.Count > 0
-            )
-            {
-                paramName = parenLambda.ParameterList.Parameters[0].Identifier.Text;
-            }
-        }
-
-        // Extract base expression (the collection being selected from)
-        string baseExpression;
-        if (hasNullableAccess && conditionalAccess is not null)
-        {
-            baseExpression = conditionalAccess.Expression.ToString();
-        }
-        else if (selectInvocation.Expression is MemberAccessExpressionSyntax selectMember)
-        {
-            baseExpression = selectMember.Expression.ToString();
-        }
-        else if (
-            selectInvocation.Expression is MemberBindingExpressionSyntax
-            && conditionalAccess is not null
-        )
-        {
-            baseExpression = conditionalAccess.Expression.ToString();
-        }
-        else
-        {
-            return null;
-        }
-
-        return (
-            baseExpression,
-            paramName,
-            chainedMethods,
-            hasNullableAccess,
-            coalescingDefaultValue
-        );
+        return ExtractLinqInvocationInfo(syntax, "Select");
     }
 
     /// <summary>
