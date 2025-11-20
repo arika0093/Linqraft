@@ -300,13 +300,44 @@ public class LocalVariableCaptureAnalyzer : DiagnosticAnalyzer
             if ((symbol.Kind == SymbolKind.Field || symbol.Kind == SymbolKind.Property))
             {
                 // Check if it's 'this.Member' or 'Type.StaticMember'
-                if (
-                    memberAccess.Expression is ThisExpressionSyntax
-                    || (symbol.IsStatic && memberAccess.Expression is IdentifierNameSyntax)
+                if (memberAccess.Expression is ThisExpressionSyntax)
+                {
+                    var memberName = memberAccess.Name.Identifier.Text;
+                    variablesToCapture.Add((memberName, memberAccess.GetLocation()));
+                }
+                else if (
+                    symbol.IsStatic && memberAccess.Expression is IdentifierNameSyntax
                 )
                 {
                     var memberName = memberAccess.Name.Identifier.Text;
                     variablesToCapture.Add((memberName, memberAccess.GetLocation()));
+                }
+                else if (memberAccess.Expression is IdentifierNameSyntax exprIdentifier)
+                {
+                    // Check if the expression is a local variable or parameter from outer scope
+                    var exprSymbolInfo = semanticModel.GetSymbolInfo(exprIdentifier);
+                    var exprSymbol = exprSymbolInfo.Symbol;
+
+                    if (exprSymbol != null)
+                    {
+                        // Check if it's a local variable or parameter from outer scope
+                        if (
+                            exprSymbol.Kind == SymbolKind.Local
+                            || exprSymbol.Kind == SymbolKind.Parameter
+                        )
+                        {
+                            // Ensure it's from outer scope, not declared inside the lambda
+                            var exprSymbolLocation = exprSymbol.Locations.FirstOrDefault();
+                            if (
+                                exprSymbolLocation != null
+                                && !lambda.Span.Contains(exprSymbolLocation.SourceSpan)
+                            )
+                            {
+                                var memberName = memberAccess.Name.Identifier.Text;
+                                variablesToCapture.Add((memberName, memberAccess.GetLocation()));
+                            }
+                        }
+                    }
                 }
             }
         }
