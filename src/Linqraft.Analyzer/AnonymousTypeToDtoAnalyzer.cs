@@ -12,7 +12,7 @@ namespace Linqraft.Analyzer;
 [DiagnosticAnalyzer(LanguageNames.CSharp)]
 public class AnonymousTypeToDtoAnalyzer : DiagnosticAnalyzer
 {
-    public const string DiagnosticId = "LINQ001";
+    public const string DiagnosticId = "LQRF001";
 
     private static readonly LocalizableString Title = "Anonymous type can be converted to DTO";
     private static readonly LocalizableString MessageFormat =
