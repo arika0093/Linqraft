@@ -102,7 +102,8 @@ public class LocalVariableCaptureAnalyzer : DiagnosticAnalyzer
         {
             MemberAccessExpressionSyntax memberAccess => memberAccess.Name.Identifier.Text
                 == SelectExprHelper.MethodName,
-            IdentifierNameSyntax identifier => identifier.Identifier.Text == SelectExprHelper.MethodName,
+            IdentifierNameSyntax identifier => identifier.Identifier.Text
+                == SelectExprHelper.MethodName,
             _ => false,
         };
     }
