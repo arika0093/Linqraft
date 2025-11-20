@@ -73,8 +73,8 @@ public class SelectExprInRazorAnalyzer : DiagnosticAnalyzer
         return expression switch
         {
             // obj.SelectExpr(...)
-            MemberAccessExpressionSyntax memberAccess =>
-                memberAccess.Name.Identifier.Text == "SelectExpr",
+            MemberAccessExpressionSyntax memberAccess => memberAccess.Name.Identifier.Text
+                == "SelectExpr",
             // SelectExpr(...) - unlikely but handle it
             IdentifierNameSyntax identifier => identifier.Identifier.Text == "SelectExpr",
             _ => false,

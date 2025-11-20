@@ -148,10 +148,7 @@ class Test
 
         // Create a mock SyntaxTree with the specified file path
         var code = "class Test { }";
-        var tree = Microsoft.CodeAnalysis.CSharp.CSharpSyntaxTree.ParseText(
-            code,
-            path: filePath
-        );
+        var tree = Microsoft.CodeAnalysis.CSharp.CSharpSyntaxTree.ParseText(code, path: filePath);
 
         var result = (bool)method!.Invoke(null, new object[] { tree })!;
 
@@ -172,10 +169,7 @@ class Test
         // Create a mock SyntaxTree with null file path
         var code = "class Test { }";
 #pragma warning disable CS8625 // Cannot convert null literal to non-nullable reference type
-        var tree = Microsoft.CodeAnalysis.CSharp.CSharpSyntaxTree.ParseText(
-            code,
-            path: null
-        );
+        var tree = Microsoft.CodeAnalysis.CSharp.CSharpSyntaxTree.ParseText(code, path: null);
 #pragma warning restore CS8625
 
         var result = (bool)method!.Invoke(null, new object[] { tree })!;
@@ -183,4 +177,3 @@ class Test
         Assert.False(result);
     }
 }
-
