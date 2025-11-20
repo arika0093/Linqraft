@@ -336,10 +336,27 @@ public class AnonymousTypeToDtoCodeFixProvider : CodeFixProvider
             var anonymousType = typeInfo.Type;
             if (anonymousType != null)
             {
+                // Infer source type from member accesses (same logic as DtoProperty.AnalyzeExpression)
+                ITypeSymbol? sourceType = null;
+                foreach (var initializer in nestedAnonymous.Initializers)
+                {
+                    var initExpr = initializer.Expression;
+                    if (initExpr is MemberAccessExpressionSyntax memberAccess)
+                    {
+                        var baseTypeInfo = semanticModel.GetTypeInfo(memberAccess.Expression);
+                        if (baseTypeInfo.Type is not null)
+                        {
+                            sourceType = baseTypeInfo.Type;
+                            break;
+                        }
+                    }
+                }
+                sourceType ??= anonymousType;
+
                 var structure = DtoStructure.AnalyzeAnonymousType(
                     nestedAnonymous,
                     semanticModel,
-                    anonymousType
+                    sourceType
                 );
                 if (structure != null)
                 {
@@ -394,8 +411,8 @@ public class AnonymousTypeToDtoCodeFixProvider : CodeFixProvider
         // For lambda expressions with Select, we need to replace nested anonymous objects
         if (
             expression is InvocationExpressionSyntax invocation
-            && invocation.Expression is MemberAccessExpressionSyntax memberAccess
-            && memberAccess.Name.Identifier.Text == "Select"
+            && invocation.Expression is MemberAccessExpressionSyntax selectMemberAccess
+            && selectMemberAccess.Name.Identifier.Text == "Select"
         )
         {
             // Get the lambda argument
