@@ -59,12 +59,6 @@ public class LocalVariableCaptureAnalyzer : DiagnosticAnalyzer
             return;
         }
 
-        // Check if it already has a capture parameter
-        if (HasCaptureParameter(invocation))
-        {
-            return;
-        }
-
         // Find the lambda expression argument
         var lambda = FindLambdaExpression(invocation.ArgumentList);
         if (lambda == null)
@@ -75,14 +69,25 @@ public class LocalVariableCaptureAnalyzer : DiagnosticAnalyzer
         // Get the lambda parameter name(s)
         var lambdaParameters = GetLambdaParameterNames(lambda);
 
-        // Find local variables referenced in the lambda body
-        var localVariables = FindLocalVariables(lambda, lambdaParameters, context.SemanticModel);
-
-        // Report diagnostic for each local variable found
-        foreach (var (variableName, location) in localVariables)
+        // Find variables that need to be captured
+        var variablesToCapture = FindVariablesToCapture(lambda, lambdaParameters, context.SemanticModel);
+        
+        if (variablesToCapture.Count == 0)
         {
-            var diagnostic = Diagnostic.Create(Rule, location, variableName);
-            context.ReportDiagnostic(diagnostic);
+            return;
+        }
+
+        // Get already captured variables
+        var capturedVariables = GetCapturedVariables(invocation, context.SemanticModel);
+
+        // Report diagnostic for variables that are not captured
+        foreach (var (variableName, location) in variablesToCapture)
+        {
+            if (!capturedVariables.Contains(variableName))
+            {
+                var diagnostic = Diagnostic.Create(Rule, location, variableName);
+                context.ReportDiagnostic(diagnostic);
+            }
         }
     }
 
@@ -96,6 +101,74 @@ public class LocalVariableCaptureAnalyzer : DiagnosticAnalyzer
                 identifier.Identifier.Text == "SelectExpr",
             _ => false
         };
+    }
+
+    private static HashSet<string> GetCapturedVariables(
+        InvocationExpressionSyntax invocation,
+        SemanticModel semanticModel
+    )
+    {
+        var capturedVariables = new HashSet<string>();
+
+        // Look for the capture argument
+        foreach (var argument in invocation.ArgumentList.Arguments)
+        {
+            // Check if it's a named argument called "capture"
+            if (argument.NameColon?.Name.Identifier.Text == "capture")
+            {
+                // Extract variable names from the capture anonymous object
+                if (argument.Expression is AnonymousObjectCreationExpressionSyntax anonymousObject)
+                {
+                    foreach (var initializer in anonymousObject.Initializers)
+                    {
+                        // Get the property name from the initializer
+                        string propertyName;
+                        if (initializer.NameEquals != null)
+                        {
+                            propertyName = initializer.NameEquals.Name.Identifier.Text;
+                        }
+                        else if (initializer.Expression is IdentifierNameSyntax identifier)
+                        {
+                            propertyName = identifier.Identifier.Text;
+                        }
+                        else
+                        {
+                            continue;
+                        }
+                        capturedVariables.Add(propertyName);
+                    }
+                }
+                break;
+            }
+        }
+
+        // Also check positional arguments (second argument would be capture)
+        if (capturedVariables.Count == 0 && invocation.ArgumentList.Arguments.Count > 1)
+        {
+            var secondArg = invocation.ArgumentList.Arguments[1];
+            if (secondArg.Expression is AnonymousObjectCreationExpressionSyntax anonymousObject)
+            {
+                foreach (var initializer in anonymousObject.Initializers)
+                {
+                    string propertyName;
+                    if (initializer.NameEquals != null)
+                    {
+                        propertyName = initializer.NameEquals.Name.Identifier.Text;
+                    }
+                    else if (initializer.Expression is IdentifierNameSyntax identifier)
+                    {
+                        propertyName = identifier.Identifier.Text;
+                    }
+                    else
+                    {
+                        continue;
+                    }
+                    capturedVariables.Add(propertyName);
+                }
+            }
+        }
+
+        return capturedVariables;
     }
 
     private static bool HasCaptureParameter(InvocationExpressionSyntax invocation)
@@ -136,6 +209,110 @@ public class LocalVariableCaptureAnalyzer : DiagnosticAnalyzer
                 paren.ParameterList.Parameters.Select(p => p.Identifier.Text).ToImmutableHashSet(),
             _ => ImmutableHashSet<string>.Empty
         };
+    }
+
+    private static List<(string Name, Location Location)> FindVariablesToCapture(
+        LambdaExpressionSyntax lambda,
+        ImmutableHashSet<string> lambdaParameters,
+        SemanticModel semanticModel
+    )
+    {
+        var variablesToCapture = new List<(string, Location)>();
+        var bodyExpression = lambda switch
+        {
+            SimpleLambdaExpressionSyntax simple => simple.Body,
+            ParenthesizedLambdaExpressionSyntax paren => paren.Body,
+            _ => null
+        };
+
+        if (bodyExpression == null)
+        {
+            return variablesToCapture;
+        }
+
+        // Find all identifier references in the lambda body
+        var identifiers = bodyExpression.DescendantNodes().OfType<IdentifierNameSyntax>();
+
+        foreach (var identifier in identifiers)
+        {
+            var identifierName = identifier.Identifier.Text;
+
+            // Skip if it's a lambda parameter
+            if (lambdaParameters.Contains(identifierName))
+            {
+                continue;
+            }
+
+            // Skip if it's part of a member access expression on the right side
+            // (e.g., s.Property where Property is not a local variable)
+            if (IsPartOfMemberAccess(identifier))
+            {
+                continue;
+            }
+
+            // Get symbol information
+            var symbolInfo = semanticModel.GetSymbolInfo(identifier);
+            var symbol = symbolInfo.Symbol;
+
+            if (symbol == null)
+            {
+                continue;
+            }
+
+            // Check if it needs to be captured
+            if (NeedsCapture(symbol, lambda, lambdaParameters))
+            {
+                variablesToCapture.Add((identifierName, identifier.GetLocation()));
+            }
+        }
+
+        return variablesToCapture;
+    }
+
+    private static bool NeedsCapture(
+        ISymbol symbol,
+        LambdaExpressionSyntax lambda,
+        ImmutableHashSet<string> lambdaParameters
+    )
+    {
+        // Local variables (except constants)
+        if (symbol.Kind == SymbolKind.Local)
+        {
+            // Skip constants - they are compile-time values and don't need capture
+            if (symbol is ILocalSymbol localSymbol && localSymbol.IsConst)
+            {
+                return false;
+            }
+
+            // Ensure this is truly a local variable from outer scope
+            // Check that the symbol is not declared inside the lambda
+            var symbolLocation = symbol.Locations.FirstOrDefault();
+            if (symbolLocation != null && !lambda.Span.Contains(symbolLocation.SourceSpan))
+            {
+                return true;
+            }
+        }
+        // Parameters from outer scope
+        else if (symbol.Kind == SymbolKind.Parameter && !lambdaParameters.Contains(symbol.Name))
+        {
+            // This is a parameter from an outer scope
+            var symbolLocation = symbol.Locations.FirstOrDefault();
+            if (symbolLocation != null && !lambda.Span.Contains(symbolLocation.SourceSpan))
+            {
+                return true;
+            }
+        }
+        // Instance fields and properties
+        else if (symbol.Kind == SymbolKind.Field || symbol.Kind == SymbolKind.Property)
+        {
+            // Check if it's an instance member (not static)
+            if (!symbol.IsStatic)
+            {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     private static List<(string Name, Location Location)> FindLocalVariables(
@@ -231,6 +408,13 @@ public class LocalVariableCaptureAnalyzer : DiagnosticAnalyzer
 
         // Check for conditional member access (e.g., s?.Property)
         if (parent is MemberBindingExpressionSyntax)
+        {
+            return true;
+        }
+
+        // Check if this is inside a NameEquals (property name in anonymous object)
+        // e.g., in "new { Value1 = ...", "Value1" is the property name
+        if (parent is NameEqualsSyntax)
         {
             return true;
         }

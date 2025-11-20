@@ -10,6 +10,7 @@ Linqraft provides two analyzers with corresponding code fix providers to improve
 |--------------|----------|-------------|
 | [LQRF001](#lqrf001-anonymoustypetodtoanalyzer) | AnonymousTypeToDtoAnalyzer | Detects anonymous types that can be converted to DTO classes |
 | [LQRS001](#lqrs001-selectexprtotypedanalyzer) | SelectExprToTypedAnalyzer | Detects SelectExpr calls without type arguments |
+| [LQRE001](#lqre001-localvariablecaptureanalyzer) | LocalVariableCaptureAnalyzer | Detects local variables used in SelectExpr without capture parameter |
 
 ---
 
@@ -167,3 +168,156 @@ The generated DTO name follows these rules:
 4. Default fallback: `ResultDto_HASH`
 
 The hash suffix (8 characters, A-Z and 0-9) is generated from the property names using the FNV-1a algorithm to ensure uniqueness.
+
+---
+
+## LQRE001: LocalVariableCaptureAnalyzer
+
+**Severity:** Error
+**Category:** Usage
+**Default:** Enabled
+
+### Description
+
+This analyzer detects when local variables, method parameters, or instance fields/properties are referenced inside `SelectExpr` lambda expressions without being passed via the `capture` parameter. This is required for Linqraft to properly generate expression trees with captured variables.
+
+### When it triggers
+
+The analyzer reports a diagnostic when it finds references to:
+
+- Local variables from outer scope
+- Method parameters
+- Instance fields (non-static)
+- Instance properties (non-static)
+
+that are used inside a `SelectExpr` lambda but are not included in the `capture` parameter.
+
+### When it doesn't trigger
+
+- Constants (compile-time values like `const int X = 10`)
+- Lambda parameters themselves
+- Static fields and properties
+- Variables already included in the `capture` parameter
+
+### Code Fixes
+
+The `LocalVariableCaptureCodeFixProvider` provides:
+
+- **Add capture parameter** - Automatically adds or updates the `capture` parameter with all required variables
+
+### Examples
+
+#### Example 1: Local variables
+
+**Before:**
+```csharp
+public void GetProducts(IQueryable<Product> query)
+{
+    var multiplier = 10;
+    var result = query.SelectExpr(x => new  // LQRE001: Local variable 'multiplier' is used...
+    {
+        x.Id,
+        AdjustedPrice = x.Price * multiplier
+    });
+}
+```
+
+**After applying fix:**
+```csharp
+public void GetProducts(IQueryable<Product> query)
+{
+    var multiplier = 10;
+    var result = query.SelectExpr(x => new
+    {
+        x.Id,
+        AdjustedPrice = x.Price * multiplier
+    },
+    capture: new { multiplier });
+}
+```
+
+#### Example 2: Instance fields and properties
+
+**Before:**
+```csharp
+public class ProductService
+{
+    private int DefaultDiscount { get; set; } = 10;
+    private string Currency = "USD";
+    public const double TaxRate = 0.1;
+
+    public void GetProducts(IQueryable<Product> query)
+    {
+        var result = query.SelectExpr(x => new  // LQRE001 on DefaultDiscount and Currency
+        {
+            x.Id,
+            x.Price,
+            Discount = DefaultDiscount,
+            CurrencyCode = Currency,
+            Tax = TaxRate  // No error - const field
+        });
+    }
+}
+```
+
+**After applying fix:**
+```csharp
+public class ProductService
+{
+    private int DefaultDiscount { get; set; } = 10;
+    private string Currency = "USD";
+    public const double TaxRate = 0.1;
+
+    public void GetProducts(IQueryable<Product> query)
+    {
+        var result = query.SelectExpr(x => new
+        {
+            x.Id,
+            x.Price,
+            Discount = DefaultDiscount,
+            CurrencyCode = Currency,
+            Tax = TaxRate
+        },
+        capture: new { Currency, DefaultDiscount });
+    }
+}
+```
+
+#### Example 3: Incomplete capture parameter
+
+**Before:**
+```csharp
+public void GetData(IQueryable<Entity> query)
+{
+    var local1 = 10;
+    var local2 = "World";
+    var result = query.SelectExpr(x => new  // LQRE001: Local variable 'local2' is used...
+    {
+        Value1 = x.Value + local1,
+        Value2 = x.Name + local2
+    },
+    capture: new { local1 });  // Missing local2
+}
+```
+
+**After applying fix:**
+```csharp
+public void GetData(IQueryable<Entity> query)
+{
+    var local1 = 10;
+    var local2 = "World";
+    var result = query.SelectExpr(x => new
+    {
+        Value1 = x.Value + local1,
+        Value2 = x.Name + local2
+    },
+    capture: new { local1, local2 });  // Both variables now captured
+}
+```
+
+### Important Notes
+
+- The `capture` parameter is required for Linqraft to properly generate expression trees that can be used with Entity Framework Core and other LINQ providers
+- Instance members (fields/properties) must be captured even though they're accessible via `this` because expression trees need explicit closure
+- Constants don't need to be captured as they are inlined at compile time
+- The code fix automatically merges any existing capture variables with newly detected ones

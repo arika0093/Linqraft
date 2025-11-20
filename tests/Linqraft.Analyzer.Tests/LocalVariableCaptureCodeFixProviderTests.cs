@@ -586,4 +586,267 @@ static class Extensions
 
         await VerifyCS.VerifyCodeFixAsync(test, expected, fixedCode);
     }
+
+    [Fact]
+    public async Task InstanceField_AddsCapture()
+    {
+        var test =
+            @"
+using System.Linq;
+using System.Collections.Generic;
+
+class Entity
+{
+    public int Value { get; set; }
+}
+
+class Test
+{
+    private int SampleValue = 10;
+
+    void Method()
+    {
+        var list = new List<Entity>();
+        var result = list.AsQueryable().SelectExpr(s => new { Value = {|#0:SampleValue|} });
+    }
+}
+
+static class Extensions
+{
+    public static IQueryable<TResult> SelectExpr<TSource, TResult>(
+        this IQueryable<TSource> source,
+        System.Func<TSource, TResult> selector)
+        => source.Select(x => selector(x));
+
+    public static IQueryable<TResult> SelectExpr<TSource, TResult>(
+        this IQueryable<TSource> source,
+        System.Func<TSource, TResult> selector,
+        object capture)
+        => source.Select(x => selector(x));
+}";
+
+        var fixedCode =
+            @"
+using System.Linq;
+using System.Collections.Generic;
+
+class Entity
+{
+    public int Value { get; set; }
+}
+
+class Test
+{
+    private int SampleValue = 10;
+
+    void Method()
+    {
+        var list = new List<Entity>();
+        var result = list.AsQueryable().SelectExpr(s => new { Value = SampleValue }, capture: new { SampleValue });
+    }
+}
+
+static class Extensions
+{
+    public static IQueryable<TResult> SelectExpr<TSource, TResult>(
+        this IQueryable<TSource> source,
+        System.Func<TSource, TResult> selector)
+        => source.Select(x => selector(x));
+
+    public static IQueryable<TResult> SelectExpr<TSource, TResult>(
+        this IQueryable<TSource> source,
+        System.Func<TSource, TResult> selector,
+        object capture)
+        => source.Select(x => selector(x));
+}";
+
+        var expected = VerifyCS
+            .Diagnostic(LocalVariableCaptureAnalyzer.DiagnosticId)
+            .WithLocation(0)
+            .WithArguments("SampleValue");
+
+        await VerifyCS.VerifyCodeFixAsync(test, expected, fixedCode);
+    }
+
+    [Fact]
+    public async Task MultipleInstanceMembers_AddsCapture()
+    {
+        var test =
+            @"
+using System.Linq;
+using System.Collections.Generic;
+
+class Entity
+{
+    public int Value { get; set; }
+}
+
+class Test
+{
+    private int SampleValue { get; set; } = 10;
+    protected string SampleText = ""Hello"";
+    public const double Pi = 3.14;
+
+    void Method()
+    {
+        var list = new List<Entity>();
+        var result = list.AsQueryable().SelectExpr(x => new
+        {
+            Value = {|#0:SampleValue|},
+            Text = {|#1:SampleText|},
+            ConstantPi = Pi
+        });
+    }
+}
+
+static class Extensions
+{
+    public static IQueryable<TResult> SelectExpr<TSource, TResult>(
+        this IQueryable<TSource> source,
+        System.Func<TSource, TResult> selector)
+        => source.Select(x => selector(x));
+
+    public static IQueryable<TResult> SelectExpr<TSource, TResult>(
+        this IQueryable<TSource> source,
+        System.Func<TSource, TResult> selector,
+        object capture)
+        => source.Select(x => selector(x));
+}";
+
+        var fixedCode =
+            @"
+using System.Linq;
+using System.Collections.Generic;
+
+class Entity
+{
+    public int Value { get; set; }
+}
+
+class Test
+{
+    private int SampleValue { get; set; } = 10;
+    protected string SampleText = ""Hello"";
+    public const double Pi = 3.14;
+
+    void Method()
+    {
+        var list = new List<Entity>();
+        var result = list.AsQueryable().SelectExpr(x => new
+        {
+            Value = SampleValue,
+            Text = SampleText,
+            ConstantPi = Pi
+        }, capture: new { SampleText, SampleValue });
+    }
+}
+
+static class Extensions
+{
+    public static IQueryable<TResult> SelectExpr<TSource, TResult>(
+        this IQueryable<TSource> source,
+        System.Func<TSource, TResult> selector)
+        => source.Select(x => selector(x));
+
+    public static IQueryable<TResult> SelectExpr<TSource, TResult>(
+        this IQueryable<TSource> source,
+        System.Func<TSource, TResult> selector,
+        object capture)
+        => source.Select(x => selector(x));
+}";
+
+        var expected1 = VerifyCS
+            .Diagnostic(LocalVariableCaptureAnalyzer.DiagnosticId)
+            .WithLocation(0)
+            .WithArguments("SampleValue");
+
+        var expected2 = VerifyCS
+            .Diagnostic(LocalVariableCaptureAnalyzer.DiagnosticId)
+            .WithLocation(1)
+            .WithArguments("SampleText");
+
+        await VerifyCS.VerifyCodeFixAsync(test, new[] { expected1, expected2 }, fixedCode);
+    }
+
+    [Fact]
+    public async Task IncompleteCaptureParameter_UpdatesCapture()
+    {
+        var test =
+            @"
+using System.Linq;
+using System.Collections.Generic;
+
+class Entity
+{
+    public int Value { get; set; }
+    public string Name { get; set; }
+}
+
+class Test
+{
+    void Method()
+    {
+        var local1 = 10;
+        var local2 = ""World"";
+        var list = new List<Entity>();
+        var result = list.AsQueryable().SelectExpr(x => new
+        {
+            Foo = x.Value + local1,
+            Bar = x.Name + {|#0:local2|}
+        },
+        capture: new { local1 });
+    }
+}
+
+static class Extensions
+{
+    public static IQueryable<TResult> SelectExpr<TSource, TResult>(
+        this IQueryable<TSource> source,
+        System.Func<TSource, TResult> selector,
+        object capture)
+        => source.Select(x => selector(x));
+}";
+
+        var fixedCode =
+            @"
+using System.Linq;
+using System.Collections.Generic;
+
+class Entity
+{
+    public int Value { get; set; }
+    public string Name { get; set; }
+}
+
+class Test
+{
+    void Method()
+    {
+        var local1 = 10;
+        var local2 = ""World"";
+        var list = new List<Entity>();
+        var result = list.AsQueryable().SelectExpr(x => new
+        {
+            Foo = x.Value + local1,
+            Bar = x.Name + local2
+        }, capture: new { local1, local2 });
+    }
+}
+
+static class Extensions
+{
+    public static IQueryable<TResult> SelectExpr<TSource, TResult>(
+        this IQueryable<TSource> source,
+        System.Func<TSource, TResult> selector,
+        object capture)
+        => source.Select(x => selector(x));
+}";
+
+        var expected = VerifyCS
+            .Diagnostic(LocalVariableCaptureAnalyzer.DiagnosticId)
+            .WithLocation(0)
+            .WithArguments("local2");
+
+        await VerifyCS.VerifyCodeFixAsync(test, expected, fixedCode);
+    }
 }

@@ -80,14 +80,22 @@ public class LocalVariableCaptureCodeFixProvider : CodeFixProvider
         // Get lambda parameter names
         var lambdaParameters = GetLambdaParameterNames(lambda);
 
-        // Find all local variables used in the lambda
-        var localVariables = FindLocalVariables(lambda, lambdaParameters, semanticModel);
+        // Find all variables that need to be captured
+        var variablesToCapture = FindVariablesToCapture(lambda, lambdaParameters, semanticModel);
 
-        if (localVariables.Count == 0)
+        if (variablesToCapture.Count == 0)
             return document;
 
-        // Create capture argument with anonymous object containing all local variables
-        var captureProperties = localVariables
+        // Get already captured variables
+        var capturedVariables = GetCapturedVariables(invocation);
+        
+        // Combine existing and new variables
+        var allVariables = new HashSet<string>(capturedVariables);
+        allVariables.UnionWith(variablesToCapture);
+
+        // Create capture argument with anonymous object containing all variables
+        var captureProperties = allVariables
+            .OrderBy(name => name)
             .Select(name =>
                 SyntaxFactory.AnonymousObjectMemberDeclarator(
                     SyntaxFactory.IdentifierName(name)
@@ -106,14 +114,115 @@ public class LocalVariableCaptureCodeFixProvider : CodeFixProvider
             captureObject
         );
 
-        // Add the capture argument to the invocation
-        var newArgumentList = invocation.ArgumentList.AddArguments(captureArgument);
-        var newInvocation = invocation.WithArgumentList(newArgumentList);
+        InvocationExpressionSyntax newInvocation;
+        
+        // Check if there's already a capture argument to replace
+        var existingCaptureArgIndex = FindCaptureArgumentIndex(invocation);
+        if (existingCaptureArgIndex >= 0)
+        {
+            // Replace existing capture argument
+            var arguments = invocation.ArgumentList.Arguments.ToList();
+            arguments[existingCaptureArgIndex] = captureArgument;
+            var newArgumentList = SyntaxFactory.ArgumentList(
+                SyntaxFactory.SeparatedList(arguments)
+            );
+            newInvocation = invocation.WithArgumentList(newArgumentList);
+        }
+        else
+        {
+            // Add new capture argument
+            var newArgumentList = invocation.ArgumentList.AddArguments(captureArgument);
+            newInvocation = invocation.WithArgumentList(newArgumentList);
+        }
 
         // Replace the old invocation with the new one
         var newRoot = root.ReplaceNode(invocation, newInvocation);
 
         return document.WithSyntaxRoot(newRoot);
+    }
+
+    private static int FindCaptureArgumentIndex(InvocationExpressionSyntax invocation)
+    {
+        for (int i = 0; i < invocation.ArgumentList.Arguments.Count; i++)
+        {
+            var argument = invocation.ArgumentList.Arguments[i];
+            if (argument.NameColon?.Name.Identifier.Text == "capture")
+            {
+                return i;
+            }
+        }
+
+        // Check if there are more than 1 arguments (second would be capture)
+        if (invocation.ArgumentList.Arguments.Count > 1)
+        {
+            return 1;
+        }
+
+        return -1;
+    }
+
+    private static HashSet<string> GetCapturedVariables(InvocationExpressionSyntax invocation)
+    {
+        var capturedVariables = new HashSet<string>();
+
+        // Look for the capture argument
+        foreach (var argument in invocation.ArgumentList.Arguments)
+        {
+            // Check if it's a named argument called "capture"
+            if (argument.NameColon?.Name.Identifier.Text == "capture")
+            {
+                // Extract variable names from the capture anonymous object
+                if (argument.Expression is AnonymousObjectCreationExpressionSyntax anonymousObject)
+                {
+                    foreach (var initializer in anonymousObject.Initializers)
+                    {
+                        string propertyName;
+                        if (initializer.NameEquals != null)
+                        {
+                            propertyName = initializer.NameEquals.Name.Identifier.Text;
+                        }
+                        else if (initializer.Expression is IdentifierNameSyntax identifier)
+                        {
+                            propertyName = identifier.Identifier.Text;
+                        }
+                        else
+                        {
+                            continue;
+                        }
+                        capturedVariables.Add(propertyName);
+                    }
+                }
+                break;
+            }
+        }
+
+        // Also check positional arguments (second argument would be capture)
+        if (capturedVariables.Count == 0 && invocation.ArgumentList.Arguments.Count > 1)
+        {
+            var secondArg = invocation.ArgumentList.Arguments[1];
+            if (secondArg.Expression is AnonymousObjectCreationExpressionSyntax anonymousObject)
+            {
+                foreach (var initializer in anonymousObject.Initializers)
+                {
+                    string propertyName;
+                    if (initializer.NameEquals != null)
+                    {
+                        propertyName = initializer.NameEquals.Name.Identifier.Text;
+                    }
+                    else if (initializer.Expression is IdentifierNameSyntax identifier)
+                    {
+                        propertyName = identifier.Identifier.Text;
+                    }
+                    else
+                    {
+                        continue;
+                    }
+                    capturedVariables.Add(propertyName);
+                }
+            }
+        }
+
+        return capturedVariables;
     }
 
     private static bool IsSelectExprCall(ExpressionSyntax expression)
@@ -150,6 +259,107 @@ public class LocalVariableCaptureCodeFixProvider : CodeFixProvider
                 paren.ParameterList.Parameters.Select(p => p.Identifier.Text).ToImmutableHashSet(),
             _ => ImmutableHashSet<string>.Empty
         };
+    }
+
+    private static HashSet<string> FindVariablesToCapture(
+        LambdaExpressionSyntax lambda,
+        ImmutableHashSet<string> lambdaParameters,
+        SemanticModel semanticModel
+    )
+    {
+        var variablesToCapture = new HashSet<string>();
+        var bodyExpression = lambda switch
+        {
+            SimpleLambdaExpressionSyntax simple => simple.Body,
+            ParenthesizedLambdaExpressionSyntax paren => paren.Body,
+            _ => null
+        };
+
+        if (bodyExpression == null)
+        {
+            return variablesToCapture;
+        }
+
+        // Find all identifier references in the lambda body
+        var identifiers = bodyExpression.DescendantNodes().OfType<IdentifierNameSyntax>();
+
+        foreach (var identifier in identifiers)
+        {
+            var identifierName = identifier.Identifier.Text;
+
+            // Skip if it's a lambda parameter
+            if (lambdaParameters.Contains(identifierName))
+            {
+                continue;
+            }
+
+            // Skip if it's part of a member access expression on the right side
+            if (IsPartOfMemberAccess(identifier))
+            {
+                continue;
+            }
+
+            // Get symbol information
+            var symbolInfo = semanticModel.GetSymbolInfo(identifier);
+            var symbol = symbolInfo.Symbol;
+
+            if (symbol == null)
+            {
+                continue;
+            }
+
+            // Check if it needs to be captured
+            if (NeedsCapture(symbol, lambda, lambdaParameters))
+            {
+                variablesToCapture.Add(identifierName);
+            }
+        }
+
+        return variablesToCapture;
+    }
+
+    private static bool NeedsCapture(
+        ISymbol symbol,
+        LambdaExpressionSyntax lambda,
+        ImmutableHashSet<string> lambdaParameters
+    )
+    {
+        // Local variables (except constants)
+        if (symbol.Kind == SymbolKind.Local)
+        {
+            // Skip constants - they are compile-time values and don't need capture
+            if (symbol is ILocalSymbol localSymbol && localSymbol.IsConst)
+            {
+                return false;
+            }
+
+            // Ensure this is truly a local variable from outer scope
+            var symbolLocation = symbol.Locations.FirstOrDefault();
+            if (symbolLocation != null && !lambda.Span.Contains(symbolLocation.SourceSpan))
+            {
+                return true;
+            }
+        }
+        // Parameters from outer scope
+        else if (symbol.Kind == SymbolKind.Parameter && !lambdaParameters.Contains(symbol.Name))
+        {
+            var symbolLocation = symbol.Locations.FirstOrDefault();
+            if (symbolLocation != null && !lambda.Span.Contains(symbolLocation.SourceSpan))
+            {
+                return true;
+            }
+        }
+        // Instance fields and properties
+        else if (symbol.Kind == SymbolKind.Field || symbol.Kind == SymbolKind.Property)
+        {
+            // Check if it's an instance member (not static)
+            if (!symbol.IsStatic)
+            {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     private static HashSet<string> FindLocalVariables(
@@ -241,6 +451,12 @@ public class LocalVariableCaptureCodeFixProvider : CodeFixProvider
         }
 
         if (parent is MemberBindingExpressionSyntax)
+        {
+            return true;
+        }
+
+        // Check if this is inside a NameEquals (property name in anonymous object)
+        if (parent is NameEqualsSyntax)
         {
             return true;
         }
