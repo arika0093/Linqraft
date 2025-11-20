@@ -464,6 +464,13 @@ public class LocalVariableCaptureAnalyzer : DiagnosticAnalyzer
             return true;
         }
 
+        // Check if this is the left side of an assignment in an object initializer
+        // e.g., in "new MyClass { Id = s.Id }", the left "Id" is the property being assigned
+        if (parent is AssignmentExpressionSyntax assignment && assignment.Left == identifier)
+        {
+            return true;
+        }
+
         return false;
     }
 }
