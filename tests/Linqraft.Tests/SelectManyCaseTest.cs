@@ -19,8 +19,16 @@ public class SelectManyCaseTest
                     ChildName = "Child1-1",
                     GrandChildren = new List<GrandChildEntity>
                     {
-                        new GrandChildEntity { GrandChildId = 1001, Description = "GrandChild1-1-1" },
-                        new GrandChildEntity { GrandChildId = 1002, Description = "GrandChild1-1-2" },
+                        new GrandChildEntity
+                        {
+                            GrandChildId = 1001,
+                            Description = "GrandChild1-1-1",
+                        },
+                        new GrandChildEntity
+                        {
+                            GrandChildId = 1002,
+                            Description = "GrandChild1-1-2",
+                        },
                     },
                 },
                 new ChildEntity
@@ -29,7 +37,11 @@ public class SelectManyCaseTest
                     ChildName = "Child1-2",
                     GrandChildren = new List<GrandChildEntity>
                     {
-                        new GrandChildEntity { GrandChildId = 1003, Description = "GrandChild1-2-1" },
+                        new GrandChildEntity
+                        {
+                            GrandChildId = 1003,
+                            Description = "GrandChild1-2-1",
+                        },
                     },
                 },
             },
@@ -46,7 +58,11 @@ public class SelectManyCaseTest
                     ChildName = "Child2-1",
                     GrandChildren = new List<GrandChildEntity>
                     {
-                        new GrandChildEntity { GrandChildId = 2001, Description = "GrandChild2-1-1" },
+                        new GrandChildEntity
+                        {
+                            GrandChildId = 2001,
+                            Description = "GrandChild2-1-1",
+                        },
                     },
                 },
             },
@@ -93,8 +109,9 @@ public class SelectManyCaseTest
             .SelectExpr(x => new
             {
                 x.Id,
-                AllGrandChildDescriptions = x
-                    .Children.SelectMany(c => c.GrandChildren.Select(gc => gc.Description)),
+                AllGrandChildDescriptions = x.Children.SelectMany(c =>
+                    c.GrandChildren.Select(gc => gc.Description)
+                ),
             })
             .ToList();
 
@@ -184,7 +201,6 @@ public class SelectManyCaseTest
         second.Id.ShouldBe(2);
         second.AllGrandChildren.ShouldBeEmpty();
     }
-
 }
 
 public class ParentEntity

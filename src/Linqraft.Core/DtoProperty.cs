@@ -161,8 +161,8 @@ public record DtoProperty(
                     ITypeSymbol? collectionType = null;
 
                     if (
-                        selectManyInvocation.Expression is MemberAccessExpressionSyntax
-                        selectManyMemberAccess
+                        selectManyInvocation.Expression
+                        is MemberAccessExpressionSyntax selectManyMemberAccess
                     )
                     {
                         collectionType = semanticModel
@@ -199,7 +199,8 @@ public record DtoProperty(
                         // 3. Anonymous type with Select inside: c => new { Grands = c.GrandChildren.Select(...) }
 
                         // Check if the lambda body contains a Select
-                        var innerSelectInvocation = nestedLambda.Body is ExpressionSyntax lambdaBodyExpr
+                        var innerSelectInvocation = nestedLambda.Body
+                            is ExpressionSyntax lambdaBodyExpr
                             ? FindSelectInvocation(lambdaBodyExpr)
                             : null;
                         if (
@@ -214,7 +215,8 @@ public record DtoProperty(
                             if (innerLambdaArg is LambdaExpressionSyntax innerLambda)
                             {
                                 // Get the inner collection type
-                                var innerCollectionType = nestedLambda.Body is ExpressionSyntax lambdaBodyForType
+                                var innerCollectionType = nestedLambda.Body
+                                    is ExpressionSyntax lambdaBodyForType
                                     ? semanticModel.GetTypeInfo(lambdaBodyForType).Type
                                     : null;
                                 if (
@@ -236,7 +238,8 @@ public record DtoProperty(
                                         );
                                     }
                                     else if (
-                                        innerLambda.Body is ObjectCreationExpressionSyntax innerNamed
+                                        innerLambda.Body
+                                        is ObjectCreationExpressionSyntax innerNamed
                                     )
                                     {
                                         nestedStructure = DtoStructure.AnalyzeNamedType(
@@ -248,7 +251,10 @@ public record DtoProperty(
                                 }
                             }
                         }
-                        else if (nestedLambda.Body is AnonymousObjectCreationExpressionSyntax anonymousBody)
+                        else if (
+                            nestedLambda.Body
+                            is AnonymousObjectCreationExpressionSyntax anonymousBody
+                        )
                         {
                             // Handle: c => new { Grands = c.GrandChildren.Select(...) }
                             nestedStructure = DtoStructure.AnalyzeAnonymousType(
@@ -267,7 +273,10 @@ public record DtoProperty(
 
         // Detect direct anonymous type creation (e.g., Channel = new { Id = ..., Name = ... })
         // This handles nested anonymous types that are not inside a Select call
-        if (nestedStructure is null && expression is AnonymousObjectCreationExpressionSyntax directAnonymous)
+        if (
+            nestedStructure is null
+            && expression is AnonymousObjectCreationExpressionSyntax directAnonymous
+        )
         {
             // Get the source type from the anonymous type properties
             // We need to find the base type from which properties are being accessed
