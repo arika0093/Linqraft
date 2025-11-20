@@ -48,7 +48,8 @@ public class SelectExprToTypedCodeFixProvider : CodeFixProvider
         context.RegisterCodeFix(
             CodeAction.Create(
                 title: "Convert to typed SelectExpr",
-                createChangedDocument: c => ConvertToTypedSelectExprAsync(context.Document, invocation, c),
+                createChangedDocument: c =>
+                    ConvertToTypedSelectExprAsync(context.Document, invocation, c),
                 equivalenceKey: "ConvertToTypedSelectExpr"
             ),
             diagnostic
@@ -85,7 +86,11 @@ public class SelectExprToTypedCodeFixProvider : CodeFixProvider
         var dtoName = GenerateDtoName(invocation, anonymousType);
 
         // Create the new generic name with type arguments
-        var newExpression = CreateTypedSelectExpr(invocation.Expression, sourceType.ToDisplayString(SymbolDisplayFormat.MinimallyQualifiedFormat), dtoName);
+        var newExpression = CreateTypedSelectExpr(
+            invocation.Expression,
+            sourceType.ToDisplayString(SymbolDisplayFormat.MinimallyQualifiedFormat),
+            dtoName
+        );
         if (newExpression == null)
             return document;
 

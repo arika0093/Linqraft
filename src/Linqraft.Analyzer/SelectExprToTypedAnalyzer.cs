@@ -43,10 +43,7 @@ public class SelectExprToTypedAnalyzer : DiagnosticAnalyzer
         context.ConfigureGeneratedCodeAnalysis(GeneratedCodeAnalysisFlags.None);
         context.EnableConcurrentExecution();
 
-        context.RegisterSyntaxNodeAction(
-            AnalyzeInvocation,
-            SyntaxKind.InvocationExpression
-        );
+        context.RegisterSyntaxNodeAction(AnalyzeInvocation, SyntaxKind.InvocationExpression);
     }
 
     private static void AnalyzeInvocation(SyntaxNodeAnalysisContext context)
@@ -68,7 +65,11 @@ public class SelectExprToTypedAnalyzer : DiagnosticAnalyzer
 
         // Get the source type from the expression
         var semanticModel = context.SemanticModel;
-        var sourceType = GetSourceType(invocation.Expression, semanticModel, context.CancellationToken);
+        var sourceType = GetSourceType(
+            invocation.Expression,
+            semanticModel,
+            context.CancellationToken
+        );
         if (sourceType == null)
         {
             return;
@@ -81,12 +82,7 @@ public class SelectExprToTypedAnalyzer : DiagnosticAnalyzer
         var location = GetMethodNameLocation(invocation.Expression);
 
         // Report diagnostic
-        var diagnostic = Diagnostic.Create(
-            Rule,
-            location,
-            sourceType.Name,
-            dtoName
-        );
+        var diagnostic = Diagnostic.Create(Rule, location, sourceType.Name, dtoName);
         context.ReportDiagnostic(diagnostic);
     }
 

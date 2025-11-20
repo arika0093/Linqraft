@@ -266,7 +266,9 @@ static class Extensions
         var expected = new DiagnosticResult(
             SelectExprToTypedAnalyzer.DiagnosticId,
             DiagnosticSeverity.Info
-        ).WithLocation(0).WithArguments("Sample", "ResultDto_T27C3JAA");
+        )
+            .WithLocation(0)
+            .WithArguments("Sample", "ResultDto_T27C3JAA");
 
         await RunCodeFixTestAsync(test, expected, fixedCode);
     }
@@ -331,7 +333,9 @@ static class Extensions
         var expected = new DiagnosticResult(
             SelectExprToTypedAnalyzer.DiagnosticId,
             DiagnosticSeverity.Info
-        ).WithLocation(0).WithArguments("Sample", "UsersDto_REIXTLBA");
+        )
+            .WithLocation(0)
+            .WithArguments("Sample", "UsersDto_REIXTLBA");
 
         await RunCodeFixTestAsync(test, expected, fixedCode);
     }
