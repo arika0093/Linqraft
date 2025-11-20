@@ -24,21 +24,25 @@ namespace TestNamespace
 }";
 
         var fixedCode =
-            @"
-namespace TestNamespace
+            @"namespace TestNamespace
 {
     class Test
     {
         void Method()
         {
-            var result = new ResultDto { Id = 1, Name = ""Test"" };
+            var result = new ResultDto
+            {
+                Id = 1,
+                Name = ""Test""
+            };
         }
     }
-public partial class ResultDto
-{
-    public required int Id { get; set; }
-    public required string Name { get; set; }
-}
+
+    public partial class ResultDto
+    {
+        public required int Id { get; set; }
+        public required string Name { get; set; }
+    }
 }";
 
         var expected = new DiagnosticResult(
@@ -73,8 +77,7 @@ namespace TestNamespace
 }";
 
         var fixedCode =
-            @"
-namespace TestNamespace
+            @"namespace TestNamespace
 {
     class Source
     {
@@ -86,15 +89,24 @@ namespace TestNamespace
     {
         void Method()
         {
-            var source = new Source { Id = 1, Name = ""Test"" };
-            var data = new DataDto { Id = source.Id, Name = source.Name };
+            var source = new Source
+            {
+                Id = 1,
+                Name = ""Test""
+            };
+            var data = new DataDto
+            {
+                Id = source.Id,
+                Name = source.Name
+            };
         }
     }
-public partial class DataDto
-{
-    public required int Id { get; set; }
-    public required string Name { get; set; }
-}
+
+    public partial class DataDto
+    {
+        public required int Id { get; set; }
+        public required string Name { get; set; }
+    }
 }";
 
         var expected = new DiagnosticResult(
@@ -122,21 +134,25 @@ namespace TestNamespace
 }";
 
         var fixedCode =
-            @"
-namespace TestNamespace
+            @"namespace TestNamespace
 {
     class Test
     {
         object GetUser()
         {
-            return new UserDto { Id = 1, Name = ""Test"" };
+            return new UserDto
+            {
+                Id = 1,
+                Name = ""Test""
+            };
         }
     }
-public partial class UserDto
-{
-    public required int Id { get; set; }
-    public required string Name { get; set; }
-}
+
+    public partial class UserDto
+    {
+        public required int Id { get; set; }
+        public required string Name { get; set; }
+    }
 }";
 
         var expected = new DiagnosticResult(
@@ -165,23 +181,28 @@ namespace TestNamespace
 }";
 
         var fixedCode =
-            @"
-namespace TestNamespace
+            @"namespace TestNamespace
 {
     class Test
     {
         void Method()
         {
             var id = 1;
-            var result = new ResultDto { Id = id, Name = ""Test"", Active = true };
+            var result = new ResultDto
+            {
+                Id = id,
+                Name = ""Test"",
+                Active = true
+            };
         }
     }
-public partial class ResultDto
-{
-    public required int Id { get; set; }
-    public required string Name { get; set; }
-    public required bool Active { get; set; }
-}
+
+    public partial class ResultDto
+    {
+        public required int Id { get; set; }
+        public required string Name { get; set; }
+        public required bool Active { get; set; }
+    }
 }";
 
         var expected = new DiagnosticResult(
