@@ -411,5 +411,4 @@ static class Extensions
 
         await RunCodeFixTestAsync(before, after);
     }
-
 }
