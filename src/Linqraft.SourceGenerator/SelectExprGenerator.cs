@@ -125,7 +125,7 @@ public partial class SelectExprGenerator : IIncrementalGenerator
 
         // 1. Check if this is a generic invocation with predefined DTO type
         // If generics are used, but the body is an ObjectCreationExpression, this takes precedence.
-        if(body is ObjectCreationExpressionSyntax objCreation)
+        if (body is ObjectCreationExpressionSyntax objCreation)
         {
             return GetNamedSelectExprInfo(
                 context,
@@ -155,8 +155,8 @@ public partial class SelectExprGenerator : IIncrementalGenerator
         }
 
         // 3. Check for anonymous object creation
-        if(body is AnonymousObjectCreationExpressionSyntax anon)
-		{
+        if (body is AnonymousObjectCreationExpressionSyntax anon)
+        {
             return GetAnonymousSelectExprInfo(
                 context,
                 anon,
@@ -164,8 +164,8 @@ public partial class SelectExprGenerator : IIncrementalGenerator
                 captureArgExpr,
                 captureType
             );
-		}
-        
+        }
+
         // Not a supported form
         return null;
     }
