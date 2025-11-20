@@ -1,12 +1,7 @@
 using System.Threading.Tasks;
 using Microsoft.CodeAnalysis;
+using Microsoft.CodeAnalysis.CSharp.Testing;
 using Microsoft.CodeAnalysis.Testing;
-using Xunit;
-using VerifyCS = Microsoft.CodeAnalysis.CSharp.Testing.CSharpCodeFixVerifier<
-    Linqraft.Analyzer.AnonymousTypeToDtoAnalyzer,
-    Linqraft.Analyzer.AnonymousTypeToDtoCodeFixProvider,
-    Microsoft.CodeAnalysis.Testing.DefaultVerifier
->;
 
 namespace Linqraft.Analyzer.Tests;
 
@@ -46,12 +41,10 @@ public partial class ResultDto
 }
 }";
 
-        var expected = VerifyCS
-            .Diagnostic(AnonymousTypeToDtoAnalyzer.DiagnosticId)
-            .WithLocation(0)
-            .WithSeverity(DiagnosticSeverity.Info);
+        var expected = new DiagnosticResult(AnonymousTypeToDtoAnalyzer.DiagnosticId, DiagnosticSeverity.Info)
+            .WithLocation(0);
 
-        await VerifyCS.VerifyCodeFixAsync(test, expected, fixedCode);
+        await RunCodeFixTestAsync(test, expected, fixedCode);
     }
 
     [Fact]
@@ -102,12 +95,10 @@ public partial class DataDto
 }
 }";
 
-        var expected = VerifyCS
-            .Diagnostic(AnonymousTypeToDtoAnalyzer.DiagnosticId)
-            .WithLocation(0)
-            .WithSeverity(DiagnosticSeverity.Info);
+        var expected = new DiagnosticResult(AnonymousTypeToDtoAnalyzer.DiagnosticId, DiagnosticSeverity.Info)
+            .WithLocation(0);
 
-        await VerifyCS.VerifyCodeFixAsync(test, expected, fixedCode);
+        await RunCodeFixTestAsync(test, expected, fixedCode);
     }
 
     [Fact]
@@ -144,12 +135,10 @@ public partial class UserDto
 }
 }";
 
-        var expected = VerifyCS
-            .Diagnostic(AnonymousTypeToDtoAnalyzer.DiagnosticId)
-            .WithLocation(0)
-            .WithSeverity(DiagnosticSeverity.Info);
+        var expected = new DiagnosticResult(AnonymousTypeToDtoAnalyzer.DiagnosticId, DiagnosticSeverity.Info)
+            .WithLocation(0);
 
-        await VerifyCS.VerifyCodeFixAsync(test, expected, fixedCode);
+        await RunCodeFixTestAsync(test, expected, fixedCode);
     }
 
     [Fact]
@@ -189,11 +178,23 @@ public partial class ResultDto
 }
 }";
 
-        var expected = VerifyCS
-            .Diagnostic(AnonymousTypeToDtoAnalyzer.DiagnosticId)
-            .WithLocation(0)
-            .WithSeverity(DiagnosticSeverity.Info);
+        var expected = new DiagnosticResult(AnonymousTypeToDtoAnalyzer.DiagnosticId, DiagnosticSeverity.Info)
+            .WithLocation(0);
 
-        await VerifyCS.VerifyCodeFixAsync(test, expected, fixedCode);
+        await RunCodeFixTestAsync(test, expected, fixedCode);
+    }
+
+    private static async Task RunCodeFixTestAsync(string source, DiagnosticResult expected, string fixedSource)
+    {
+        var test = new CSharpCodeFixTest<AnonymousTypeToDtoAnalyzer, AnonymousTypeToDtoCodeFixProvider, DefaultVerifier>
+        {
+            TestCode = source,
+            FixedCode = fixedSource,
+            ReferenceAssemblies = ReferenceAssemblies.Net.Net90,
+        };
+
+        test.ExpectedDiagnostics.Add(expected);
+
+        await test.RunAsync();
     }
 }
