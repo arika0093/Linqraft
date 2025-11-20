@@ -9,6 +9,7 @@ using Microsoft.CodeAnalysis.CodeActions;
 using Microsoft.CodeAnalysis.CodeFixes;
 using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
+using Microsoft.CodeAnalysis.Formatting;
 
 namespace Linqraft.Analyzer;
 
@@ -158,9 +159,9 @@ public class LocalVariableCaptureCodeFixProvider : CodeFixProvider
             )
             .ToArray();
 
-        var captureObject = SyntaxFactory.AnonymousObjectCreationExpression(
-            SyntaxFactory.SeparatedList(captureProperties)
-        );
+        var captureObject = SyntaxFactory
+            .AnonymousObjectCreationExpression(SyntaxFactory.SeparatedList(captureProperties))
+            .NormalizeWhitespace();
 
         // Create named argument for capture
         var captureArgument = SyntaxFactory.Argument(
@@ -185,7 +186,9 @@ public class LocalVariableCaptureCodeFixProvider : CodeFixProvider
             var newArgumentList = SyntaxFactory.ArgumentList(
                 SyntaxFactory.SeparatedList(arguments)
             );
-            newInvocation = invocation.WithArgumentList(newArgumentList);
+            newInvocation = invocation
+                .WithArgumentList(newArgumentList)
+                .WithAdditionalAnnotations(Formatter.Annotation);
         }
         else
         {
@@ -200,7 +203,9 @@ public class LocalVariableCaptureCodeFixProvider : CodeFixProvider
             var newArgumentList = SyntaxFactory.ArgumentList(
                 SyntaxFactory.SeparatedList(arguments)
             );
-            newInvocation = invocation.WithArgumentList(newArgumentList);
+            newInvocation = invocation
+                .WithArgumentList(newArgumentList)
+                .WithAdditionalAnnotations(Formatter.Annotation);
         }
 
         // Insert capture declarations before the invocation statement
