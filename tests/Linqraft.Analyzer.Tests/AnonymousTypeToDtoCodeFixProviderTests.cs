@@ -41,8 +41,10 @@ public partial class ResultDto
 }
 }";
 
-        var expected = new DiagnosticResult(AnonymousTypeToDtoAnalyzer.DiagnosticId, DiagnosticSeverity.Info)
-            .WithLocation(0);
+        var expected = new DiagnosticResult(
+            AnonymousTypeToDtoAnalyzer.DiagnosticId,
+            DiagnosticSeverity.Info
+        ).WithLocation(0);
 
         await RunCodeFixTestAsync(test, expected, fixedCode);
     }
@@ -95,8 +97,10 @@ public partial class DataDto
 }
 }";
 
-        var expected = new DiagnosticResult(AnonymousTypeToDtoAnalyzer.DiagnosticId, DiagnosticSeverity.Info)
-            .WithLocation(0);
+        var expected = new DiagnosticResult(
+            AnonymousTypeToDtoAnalyzer.DiagnosticId,
+            DiagnosticSeverity.Info
+        ).WithLocation(0);
 
         await RunCodeFixTestAsync(test, expected, fixedCode);
     }
@@ -135,8 +139,10 @@ public partial class UserDto
 }
 }";
 
-        var expected = new DiagnosticResult(AnonymousTypeToDtoAnalyzer.DiagnosticId, DiagnosticSeverity.Info)
-            .WithLocation(0);
+        var expected = new DiagnosticResult(
+            AnonymousTypeToDtoAnalyzer.DiagnosticId,
+            DiagnosticSeverity.Info
+        ).WithLocation(0);
 
         await RunCodeFixTestAsync(test, expected, fixedCode);
     }
@@ -178,15 +184,25 @@ public partial class ResultDto
 }
 }";
 
-        var expected = new DiagnosticResult(AnonymousTypeToDtoAnalyzer.DiagnosticId, DiagnosticSeverity.Info)
-            .WithLocation(0);
+        var expected = new DiagnosticResult(
+            AnonymousTypeToDtoAnalyzer.DiagnosticId,
+            DiagnosticSeverity.Info
+        ).WithLocation(0);
 
         await RunCodeFixTestAsync(test, expected, fixedCode);
     }
 
-    private static async Task RunCodeFixTestAsync(string source, DiagnosticResult expected, string fixedSource)
+    private static async Task RunCodeFixTestAsync(
+        string source,
+        DiagnosticResult expected,
+        string fixedSource
+    )
     {
-        var test = new CSharpCodeFixTest<AnonymousTypeToDtoAnalyzer, AnonymousTypeToDtoCodeFixProvider, DefaultVerifier>
+        var test = new CSharpCodeFixTest<
+            AnonymousTypeToDtoAnalyzer,
+            AnonymousTypeToDtoCodeFixProvider,
+            DefaultVerifier
+        >
         {
             TestCode = source,
             FixedCode = fixedSource,
