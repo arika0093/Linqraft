@@ -95,9 +95,11 @@ public class ProducesResponseTypeAnalyzer : DiagnosticAnalyzer
         // Check for SelectExpr<TSource, TDto>
         if (expression is MemberAccessExpressionSyntax memberAccess)
         {
-            if (memberAccess.Name is GenericNameSyntax genericName
+            if (
+                memberAccess.Name is GenericNameSyntax genericName
                 && genericName.Identifier.Text == "SelectExpr"
-                && genericName.TypeArgumentList.Arguments.Count >= 2)
+                && genericName.TypeArgumentList.Arguments.Count >= 2
+            )
             {
                 // Return the second type argument (TDto)
                 return genericName.TypeArgumentList.Arguments[1].ToString();
@@ -124,7 +126,10 @@ public class ProducesResponseTypeAnalyzer : DiagnosticAnalyzer
         return false;
     }
 
-    private static bool HasProducesResponseTypeAttribute(MethodDeclarationSyntax methodDecl, string dtoTypeName)
+    private static bool HasProducesResponseTypeAttribute(
+        MethodDeclarationSyntax methodDecl,
+        string dtoTypeName
+    )
     {
         foreach (var attributeList in methodDecl.AttributeLists)
         {
