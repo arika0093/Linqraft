@@ -38,6 +38,7 @@ will be generated as:
 #pragma warning disable CS8602
 #pragma warning disable CS8603
 #pragma warning disable CS8604
+#pragma warning disable CS8618
 
 using System;
 using System.Linq;
@@ -48,8 +49,12 @@ namespace Linqraft
 {
     file static partial class GeneratedExpression
     {
+        /// <summary>
+        /// generated select expression method OrderDto (explicit) <br/>
+        /// at TutorialCaseTest.cs(40,14)
+        /// </summary>
         [global::System.Runtime.CompilerServices.InterceptsLocationAttribute(1, "9IBuY2cLVnfIVhZ8DH1V8UkEAABUdXRvcmlhbENhc2VUZXN0LmNz")]
-        public static IQueryable<TResult> SelectExpr_8C5CFBF9_FA0FABCE<TIn, TResult>(
+        public static IQueryable<TResult> SelectExpr_E6B721AD_FA0FABCE<TIn, TResult>(
             this IQueryable<TIn> query, Func<TIn, object> selector)
         {
             var matchedQuery = query as object as IQueryable<global::Tutorial.Order>;
@@ -59,7 +64,7 @@ namespace Linqraft
                 CustomerName = s.Customer != null ? (string?)s.Customer.Name : null,
                 CustomerCountry = s.Customer != null && s.Customer.Address != null && s.Customer.Address.Country != null ? (string?)s.Customer.Address.Country.Name : null,
                 CustomerCity = s.Customer != null && s.Customer.Address != null && s.Customer.Address.City != null ? (string?)s.Customer.Address.City.Name : null,
-                Items = s.OrderItems.Select(oi => new OrderItemDto_DE33EA40 {
+                Items = s.OrderItems.Select(oi => new global::Tutorial.OrderItemDto_DE33EA40 {
                     ProductName = oi.Product != null ? (string?)oi.Product.Name : null,
                     Quantity = oi.Quantity,
                 }).ToList()
@@ -72,13 +77,13 @@ namespace Linqraft
 
 namespace Tutorial
 {
-    internal partial class OrderItemDto_DE33EA40
+    public partial class OrderItemDto_DE33EA40
     {
         public required string? ProductName { get; set; }
         public required int Quantity { get; set; }
     }
 
-    internal partial class OrderDto
+    public partial class OrderDto
     {
         public required int Id { get; set; }
         public required string? CustomerName { get; set; }
@@ -86,6 +91,7 @@ namespace Tutorial
         public required string? CustomerCity { get; set; }
         public required global::System.Collections.Generic.List<Tutorial.OrderItemDto_DE33EA40> Items { get; set; }
     }
+    
 }
 ```
 

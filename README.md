@@ -409,7 +409,7 @@ for more details, see [Linqraft.Benchmark](./examples/Linqraft.Benchmark) for de
 
 ## Frequently Asked Questions
 ### Can I use Linqraft with EF Core only?
-No. It can be used with any LINQ provider that supports `IEnumerable` and `IQueryable`.
+No. It can be used with any LINQ provider that supports `IEnumerable` and/or `IQueryable`.
 
 ### Can the generated DTOs be used elsewhere?
 Yes. You can use the generated DTOs anywhere, such as API result models, Swagger documentation, function return types, arguments, variables, and more.
