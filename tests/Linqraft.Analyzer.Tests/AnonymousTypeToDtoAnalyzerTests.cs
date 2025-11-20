@@ -27,7 +27,7 @@ class Test
         var expected = VerifyCS
             .Diagnostic(AnonymousTypeToDtoAnalyzer.DiagnosticId)
             .WithLocation(0)
-            .WithSeverity(DiagnosticSeverity.Info);
+            .WithSeverity(DiagnosticSeverity.Hidden);
 
         await VerifyCS.VerifyAnalyzerAsync(test, expected);
     }
@@ -48,7 +48,7 @@ class Test
         var expected = VerifyCS
             .Diagnostic(AnonymousTypeToDtoAnalyzer.DiagnosticId)
             .WithLocation(0)
-            .WithSeverity(DiagnosticSeverity.Info);
+            .WithSeverity(DiagnosticSeverity.Hidden);
 
         await VerifyCS.VerifyAnalyzerAsync(test, expected);
     }
@@ -70,7 +70,7 @@ class Test
         var expected = VerifyCS
             .Diagnostic(AnonymousTypeToDtoAnalyzer.DiagnosticId)
             .WithLocation(0)
-            .WithSeverity(DiagnosticSeverity.Info);
+            .WithSeverity(DiagnosticSeverity.Hidden);
 
         await VerifyCS.VerifyAnalyzerAsync(test, expected);
     }
@@ -93,7 +93,7 @@ class Test
         var expected = VerifyCS
             .Diagnostic(AnonymousTypeToDtoAnalyzer.DiagnosticId)
             .WithLocation(0)
-            .WithSeverity(DiagnosticSeverity.Info);
+            .WithSeverity(DiagnosticSeverity.Hidden);
 
         await VerifyCS.VerifyAnalyzerAsync(test, expected);
     }
@@ -119,7 +119,7 @@ class Test
         var expected = VerifyCS
             .Diagnostic(AnonymousTypeToDtoAnalyzer.DiagnosticId)
             .WithLocation(0)
-            .WithSeverity(DiagnosticSeverity.Info);
+            .WithSeverity(DiagnosticSeverity.Hidden);
 
         await VerifyCS.VerifyAnalyzerAsync(test, expected);
     }
@@ -156,7 +156,7 @@ class Test
         var expected = VerifyCS
             .Diagnostic(AnonymousTypeToDtoAnalyzer.DiagnosticId)
             .WithLocation(0)
-            .WithSeverity(DiagnosticSeverity.Info);
+            .WithSeverity(DiagnosticSeverity.Hidden);
 
         await VerifyCS.VerifyAnalyzerAsync(test, expected);
     }
@@ -178,11 +178,11 @@ class Test
         var expected1 = VerifyCS
             .Diagnostic(AnonymousTypeToDtoAnalyzer.DiagnosticId)
             .WithLocation(0)
-            .WithSeverity(DiagnosticSeverity.Info);
+            .WithSeverity(DiagnosticSeverity.Hidden);
         var expected2 = VerifyCS
             .Diagnostic(AnonymousTypeToDtoAnalyzer.DiagnosticId)
             .WithLocation(1)
-            .WithSeverity(DiagnosticSeverity.Info);
+            .WithSeverity(DiagnosticSeverity.Hidden);
 
         await VerifyCS.VerifyAnalyzerAsync(test, expected1, expected2);
     }
@@ -203,11 +203,11 @@ class Test
         var expected1 = VerifyCS
             .Diagnostic(AnonymousTypeToDtoAnalyzer.DiagnosticId)
             .WithLocation(0)
-            .WithSeverity(DiagnosticSeverity.Info);
+            .WithSeverity(DiagnosticSeverity.Hidden);
         var expected2 = VerifyCS
             .Diagnostic(AnonymousTypeToDtoAnalyzer.DiagnosticId)
             .WithLocation(1)
-            .WithSeverity(DiagnosticSeverity.Info);
+            .WithSeverity(DiagnosticSeverity.Hidden);
 
         await VerifyCS.VerifyAnalyzerAsync(test, expected1, expected2);
     }
@@ -241,7 +241,7 @@ class Test
         var expected = VerifyCS
             .Diagnostic(AnonymousTypeToDtoAnalyzer.DiagnosticId)
             .WithLocation(0)
-            .WithSeverity(DiagnosticSeverity.Info);
+            .WithSeverity(DiagnosticSeverity.Hidden);
 
         await VerifyCS.VerifyAnalyzerAsync(test, expected);
     }
@@ -285,7 +285,7 @@ class Test
         var expected = VerifyCS
             .Diagnostic(AnonymousTypeToDtoAnalyzer.DiagnosticId)
             .WithLocation(0)
-            .WithSeverity(DiagnosticSeverity.Info);
+            .WithSeverity(DiagnosticSeverity.Hidden);
 
         await VerifyCS.VerifyAnalyzerAsync(test, expected);
     }
@@ -321,7 +321,7 @@ class Test
         var expected = VerifyCS
             .Diagnostic(AnonymousTypeToDtoAnalyzer.DiagnosticId)
             .WithLocation(0)
-            .WithSeverity(DiagnosticSeverity.Info);
+            .WithSeverity(DiagnosticSeverity.Hidden);
 
         await VerifyCS.VerifyAnalyzerAsync(test, expected);
     }
@@ -363,7 +363,7 @@ class Test
         var expected = VerifyCS
             .Diagnostic(AnonymousTypeToDtoAnalyzer.DiagnosticId)
             .WithLocation(0)
-            .WithSeverity(DiagnosticSeverity.Info);
+            .WithSeverity(DiagnosticSeverity.Hidden);
 
         await VerifyCS.VerifyAnalyzerAsync(test, expected);
     }
@@ -404,11 +404,11 @@ class Test
         var expected1 = VerifyCS
             .Diagnostic(AnonymousTypeToDtoAnalyzer.DiagnosticId)
             .WithLocation(0)
-            .WithSeverity(DiagnosticSeverity.Info);
+            .WithSeverity(DiagnosticSeverity.Hidden);
         var expected2 = VerifyCS
             .Diagnostic(AnonymousTypeToDtoAnalyzer.DiagnosticId)
             .WithLocation(1)
-            .WithSeverity(DiagnosticSeverity.Info);
+            .WithSeverity(DiagnosticSeverity.Hidden);
 
         await VerifyCS.VerifyAnalyzerAsync(test, expected1, expected2);
     }
@@ -442,7 +442,7 @@ class Test
         var expected = VerifyCS
             .Diagnostic(AnonymousTypeToDtoAnalyzer.DiagnosticId)
             .WithLocation(0)
-            .WithSeverity(DiagnosticSeverity.Info);
+            .WithSeverity(DiagnosticSeverity.Hidden);
 
         await VerifyCS.VerifyAnalyzerAsync(test, expected);
     }
@@ -478,7 +478,7 @@ class Test
         var expected = VerifyCS
             .Diagnostic(AnonymousTypeToDtoAnalyzer.DiagnosticId)
             .WithLocation(0)
-            .WithSeverity(DiagnosticSeverity.Info);
+            .WithSeverity(DiagnosticSeverity.Hidden);
 
         await VerifyCS.VerifyAnalyzerAsync(test, expected);
     }
@@ -513,7 +513,7 @@ class Test
         var expected = VerifyCS
             .Diagnostic(AnonymousTypeToDtoAnalyzer.DiagnosticId)
             .WithLocation(0)
-            .WithSeverity(DiagnosticSeverity.Info);
+            .WithSeverity(DiagnosticSeverity.Hidden);
 
         await VerifyCS.VerifyAnalyzerAsync(test, expected);
     }
@@ -541,7 +541,7 @@ class Test
         var expected = VerifyCS
             .Diagnostic(AnonymousTypeToDtoAnalyzer.DiagnosticId)
             .WithLocation(0)
-            .WithSeverity(DiagnosticSeverity.Info);
+            .WithSeverity(DiagnosticSeverity.Hidden);
 
         await VerifyCS.VerifyAnalyzerAsync(test, expected);
     }
@@ -577,7 +577,7 @@ class Test
         var expected = VerifyCS
             .Diagnostic(AnonymousTypeToDtoAnalyzer.DiagnosticId)
             .WithLocation(0)
-            .WithSeverity(DiagnosticSeverity.Info);
+            .WithSeverity(DiagnosticSeverity.Hidden);
 
         await VerifyCS.VerifyAnalyzerAsync(test, expected);
     }
@@ -612,7 +612,7 @@ class Test
         var expected = VerifyCS
             .Diagnostic(AnonymousTypeToDtoAnalyzer.DiagnosticId)
             .WithLocation(0)
-            .WithSeverity(DiagnosticSeverity.Info);
+            .WithSeverity(DiagnosticSeverity.Hidden);
 
         await VerifyCS.VerifyAnalyzerAsync(test, expected);
     }
@@ -646,7 +646,7 @@ static class Extensions
         var expected = VerifyCS
             .Diagnostic(AnonymousTypeToDtoAnalyzer.DiagnosticId)
             .WithLocation(0)
-            .WithSeverity(DiagnosticSeverity.Info);
+            .WithSeverity(DiagnosticSeverity.Hidden);
 
         await VerifyCS.VerifyAnalyzerAsync(test, expected);
     }
@@ -734,11 +734,11 @@ static class Extensions
         var expected1 = VerifyCS
             .Diagnostic(AnonymousTypeToDtoAnalyzer.DiagnosticId)
             .WithLocation(0)
-            .WithSeverity(DiagnosticSeverity.Info);
+            .WithSeverity(DiagnosticSeverity.Hidden);
         var expected2 = VerifyCS
             .Diagnostic(AnonymousTypeToDtoAnalyzer.DiagnosticId)
             .WithLocation(1)
-            .WithSeverity(DiagnosticSeverity.Info);
+            .WithSeverity(DiagnosticSeverity.Hidden);
 
         await VerifyCS.VerifyAnalyzerAsync(test, expected1, expected2);
     }
