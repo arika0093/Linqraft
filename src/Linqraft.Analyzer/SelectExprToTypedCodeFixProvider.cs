@@ -127,10 +127,11 @@ public class SelectExprToTypedCodeFixProvider : CodeFixProvider
             typeArguments
         );
 
-        // Create the new member access expression
+        // Create the new member access expression, preserving the original dot token's trivia (indentation)
         return SyntaxFactory.MemberAccessExpression(
             SyntaxKind.SimpleMemberAccessExpression,
             memberAccess.Expression,
+            memberAccess.OperatorToken,
             genericName
         );
     }
