@@ -47,7 +47,7 @@ namespace TestNamespace
 
         var expected = new DiagnosticResult(
             AnonymousTypeToDtoAnalyzer.DiagnosticId,
-            DiagnosticSeverity.Info
+            DiagnosticSeverity.Hidden
         ).WithLocation(0);
 
         await RunCodeFixTestAsync(test, expected, fixedCode);
@@ -111,7 +111,7 @@ namespace TestNamespace
 
         var expected = new DiagnosticResult(
             AnonymousTypeToDtoAnalyzer.DiagnosticId,
-            DiagnosticSeverity.Info
+            DiagnosticSeverity.Hidden
         ).WithLocation(0);
 
         await RunCodeFixTestAsync(test, expected, fixedCode);
@@ -157,7 +157,7 @@ namespace TestNamespace
 
         var expected = new DiagnosticResult(
             AnonymousTypeToDtoAnalyzer.DiagnosticId,
-            DiagnosticSeverity.Info
+            DiagnosticSeverity.Hidden
         ).WithLocation(0);
 
         await RunCodeFixTestAsync(test, expected, fixedCode);
@@ -207,7 +207,7 @@ namespace TestNamespace
 
         var expected = new DiagnosticResult(
             AnonymousTypeToDtoAnalyzer.DiagnosticId,
-            DiagnosticSeverity.Info
+            DiagnosticSeverity.Hidden
         ).WithLocation(0);
 
         await RunCodeFixTestAsync(test, expected, fixedCode);
@@ -250,7 +250,7 @@ public partial class ResultDto
 
         var expected = new DiagnosticResult(
             AnonymousTypeToDtoAnalyzer.DiagnosticId,
-            DiagnosticSeverity.Info
+            DiagnosticSeverity.Hidden
         ).WithLocation(0);
 
         await RunCodeFixTestAsync(test, expected, fixedCode);
