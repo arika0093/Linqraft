@@ -627,7 +627,7 @@ class Test
         {
             Value = {|#0:SampleValue|},
             Text = {|#1:SampleText|},
-            ConstantPi = Pi
+            ConstantPi = {|#2:Pi|}
         });
     }
 }
@@ -652,7 +652,13 @@ static class Extensions
             .WithArguments("SampleText")
             .WithSeverity(DiagnosticSeverity.Error);
 
-        await VerifyCS.VerifyAnalyzerAsync(test, expected1, expected2);
+        var expected3 = VerifyCS
+            .Diagnostic(LocalVariableCaptureAnalyzer.DiagnosticId)
+            .WithLocation(2)
+            .WithArguments("Pi")
+            .WithSeverity(DiagnosticSeverity.Error);
+
+        await VerifyCS.VerifyAnalyzerAsync(test, expected1, expected2, expected3);
     }
 
     [Fact]
@@ -704,7 +710,7 @@ static class Extensions
     }
 
     [Fact]
-    public async Task StaticField_NoDiagnostic()
+    public async Task StaticField_ReportsDiagnostic()
     {
         var test =
             @"
@@ -723,7 +729,7 @@ class Test
     void Method()
     {
         var list = new List<Entity>();
-        var result = list.AsQueryable().SelectExpr(s => new { Value = StaticValue });
+        var result = list.AsQueryable().SelectExpr(s => new { Value = {|#0:StaticValue|} });
     }
 }
 
@@ -735,6 +741,138 @@ static class Extensions
         => source.Select(x => selector(x));
 }";
 
-        await VerifyCS.VerifyAnalyzerAsync(test);
+        var expected = VerifyCS
+            .Diagnostic(LocalVariableCaptureAnalyzer.DiagnosticId)
+            .WithLocation(0)
+            .WithArguments("StaticValue")
+            .WithSeverity(DiagnosticSeverity.Error);
+
+        await VerifyCS.VerifyAnalyzerAsync(test, expected);
+    }
+
+    [Fact]
+    public async Task ConstField_ReportsDiagnostic()
+    {
+        var test =
+            @"
+using System.Linq;
+using System.Collections.Generic;
+
+class Entity
+{
+    public int Value { get; set; }
+}
+
+class Test
+{
+    private const double Pi = 3.14;
+
+    void Method()
+    {
+        var list = new List<Entity>();
+        var result = list.AsQueryable().SelectExpr(s => new { Constant = {|#0:Pi|} });
+    }
+}
+
+static class Extensions
+{
+    public static IQueryable<TResult> SelectExpr<TSource, TResult>(
+        this IQueryable<TSource> source,
+        System.Func<TSource, TResult> selector)
+        => source.Select(x => selector(x));
+}";
+
+        var expected = VerifyCS
+            .Diagnostic(LocalVariableCaptureAnalyzer.DiagnosticId)
+            .WithLocation(0)
+            .WithArguments("Pi")
+            .WithSeverity(DiagnosticSeverity.Error);
+
+        await VerifyCS.VerifyAnalyzerAsync(test, expected);
+    }
+
+    [Fact]
+    public async Task ThisMemberAccess_ReportsDiagnostic()
+    {
+        var test =
+            @"
+using System.Linq;
+using System.Collections.Generic;
+
+class Entity
+{
+    public int Value { get; set; }
+}
+
+class Test
+{
+    private string TestProperty { get; set; } = ""test"";
+
+    void Method()
+    {
+        var list = new List<Entity>();
+        var result = list.AsQueryable().SelectExpr(s => new { Prop = {|#0:this.TestProperty|} });
+    }
+}
+
+static class Extensions
+{
+    public static IQueryable<TResult> SelectExpr<TSource, TResult>(
+        this IQueryable<TSource> source,
+        System.Func<TSource, TResult> selector)
+        => source.Select(x => selector(x));
+}";
+
+        var expected = VerifyCS
+            .Diagnostic(LocalVariableCaptureAnalyzer.DiagnosticId)
+            .WithLocation(0)
+            .WithArguments("TestProperty")
+            .WithSeverity(DiagnosticSeverity.Error);
+
+        await VerifyCS.VerifyAnalyzerAsync(test, expected);
+    }
+
+    [Fact]
+    public async Task StaticMemberAccess_ReportsDiagnostic()
+    {
+        var test =
+            @"
+using System.Linq;
+using System.Collections.Generic;
+
+class Entity
+{
+    public int Value { get; set; }
+}
+
+class AnotherClass
+{
+    public static string StaticValue = ""static"";
+}
+
+class Test
+{
+    void Method()
+    {
+        var list = new List<Entity>();
+        var result = list.AsQueryable().SelectExpr(s => new { Value = {|#0:AnotherClass.StaticValue|} });
+    }
+}
+
+static class Extensions
+{
+    public static IQueryable<TResult> SelectExpr<TSource, TResult>(
+        this IQueryable<TSource> source,
+        System.Func<TSource, TResult> selector)
+        => source.Select(x => selector(x));
+}";
+
+        var expected = VerifyCS
+            .Diagnostic(LocalVariableCaptureAnalyzer.DiagnosticId)
+            .WithLocation(0)
+            .WithArguments("StaticValue")
+            .WithSeverity(DiagnosticSeverity.Error);
+
+        await VerifyCS.VerifyAnalyzerAsync(test, expected);
     }
 }

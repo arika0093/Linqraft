@@ -179,24 +179,26 @@ The hash suffix (8 characters, A-Z and 0-9) is generated from the property names
 
 ### Description
 
-This analyzer detects when local variables, method parameters, or instance fields/properties are referenced inside `SelectExpr` lambda expressions without being passed via the `capture` parameter. This is required for Linqraft to properly generate expression trees with captured variables.
+This analyzer detects when local variables, method parameters, instance/static fields/properties, or const fields are referenced inside `SelectExpr` lambda expressions without being passed via the `capture` parameter. This ensures complete isolation of the selector expression, which is required for Linqraft to properly generate expression trees.
 
 ### When it triggers
 
 The analyzer reports a diagnostic when it finds references to:
 
-- Local variables from outer scope
-- Method parameters
-- Instance fields (non-static)
-- Instance properties (non-static)
+- Local variables from outer scope (except const local variables)
+- Method parameters from outer scope
+- Instance fields and properties
+- Static fields and properties
+- Const fields (class-level constants)
+- `this.Property` member access
+- `ClassName.StaticMember` access
 
 that are used inside a `SelectExpr` lambda but are not included in the `capture` parameter.
 
 ### When it doesn't trigger
 
-- Constants (compile-time values like `const int X = 10`)
+- Const local variables (e.g., `const int X = 10` declared in a method)
 - Lambda parameters themselves
-- Static fields and properties
 - Variables already included in the `capture` parameter
 
 ### Code Fixes
@@ -236,7 +238,7 @@ public void GetProducts(IQueryable<Product> query)
 }
 ```
 
-#### Example 2: Instance fields and properties
+#### Example 2: Instance fields, static fields, and const fields
 
 **Before:**
 ```csharp
@@ -248,13 +250,13 @@ public class ProductService
 
     public void GetProducts(IQueryable<Product> query)
     {
-        var result = query.SelectExpr(x => new  // LQRE001 on DefaultDiscount and Currency
+        var result = query.SelectExpr(x => new  // LQRE001 on all three
         {
             x.Id,
             x.Price,
             Discount = DefaultDiscount,
             CurrencyCode = Currency,
-            Tax = TaxRate  // No error - const field
+            Tax = TaxRate
         });
     }
 }
@@ -278,12 +280,51 @@ public class ProductService
             CurrencyCode = Currency,
             Tax = TaxRate
         },
-        capture: new { Currency, DefaultDiscount });
+        capture: new { Currency, DefaultDiscount, TaxRate });
     }
 }
 ```
 
-#### Example 3: Incomplete capture parameter
+#### Example 3: this.Property and static member access
+
+**Before:**
+```csharp
+public class OrderService
+{
+    private string Status { get; set; } = "Active";
+
+    public void GetOrders(IQueryable<Order> query)
+    {
+        var result = query.SelectExpr(x => new  // LQRE001 on both
+        {
+            x.Id,
+            OrderStatus = this.Status,
+            DefaultValue = Settings.DefaultValue
+        });
+    }
+}
+```
+
+**After applying fix:**
+```csharp
+public class OrderService
+{
+    private string Status { get; set; } = "Active";
+
+    public void GetOrders(IQueryable<Order> query)
+    {
+        var result = query.SelectExpr(x => new
+        {
+            x.Id,
+            OrderStatus = this.Status,
+            DefaultValue = Settings.DefaultValue
+        },
+        capture: new { DefaultValue, Status });
+    }
+}
+```
+
+#### Example 4: Incomplete capture parameter
 
 **Before:**
 ```csharp
@@ -318,6 +359,9 @@ public void GetData(IQueryable<Entity> query)
 ### Important Notes
 
 - The `capture` parameter is required for Linqraft to properly generate expression trees that can be used with Entity Framework Core and other LINQ providers
-- Instance members (fields/properties) must be captured even though they're accessible via `this` because expression trees need explicit closure
-- Constants don't need to be captured as they are inlined at compile time
+- **All external references must be captured** for complete isolation of the selector expression, including:
+  - Instance members (even when accessed via `this`)
+  - Static members (even when accessed via `ClassName.Member`)
+  - Const fields (class-level constants, though const local variables don't need capture)
 - The code fix automatically merges any existing capture variables with newly detected ones
+- Variables are alphabetically sorted in the generated capture parameter for consistency

@@ -315,6 +315,40 @@ public class LocalVariableCaptureCodeFixProvider : CodeFixProvider
             }
         }
 
+        // Also find member access expressions (this.Property, Class.StaticMember)
+        var memberAccesses = bodyExpression.DescendantNodes().OfType<MemberAccessExpressionSyntax>();
+
+        foreach (var memberAccess in memberAccesses)
+        {
+            // Skip if this is a lambda parameter access (e.g., s.Property)
+            if (memberAccess.Expression is IdentifierNameSyntax exprId && 
+                lambdaParameters.Contains(exprId.Identifier.Text))
+            {
+                continue;
+            }
+
+            // Get symbol information for the member being accessed
+            var symbolInfo = semanticModel.GetSymbolInfo(memberAccess);
+            var symbol = symbolInfo.Symbol;
+
+            if (symbol == null)
+            {
+                continue;
+            }
+
+            // Check if this is a field or property that needs to be captured
+            if ((symbol.Kind == SymbolKind.Field || symbol.Kind == SymbolKind.Property))
+            {
+                // Check if it's 'this.Member' or 'Type.StaticMember'
+                if (memberAccess.Expression is ThisExpressionSyntax ||
+                    (symbol.IsStatic && memberAccess.Expression is IdentifierNameSyntax))
+                {
+                    var memberName = memberAccess.Name.Identifier.Text;
+                    variablesToCapture.Add(memberName);
+                }
+            }
+        }
+
         return variablesToCapture;
     }
 
@@ -324,10 +358,10 @@ public class LocalVariableCaptureCodeFixProvider : CodeFixProvider
         ImmutableHashSet<string> lambdaParameters
     )
     {
-        // Local variables (except constants)
+        // Local variables (except const local variables)
         if (symbol.Kind == SymbolKind.Local)
         {
-            // Skip constants - they are compile-time values and don't need capture
+            // Skip const local variables - they are compile-time values
             if (symbol is ILocalSymbol localSymbol && localSymbol.IsConst)
             {
                 return false;
@@ -349,14 +383,11 @@ public class LocalVariableCaptureCodeFixProvider : CodeFixProvider
                 return true;
             }
         }
-        // Instance fields and properties
+        // Fields and properties (both instance and static, including const fields)
         else if (symbol.Kind == SymbolKind.Field || symbol.Kind == SymbolKind.Property)
         {
-            // Check if it's an instance member (not static)
-            if (!symbol.IsStatic)
-            {
-                return true;
-            }
+            // All fields and properties need to be captured for complete isolation
+            return true;
         }
 
         return false;
