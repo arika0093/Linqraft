@@ -4,12 +4,13 @@ This document describes the Roslyn analyzers included in the Linqraft.Analyzer p
 
 ## Overview
 
-Linqraft provides two analyzers with corresponding code fix providers to improve code quality and type safety when working with LINQ queries and anonymous types.
+Linqraft provides three analyzers with corresponding code fix providers to improve code quality and type safety when working with LINQ queries and anonymous types.
 
 | Diagnostic ID | Analyzer | Description |
 |--------------|----------|-------------|
 | [LQRF001](#lqrf001-anonymoustypetodtoanalyzer) | AnonymousTypeToDtoAnalyzer | Detects anonymous types that can be converted to DTO classes |
 | [LQRS001](#lqrs001-selectexprtotypedanalyzer) | SelectExprToTypedAnalyzer | Detects SelectExpr calls without type arguments |
+| [LQRE002](#lqre002-selectexprinrazoranalyzer) | SelectExprInRazorAnalyzer | Detects SelectExpr usage in Razor files |
 
 ---
 
@@ -167,3 +168,68 @@ The generated DTO name follows these rules:
 4. Default fallback: `ResultDto_HASH`
 
 The hash suffix (8 characters, A-Z and 0-9) is generated from the property names using the FNV-1a algorithm to ensure uniqueness.
+
+---
+
+## LQRE002: SelectExprInRazorAnalyzer
+
+**Severity:** Error
+**Category:** Usage
+**Default:** Enabled
+
+### Description
+
+This analyzer detects `SelectExpr` usage in Razor files (`.razor` and `.cshtml` files). Since Razor files are processed by Source Generators, Linqraft's `SelectExpr`, which also uses Source Generators, cannot be used in Razor files.
+
+### When it triggers
+
+The analyzer reports a diagnostic when:
+
+1. A `SelectExpr()` method is called (with or without type arguments)
+2. The file has a `.razor` or `.cshtml` extension
+
+### Code Fixes
+
+No code fix is provided for this diagnostic, as there is no automatic way to refactor the code. You need to manually move the `SelectExpr` logic to a separate C# file.
+
+### Example
+
+**Before (in Razor file):**
+```razor
+@code {
+    private void SampleFunc()
+    {
+        // Error: LQRE002: SelectExpr cannot be used inside Razor files
+        var result = query.SelectExpr(s => new { s.Id, s.Name }).ToList();
+    }
+}
+```
+
+**After (refactored to separate service):**
+```csharp
+// In a separate .cs file (e.g., DataService.cs)
+public class DataService
+{
+    public List<ResultDto> GetData(IQueryable<Source> query)
+    {
+        return query.SelectExpr<Source, ResultDto>(s => new { s.Id, s.Name }).ToList();
+    }
+}
+```
+
+```razor
+@inject DataService DataService
+
+@code {
+    private void SampleFunc()
+    {
+        var result = DataService.GetData(query);
+    }
+}
+```
+
+### Rationale
+
+Source Generators cannot be stacked or nested. Since Razor files are processed by their own Source Generator, Linqraft's Source Generator cannot process `SelectExpr` calls within Razor files. The code will compile, but the expression trees and DTO classes will not be generated, leading to runtime errors.
+
+The recommended approach is to move all `SelectExpr` logic to separate C# service files, which can then be injected and used in your Razor components.
