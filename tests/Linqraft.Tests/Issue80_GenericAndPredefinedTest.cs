@@ -38,7 +38,7 @@ public class Issue80_GenericAndPredefinedTest
             .SelectExpr<TestForIssue80, TestForIssue80Dto>(d => new TestForIssue80Dto
             {
                 Id = d.Id,
-                Descriptions = d.Children.SelectExpr(child => child.Description),
+                Descriptions = d.Children.Select(child => child.Description),
             })
             .ToList();
 
