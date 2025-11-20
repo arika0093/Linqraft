@@ -1,0 +1,48 @@
+name: Bug Report(Generated Code)
+description: File a bug report about the Generated Code (Source-Generator).
+title: "bug: "
+labels: 
+  - bug
+  - generator
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for taking the time to fill out this bug report!
+  - type: textarea
+    id: minimal-repro
+    attributes:
+      label: Minimal Reproducible Example
+      description: Please provide a minimal reproducible example that demonstrates the issue.
+      placeholder: query.SelectExpr(s => ...);
+      render: csharp
+    validations:
+      required: true
+  - type: textarea
+    id: generated-output
+    attributes:
+      label: Generated Output
+      description: |
+        Please provide the generated output you actually got.
+        You can remove generated code file name and InterceptsLocationAttribute information.
+      placeholder: You can see a generated code in Analyzer output window.
+      render: csharp
+    validations:
+      required: true
+  - type: textarea
+    id: expected-output
+    attributes:
+      label: Expected Output
+      description: Please provide the output you expected to see.
+      placeholder: Generated namespace maybe `MyApp.DTOs`.
+      render: markdown
+    validations:
+      required: true
+  - type: textarea
+    id: additional-information
+    attributes:
+      label: Additional Information
+      description: Please provide any additional information that might be relevant to the issue.
+      render: markdown
+    validations:
+      required: false

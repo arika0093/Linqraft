@@ -1,0 +1,43 @@
+name: Feature Request(Generated Code)
+description: File a feature request about the Generated Code (Source-Generator).
+title: "feat: "
+labels: 
+  - enhancement
+  - generator
+body:
+  - type: markdown
+    attributes:
+      value: Thanks for taking the time to fill out this feature request!
+  - type: textarea
+    id: feature-description
+    attributes:
+      label: Feature Description
+      description: Please provide a detailed description of the feature you are requesting.
+      render: markdown
+    validations:
+      required: false
+  - type: textarea
+    id: trigger-example
+    attributes:
+      label: Triggering Example
+      description: Please provide a minimal example that would trigger the feature you are requesting.
+      placeholder: query.SelectExpr(s => ...);
+      render: csharp
+    validations:
+      required: true
+  - type: textarea
+    id: generated-output
+    attributes:
+      label: Generated Expected Output
+      description: Please provide the generated output you expect to see. 
+      render: csharp
+    validations:
+      required: true
+  - type: textarea
+    id: additional-information
+    attributes:
+      label: Additional Information
+      description: Please provide any additional information that might be relevant to the issue.
+      render: markdown
+    validations:
+      required: false

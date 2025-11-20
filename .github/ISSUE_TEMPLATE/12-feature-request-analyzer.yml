@@ -1,0 +1,74 @@
+name: Feature Request(Analyzer)
+description: File a feature request about the Analyzer.
+title: "feat: "
+labels: 
+  - enhancement
+  - analyzer
+body:
+  - type: markdown
+    attributes:
+      value: Thanks for taking the time to fill out this feature request!
+  - type: textarea
+    id: feature-description
+    attributes:
+      label: Feature Description
+      description: Please provide a detailed description of the feature you are requesting.
+      render: markdown
+    validations:
+      required: false
+  - type: textarea
+    id: trigger-example
+    attributes:
+      label: Triggering Example
+      description: Please provide a minimal example that would trigger the feature you are requesting.
+      placeholder: query.SelectExpr(s => ...);
+      render: csharp
+    validations:
+      required: true
+  - type: textarea
+    id: show-message
+    attributes:
+      label: Analyzer Message
+      description: Please provide the analyzer message you expect to see.
+      placeholder: e.g., "Consider using ... for better performance."
+      render: markdown
+    validations:
+      required: true
+  - type: dropdown
+    id: diagnostic-severity
+    attributes:
+      label: Diagnostic Severity
+      description: Please select the severity level you expect for the analyzer diagnostic.
+      options:
+        - Error
+        - Warning
+        - Info
+        - Hidden
+    validations:
+      required: true
+  - type: checkboxes
+    id: request-codefix
+    attributes:
+      label: Request Code Fix
+      description: Would you like to request a code fix (automatic code correction) for this analyzer feature?
+      options:
+        - label: Yes, I would like to request a code fix.
+          value: yes
+    validations:
+      required: false
+  - type: textarea
+    id: codefix-description
+    attributes:
+      label: Code Fix Description
+      description: Please provide a detailed description of the code fix you are requesting.
+      render: markdown
+    validations:
+      required: false
+  - type: textarea
+    id: additional-information
+    attributes:
+      label: Additional Information
+      description: Please provide any additional information that might be relevant to the issue.
+      render: markdown
+    validations:
+      required: false
