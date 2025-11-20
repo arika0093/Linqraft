@@ -262,14 +262,17 @@ public partial class ResultDto
         string fixedSource
     )
     {
+        // Normalize line endings to LF to avoid CRLF/LF mismatch issues
+        static string NormalizeLineEndings(string text) => text.Replace("\r\n", "\n");
+
         var test = new CSharpCodeFixTest<
             AnonymousTypeToDtoAnalyzer,
             AnonymousTypeToDtoCodeFixProvider,
             DefaultVerifier
         >
         {
-            TestCode = source,
-            FixedCode = fixedSource,
+            TestCode = NormalizeLineEndings(source),
+            FixedCode = NormalizeLineEndings(fixedSource),
             ReferenceAssemblies = ReferenceAssemblies.Net.Net90,
         };
 
