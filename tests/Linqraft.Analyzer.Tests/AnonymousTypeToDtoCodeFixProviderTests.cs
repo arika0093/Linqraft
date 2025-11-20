@@ -2,9 +2,10 @@ using System.Threading.Tasks;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.Testing;
 using Xunit;
-using VerifyCS = Microsoft.CodeAnalysis.CSharp.Testing.XUnit.CodeFixVerifier<
+using VerifyCS = Microsoft.CodeAnalysis.CSharp.Testing.CSharpCodeFixVerifier<
     Linqraft.Analyzer.AnonymousTypeToDtoAnalyzer,
-    Linqraft.Analyzer.AnonymousTypeToDtoCodeFixProvider
+    Linqraft.Analyzer.AnonymousTypeToDtoCodeFixProvider,
+    Microsoft.CodeAnalysis.Testing.DefaultVerifier
 >;
 
 namespace Linqraft.Analyzer.Tests;

@@ -2,7 +2,10 @@ using System.Threading.Tasks;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.Testing;
 using Xunit;
-using VerifyCS = Microsoft.CodeAnalysis.CSharp.Testing.XUnit.AnalyzerVerifier<Linqraft.Analyzer.AnonymousTypeToDtoAnalyzer>;
+using VerifyCS = Microsoft.CodeAnalysis.CSharp.Testing.CSharpAnalyzerVerifier<
+    Linqraft.Analyzer.AnonymousTypeToDtoAnalyzer,
+    Microsoft.CodeAnalysis.Testing.DefaultVerifier
+>;
 
 namespace Linqraft.Analyzer.Tests;
 
@@ -208,8 +211,6 @@ class Test
 
         await VerifyCS.VerifyAnalyzerAsync(test, expected1, expected2);
     }
-
-    #region Complex Test Cases
 
     [Fact]
     public async Task AnonymousType_WithNullableAccess_ReportsDiagnostic()
@@ -615,6 +616,4 @@ class Test
 
         await VerifyCS.VerifyAnalyzerAsync(test, expected);
     }
-
-    #endregion
 }
