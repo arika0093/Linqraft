@@ -4,7 +4,8 @@ using Microsoft.CodeAnalysis.Testing;
 using Xunit;
 using VerifyCS = Microsoft.CodeAnalysis.CSharp.Testing.XUnit.CodeFixVerifier<
     Linqraft.Analyzer.AnonymousTypeToDtoAnalyzer,
-    Linqraft.Analyzer.AnonymousTypeToDtoCodeFixProvider>;
+    Linqraft.Analyzer.AnonymousTypeToDtoCodeFixProvider
+>;
 
 namespace Linqraft.Analyzer.Tests;
 

@@ -134,7 +134,8 @@ public class AnonymousTypeToDtoCodeFixProvider : CodeFixProvider
             var dtoClass = SyntaxFactory.ParseMemberDeclaration(dtoClassCode);
             if (dtoClass != null)
             {
-                var updatedNamespaceDecl = newRoot.DescendantNodes()
+                var updatedNamespaceDecl = newRoot
+                    .DescendantNodes()
                     .OfType<BaseNamespaceDeclarationSyntax>()
                     .First();
                 var newNamespaceDecl = updatedNamespaceDecl.AddMembers(dtoClass);
