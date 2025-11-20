@@ -119,9 +119,11 @@ public class SelectManyCaseTest
 
         var first = converted[0];
         first.Id.ShouldBe(1);
-        first.AllGrandChildDescriptions.ShouldBe(
-            ["GrandChild1-1-1", "GrandChild1-1-2", "GrandChild1-2-1"]
-        );
+        first.AllGrandChildDescriptions.ShouldBe([
+            "GrandChild1-1-1",
+            "GrandChild1-1-2",
+            "GrandChild1-2-1",
+        ]);
 
         var second = converted[1];
         second.Id.ShouldBe(2);
