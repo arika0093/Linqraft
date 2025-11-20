@@ -144,9 +144,139 @@ public record DtoProperty(
                 }
             }
         }
+
+        // Detect nested SelectMany (e.g., s.Childs.SelectMany(c => c.GrandChilds))
+        if (nestedStructure is null)
+        {
+            var selectManyInvocation = FindSelectManyInvocation(expression);
+            if (
+                selectManyInvocation is not null
+                && selectManyInvocation.ArgumentList.Arguments.Count > 0
+            )
+            {
+                var lambdaArg = selectManyInvocation.ArgumentList.Arguments[0].Expression;
+                if (lambdaArg is LambdaExpressionSyntax nestedLambda)
+                {
+                    // Get collection element type from the SelectMany's source
+                    ITypeSymbol? collectionType = null;
+
+                    if (
+                        selectManyInvocation.Expression
+                        is MemberAccessExpressionSyntax selectManyMemberAccess
+                    )
+                    {
+                        collectionType = semanticModel
+                            .GetTypeInfo(selectManyMemberAccess.Expression)
+                            .Type;
+                    }
+                    else if (selectManyInvocation.Expression is MemberBindingExpressionSyntax)
+                    {
+                        // For conditional access (?.SelectMany), we need to find the base expression
+                        var conditionalAccess = expression
+                            .DescendantNodesAndSelf()
+                            .OfType<ConditionalAccessExpressionSyntax>()
+                            .FirstOrDefault();
+                        if (conditionalAccess is not null)
+                        {
+                            collectionType = semanticModel
+                                .GetTypeInfo(conditionalAccess.Expression)
+                                .Type;
+                        }
+                    }
+
+                    if (
+                        collectionType is INamedTypeSymbol namedCollectionType
+                        && namedCollectionType.TypeArguments.Length > 0
+                    )
+                    {
+                        var elementType = namedCollectionType.TypeArguments[0];
+
+                        // For SelectMany, the lambda body should be a member access or invocation
+                        // that returns a collection. We need to analyze what the lambda returns.
+                        // The lambda body could be:
+                        // 1. Simple member access: c => c.GrandChildren
+                        // 2. Projection with Select: c => c.GrandChildren.Select(gc => new { ... })
+                        // 3. Anonymous type with Select inside: c => new { Grands = c.GrandChildren.Select(...) }
+
+                        // Check if the lambda body contains a Select
+                        var innerSelectInvocation = nestedLambda.Body
+                            is ExpressionSyntax lambdaBodyExpr
+                            ? FindSelectInvocation(lambdaBodyExpr)
+                            : null;
+                        if (
+                            innerSelectInvocation is not null
+                            && innerSelectInvocation.ArgumentList.Arguments.Count > 0
+                        )
+                        {
+                            var innerLambdaArg = innerSelectInvocation
+                                .ArgumentList
+                                .Arguments[0]
+                                .Expression;
+                            if (innerLambdaArg is LambdaExpressionSyntax innerLambda)
+                            {
+                                // Get the inner collection type
+                                var innerCollectionType = nestedLambda.Body
+                                    is ExpressionSyntax lambdaBodyForType
+                                    ? semanticModel.GetTypeInfo(lambdaBodyForType).Type
+                                    : null;
+                                if (
+                                    innerCollectionType is INamedTypeSymbol innerNamedType
+                                    && innerNamedType.TypeArguments.Length > 0
+                                )
+                                {
+                                    var innerElementType = innerNamedType.TypeArguments[0];
+
+                                    if (
+                                        innerLambda.Body
+                                        is AnonymousObjectCreationExpressionSyntax innerAnonymous
+                                    )
+                                    {
+                                        nestedStructure = DtoStructure.AnalyzeAnonymousType(
+                                            innerAnonymous,
+                                            semanticModel,
+                                            innerElementType
+                                        );
+                                    }
+                                    else if (
+                                        innerLambda.Body
+                                        is ObjectCreationExpressionSyntax innerNamed
+                                    )
+                                    {
+                                        nestedStructure = DtoStructure.AnalyzeNamedType(
+                                            innerNamed,
+                                            semanticModel,
+                                            innerElementType
+                                        );
+                                    }
+                                }
+                            }
+                        }
+                        else if (
+                            nestedLambda.Body
+                            is AnonymousObjectCreationExpressionSyntax anonymousBody
+                        )
+                        {
+                            // Handle: c => new { Grands = c.GrandChildren.Select(...) }
+                            nestedStructure = DtoStructure.AnalyzeAnonymousType(
+                                anonymousBody,
+                                semanticModel,
+                                elementType
+                            );
+                        }
+                        // Note: For simple member access like c => c.GrandChildren,
+                        // we don't create a nested structure because the result is just
+                        // a flattened collection of the existing type.
+                    }
+                }
+            }
+        }
+
         // Detect direct anonymous type creation (e.g., Channel = new { Id = ..., Name = ... })
         // This handles nested anonymous types that are not inside a Select call
-        else if (expression is AnonymousObjectCreationExpressionSyntax directAnonymous)
+        if (
+            nestedStructure is null
+            && expression is AnonymousObjectCreationExpressionSyntax directAnonymous
+        )
         {
             // Get the source type from the anonymous type properties
             // We need to find the base type from which properties are being accessed
@@ -263,13 +393,19 @@ public record DtoProperty(
         return false;
     }
 
-    private static InvocationExpressionSyntax? FindSelectInvocation(ExpressionSyntax expression)
+    /// <summary>
+    /// Finds a LINQ method invocation (Select or SelectMany) in an expression
+    /// </summary>
+    private static InvocationExpressionSyntax? FindLinqInvocation(
+        ExpressionSyntax expression,
+        params string[] methodNames
+    )
     {
         // Handle binary expressions (e.g., ?? operator): s.OrderItems?.Select(...) ?? []
         if (expression is BinaryExpressionSyntax binaryExpr)
         {
-            // Check left side for Select invocation
-            var leftResult = FindSelectInvocation(binaryExpr.Left);
+            // Check left side for invocation
+            var leftResult = FindLinqInvocation(binaryExpr.Left, methodNames);
             if (leftResult is not null)
                 return leftResult;
         }
@@ -278,7 +414,7 @@ public record DtoProperty(
         if (expression is ConditionalAccessExpressionSyntax conditionalAccess)
         {
             // The WhenNotNull part contains the actual method call
-            return FindSelectInvocation(conditionalAccess.WhenNotNull);
+            return FindLinqInvocation(conditionalAccess.WhenNotNull, methodNames);
         }
 
         // Handle member binding expression (part of ?. expression): .Select(...)
@@ -292,32 +428,42 @@ public record DtoProperty(
         if (
             expression is InvocationExpressionSyntax invocationBinding
             && invocationBinding.Expression is MemberBindingExpressionSyntax memberBinding
-            && memberBinding.Name.Identifier.Text == "Select"
+            && methodNames.Contains(memberBinding.Name.Identifier.Text)
         )
         {
             return invocationBinding;
         }
 
-        // Direct Select invocation: s.Childs.Select(...)
+        // Direct invocation: s.Childs.Select(...)
         if (expression is InvocationExpressionSyntax invocation)
         {
             if (
                 invocation.Expression is MemberAccessExpressionSyntax memberAccess
-                && memberAccess.Name.Identifier.Text == "Select"
+                && methodNames.Contains(memberAccess.Name.Identifier.Text)
             )
             {
                 return invocation;
             }
 
             // Chained method call (e.g., ToList, ToArray, etc.): s.Childs.Select(...).ToList()
-            // The invocation is for ToList, but we need to find Select in its expression
+            // The invocation is for ToList, but we need to find the LINQ method in its expression
             if (invocation.Expression is MemberAccessExpressionSyntax chainedMemberAccess)
             {
                 // Recursively search in the expression part (before the chained method)
-                return FindSelectInvocation(chainedMemberAccess.Expression);
+                return FindLinqInvocation(chainedMemberAccess.Expression, methodNames);
             }
         }
 
         return null;
+    }
+
+    private static InvocationExpressionSyntax? FindSelectInvocation(ExpressionSyntax expression)
+    {
+        return FindLinqInvocation(expression, "Select");
+    }
+
+    private static InvocationExpressionSyntax? FindSelectManyInvocation(ExpressionSyntax expression)
+    {
+        return FindLinqInvocation(expression, "SelectMany");
     }
 }
