@@ -20,13 +20,35 @@ app.UseSwaggerUI(options =>
 
 // sample usage of SelectExpr in an Minimal API endpoint
 app.MapGet(
-    "/api/minimal/get-orders",
+    "/api/minimal/get-orders/explicit",
     () =>
     {
         return SampleData
             .GetOrdersFromOtherSource()
             .AsQueryable()
             .SelectExpr<Order, OrderDtoMinimal>(s => new
+            {
+                Id = s.Id,
+                CustomerName = s.Customer?.Name,
+                CustomerCountry = s.Customer?.Address?.Country?.Name,
+                CustomerCity = s.Customer?.Address?.City?.Name,
+                Items = s.OrderItems.Select(oi => new
+                {
+                    ProductName = oi.Product?.Name,
+                    Quantity = oi.Quantity,
+                }),
+            })
+            .ToList();
+    }
+);
+app.MapGet(
+    "/api/minimal/get-orders/anonymous",
+    () =>
+    {
+        return SampleData
+            .GetOrdersFromOtherSource()
+            .AsQueryable()
+            .SelectExpr(s => new
             {
                 Id = s.Id,
                 CustomerName = s.Customer?.Name,

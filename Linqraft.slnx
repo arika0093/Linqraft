@@ -14,12 +14,14 @@
   </Folder>
   <Folder Name="/src/">
     <File Path="src/Directory.Build.props" />
+    <Project Path="src/Linqraft.Analyzer/Linqraft.Analyzer.csproj" />
     <Project Path="src/Linqraft.Core/Linqraft.Core.csproj" />
     <Project Path="src/Linqraft.SourceGenerator/Linqraft.SourceGenerator.csproj" />
     <Project Path="src/Linqraft/Linqraft.csproj" />
   </Folder>
   <Folder Name="/tests/">
     <File Path="tests/Directory.Build.props" />
+    <Project Path="tests/Linqraft.Analyzer.Tests/Linqraft.Analyzer.Tests.csproj" />
     <Project Path="tests/Linqraft.Tests.Configuration/Linqraft.Tests.Configuration.csproj" />
     <Project Path="tests/Linqraft.Tests/Linqraft.Tests.csproj" />
   </Folder>

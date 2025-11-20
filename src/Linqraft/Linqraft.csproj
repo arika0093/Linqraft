@@ -7,6 +7,32 @@
     <None Include="Linqraft.targets" Pack="true" PackagePath="build" Visible="false" />
   </ItemGroup>
   <ItemGroup>
-    <ProjectReference Include="..\Linqraft.SourceGenerator\Linqraft.SourceGenerator.csproj" />
+    <!-- Include Source Generator DLLs -->
+    <None
+      Include="..\Linqraft.SourceGenerator\$(OutputPath)\Linqraft.SourceGenerator.dll"
+      Pack="true"
+      PackagePath="analyzers/dotnet/cs"
+      Visible="false"
+    />
+    <None
+      Include="..\Linqraft.Core\$(OutputPath)\Linqraft.Core.dll"
+      Pack="true"
+      PackagePath="analyzers/dotnet/cs"
+      Visible="false"
+    />
+    <!-- Include Analyzer DLLs -->
+    <None
+      Include="..\Linqraft.Analyzer\$(OutputPath)\Linqraft.Analyzer.dll"
+      Pack="true"
+      PackagePath="analyzers/dotnet/cs"
+      Visible="false"
+    />
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference
+      Include="..\Linqraft.SourceGenerator\Linqraft.SourceGenerator.csproj"
+      PrivateAssets="all"
+    />
+    <ProjectReference Include="..\Linqraft.Analyzer\Linqraft.Analyzer.csproj" PrivateAssets="all" />
   </ItemGroup>
 </Project>
