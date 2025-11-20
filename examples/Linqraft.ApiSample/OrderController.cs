@@ -36,7 +36,7 @@ public partial class OrderController : ControllerBase
         var results = SampleData
             .GetOrdersFromOtherSource()
             .AsQueryable()
-            .SelectExpr(s => new
+            .SelectExpr<Order, ResultsDto_ZW8RN8AA>(s => new
             {
                 Id = s.Id,
                 CustomerName = s.Customer?.Name,

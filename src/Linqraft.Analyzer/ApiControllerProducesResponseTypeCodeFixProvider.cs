@@ -150,54 +150,66 @@ public class ApiControllerProducesResponseTypeCodeFixProvider : CodeFixProvider
         if (type == null)
             return $"List<{dtoTypeName}>"; // Default to List if we can't determine the type
 
-        // Check if it's an array
-        if (type is IArrayTypeSymbol)
-            return $"{dtoTypeName}[]";
+        // Use the actual type's display string, but replace the DTO type parameter if needed
+        var typeDisplayString = type.ToDisplayString(
+            new SymbolDisplayFormat(
+                typeQualificationStyle: SymbolDisplayTypeQualificationStyle.NameAndContainingTypes,
+                genericsOptions: SymbolDisplayGenericsOptions.IncludeTypeParameters
+            )
+        );
 
-        // Check if it's a collection type
-        if (IsCollectionType(type))
+        // For simple types without generics, just return the type as-is
+        if (type is not INamedTypeSymbol namedType || !namedType.IsGenericType)
         {
-            // For collection types, return List<TDto>
-            return $"List<{dtoTypeName}>";
+            return typeDisplayString;
         }
 
-        // For single result types (like FirstOrDefault), return just the DTO type
-        return dtoTypeName;
+        // If it's a generic type, check if the DTO type is one of the type arguments
+        // and use the display string directly
+        return typeDisplayString;
     }
 
     private static ExpressionSyntax FindOutermostExpression(
         InvocationExpressionSyntax selectExprInvocation
     )
     {
-        // Traverse up the syntax tree to find the outermost expression
+        // Traverse up the syntax tree to find the outermost expression in the method chain
         // This handles cases like: query.SelectExpr(...).ToList(), query.SelectExpr(...).FirstOrDefault(), etc.
+        // But stops before entering an ArgumentSyntax (e.g., Ok(...))
         SyntaxNode current = selectExprInvocation;
-        SyntaxNode? lastExpression = selectExprInvocation;
+        ExpressionSyntax lastExpression = selectExprInvocation;
 
         while (current.Parent != null)
         {
             var parent = current.Parent;
 
-            // Keep going up if we're still in a method chain or invocation
-            if (
-                parent is MemberAccessExpressionSyntax
-                || parent is InvocationExpressionSyntax
-                || parent is ArgumentSyntax
-            )
+            // Stop if we're about to enter an argument (e.g., Ok(result))
+            if (parent is ArgumentSyntax)
             {
-                if (parent is ExpressionSyntax expr)
-                {
-                    lastExpression = expr;
-                }
+                break;
+            }
+
+            // Keep going up if we're still in a method chain
+            if (parent is MemberAccessExpressionSyntax memberAccess)
+            {
+                // Continue to see if this member access is being invoked
                 current = parent;
+                lastExpression = memberAccess;
+            }
+            else if (parent is InvocationExpressionSyntax invocation)
+            {
+                // This is a method call in the chain
+                current = parent;
+                lastExpression = invocation;
             }
             else
             {
+                // Stop at any other syntax node
                 break;
             }
         }
 
-        return (ExpressionSyntax)lastExpression;
+        return lastExpression;
     }
 
     private static bool IsCollectionType(ITypeSymbol? type)

@@ -411,4 +411,195 @@ static class Extensions
 
         await RunCodeFixTestAsync(before, after);
     }
+
+    [Fact]
+    public async Task DebugTest_ToString()
+    {
+        var before =
+            @"
+using Microsoft.AspNetCore.Mvc;
+using System.Linq;
+using System.Collections.Generic;
+
+class Sample { public int Id { get; set; } }
+class SampleDto { public int Id { get; set; } }
+
+[ApiController]
+public class SampleController : ControllerBase
+{
+    [HttpGet]
+    public IActionResult Get()
+    {
+        var result = {|#0:new List<Sample>().AsQueryable().SelectExpr<Sample, SampleDto>(x => new { x.Id })|}.FirstOrDefault().ToString();
+        return Ok(result);
+    }
+}
+
+static class Extensions
+{
+    public static IQueryable<TResult> SelectExpr<TSource, TResult>(
+        this IQueryable<TSource> source,
+        System.Linq.Expressions.Expression<System.Func<TSource, object>> selector)
+        => throw new System.NotImplementedException();
+}";
+
+        var after =
+            @"
+using Microsoft.AspNetCore.Mvc;
+using System.Linq;
+using System.Collections.Generic;
+
+class Sample { public int Id { get; set; } }
+class SampleDto { public int Id { get; set; } }
+
+[ApiController]
+public class SampleController : ControllerBase
+{
+    [ProducesResponseType(typeof(string), 200)]
+    [HttpGet]
+    public IActionResult Get()
+    {
+        var result = new List<Sample>().AsQueryable().SelectExpr<Sample, SampleDto>(x => new { x.Id }).FirstOrDefault().ToString();
+        return Ok(result);
+    }
+}
+
+static class Extensions
+{
+    public static IQueryable<TResult> SelectExpr<TSource, TResult>(
+        this IQueryable<TSource> source,
+        System.Linq.Expressions.Expression<System.Func<TSource, object>> selector)
+        => throw new System.NotImplementedException();
+}";
+
+        await RunCodeFixTestAsync(before, after);
+    }
+
+    [Fact]
+    public async Task DebugTest_ToImmutableArray()
+    {
+        var before =
+            @"
+using Microsoft.AspNetCore.Mvc;
+using System.Linq;
+using System.Collections.Generic;
+using System.Collections.Immutable;
+
+class Sample { public int Id { get; set; } }
+class SampleDto { public int Id { get; set; } }
+
+[ApiController]
+public class SampleController : ControllerBase
+{
+    [HttpGet]
+    public IActionResult Get()
+    {
+        var result = {|#0:new List<Sample>().AsQueryable().SelectExpr<Sample, SampleDto>(x => new { x.Id })|}.ToImmutableArray();
+        return Ok(result);
+    }
+}
+
+static class Extensions
+{
+    public static IQueryable<TResult> SelectExpr<TSource, TResult>(
+        this IQueryable<TSource> source,
+        System.Linq.Expressions.Expression<System.Func<TSource, object>> selector)
+        => throw new System.NotImplementedException();
+}";
+
+        var after =
+            @"
+using Microsoft.AspNetCore.Mvc;
+using System.Linq;
+using System.Collections.Generic;
+using System.Collections.Immutable;
+
+class Sample { public int Id { get; set; } }
+class SampleDto { public int Id { get; set; } }
+
+[ApiController]
+public class SampleController : ControllerBase
+{
+    [ProducesResponseType(typeof(ImmutableArray<SampleDto>), 200)]
+    [HttpGet]
+    public IActionResult Get()
+    {
+        var result = new List<Sample>().AsQueryable().SelectExpr<Sample, SampleDto>(x => new { x.Id }).ToImmutableArray();
+        return Ok(result);
+    }
+}
+
+static class Extensions
+{
+    public static IQueryable<TResult> SelectExpr<TSource, TResult>(
+        this IQueryable<TSource> source,
+        System.Linq.Expressions.Expression<System.Func<TSource, object>> selector)
+        => throw new System.NotImplementedException();
+}";
+
+        await RunCodeFixTestAsync(before, after);
+    }
+
+    [Fact]
+    public async Task DebugTest_ToDictionary()
+    {
+        var before =
+            @"
+using Microsoft.AspNetCore.Mvc;
+using System.Linq;
+using System.Collections.Generic;
+
+class Sample { public int Id { get; set; } }
+class SampleDto { public int Id { get; set; } }
+
+[ApiController]
+public class SampleController : ControllerBase
+{
+    [HttpGet]
+    public IActionResult Get()
+    {
+        var result = {|#0:new List<Sample>().AsQueryable().SelectExpr<Sample, SampleDto>(x => new { x.Id })|}.ToDictionary(x => x.Id);
+        return Ok(result);
+    }
+}
+
+static class Extensions
+{
+    public static IQueryable<TResult> SelectExpr<TSource, TResult>(
+        this IQueryable<TSource> source,
+        System.Linq.Expressions.Expression<System.Func<TSource, object>> selector)
+        => throw new System.NotImplementedException();
+}";
+
+        var after =
+            @"
+using Microsoft.AspNetCore.Mvc;
+using System.Linq;
+using System.Collections.Generic;
+
+class Sample { public int Id { get; set; } }
+class SampleDto { public int Id { get; set; } }
+
+[ApiController]
+public class SampleController : ControllerBase
+{
+    [ProducesResponseType(typeof(Dictionary<object, SampleDto>), 200)]
+    [HttpGet]
+    public IActionResult Get()
+    {
+        var result = new List<Sample>().AsQueryable().SelectExpr<Sample, SampleDto>(x => new { x.Id }).ToDictionary(x => x.Id);
+        return Ok(result);
+    }
+}
+
+static class Extensions
+{
+    public static IQueryable<TResult> SelectExpr<TSource, TResult>(
+        this IQueryable<TSource> source,
+        System.Linq.Expressions.Expression<System.Func<TSource, object>> selector)
+        => throw new System.NotImplementedException();
+}";
+
+        await RunCodeFixTestAsync(before, after);
+    }
 }
