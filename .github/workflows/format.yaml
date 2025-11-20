@@ -1,4 +1,4 @@
-name: Package Release to GitHub and Nuget
+name: Format Code with csharpier
 
 on:
   workflow_dispatch:
