@@ -770,7 +770,11 @@ static class Extensions
             .WithLocation(2)
             .WithArguments("Pi");
 
-        await VerifyCS.VerifyCodeFixAsync(test, new[] { expected1, expected2, expected3 }, fixedCode);
+        await VerifyCS.VerifyCodeFixAsync(
+            test,
+            new[] { expected1, expected2, expected3 },
+            fixedCode
+        );
     }
 
     [Fact]

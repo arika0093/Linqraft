@@ -70,8 +70,12 @@ public class LocalVariableCaptureAnalyzer : DiagnosticAnalyzer
         var lambdaParameters = GetLambdaParameterNames(lambda);
 
         // Find variables that need to be captured
-        var variablesToCapture = FindVariablesToCapture(lambda, lambdaParameters, context.SemanticModel);
-        
+        var variablesToCapture = FindVariablesToCapture(
+            lambda,
+            lambdaParameters,
+            context.SemanticModel
+        );
+
         if (variablesToCapture.Count == 0)
         {
             return;
@@ -95,11 +99,10 @@ public class LocalVariableCaptureAnalyzer : DiagnosticAnalyzer
     {
         return expression switch
         {
-            MemberAccessExpressionSyntax memberAccess =>
-                memberAccess.Name.Identifier.Text == "SelectExpr",
-            IdentifierNameSyntax identifier =>
-                identifier.Identifier.Text == "SelectExpr",
-            _ => false
+            MemberAccessExpressionSyntax memberAccess => memberAccess.Name.Identifier.Text
+                == "SelectExpr",
+            IdentifierNameSyntax identifier => identifier.Identifier.Text == "SelectExpr",
+            _ => false,
         };
     }
 
@@ -203,11 +206,13 @@ public class LocalVariableCaptureAnalyzer : DiagnosticAnalyzer
     {
         return lambda switch
         {
-            SimpleLambdaExpressionSyntax simple =>
-                ImmutableHashSet.Create(simple.Parameter.Identifier.Text),
-            ParenthesizedLambdaExpressionSyntax paren =>
-                paren.ParameterList.Parameters.Select(p => p.Identifier.Text).ToImmutableHashSet(),
-            _ => ImmutableHashSet<string>.Empty
+            SimpleLambdaExpressionSyntax simple => ImmutableHashSet.Create(
+                simple.Parameter.Identifier.Text
+            ),
+            ParenthesizedLambdaExpressionSyntax paren => paren
+                .ParameterList.Parameters.Select(p => p.Identifier.Text)
+                .ToImmutableHashSet(),
+            _ => ImmutableHashSet<string>.Empty,
         };
     }
 
@@ -222,7 +227,7 @@ public class LocalVariableCaptureAnalyzer : DiagnosticAnalyzer
         {
             SimpleLambdaExpressionSyntax simple => simple.Body,
             ParenthesizedLambdaExpressionSyntax paren => paren.Body,
-            _ => null
+            _ => null,
         };
 
         if (bodyExpression == null)
@@ -267,13 +272,17 @@ public class LocalVariableCaptureAnalyzer : DiagnosticAnalyzer
         }
 
         // Also find member access expressions (this.Property, Class.StaticMember)
-        var memberAccesses = bodyExpression.DescendantNodes().OfType<MemberAccessExpressionSyntax>();
+        var memberAccesses = bodyExpression
+            .DescendantNodes()
+            .OfType<MemberAccessExpressionSyntax>();
 
         foreach (var memberAccess in memberAccesses)
         {
             // Skip if this is a lambda parameter access (e.g., s.Property)
-            if (memberAccess.Expression is IdentifierNameSyntax exprId && 
-                lambdaParameters.Contains(exprId.Identifier.Text))
+            if (
+                memberAccess.Expression is IdentifierNameSyntax exprId
+                && lambdaParameters.Contains(exprId.Identifier.Text)
+            )
             {
                 continue;
             }
@@ -291,8 +300,10 @@ public class LocalVariableCaptureAnalyzer : DiagnosticAnalyzer
             if ((symbol.Kind == SymbolKind.Field || symbol.Kind == SymbolKind.Property))
             {
                 // Check if it's 'this.Member' or 'Type.StaticMember'
-                if (memberAccess.Expression is ThisExpressionSyntax ||
-                    (symbol.IsStatic && memberAccess.Expression is IdentifierNameSyntax))
+                if (
+                    memberAccess.Expression is ThisExpressionSyntax
+                    || (symbol.IsStatic && memberAccess.Expression is IdentifierNameSyntax)
+                )
                 {
                     var memberName = memberAccess.Name.Identifier.Text;
                     variablesToCapture.Add((memberName, memberAccess.GetLocation()));
@@ -357,7 +368,7 @@ public class LocalVariableCaptureAnalyzer : DiagnosticAnalyzer
         {
             SimpleLambdaExpressionSyntax simple => simple.Body,
             ParenthesizedLambdaExpressionSyntax paren => paren.Body,
-            _ => null
+            _ => null,
         };
 
         if (bodyExpression == null)
@@ -411,7 +422,10 @@ public class LocalVariableCaptureAnalyzer : DiagnosticAnalyzer
                     localVariables.Add((identifierName, identifier.GetLocation()));
                 }
             }
-            else if (symbol.Kind == SymbolKind.Parameter && !lambdaParameters.Contains(identifierName))
+            else if (
+                symbol.Kind == SymbolKind.Parameter
+                && !lambdaParameters.Contains(identifierName)
+            )
             {
                 // This is a parameter from an outer scope
                 var symbolLocation = symbol.Locations.FirstOrDefault();
@@ -430,7 +444,7 @@ public class LocalVariableCaptureAnalyzer : DiagnosticAnalyzer
         // Check if this identifier is the name part of a member access expression
         // e.g., in "s.Property", "Property" is part of member access
         var parent = identifier.Parent;
-        
+
         if (parent is MemberAccessExpressionSyntax memberAccess)
         {
             // If the identifier is on the right side of the dot, it's a member name

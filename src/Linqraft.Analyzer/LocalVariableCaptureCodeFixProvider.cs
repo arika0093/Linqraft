@@ -88,7 +88,7 @@ public class LocalVariableCaptureCodeFixProvider : CodeFixProvider
 
         // Get already captured variables
         var capturedVariables = GetCapturedVariables(invocation);
-        
+
         // Combine existing and new variables
         var allVariables = new HashSet<string>(capturedVariables);
         allVariables.UnionWith(variablesToCapture);
@@ -97,9 +97,7 @@ public class LocalVariableCaptureCodeFixProvider : CodeFixProvider
         var captureProperties = allVariables
             .OrderBy(name => name)
             .Select(name =>
-                SyntaxFactory.AnonymousObjectMemberDeclarator(
-                    SyntaxFactory.IdentifierName(name)
-                )
+                SyntaxFactory.AnonymousObjectMemberDeclarator(SyntaxFactory.IdentifierName(name))
             )
             .ToArray();
 
@@ -115,7 +113,7 @@ public class LocalVariableCaptureCodeFixProvider : CodeFixProvider
         );
 
         InvocationExpressionSyntax newInvocation;
-        
+
         // Check if there's already a capture argument to replace
         var existingCaptureArgIndex = FindCaptureArgumentIndex(invocation);
         if (existingCaptureArgIndex >= 0)
@@ -229,10 +227,10 @@ public class LocalVariableCaptureCodeFixProvider : CodeFixProvider
     {
         return expression switch
         {
-            MemberAccessExpressionSyntax memberAccess =>
-                memberAccess.Name.Identifier.Text == "SelectExpr",
+            MemberAccessExpressionSyntax memberAccess => memberAccess.Name.Identifier.Text
+                == "SelectExpr",
             IdentifierNameSyntax identifier => identifier.Identifier.Text == "SelectExpr",
-            _ => false
+            _ => false,
         };
     }
 
@@ -253,11 +251,13 @@ public class LocalVariableCaptureCodeFixProvider : CodeFixProvider
     {
         return lambda switch
         {
-            SimpleLambdaExpressionSyntax simple =>
-                ImmutableHashSet.Create(simple.Parameter.Identifier.Text),
-            ParenthesizedLambdaExpressionSyntax paren =>
-                paren.ParameterList.Parameters.Select(p => p.Identifier.Text).ToImmutableHashSet(),
-            _ => ImmutableHashSet<string>.Empty
+            SimpleLambdaExpressionSyntax simple => ImmutableHashSet.Create(
+                simple.Parameter.Identifier.Text
+            ),
+            ParenthesizedLambdaExpressionSyntax paren => paren
+                .ParameterList.Parameters.Select(p => p.Identifier.Text)
+                .ToImmutableHashSet(),
+            _ => ImmutableHashSet<string>.Empty,
         };
     }
 
@@ -272,7 +272,7 @@ public class LocalVariableCaptureCodeFixProvider : CodeFixProvider
         {
             SimpleLambdaExpressionSyntax simple => simple.Body,
             ParenthesizedLambdaExpressionSyntax paren => paren.Body,
-            _ => null
+            _ => null,
         };
 
         if (bodyExpression == null)
@@ -316,13 +316,17 @@ public class LocalVariableCaptureCodeFixProvider : CodeFixProvider
         }
 
         // Also find member access expressions (this.Property, Class.StaticMember)
-        var memberAccesses = bodyExpression.DescendantNodes().OfType<MemberAccessExpressionSyntax>();
+        var memberAccesses = bodyExpression
+            .DescendantNodes()
+            .OfType<MemberAccessExpressionSyntax>();
 
         foreach (var memberAccess in memberAccesses)
         {
             // Skip if this is a lambda parameter access (e.g., s.Property)
-            if (memberAccess.Expression is IdentifierNameSyntax exprId && 
-                lambdaParameters.Contains(exprId.Identifier.Text))
+            if (
+                memberAccess.Expression is IdentifierNameSyntax exprId
+                && lambdaParameters.Contains(exprId.Identifier.Text)
+            )
             {
                 continue;
             }
@@ -340,8 +344,10 @@ public class LocalVariableCaptureCodeFixProvider : CodeFixProvider
             if ((symbol.Kind == SymbolKind.Field || symbol.Kind == SymbolKind.Property))
             {
                 // Check if it's 'this.Member' or 'Type.StaticMember'
-                if (memberAccess.Expression is ThisExpressionSyntax ||
-                    (symbol.IsStatic && memberAccess.Expression is IdentifierNameSyntax))
+                if (
+                    memberAccess.Expression is ThisExpressionSyntax
+                    || (symbol.IsStatic && memberAccess.Expression is IdentifierNameSyntax)
+                )
                 {
                     var memberName = memberAccess.Name.Identifier.Text;
                     variablesToCapture.Add(memberName);
@@ -404,7 +410,7 @@ public class LocalVariableCaptureCodeFixProvider : CodeFixProvider
         {
             SimpleLambdaExpressionSyntax simple => simple.Body,
             ParenthesizedLambdaExpressionSyntax paren => paren.Body,
-            _ => null
+            _ => null,
         };
 
         if (bodyExpression == null)
@@ -457,7 +463,8 @@ public class LocalVariableCaptureCodeFixProvider : CodeFixProvider
                 }
             }
             else if (
-                symbol.Kind == SymbolKind.Parameter && !lambdaParameters.Contains(identifierName)
+                symbol.Kind == SymbolKind.Parameter
+                && !lambdaParameters.Contains(identifierName)
             )
             {
                 // This is a parameter from an outer scope
