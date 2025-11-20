@@ -270,9 +270,7 @@ public class LocalVariableCaptureAnalyzer : DiagnosticAnalyzer
                 {
                     memberAccessesToCapture.Add(memberAccess.Expression);
                 }
-                else if (
-                    symbol.IsStatic && memberAccess.Expression is IdentifierNameSyntax
-                )
+                else if (symbol.IsStatic && memberAccess.Expression is IdentifierNameSyntax)
                 {
                     memberAccessesToCapture.Add(memberAccess.Expression);
                 }
@@ -378,9 +376,7 @@ public class LocalVariableCaptureAnalyzer : DiagnosticAnalyzer
                     var memberName = memberAccess.Name.Identifier.Text;
                     variablesToCapture.Add((memberName, memberAccess.GetLocation()));
                 }
-                else if (
-                    symbol.IsStatic && memberAccess.Expression is IdentifierNameSyntax
-                )
+                else if (symbol.IsStatic && memberAccess.Expression is IdentifierNameSyntax)
                 {
                     var memberName = memberAccess.Name.Identifier.Text;
                     variablesToCapture.Add((memberName, memberAccess.GetLocation()));

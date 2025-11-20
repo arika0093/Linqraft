@@ -509,9 +509,7 @@ public class LocalVariableCaptureCodeFixProvider : CodeFixProvider
                     variablesToCapture.Add(identifierName);
                 }
             }
-            else if (
-                symbol.Kind == SymbolKind.Parameter && !lambdaParameters.Contains(symbol.Name)
-            )
+            else if (symbol.Kind == SymbolKind.Parameter && !lambdaParameters.Contains(symbol.Name))
             {
                 // This is a parameter from an outer scope
                 var symbolLocation = symbol.Locations.FirstOrDefault();
@@ -531,12 +529,14 @@ public class LocalVariableCaptureCodeFixProvider : CodeFixProvider
         return variablesToCapture;
     }
 
-    private static List<(ExpressionSyntax Expression, string MemberName)>
-        FindMemberAccessesToCapture(
-            LambdaExpressionSyntax lambda,
-            ImmutableHashSet<string> lambdaParameters,
-            SemanticModel semanticModel
-        )
+    private static List<(
+        ExpressionSyntax Expression,
+        string MemberName
+    )> FindMemberAccessesToCapture(
+        LambdaExpressionSyntax lambda,
+        ImmutableHashSet<string> lambdaParameters,
+        SemanticModel semanticModel
+    )
     {
         var memberAccessesToCapture = new List<(ExpressionSyntax, string)>();
         var bodyExpression = lambda switch
