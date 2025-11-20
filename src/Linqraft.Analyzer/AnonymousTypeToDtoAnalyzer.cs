@@ -182,9 +182,11 @@ public class AnonymousTypeToDtoAnalyzer : DiagnosticAnalyzer
         {
             // obj.SelectExpr<T, TDto>(...)
             case MemberAccessExpressionSyntax memberAccess:
-                if (memberAccess.Name.Identifier.Text == "SelectExpr" &&
-                    memberAccess.Name is GenericNameSyntax genericName &&
-                    genericName.TypeArgumentList.Arguments.Count >= 2)
+                if (
+                    memberAccess.Name.Identifier.Text == "SelectExpr"
+                    && memberAccess.Name is GenericNameSyntax genericName
+                    && genericName.TypeArgumentList.Arguments.Count >= 2
+                )
                 {
                     return true;
                 }
@@ -192,8 +194,10 @@ public class AnonymousTypeToDtoAnalyzer : DiagnosticAnalyzer
 
             // SelectExpr<T, TDto>(...) - unlikely but handle it
             case GenericNameSyntax genericIdentifier:
-                if (genericIdentifier.Identifier.Text == "SelectExpr" &&
-                    genericIdentifier.TypeArgumentList.Arguments.Count >= 2)
+                if (
+                    genericIdentifier.Identifier.Text == "SelectExpr"
+                    && genericIdentifier.TypeArgumentList.Arguments.Count >= 2
+                )
                 {
                     return true;
                 }
