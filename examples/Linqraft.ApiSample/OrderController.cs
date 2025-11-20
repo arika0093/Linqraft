@@ -8,7 +8,7 @@ namespace Linqraft.ApiSample;
 public partial class OrderController : ControllerBase
 {
     [HttpGet]
-    [Route("get-orders")]
+    [Route("get-orders/explicit")]
     public ActionResult<List<OrderDto>> GetOrdersAsync()
     {
         return SampleData
