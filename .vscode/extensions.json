@@ -1,6 +1,7 @@
 {
 	"recommendations": [
-		"csharpier.csharpier-vscode"
+		"csharpier.csharpier-vscode",
+		"mhutchie.git-graph"
 		// "nromanov.dotrush"
 	]
 }
