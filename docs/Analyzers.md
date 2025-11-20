@@ -15,7 +15,7 @@ Linqraft provides two analyzers with corresponding code fix providers to improve
 
 ## LQRF001: AnonymousTypeToDtoAnalyzer
 
-**Severity:** None
+**Severity:** Hidden
 **Category:** Design
 **Default:** Enabled
 
