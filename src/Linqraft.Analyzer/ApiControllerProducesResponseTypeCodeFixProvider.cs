@@ -165,7 +165,9 @@ public class ApiControllerProducesResponseTypeCodeFixProvider : CodeFixProvider
         return dtoTypeName;
     }
 
-    private static ExpressionSyntax FindOutermostExpression(InvocationExpressionSyntax selectExprInvocation)
+    private static ExpressionSyntax FindOutermostExpression(
+        InvocationExpressionSyntax selectExprInvocation
+    )
     {
         // Traverse up the syntax tree to find the outermost expression
         // This handles cases like: query.SelectExpr(...).ToList(), query.SelectExpr(...).FirstOrDefault(), etc.
@@ -233,7 +235,10 @@ public class ApiControllerProducesResponseTypeCodeFixProvider : CodeFixProvider
             // Check if it implements IEnumerable<T>
             foreach (var iface in namedType.AllInterfaces)
             {
-                if (iface.OriginalDefinition.ToDisplayString() == "System.Collections.Generic.IEnumerable<T>")
+                if (
+                    iface.OriginalDefinition.ToDisplayString()
+                    == "System.Collections.Generic.IEnumerable<T>"
+                )
                 {
                     return true;
                 }
