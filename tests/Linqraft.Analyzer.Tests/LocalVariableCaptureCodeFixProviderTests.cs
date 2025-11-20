@@ -1072,7 +1072,7 @@ class Test
         var result = list.AsQueryable().SelectExpr(x => new
         {
             x.Value,
-            Other = {|#0:anotherClass{|#1:.Property|}|}
+            Other = {|#0:anotherClass.Property|}
         });
     }
 }
@@ -1117,7 +1117,7 @@ class Test
         {
             x.Value,
             Other = captured_Property
-        }, capture: new { anotherClass, captured_Property });
+        }, capture: new { captured_Property });
     }
 }
 
@@ -1135,17 +1135,12 @@ static class Extensions
         => source.Select(x => selector(x));
 }";
 
-        var expected1 = VerifyCS
+        var expected = VerifyCS
             .Diagnostic(LocalVariableCaptureAnalyzer.DiagnosticId)
             .WithLocation(0)
-            .WithArguments("anotherClass");
-
-        var expected2 = VerifyCS
-            .Diagnostic(LocalVariableCaptureAnalyzer.DiagnosticId)
-            .WithLocation(1)
             .WithArguments("Property");
 
-        await VerifyCS.VerifyCodeFixAsync(test, new[] { expected1, expected2 }, fixedCode);
+        await VerifyCS.VerifyCodeFixAsync(test, expected, fixedCode);
     }
 
     [Fact]
@@ -1184,7 +1179,7 @@ class Test
             x.Value,
             OrderStatus = {|#0:this.Status|},
             Default = {|#1:Settings.DefaultValue|},
-            Other = {|#3:{|#2:anotherClass|}.Property|}
+            Other = {|#2:anotherClass.Property|}
         });
     }
 }
@@ -1231,16 +1226,16 @@ class Test
     {
         var anotherClass = new AnotherClass { Property = ""test"" };
         var list = new List<Entity>();
+        var captured_Status = this.Status;
         var captured_DefaultValue = Settings.DefaultValue;
         var captured_Property = anotherClass.Property;
-        var captured_Status = this.Status;
         var result = list.AsQueryable().SelectExpr(x => new
         {
             x.Value,
             OrderStatus = captured_Status,
             Default = captured_DefaultValue,
             Other = captured_Property
-        }, capture: new { anotherClass, captured_DefaultValue, captured_Property, captured_Status });
+        }, capture: new { captured_DefaultValue, captured_Property, captured_Status });
     }
 }
 
@@ -1271,16 +1266,11 @@ static class Extensions
         var expected3 = VerifyCS
             .Diagnostic(LocalVariableCaptureAnalyzer.DiagnosticId)
             .WithLocation(2)
-            .WithArguments("anotherClass");
-
-        var expected4 = VerifyCS
-            .Diagnostic(LocalVariableCaptureAnalyzer.DiagnosticId)
-            .WithLocation(3)
             .WithArguments("Property");
 
         await VerifyCS.VerifyCodeFixAsync(
             test,
-            new[] { expected1, expected2, expected3, expected4 },
+            new[] { expected1, expected2, expected3 },
             fixedCode
         );
     }
