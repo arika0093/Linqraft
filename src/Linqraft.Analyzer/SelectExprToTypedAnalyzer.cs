@@ -2,6 +2,7 @@ using System;
 using System.Collections.Immutable;
 using System.Linq;
 using System.Text;
+using Linqraft.Core;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
@@ -105,11 +106,11 @@ public class SelectExprToTypedAnalyzer : DiagnosticAnalyzer
         {
             case MemberAccessExpressionSyntax memberAccess:
                 // Check if it's SelectExpr and NOT a generic name (no type arguments)
-                return memberAccess.Name.Identifier.Text == "SelectExpr"
+                return memberAccess.Name.Identifier.Text == SelectExprHelper.MethodName
                     && memberAccess.Name is not GenericNameSyntax;
 
             case IdentifierNameSyntax identifier:
-                return identifier.Identifier.Text == "SelectExpr";
+                return identifier.Identifier.Text == SelectExprHelper.MethodName;
 
             default:
                 return false;
@@ -247,26 +248,8 @@ public class SelectExprToTypedAnalyzer : DiagnosticAnalyzer
             sb.Append(';');
         }
 
-        // Create a deterministic hash using FNV-1a algorithm
-        var str = sb.ToString();
-        uint hash = 2166136261;
-        foreach (char c in str)
-        {
-            hash ^= c;
-            hash *= 16777619;
-        }
-
-        var hashString = new StringBuilder(8);
-
-        // Convert to uppercase letters and digits (A-Z, 0-9)
-        const string chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
-        for (int i = 0; i < 8; i++)
-        {
-            hashString.Append(chars[(int)(hash % chars.Length)]);
-            hash /= (uint)chars.Length;
-        }
-
-        return hashString.ToString();
+        // Use common hash utility
+        return HashUtility.GenerateAlphanumericHash(sb.ToString());
     }
 
     private static string GetPropertyNameFromExpression(ExpressionSyntax expression)

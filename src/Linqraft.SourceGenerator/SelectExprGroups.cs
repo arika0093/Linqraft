@@ -83,7 +83,7 @@ internal class SelectExprGroups
                  * Stack Trace: {ex.StackTrace}
                  */
                 """;
-            var hash = Guid.NewGuid().ToString("N")[..8];
+            var hash = HashUtility.GenerateRandomIdentifier();
             context.AddSource($"GeneratorError_{hash}.g.cs", errorMessage);
         }
     }

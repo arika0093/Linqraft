@@ -4,6 +4,7 @@ using System.Composition;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
+using Linqraft.Core;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CodeActions;
 using Microsoft.CodeAnalysis.CodeFixes;
@@ -338,8 +339,8 @@ public class LocalVariableCaptureCodeFixProvider : CodeFixProvider
         return expression switch
         {
             MemberAccessExpressionSyntax memberAccess => memberAccess.Name.Identifier.Text
-                == "SelectExpr",
-            IdentifierNameSyntax identifier => identifier.Identifier.Text == "SelectExpr",
+                == SelectExprHelper.MethodName,
+            IdentifierNameSyntax identifier => identifier.Identifier.Text == SelectExprHelper.MethodName,
             _ => false,
         };
     }

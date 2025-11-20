@@ -4,6 +4,7 @@ using System.Composition;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
+using Linqraft.Core;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CodeActions;
 using Microsoft.CodeAnalysis.CodeFixes;
@@ -116,7 +117,7 @@ public class ApiControllerProducesResponseTypeCodeFixProvider : CodeFixProvider
             {
                 if (
                     memberAccess.Name is GenericNameSyntax genericName
-                    && genericName.Identifier.Text == "SelectExpr"
+                    && genericName.Identifier.Text == SelectExprHelper.MethodName
                     && genericName.TypeArgumentList.Arguments.Count >= 2
                 )
                 {
