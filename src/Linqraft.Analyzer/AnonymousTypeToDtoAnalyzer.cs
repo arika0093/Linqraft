@@ -1,4 +1,5 @@
 using System.Collections.Immutable;
+using Linqraft.Core;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
@@ -187,7 +188,7 @@ public class AnonymousTypeToDtoAnalyzer : DiagnosticAnalyzer
             // obj.SelectExpr<T, TDto>(...)
             case MemberAccessExpressionSyntax memberAccess:
                 if (
-                    memberAccess.Name.Identifier.Text == "SelectExpr"
+                    memberAccess.Name.Identifier.Text == SelectExprHelper.MethodName
                     && memberAccess.Name is GenericNameSyntax genericName
                     && genericName.TypeArgumentList.Arguments.Count >= 2
                 )
@@ -199,7 +200,7 @@ public class AnonymousTypeToDtoAnalyzer : DiagnosticAnalyzer
             // SelectExpr<T, TDto>(...) - unlikely but handle it
             case GenericNameSyntax genericIdentifier:
                 if (
-                    genericIdentifier.Identifier.Text == "SelectExpr"
+                    genericIdentifier.Identifier.Text == SelectExprHelper.MethodName
                     && genericIdentifier.TypeArgumentList.Arguments.Count >= 2
                 )
                 {

@@ -91,13 +91,8 @@ public partial class SelectExprGenerator : IIncrementalGenerator
 
         var expression = invocation.Expression;
 
-        // MemberAccessExpression (e.g., query.SelectExpr)
-        if (expression is MemberAccessExpressionSyntax memberAccess)
-        {
-            return memberAccess.Name.Identifier.Text == "SelectExpr";
-        }
-
-        return false;
+        // Use shared helper for syntax-level check
+        return SelectExprHelper.IsSelectExprInvocationSyntax(expression);
     }
 
     private static SelectExprInfo? GetSelectExprInfo(GeneratorSyntaxContext context)

@@ -1,6 +1,7 @@
 using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.Linq;
+using Linqraft.Core;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
@@ -100,8 +101,8 @@ public class LocalVariableCaptureAnalyzer : DiagnosticAnalyzer
         return expression switch
         {
             MemberAccessExpressionSyntax memberAccess => memberAccess.Name.Identifier.Text
-                == "SelectExpr",
-            IdentifierNameSyntax identifier => identifier.Identifier.Text == "SelectExpr",
+                == SelectExprHelper.MethodName,
+            IdentifierNameSyntax identifier => identifier.Identifier.Text == SelectExprHelper.MethodName,
             _ => false,
         };
     }

@@ -196,9 +196,7 @@ public abstract record SelectExprInfo
         var location =
             SemanticModel.GetInterceptableLocation(Invocation)
             ?? throw new InvalidOperationException("Failed to get interceptable location.");
-        using var sha256 = System.Security.Cryptography.SHA256.Create();
-        var hash = sha256.ComputeHash(System.Text.Encoding.UTF8.GetBytes(location.Data));
-        return BitConverter.ToString(hash).Replace("-", "")[..8]; // Use first 8 characters
+        return HashUtility.GenerateSha256Hash(location.Data);
     }
 
     /// <summary>

@@ -1,5 +1,6 @@
 using System.Collections.Immutable;
 using System.Linq;
+using Linqraft.Core;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
@@ -223,7 +224,7 @@ public class ApiControllerProducesResponseTypeAnalyzer : DiagnosticAnalyzer
             {
                 if (
                     memberAccess.Name is GenericNameSyntax genericName
-                    && genericName.Identifier.Text == "SelectExpr"
+                    && genericName.Identifier.Text == SelectExprHelper.MethodName
                     && genericName.TypeArgumentList.Arguments.Count >= 2
                 )
                 {

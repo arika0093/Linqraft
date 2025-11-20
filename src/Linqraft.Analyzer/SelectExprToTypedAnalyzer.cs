@@ -2,6 +2,7 @@ using System;
 using System.Collections.Immutable;
 using System.Linq;
 using System.Text;
+using Linqraft.Core;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
@@ -105,11 +106,11 @@ public class SelectExprToTypedAnalyzer : DiagnosticAnalyzer
         {
             case MemberAccessExpressionSyntax memberAccess:
                 // Check if it's SelectExpr and NOT a generic name (no type arguments)
-                return memberAccess.Name.Identifier.Text == "SelectExpr"
+                return memberAccess.Name.Identifier.Text == SelectExprHelper.MethodName
                     && memberAccess.Name is not GenericNameSyntax;
 
             case IdentifierNameSyntax identifier:
-                return identifier.Identifier.Text == "SelectExpr";
+                return identifier.Identifier.Text == SelectExprHelper.MethodName;
 
             default:
                 return false;
@@ -177,115 +178,6 @@ public class SelectExprToTypedAnalyzer : DiagnosticAnalyzer
         AnonymousObjectCreationExpressionSyntax anonymousType
     )
     {
-        string baseName;
-
-        // Try to infer a name from the context
-        // Walk up the tree to find the relevant context
-        var current = invocation.Parent;
-        while (current != null)
-        {
-            switch (current)
-            {
-                // Check for variable declaration: var name = query.SelectExpr(...)
-                case EqualsValueClauseSyntax equalsValue
-                    when equalsValue.Parent is VariableDeclaratorSyntax declarator:
-                    var varName = declarator.Identifier.Text;
-                    baseName = ToPascalCase(varName) + "Dto";
-                    return baseName + "_" + GenerateHash(anonymousType);
-
-                // Check for assignment: name = query.SelectExpr(...)
-                case AssignmentExpressionSyntax assignment
-                    when assignment.Left is IdentifierNameSyntax identifier:
-                    baseName = ToPascalCase(identifier.Identifier.Text) + "Dto";
-                    return baseName + "_" + GenerateHash(anonymousType);
-
-                // Stop at statement level
-                case StatementSyntax:
-                    break;
-
-                default:
-                    current = current.Parent;
-                    continue;
-            }
-            break;
-        }
-
-        // Check for return statement with method name
-        var methodDecl = invocation.Ancestors().OfType<MethodDeclarationSyntax>().FirstOrDefault();
-        if (methodDecl != null)
-        {
-            var methodName = methodDecl.Identifier.Text;
-            // Remove Get prefix if present
-            if (methodName.StartsWith("Get"))
-            {
-                methodName = methodName.Substring(3);
-            }
-            baseName = methodName + "Dto";
-            return baseName + "_" + GenerateHash(anonymousType);
-        }
-
-        // Default fallback
-        return "ResultDto_" + GenerateHash(anonymousType);
-    }
-
-    private static string GenerateHash(AnonymousObjectCreationExpressionSyntax anonymousType)
-    {
-        // Generate hash based on property names
-        var sb = new StringBuilder();
-        foreach (var initializer in anonymousType.Initializers)
-        {
-            string propertyName;
-            if (initializer.NameEquals != null)
-            {
-                propertyName = initializer.NameEquals.Name.Identifier.Text;
-            }
-            else
-            {
-                propertyName = GetPropertyNameFromExpression(initializer.Expression);
-            }
-            sb.Append(propertyName);
-            sb.Append(';');
-        }
-
-        // Create a deterministic hash using FNV-1a algorithm
-        var str = sb.ToString();
-        uint hash = 2166136261;
-        foreach (char c in str)
-        {
-            hash ^= c;
-            hash *= 16777619;
-        }
-
-        var hashString = new StringBuilder(8);
-
-        // Convert to uppercase letters and digits (A-Z, 0-9)
-        const string chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
-        for (int i = 0; i < 8; i++)
-        {
-            hashString.Append(chars[(int)(hash % chars.Length)]);
-            hash /= (uint)chars.Length;
-        }
-
-        return hashString.ToString();
-    }
-
-    private static string GetPropertyNameFromExpression(ExpressionSyntax expression)
-    {
-        return expression switch
-        {
-            MemberAccessExpressionSyntax memberAccess => memberAccess.Name.Identifier.Text,
-            IdentifierNameSyntax identifier => identifier.Identifier.Text,
-            ConditionalAccessExpressionSyntax conditionalAccess
-                when conditionalAccess.WhenNotNull is MemberBindingExpressionSyntax memberBinding =>
-                memberBinding.Name.Identifier.Text,
-            _ => "Property",
-        };
-    }
-
-    private static string ToPascalCase(string name)
-    {
-        if (string.IsNullOrEmpty(name))
-            return name;
-        return char.ToUpperInvariant(name[0]) + name.Substring(1);
+        return DtoNamingHelper.GenerateDtoName(invocation, anonymousType);
     }
 }

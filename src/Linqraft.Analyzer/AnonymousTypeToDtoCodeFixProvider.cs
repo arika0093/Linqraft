@@ -296,53 +296,7 @@ public class AnonymousTypeToDtoCodeFixProvider : CodeFixProvider
         AnonymousObjectCreationExpressionSyntax anonymousObject
     )
     {
-        // Try to infer a name from the context
-        var parent = anonymousObject.Parent;
-
-        // Check for variable declaration: var name = new { ... }
-        if (parent is EqualsValueClauseSyntax equalsValue)
-        {
-            if (equalsValue.Parent is VariableDeclaratorSyntax declarator)
-            {
-                var varName = declarator.Identifier.Text;
-                return ToPascalCase(varName) + "Dto";
-            }
-        }
-
-        // Check for assignment: name = new { ... }
-        if (parent is AssignmentExpressionSyntax assignment)
-        {
-            if (assignment.Left is IdentifierNameSyntax identifier)
-            {
-                return ToPascalCase(identifier.Identifier.Text) + "Dto";
-            }
-        }
-
-        // Check for return statement with method name
-        var methodDecl = anonymousObject
-            .Ancestors()
-            .OfType<MethodDeclarationSyntax>()
-            .FirstOrDefault();
-        if (methodDecl != null)
-        {
-            var methodName = methodDecl.Identifier.Text;
-            // Remove Get prefix if present
-            if (methodName.StartsWith("Get"))
-            {
-                methodName = methodName.Substring(3);
-            }
-            return methodName + "Dto";
-        }
-
-        // Default fallback
-        return "GeneratedDto";
-    }
-
-    private static string ToPascalCase(string name)
-    {
-        if (string.IsNullOrEmpty(name))
-            return name;
-        return char.ToUpperInvariant(name[0]) + name.Substring(1);
+        return DtoNamingHelper.GenerateDtoClassName(anonymousObject);
     }
 
     private static string BuildDtoFile(

@@ -34,9 +34,7 @@ public record DtoStructure(ITypeSymbol SourceType, List<DtoProperty> Properties)
             Properties.Select(p => $"{p.Name}:{p.TypeName}:{p.IsNullable}")
         );
         var signature = $"{signatureFullName}|{signatureProps}";
-        using var sha256 = System.Security.Cryptography.SHA256.Create();
-        var hash = sha256.ComputeHash(System.Text.Encoding.UTF8.GetBytes(signature));
-        return BitConverter.ToString(hash).Replace("-", "")[..8]; // Use first 8 characters
+        return HashUtility.GenerateSha256Hash(signature);
     }
 
     /// <summary>
