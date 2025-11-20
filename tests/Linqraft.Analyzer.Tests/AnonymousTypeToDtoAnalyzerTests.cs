@@ -616,4 +616,130 @@ class Test
 
         await VerifyCS.VerifyAnalyzerAsync(test, expected);
     }
+
+    [Fact]
+    public async Task AnonymousType_InsideSelectExprWithoutTypeArgs_ReportsDiagnostic()
+    {
+        var test =
+            @"
+using System.Linq;
+using System.Collections.Generic;
+
+class Test
+{
+    void Method()
+    {
+        var list = new List<int> { 1, 2, 3 };
+        var result = list.AsQueryable().SelectExpr(x => {|#0:new { Value = x }|});
+    }
+}
+
+static class Extensions
+{
+    public static IQueryable<TResult> SelectExpr<TSource, TResult>(
+        this IQueryable<TSource> source,
+        System.Linq.Expressions.Expression<System.Func<TSource, TResult>> selector)
+        => source.Select(selector);
+}";
+
+        // Diagnostic expected because SelectExpr has no explicit type arguments
+        var expected = VerifyCS
+            .Diagnostic(AnonymousTypeToDtoAnalyzer.DiagnosticId)
+            .WithLocation(0)
+            .WithSeverity(DiagnosticSeverity.Info);
+
+        await VerifyCS.VerifyAnalyzerAsync(test, expected);
+    }
+
+    [Fact]
+    public async Task AnonymousType_InsideSelectExprWithTypeArgs_NoDiagnostic()
+    {
+        var test =
+            @"
+using System.Linq;
+using System.Collections.Generic;
+
+class Sample
+{
+    public int Id { get; set; }
+}
+
+class SampleDto
+{
+    public int Id { get; set; }
+}
+
+class Test
+{
+    void Method()
+    {
+        var list = new List<Sample>();
+        var result = list.AsQueryable().SelectExpr<Sample, SampleDto>(x => new { x.Id });
+    }
+}
+
+static class Extensions
+{
+    public static IQueryable<TResult> SelectExpr<TSource, TResult>(
+        this IQueryable<TSource> source,
+        System.Linq.Expressions.Expression<System.Func<TSource, object>> selector)
+        => throw new System.NotImplementedException();
+}";
+
+        // No diagnostic expected because it's inside SelectExpr
+        await VerifyCS.VerifyAnalyzerAsync(test);
+    }
+
+    [Fact]
+    public async Task AnonymousType_InsideNestedSelectExprWithoutTypeArgs_ReportsDiagnostic()
+    {
+        var test =
+            @"
+using System.Linq;
+using System.Collections.Generic;
+
+class Parent
+{
+    public int Id { get; set; }
+    public List<Child> Children { get; set; }
+}
+
+class Child
+{
+    public string Name { get; set; }
+}
+
+class Test
+{
+    void Method()
+    {
+        var list = new List<Parent>();
+        var result = list.AsQueryable().SelectExpr(x => {|#0:new
+        {
+            x.Id,
+            ChildNames = x.Children.Select(c => {|#1:new { c.Name }|}).ToList()
+        }|});
+    }
+}
+
+static class Extensions
+{
+    public static IQueryable<TResult> SelectExpr<TSource, TResult>(
+        this IQueryable<TSource> source,
+        System.Linq.Expressions.Expression<System.Func<TSource, TResult>> selector)
+        => source.Select(selector);
+}";
+
+        // Diagnostic expected for both anonymous types because SelectExpr has no explicit type arguments
+        var expected1 = VerifyCS
+            .Diagnostic(AnonymousTypeToDtoAnalyzer.DiagnosticId)
+            .WithLocation(0)
+            .WithSeverity(DiagnosticSeverity.Info);
+        var expected2 = VerifyCS
+            .Diagnostic(AnonymousTypeToDtoAnalyzer.DiagnosticId)
+            .WithLocation(1)
+            .WithSeverity(DiagnosticSeverity.Info);
+
+        await VerifyCS.VerifyAnalyzerAsync(test, expected1, expected2);
+    }
 }

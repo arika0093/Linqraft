@@ -62,6 +62,12 @@ public class AnonymousTypeToDtoAnalyzer : DiagnosticAnalyzer
             return;
         }
 
+        // Skip if this is inside a SelectExpr call (Linqraft handles these)
+        if (IsInsideSelectExprCall(anonymousObject))
+        {
+            return;
+        }
+
         // Get the semantic model and check if we can analyze this
         var semanticModel = context.SemanticModel;
         var typeInfo = semanticModel.GetTypeInfo(anonymousObject, context.CancellationToken);
@@ -137,5 +143,77 @@ public class AnonymousTypeToDtoAnalyzer : DiagnosticAnalyzer
         }
 
         return false;
+    }
+
+    private static bool IsInsideSelectExprCall(
+        AnonymousObjectCreationExpressionSyntax anonymousObject
+    )
+    {
+        var current = anonymousObject.Parent;
+
+        while (current != null)
+        {
+            // Check if we're inside an invocation expression
+            if (current is InvocationExpressionSyntax invocation)
+            {
+                // Check if it's a SelectExpr call with type arguments
+                if (IsSelectExprWithTypeArguments(invocation.Expression))
+                {
+                    return true;
+                }
+            }
+
+            // Stop at method/property declarations
+            if (current is MemberDeclarationSyntax)
+            {
+                break;
+            }
+
+            current = current.Parent;
+        }
+
+        return false;
+    }
+
+    private static bool IsSelectExprWithTypeArguments(ExpressionSyntax expression)
+    {
+        // Get the method name and check for type arguments
+        switch (expression)
+        {
+            // obj.SelectExpr<T, TDto>(...)
+            case MemberAccessExpressionSyntax memberAccess:
+                if (memberAccess.Name.Identifier.Text == "SelectExpr" &&
+                    memberAccess.Name is GenericNameSyntax genericName &&
+                    genericName.TypeArgumentList.Arguments.Count >= 2)
+                {
+                    return true;
+                }
+                break;
+
+            // SelectExpr<T, TDto>(...) - unlikely but handle it
+            case GenericNameSyntax genericIdentifier:
+                if (genericIdentifier.Identifier.Text == "SelectExpr" &&
+                    genericIdentifier.TypeArgumentList.Arguments.Count >= 2)
+                {
+                    return true;
+                }
+                break;
+        }
+
+        return false;
+    }
+
+    private static string? GetMethodName(ExpressionSyntax expression)
+    {
+        return expression switch
+        {
+            // obj.Method()
+            MemberAccessExpressionSyntax memberAccess => memberAccess.Name.Identifier.Text,
+            // Method()
+            IdentifierNameSyntax identifier => identifier.Identifier.Text,
+            // obj.Method<T>()
+            MemberBindingExpressionSyntax memberBinding => memberBinding.Name.Identifier.Text,
+            _ => null,
+        };
     }
 }
