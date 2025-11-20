@@ -422,8 +422,7 @@ public class AnonymousTypeToDtoCodeFixProvider : CodeFixProvider
             // Get the lambda argument
             if (
                 invocation.ArgumentList.Arguments.Count > 0
-                && invocation.ArgumentList.Arguments[0].Expression
-                    is LambdaExpressionSyntax lambda
+                && invocation.ArgumentList.Arguments[0].Expression is LambdaExpressionSyntax lambda
             )
             {
                 // Check if lambda body is an anonymous object
