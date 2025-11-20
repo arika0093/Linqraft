@@ -235,43 +235,9 @@ public class LocalVariableCaptureAnalyzer : DiagnosticAnalyzer
             return variablesToCapture;
         }
 
-        // Find all identifier references in the lambda body
-        var identifiers = bodyExpression.DescendantNodes().OfType<IdentifierNameSyntax>();
-
-        foreach (var identifier in identifiers)
-        {
-            var identifierName = identifier.Identifier.Text;
-
-            // Skip if it's a lambda parameter
-            if (lambdaParameters.Contains(identifierName))
-            {
-                continue;
-            }
-
-            // Skip if it's part of a member access expression on the right side
-            // (e.g., s.Property where Property is not a local variable)
-            if (IsPartOfMemberAccess(identifier))
-            {
-                continue;
-            }
-
-            // Get symbol information
-            var symbolInfo = semanticModel.GetSymbolInfo(identifier);
-            var symbol = symbolInfo.Symbol;
-
-            if (symbol == null)
-            {
-                continue;
-            }
-
-            // Check if it needs to be captured
-            if (NeedsCapture(symbol, lambda, lambdaParameters))
-            {
-                variablesToCapture.Add((identifierName, identifier.GetLocation()));
-            }
-        }
-
-        // Also find member access expressions (this.Property, Class.StaticMember)
+        // First, find all member access expressions that will be captured
+        // We'll use this to skip identifiers that are part of these member accesses
+        var memberAccessesToCapture = new HashSet<ExpressionSyntax>();
         var memberAccesses = bodyExpression
             .DescendantNodes()
             .OfType<MemberAccessExpressionSyntax>();
@@ -300,13 +266,147 @@ public class LocalVariableCaptureAnalyzer : DiagnosticAnalyzer
             if ((symbol.Kind == SymbolKind.Field || symbol.Kind == SymbolKind.Property))
             {
                 // Check if it's 'this.Member' or 'Type.StaticMember'
-                if (
-                    memberAccess.Expression is ThisExpressionSyntax
-                    || (symbol.IsStatic && memberAccess.Expression is IdentifierNameSyntax)
-                )
+                if (memberAccess.Expression is ThisExpressionSyntax)
+                {
+                    memberAccessesToCapture.Add(memberAccess.Expression);
+                }
+                else if (symbol.IsStatic && memberAccess.Expression is IdentifierNameSyntax)
+                {
+                    memberAccessesToCapture.Add(memberAccess.Expression);
+                }
+                else if (memberAccess.Expression is IdentifierNameSyntax exprIdentifier)
+                {
+                    // Check if the expression is a local variable or parameter from outer scope
+                    var exprSymbolInfo = semanticModel.GetSymbolInfo(exprIdentifier);
+                    var exprSymbol = exprSymbolInfo.Symbol;
+
+                    if (exprSymbol != null)
+                    {
+                        // Check if it's a local variable or parameter from outer scope
+                        if (
+                            exprSymbol.Kind == SymbolKind.Local
+                            || exprSymbol.Kind == SymbolKind.Parameter
+                        )
+                        {
+                            // Ensure it's from outer scope, not declared inside the lambda
+                            var exprSymbolLocation = exprSymbol.Locations.FirstOrDefault();
+                            if (
+                                exprSymbolLocation != null
+                                && !lambda.Span.Contains(exprSymbolLocation.SourceSpan)
+                            )
+                            {
+                                // Mark this expression as part of a member access we're capturing
+                                memberAccessesToCapture.Add(memberAccess.Expression);
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        // Find all identifier references in the lambda body
+        var identifiers = bodyExpression.DescendantNodes().OfType<IdentifierNameSyntax>();
+
+        foreach (var identifier in identifiers)
+        {
+            var identifierName = identifier.Identifier.Text;
+
+            // Skip if it's a lambda parameter
+            if (lambdaParameters.Contains(identifierName))
+            {
+                continue;
+            }
+
+            // Skip if it's part of a member access expression on the right side
+            // (e.g., s.Property where Property is not a local variable)
+            if (IsPartOfMemberAccess(identifier))
+            {
+                continue;
+            }
+
+            // Skip if this identifier is the expression part of a member access that we're capturing
+            if (memberAccessesToCapture.Contains(identifier))
+            {
+                continue;
+            }
+
+            // Get symbol information
+            var symbolInfo = semanticModel.GetSymbolInfo(identifier);
+            var symbol = symbolInfo.Symbol;
+
+            if (symbol == null)
+            {
+                continue;
+            }
+
+            // Check if it needs to be captured
+            if (NeedsCapture(symbol, lambda, lambdaParameters))
+            {
+                variablesToCapture.Add((identifierName, identifier.GetLocation()));
+            }
+        }
+
+        // Now add member access expressions
+        foreach (var memberAccess in memberAccesses)
+        {
+            // Skip if this is a lambda parameter access (e.g., s.Property)
+            if (
+                memberAccess.Expression is IdentifierNameSyntax exprId
+                && lambdaParameters.Contains(exprId.Identifier.Text)
+            )
+            {
+                continue;
+            }
+
+            // Get symbol information for the member being accessed
+            var symbolInfo = semanticModel.GetSymbolInfo(memberAccess);
+            var symbol = symbolInfo.Symbol;
+
+            if (symbol == null)
+            {
+                continue;
+            }
+
+            // Check if this is a field or property that needs to be captured
+            if ((symbol.Kind == SymbolKind.Field || symbol.Kind == SymbolKind.Property))
+            {
+                // Check if it's 'this.Member' or 'Type.StaticMember'
+                if (memberAccess.Expression is ThisExpressionSyntax)
                 {
                     var memberName = memberAccess.Name.Identifier.Text;
                     variablesToCapture.Add((memberName, memberAccess.GetLocation()));
+                }
+                else if (symbol.IsStatic && memberAccess.Expression is IdentifierNameSyntax)
+                {
+                    var memberName = memberAccess.Name.Identifier.Text;
+                    variablesToCapture.Add((memberName, memberAccess.GetLocation()));
+                }
+                else if (memberAccess.Expression is IdentifierNameSyntax exprIdentifier)
+                {
+                    // Check if the expression is a local variable or parameter from outer scope
+                    var exprSymbolInfo = semanticModel.GetSymbolInfo(exprIdentifier);
+                    var exprSymbol = exprSymbolInfo.Symbol;
+
+                    if (exprSymbol != null)
+                    {
+                        // Check if it's a local variable or parameter from outer scope
+                        if (
+                            exprSymbol.Kind == SymbolKind.Local
+                            || exprSymbol.Kind == SymbolKind.Parameter
+                        )
+                        {
+                            // Ensure it's from outer scope, not declared inside the lambda
+                            var exprSymbolLocation = exprSymbol.Locations.FirstOrDefault();
+                            if (
+                                exprSymbolLocation != null
+                                && !lambda.Span.Contains(exprSymbolLocation.SourceSpan)
+                            )
+                            {
+                                var memberName = memberAccess.Name.Identifier.Text;
+                                variablesToCapture.Add((memberName, memberAccess.GetLocation()));
+                            }
+                        }
+                    }
                 }
             }
         }

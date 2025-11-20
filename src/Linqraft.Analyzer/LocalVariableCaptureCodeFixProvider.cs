@@ -80,21 +80,78 @@ public class LocalVariableCaptureCodeFixProvider : CodeFixProvider
         // Get lambda parameter names
         var lambdaParameters = GetLambdaParameterNames(lambda);
 
-        // Find all variables that need to be captured
-        var variablesToCapture = FindVariablesToCapture(lambda, lambdaParameters, semanticModel);
+        // Find all variables that need to be captured (simple local variables)
+        var simpleVariablesToCapture = FindSimpleVariablesToCapture(
+            lambda,
+            lambdaParameters,
+            semanticModel
+        );
 
-        if (variablesToCapture.Count == 0)
+        // Find member accesses that need to be captured with local variable declarations
+        var memberAccessesToCapture = FindMemberAccessesToCapture(
+            lambda,
+            lambdaParameters,
+            semanticModel
+        );
+
+        if (simpleVariablesToCapture.Count == 0 && memberAccessesToCapture.Count == 0)
             return document;
 
         // Get already captured variables
         var capturedVariables = GetCapturedVariables(invocation);
 
-        // Combine existing and new variables
-        var allVariables = new HashSet<string>(capturedVariables);
-        allVariables.UnionWith(variablesToCapture);
+        // Generate unique captured variable names and create variable declarations for member accesses
+        var captureDeclarations = new List<LocalDeclarationStatementSyntax>();
+        var captureMapping = new Dictionary<ExpressionSyntax, string>();
+        var allCaptureNames = new HashSet<string>(capturedVariables);
 
-        // Create capture argument with anonymous object containing all variables
-        var captureProperties = allVariables
+        // Add simple local variables to capture (without creating declarations)
+        allCaptureNames.UnionWith(simpleVariablesToCapture);
+
+        // Process member accesses - create local variable declarations
+        foreach (var (expr, memberName) in memberAccessesToCapture)
+        {
+            var capturedVarName = $"captured_{memberName}";
+
+            // Ensure the name is unique
+            int suffix = 1;
+            while (allCaptureNames.Contains(capturedVarName))
+            {
+                capturedVarName = $"captured_{memberName}{suffix}";
+                suffix++;
+            }
+
+            allCaptureNames.Add(capturedVarName);
+            captureMapping[expr] = capturedVarName;
+
+            // Create local variable declaration: var captured_X = expr;
+            var declaration = SyntaxFactory.LocalDeclarationStatement(
+                SyntaxFactory.VariableDeclaration(
+                    SyntaxFactory.IdentifierName("var"),
+                    SyntaxFactory.SingletonSeparatedList(
+                        SyntaxFactory.VariableDeclarator(
+                            SyntaxFactory.Identifier(capturedVarName),
+                            null,
+                            SyntaxFactory.EqualsValueClause(expr)
+                        )
+                    )
+                )
+            );
+
+            captureDeclarations.Add(declaration);
+        }
+
+        // Replace member access expressions in the lambda with captured variable names
+        var newLambda =
+            captureMapping.Count > 0
+                ? lambda.ReplaceNodes(
+                    captureMapping.Keys,
+                    (original, _) => SyntaxFactory.IdentifierName(captureMapping[original])
+                )
+                : lambda;
+
+        // Create capture argument with all variables (existing + new)
+        var captureProperties = allCaptureNames
             .OrderBy(name => name)
             .Select(name =>
                 SyntaxFactory.AnonymousObjectMemberDeclarator(SyntaxFactory.IdentifierName(name))
@@ -112,14 +169,18 @@ public class LocalVariableCaptureCodeFixProvider : CodeFixProvider
             captureObject
         );
 
+        // Update or add capture argument
         InvocationExpressionSyntax newInvocation;
-
-        // Check if there's already a capture argument to replace
         var existingCaptureArgIndex = FindCaptureArgumentIndex(invocation);
         if (existingCaptureArgIndex >= 0)
         {
-            // Replace existing capture argument
             var arguments = invocation.ArgumentList.Arguments.ToList();
+            // Replace lambda argument if it changed
+            var lambdaArgIndex = arguments.FindIndex(a => a.Expression is LambdaExpressionSyntax);
+            if (lambdaArgIndex >= 0 && newLambda != lambda)
+            {
+                arguments[lambdaArgIndex] = arguments[lambdaArgIndex].WithExpression(newLambda);
+            }
             arguments[existingCaptureArgIndex] = captureArgument;
             var newArgumentList = SyntaxFactory.ArgumentList(
                 SyntaxFactory.SeparatedList(arguments)
@@ -128,15 +189,64 @@ public class LocalVariableCaptureCodeFixProvider : CodeFixProvider
         }
         else
         {
-            // Add new capture argument
-            var newArgumentList = invocation.ArgumentList.AddArguments(captureArgument);
+            var arguments = invocation.ArgumentList.Arguments.ToList();
+            // Replace lambda argument if it changed
+            var lambdaArgIndex = arguments.FindIndex(a => a.Expression is LambdaExpressionSyntax);
+            if (lambdaArgIndex >= 0 && newLambda != lambda)
+            {
+                arguments[lambdaArgIndex] = arguments[lambdaArgIndex].WithExpression(newLambda);
+            }
+            arguments.Add(captureArgument);
+            var newArgumentList = SyntaxFactory.ArgumentList(
+                SyntaxFactory.SeparatedList(arguments)
+            );
             newInvocation = invocation.WithArgumentList(newArgumentList);
         }
 
-        // Replace the old invocation with the new one
-        var newRoot = root.ReplaceNode(invocation, newInvocation);
+        // Insert capture declarations before the invocation statement
+        var invocationStatement = invocation
+            .AncestorsAndSelf()
+            .OfType<StatementSyntax>()
+            .FirstOrDefault();
+        if (invocationStatement != null && captureDeclarations.Count > 0)
+        {
+            var newRoot = root.ReplaceNode(invocation, newInvocation);
 
-        return document.WithSyntaxRoot(newRoot);
+            // Find the statement again in the new tree
+            var newInvocationStatement = newRoot
+                .DescendantNodes()
+                .OfType<InvocationExpressionSyntax>()
+                .Where(inv => inv.ToString().Contains("SelectExpr"))
+                .Select(inv => inv.AncestorsAndSelf().OfType<StatementSyntax>().FirstOrDefault())
+                .FirstOrDefault(stmt => stmt != null);
+
+            if (newInvocationStatement != null)
+            {
+                // Insert declarations before the statement
+                var parentBlock = newInvocationStatement.Parent as BlockSyntax;
+                if (parentBlock != null)
+                {
+                    var statementIndex = parentBlock.Statements.IndexOf(newInvocationStatement);
+                    if (statementIndex >= 0)
+                    {
+                        var newStatements = parentBlock.Statements.InsertRange(
+                            statementIndex,
+                            captureDeclarations
+                        );
+                        var newBlock = parentBlock.WithStatements(newStatements);
+                        newRoot = newRoot.ReplaceNode(parentBlock, newBlock);
+                    }
+                }
+            }
+
+            return document.WithSyntaxRoot(newRoot);
+        }
+        else
+        {
+            // No capture declarations, just replace the invocation
+            var newRoot = root.ReplaceNode(invocation, newInvocation);
+            return document.WithSyntaxRoot(newRoot);
+        }
     }
 
     private static int FindCaptureArgumentIndex(InvocationExpressionSyntax invocation)
@@ -261,7 +371,7 @@ public class LocalVariableCaptureCodeFixProvider : CodeFixProvider
         };
     }
 
-    private static HashSet<string> FindVariablesToCapture(
+    private static HashSet<string> FindSimpleVariablesToCapture(
         LambdaExpressionSyntax lambda,
         ImmutableHashSet<string> lambdaParameters,
         SemanticModel semanticModel
@@ -280,42 +390,9 @@ public class LocalVariableCaptureCodeFixProvider : CodeFixProvider
             return variablesToCapture;
         }
 
-        // Find all identifier references in the lambda body
-        var identifiers = bodyExpression.DescendantNodes().OfType<IdentifierNameSyntax>();
-
-        foreach (var identifier in identifiers)
-        {
-            var identifierName = identifier.Identifier.Text;
-
-            // Skip if it's a lambda parameter
-            if (lambdaParameters.Contains(identifierName))
-            {
-                continue;
-            }
-
-            // Skip if it's part of a member access expression on the right side
-            if (IsPartOfMemberAccess(identifier))
-            {
-                continue;
-            }
-
-            // Get symbol information
-            var symbolInfo = semanticModel.GetSymbolInfo(identifier);
-            var symbol = symbolInfo.Symbol;
-
-            if (symbol == null)
-            {
-                continue;
-            }
-
-            // Check if it needs to be captured
-            if (NeedsCapture(symbol, lambda, lambdaParameters))
-            {
-                variablesToCapture.Add(identifierName);
-            }
-        }
-
-        // Also find member access expressions (this.Property, Class.StaticMember)
+        // First, find all member access expressions that will be captured
+        // We'll use this to skip identifiers that are part of these member accesses
+        var memberAccessExpressionsToCapture = new HashSet<ExpressionSyntax>();
         var memberAccesses = bodyExpression
             .DescendantNodes()
             .OfType<MemberAccessExpressionSyntax>();
@@ -343,19 +420,207 @@ public class LocalVariableCaptureCodeFixProvider : CodeFixProvider
             // Check if this is a field or property that needs to be captured
             if ((symbol.Kind == SymbolKind.Field || symbol.Kind == SymbolKind.Property))
             {
-                // Check if it's 'this.Member' or 'Type.StaticMember'
-                if (
-                    memberAccess.Expression is ThisExpressionSyntax
-                    || (symbol.IsStatic && memberAccess.Expression is IdentifierNameSyntax)
-                )
+                // Check if it's 'this.Member' or 'Type.StaticMember' or 'instance.Member'
+                if (memberAccess.Expression is ThisExpressionSyntax)
                 {
-                    var memberName = memberAccess.Name.Identifier.Text;
-                    variablesToCapture.Add(memberName);
+                    memberAccessExpressionsToCapture.Add(memberAccess.Expression);
+                }
+                else if (symbol.IsStatic && memberAccess.Expression is IdentifierNameSyntax)
+                {
+                    memberAccessExpressionsToCapture.Add(memberAccess.Expression);
+                }
+                else if (memberAccess.Expression is IdentifierNameSyntax exprIdentifier)
+                {
+                    // Check if the expression is a local variable or parameter from outer scope
+                    var exprSymbolInfo = semanticModel.GetSymbolInfo(exprIdentifier);
+                    var exprSymbol = exprSymbolInfo.Symbol;
+
+                    if (exprSymbol != null)
+                    {
+                        // Check if it's a local variable or parameter from outer scope
+                        if (
+                            exprSymbol.Kind == SymbolKind.Local
+                            || exprSymbol.Kind == SymbolKind.Parameter
+                        )
+                        {
+                            // Ensure it's from outer scope, not declared inside the lambda
+                            var exprSymbolLocation = exprSymbol.Locations.FirstOrDefault();
+                            if (
+                                exprSymbolLocation != null
+                                && !lambda.Span.Contains(exprSymbolLocation.SourceSpan)
+                            )
+                            {
+                                // Mark this expression as part of a member access we're capturing
+                                memberAccessExpressionsToCapture.Add(memberAccess.Expression);
+                            }
+                        }
+                    }
                 }
             }
         }
 
+        // Find all identifier references in the lambda body
+        var identifiers = bodyExpression.DescendantNodes().OfType<IdentifierNameSyntax>();
+
+        foreach (var identifier in identifiers)
+        {
+            var identifierName = identifier.Identifier.Text;
+
+            // Skip if it's a lambda parameter
+            if (lambdaParameters.Contains(identifierName))
+            {
+                continue;
+            }
+
+            // Skip if it's part of a member access expression on the right side
+            if (IsPartOfMemberAccess(identifier))
+            {
+                continue;
+            }
+
+            // Skip if this identifier is the expression part of a member access that we're capturing
+            if (memberAccessExpressionsToCapture.Contains(identifier))
+            {
+                continue;
+            }
+
+            // Get symbol information
+            var symbolInfo = semanticModel.GetSymbolInfo(identifier);
+            var symbol = symbolInfo.Symbol;
+
+            if (symbol == null)
+            {
+                continue;
+            }
+
+            // Check if it needs to be captured (local variables, parameters, fields, and properties)
+            if (symbol.Kind == SymbolKind.Local)
+            {
+                // Skip const local variables - they are compile-time values
+                if (symbol is ILocalSymbol localSymbol && localSymbol.IsConst)
+                {
+                    continue;
+                }
+
+                // Ensure this is truly a local variable from outer scope
+                var symbolLocation = symbol.Locations.FirstOrDefault();
+                if (symbolLocation != null && !lambda.Span.Contains(symbolLocation.SourceSpan))
+                {
+                    variablesToCapture.Add(identifierName);
+                }
+            }
+            else if (symbol.Kind == SymbolKind.Parameter && !lambdaParameters.Contains(symbol.Name))
+            {
+                // This is a parameter from an outer scope
+                var symbolLocation = symbol.Locations.FirstOrDefault();
+                if (symbolLocation != null && !lambda.Span.Contains(symbolLocation.SourceSpan))
+                {
+                    variablesToCapture.Add(identifierName);
+                }
+            }
+            else if (symbol.Kind == SymbolKind.Field || symbol.Kind == SymbolKind.Property)
+            {
+                // This is a field or property accessed without an explicit receiver
+                // (implicit 'this' access)
+                variablesToCapture.Add(identifierName);
+            }
+        }
+
         return variablesToCapture;
+    }
+
+    private static List<(
+        ExpressionSyntax Expression,
+        string MemberName
+    )> FindMemberAccessesToCapture(
+        LambdaExpressionSyntax lambda,
+        ImmutableHashSet<string> lambdaParameters,
+        SemanticModel semanticModel
+    )
+    {
+        var memberAccessesToCapture = new List<(ExpressionSyntax, string)>();
+        var bodyExpression = lambda switch
+        {
+            SimpleLambdaExpressionSyntax simple => simple.Body,
+            ParenthesizedLambdaExpressionSyntax paren => paren.Body,
+            _ => null,
+        };
+
+        if (bodyExpression == null)
+        {
+            return memberAccessesToCapture;
+        }
+
+        // Find member access expressions that need to be captured with local variables
+        var memberAccesses = bodyExpression
+            .DescendantNodes()
+            .OfType<MemberAccessExpressionSyntax>();
+
+        foreach (var memberAccess in memberAccesses)
+        {
+            // Skip if this is a lambda parameter access (e.g., s.Property)
+            if (
+                memberAccess.Expression is IdentifierNameSyntax exprId
+                && lambdaParameters.Contains(exprId.Identifier.Text)
+            )
+            {
+                continue;
+            }
+
+            // Get symbol information for the member being accessed
+            var symbolInfo = semanticModel.GetSymbolInfo(memberAccess);
+            var symbol = symbolInfo.Symbol;
+
+            if (symbol == null)
+            {
+                continue;
+            }
+
+            // Check if this is a field or property that needs to be captured
+            if ((symbol.Kind == SymbolKind.Field || symbol.Kind == SymbolKind.Property))
+            {
+                // Check if it's 'this.Member' or 'Type.StaticMember' or 'instance.Member'
+                if (memberAccess.Expression is ThisExpressionSyntax)
+                {
+                    var memberName = memberAccess.Name.Identifier.Text;
+                    memberAccessesToCapture.Add((memberAccess, memberName));
+                }
+                else if (symbol.IsStatic && memberAccess.Expression is IdentifierNameSyntax)
+                {
+                    var memberName = memberAccess.Name.Identifier.Text;
+                    memberAccessesToCapture.Add((memberAccess, memberName));
+                }
+                else if (memberAccess.Expression is IdentifierNameSyntax exprIdentifier)
+                {
+                    // Check if the expression is a local variable or parameter from outer scope
+                    var exprSymbolInfo = semanticModel.GetSymbolInfo(exprIdentifier);
+                    var exprSymbol = exprSymbolInfo.Symbol;
+
+                    if (exprSymbol != null)
+                    {
+                        // Check if it's a local variable or parameter from outer scope
+                        if (
+                            exprSymbol.Kind == SymbolKind.Local
+                            || exprSymbol.Kind == SymbolKind.Parameter
+                        )
+                        {
+                            // Ensure it's from outer scope, not declared inside the lambda
+                            var exprSymbolLocation = exprSymbol.Locations.FirstOrDefault();
+                            if (
+                                exprSymbolLocation != null
+                                && !lambda.Span.Contains(exprSymbolLocation.SourceSpan)
+                            )
+                            {
+                                var memberName = memberAccess.Name.Identifier.Text;
+                                memberAccessesToCapture.Add((memberAccess, memberName));
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        return memberAccessesToCapture;
     }
 
     private static bool NeedsCapture(
