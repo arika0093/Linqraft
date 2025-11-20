@@ -133,7 +133,6 @@ class Test
     [InlineData("test.cs", false)]
     [InlineData("test.txt", false)]
     [InlineData("", false)]
-    [InlineData(null, false)]
     public void IsInRazorFile_VariousExtensions_ReturnsCorrectResult(
         string filePath,
         bool expectedResult
@@ -157,6 +156,31 @@ class Test
         var result = (bool)method!.Invoke(null, new object[] { tree })!;
 
         Assert.Equal(expectedResult, result);
+    }
+
+    [Fact]
+    public void IsInRazorFile_NullFilePath_ReturnsFalse()
+    {
+        // Use reflection to call the private static method
+        var method = typeof(SelectExprInRazorAnalyzer).GetMethod(
+            "IsInRazorFile",
+            System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Static
+        );
+
+        Assert.NotNull(method);
+
+        // Create a mock SyntaxTree with null file path
+        var code = "class Test { }";
+#pragma warning disable CS8625 // Cannot convert null literal to non-nullable reference type
+        var tree = Microsoft.CodeAnalysis.CSharp.CSharpSyntaxTree.ParseText(
+            code,
+            path: null
+        );
+#pragma warning restore CS8625
+
+        var result = (bool)method!.Invoke(null, new object[] { tree })!;
+
+        Assert.False(result);
     }
 }
 
