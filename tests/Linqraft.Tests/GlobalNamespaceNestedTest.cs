@@ -4,6 +4,7 @@ using Linqraft;
 
 // This file tests generation of DTOs in the global namespace when the source class is also in the global namespace
 // It specifically tests nested .Select calls to ensure nested DTOs are properly generated without namespace issues
+// NOTE: This test class is intentionally in the global namespace (no namespace declaration) to test the global namespace feature
 
 public class GlobalNamespaceNestedTest
 {
