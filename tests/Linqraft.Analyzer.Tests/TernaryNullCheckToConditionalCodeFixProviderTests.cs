@@ -59,8 +59,7 @@ class Test
         var result = new {
                 Id = s.Nest?.Id,
                 Name = s.Nest?.Name
-        }
-;
+            };
     }
 }";
 
@@ -133,8 +132,7 @@ class Test
         var result = new {
                 Id = s.Nest?.Id,
                 ChildName = s.Nest?.Child?.Name
-        }
-;
+            };
     }
 }";
 
@@ -193,8 +191,7 @@ class Test
         var s = new Sample();
         var result = new {
                 Id = s.Nest?.Id
-        }
-;
+            };
     }
 }";
 
@@ -258,8 +255,7 @@ class Test
         var result = new {
                 Id = s.Nest?.Id,
                 Name = s.Nest?.Name
-        }
-;
+            };
     }
 }";
 

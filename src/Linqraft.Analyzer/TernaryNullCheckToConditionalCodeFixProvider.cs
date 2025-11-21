@@ -108,6 +108,11 @@ public class TernaryNullCheckToConditionalCodeFixProvider : CodeFixProvider
         if (converted == null)
             return document;
 
+        // Preserve the leading and trailing trivia from the original conditional expression
+        converted = converted
+            .WithLeadingTrivia(conditional.GetLeadingTrivia())
+            .WithTrailingTrivia(conditional.GetTrailingTrivia());
+
         var newRoot = root.ReplaceNode(conditional, converted);
         return document.WithSyntaxRoot(newRoot);
     }
