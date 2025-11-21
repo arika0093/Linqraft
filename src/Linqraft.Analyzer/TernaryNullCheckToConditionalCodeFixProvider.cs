@@ -73,16 +73,52 @@ public class TernaryNullCheckToConditionalCodeFixProvider : CodeFixProvider
         if (nullChecks.Count == 0)
             return document;
 
-        // Get the "when true" expression
+        // Determine which branch has the object creation
         var whenTrueExpr = RemoveNullableCast(conditional.WhenTrue);
+        var whenFalseExpr = RemoveNullableCast(conditional.WhenFalse);
+        
+        var whenTrueIsNull = IsNullOrNullCast(conditional.WhenTrue);
+        var whenFalseIsNull = IsNullOrNullCast(conditional.WhenFalse);
+
+        ExpressionSyntax objectCreationExpr;
+        List<ExpressionSyntax> effectiveNullChecks;
+
+        if (whenFalseIsNull && !whenTrueIsNull)
+        {
+            // Standard case: condition ? new{} : null
+            objectCreationExpr = whenTrueExpr;
+            effectiveNullChecks = nullChecks;
+        }
+        else if (whenTrueIsNull && !whenFalseIsNull)
+        {
+            // Inverted case: condition ? null : new{}
+            // When the condition is inverted (e.g., p.Child == null ? null : new{}),
+            // the null checks need to be inverted conceptually
+            objectCreationExpr = whenFalseExpr;
+            effectiveNullChecks = InvertNullChecks(nullChecks);
+        }
+        else
+        {
+            // Neither or both are null - shouldn't happen based on analyzer, but handle gracefully
+            return document;
+        }
 
         // Convert the object creation to use null-conditional operators
-        var converted = ConvertObjectCreationToNullConditional(whenTrueExpr, nullChecks);
+        var converted = ConvertObjectCreationToNullConditional(objectCreationExpr, effectiveNullChecks);
         if (converted == null)
             return document;
 
         var newRoot = root.ReplaceNode(conditional, converted);
         return document.WithSyntaxRoot(newRoot);
+    }
+
+    private static List<ExpressionSyntax> InvertNullChecks(List<ExpressionSyntax> nullChecks)
+    {
+        // When the condition is inverted (e.g., p.Child == null instead of p.Child != null),
+        // the null checks extracted should work the same way for our purposes,
+        // since we're converting member accesses to null-conditional anyway.
+        // So we can just return the same list.
+        return nullChecks;
     }
 
     private static ExpressionSyntax? ConvertObjectCreationToNullConditional(
@@ -267,6 +303,21 @@ public class TernaryNullCheckToConditionalCodeFixProvider : CodeFixProvider
             }
         }
 
+        // Check for "x == null" pattern (inverted condition)
+        if (binary.Kind() == SyntaxKind.EqualsExpression)
+        {
+            if (IsNullLiteral(binary.Right))
+            {
+                checkedExpression = binary.Left;
+                return true;
+            }
+            if (IsNullLiteral(binary.Left))
+            {
+                checkedExpression = binary.Right;
+                return true;
+            }
+        }
+
         return false;
     }
 
@@ -274,6 +325,23 @@ public class TernaryNullCheckToConditionalCodeFixProvider : CodeFixProvider
     {
         return expr is LiteralExpressionSyntax literal
             && literal.Kind() == SyntaxKind.NullLiteralExpression;
+    }
+
+    private static bool IsNullOrNullCast(ExpressionSyntax expr)
+    {
+        // Check for simple null
+        if (IsNullLiteral(expr))
+            return true;
+
+        // Check for (Type?)null cast
+        if (
+            expr is CastExpressionSyntax cast
+            && cast.Type is NullableTypeSyntax
+            && IsNullLiteral(cast.Expression)
+        )
+            return true;
+
+        return false;
     }
 
     private static ExpressionSyntax RemoveNullableCast(ExpressionSyntax expr)

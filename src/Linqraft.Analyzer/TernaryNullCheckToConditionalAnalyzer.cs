@@ -59,39 +59,42 @@ public class TernaryNullCheckToConditionalAnalyzer : DiagnosticAnalyzer
             return;
         }
 
-        // Check if the else clause is null
-        if (!IsNullOrNullCast(conditional.WhenFalse))
-        {
-            return;
-        }
-
-        // Check if the when true expression is an object or anonymous object creation
+        // Extract both expressions, removing any type casts
         var whenTrueExpr = RemoveNullableCast(conditional.WhenTrue);
-        if (
-            whenTrueExpr is not ObjectCreationExpressionSyntax
-            && whenTrueExpr is not AnonymousObjectCreationExpressionSyntax
-        )
-        {
-            return;
-        }
+        var whenFalseExpr = RemoveNullableCast(conditional.WhenFalse);
 
-        // Report diagnostic
-        var diagnostic = Diagnostic.Create(Rule, conditional.GetLocation());
-        context.ReportDiagnostic(diagnostic);
+        // Check if one branch is null and the other contains an object creation
+        var whenTrueIsNull = IsNullOrNullCast(conditional.WhenTrue);
+        var whenFalseIsNull = IsNullOrNullCast(conditional.WhenFalse);
+        var whenTrueHasObject = 
+            whenTrueExpr is ObjectCreationExpressionSyntax ||
+            whenTrueExpr is AnonymousObjectCreationExpressionSyntax;
+        var whenFalseHasObject = 
+            whenFalseExpr is ObjectCreationExpressionSyntax ||
+            whenFalseExpr is AnonymousObjectCreationExpressionSyntax;
+
+        // Report diagnostic if one branch is null and the other has an object creation
+        // This handles both: condition ? new{} : null  AND  condition ? null : new{}
+        if ((whenTrueIsNull && whenFalseHasObject) || (whenFalseIsNull && whenTrueHasObject))
+        {
+            var diagnostic = Diagnostic.Create(Rule, conditional.GetLocation());
+            context.ReportDiagnostic(diagnostic);
+        }
     }
 
     private static bool HasNullCheck(ExpressionSyntax condition)
     {
-        // Check for simple null check: x != null
-        if (
-            condition is BinaryExpressionSyntax binary
-            && binary.Kind() == SyntaxKind.NotEqualsExpression
-        )
+        // Check for simple null check: x != null or x == null
+        if (condition is BinaryExpressionSyntax binary)
         {
-            return IsNullLiteral(binary.Left) || IsNullLiteral(binary.Right);
+            if (binary.Kind() == SyntaxKind.NotEqualsExpression || 
+                binary.Kind() == SyntaxKind.EqualsExpression)
+            {
+                return IsNullLiteral(binary.Left) || IsNullLiteral(binary.Right);
+            }
         }
 
-        // Check for chained null checks: x != null && y != null
+        // Check for chained null checks: x != null && y != null, etc.
         if (
             condition is BinaryExpressionSyntax logicalAnd
             && logicalAnd.Kind() == SyntaxKind.LogicalAndExpression

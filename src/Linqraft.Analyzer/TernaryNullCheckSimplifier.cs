@@ -42,20 +42,29 @@ internal static class TernaryNullCheckSimplifier
             if (nullChecks.Count == 0)
                 return null;
 
-            // Check if the else clause is null or a null cast
-            if (!IsNullOrNullCast(ternary.WhenFalse))
-                return null;
-
-            // Extract the "when true" expression, removing any type casts
+            // Extract both expressions, removing any type casts
             var whenTrueExpr = RemoveNullableCast(ternary.WhenTrue);
+            var whenFalseExpr = RemoveNullableCast(ternary.WhenFalse);
 
-            // Do not simplify if the "when true" expression is an object creation
-            // This prevents incorrect conversion that would make nullable fields non-nullable
-            // and cause CS8602 warnings (e.g., s.Nest.Id instead of s.Nest?.Id)
-            if (IsObjectCreation(whenTrueExpr))
+            // Check if one branch is null and the other contains an object creation
+            // If so, don't simplify - this should be handled by LRQS004
+            var whenTrueIsNull = IsNullOrNullCast(ternary.WhenTrue);
+            var whenFalseIsNull = IsNullOrNullCast(ternary.WhenFalse);
+            var whenTrueHasObject = IsObjectCreation(whenTrueExpr);
+            var whenFalseHasObject = IsObjectCreation(whenFalseExpr);
+
+            // If one branch is null and the other has an object creation, skip simplification
+            // This handles both: condition ? new{} : null  AND  condition ? null : new{}
+            if ((whenTrueIsNull && whenFalseHasObject) || (whenFalseIsNull && whenTrueHasObject))
+            {
+                return null;
+            }
+
+            // Only proceed if the else clause is null (standard pattern)
+            if (!whenFalseIsNull)
                 return null;
 
-            // Build the null-conditional chain
+            // Build the null-conditional chain for the WhenTrue expression
             var nullConditionalExpr = BuildNullConditionalChain(whenTrueExpr, nullChecks);
             if (nullConditionalExpr == null)
                 return null;

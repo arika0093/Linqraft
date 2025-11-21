@@ -271,6 +271,76 @@ class Test
         await RunCodeFixTestAsync(test, expected, fixedCode);
     }
 
+    [Fact]
+    public async Task CodeFix_ConvertsTernaryToNullConditional_InvertedCondition()
+    {
+        // Test the inverted case: condition ? null : new{}
+        var test =
+            @"
+class Parent
+{
+    public Child? Child { get; set; }
+}
+
+class Child
+{
+    public string Name { get; set; }
+}
+
+class ChildDto
+{
+    public string Name { get; set; }
+}
+
+class Test
+{
+    void Method()
+    {
+        var p = new Parent();
+        var result = {|#0:p.Child == null 
+            ? null 
+            : new ChildDto {
+                Name = p.Child.Name
+            }|};
+    }
+}";
+
+        var fixedCode =
+            @"
+class Parent
+{
+    public Child? Child { get; set; }
+}
+
+class Child
+{
+    public string Name { get; set; }
+}
+
+class ChildDto
+{
+    public string Name { get; set; }
+}
+
+class Test
+{
+    void Method()
+    {
+        var p = new Parent();
+        var result = new ChildDto {
+                Name = p.Child?.Name
+        };
+    }
+}";
+
+        var expected = new DiagnosticResult(
+            TernaryNullCheckToConditionalAnalyzer.DiagnosticId,
+            DiagnosticSeverity.Info
+        ).WithLocation(0);
+
+        await RunCodeFixTestAsync(test, expected, fixedCode);
+    }
+
     private static async Task RunCodeFixTestAsync(
         string source,
         DiagnosticResult expected,

@@ -129,6 +129,44 @@ class Test
         await RunAnalyzerTestAsync(test);
     }
 
+    [Fact]
+    public async Task Analyzer_DetectsTernaryNullCheckWithInvertedCondition()
+    {
+        // Test inverted condition: x == null ? null : new{}
+        var test =
+            @"
+class Parent
+{
+    public Child? Child { get; set; }
+}
+
+class Child
+{
+    public string Name { get; set; }
+}
+
+class ChildDto
+{
+    public string Name { get; set; }
+}
+
+class Test
+{
+    void Method()
+    {
+        var p = new Parent();
+        var result = {|#0:p.Child == null ? null : new ChildDto { Name = p.Child.Name }|};
+    }
+}";
+
+        var expected = new DiagnosticResult(
+            TernaryNullCheckToConditionalAnalyzer.DiagnosticId,
+            DiagnosticSeverity.Info
+        ).WithLocation(0);
+
+        await RunAnalyzerTestAsync(test, expected);
+    }
+
     private static async Task RunAnalyzerTestAsync(
         string source,
         params DiagnosticResult[] expected
