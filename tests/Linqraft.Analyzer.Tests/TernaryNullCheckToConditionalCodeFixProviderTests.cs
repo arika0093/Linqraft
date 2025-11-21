@@ -206,6 +206,71 @@ class Test
         await RunCodeFixTestAsync(test, expected, fixedCode);
     }
 
+    [Fact]
+    public async Task CodeFix_ConvertsTernaryToNullConditional_IssueScenario()
+    {
+        // This is the exact scenario from the GitHub issue
+        var test =
+            @"
+class Sample
+{
+    public Nest? Nest { get; set; }
+}
+
+class Nest
+{
+    public int Id { get; set; }
+    public string Name { get; set; }
+}
+
+class Test
+{
+    void Method()
+    {
+        var s = new Sample();
+        var result = {|#0:s.Nest != null
+            ? new {
+                Id = s.Nest.Id,
+                Name = s.Nest.Name
+            }
+            : null|};
+    }
+}";
+
+        var fixedCode =
+            @"
+class Sample
+{
+    public Nest? Nest { get; set; }
+}
+
+class Nest
+{
+    public int Id { get; set; }
+    public string Name { get; set; }
+}
+
+class Test
+{
+    void Method()
+    {
+        var s = new Sample();
+        var result = new {
+                Id = s.Nest?.Id,
+                Name = s.Nest?.Name
+        }
+;
+    }
+}";
+
+        var expected = new DiagnosticResult(
+            TernaryNullCheckToConditionalAnalyzer.DiagnosticId,
+            DiagnosticSeverity.Info
+        ).WithLocation(0);
+
+        await RunCodeFixTestAsync(test, expected, fixedCode);
+    }
+
     private static async Task RunCodeFixTestAsync(
         string source,
         DiagnosticResult expected,

@@ -189,7 +189,7 @@ public class TernaryNullCheckToConditionalCodeFixProvider : CodeFixProvider
         private List<string> DecomposeMemberAccessChain(MemberAccessExpressionSyntax node)
         {
             var parts = new List<string>();
-            var current = (ExpressionSyntax)node;
+            var current = (ExpressionSyntax?)node;
 
             while (current != null)
             {
@@ -201,7 +201,7 @@ public class TernaryNullCheckToConditionalCodeFixProvider : CodeFixProvider
                         break;
                     case IdentifierNameSyntax identifier:
                         parts.Insert(0, identifier.Identifier.Text);
-                        current = null!;
+                        current = null;
                         break;
                     default:
                         // Unsupported expression type, return empty to skip rewriting
