@@ -159,6 +159,315 @@ class Test
         await RunCodeFixTestAsync(test, expected, fixedCode, 1);
     }
 
+    [Fact]
+    public async Task CodeFix_SimplifiesTernaryNullCheck_Simple()
+    {
+        var test =
+            @"
+using System.Linq;
+using System.Collections.Generic;
+
+class Sample
+{
+    public int Id { get; set; }
+    public Child Foo { get; set; }
+}
+
+class Child
+{
+    public int Id { get; set; }
+}
+
+class Test
+{
+    void Method()
+    {
+        var list = new List<Sample>();
+        var result = list.AsQueryable().{|#0:Select|}(x => new { Value = x.Foo != null ? x.Foo.Id : null });
+    }
+}";
+
+        var fixedCode =
+            @"
+using System.Linq;
+using System.Collections.Generic;
+
+class Sample
+{
+    public int Id { get; set; }
+    public Child Foo { get; set; }
+}
+
+class Child
+{
+    public int Id { get; set; }
+}
+
+class Test
+{
+    void Method()
+    {
+        var list = new List<Sample>();
+        var result = list.AsQueryable().SelectExpr(x => new { Value = x.Foo?.Id });
+    }
+}";
+
+        var expected = new DiagnosticResult(
+            SelectToSelectExprAnonymousAnalyzer.DiagnosticId,
+            DiagnosticSeverity.Info
+        ).WithLocation(0);
+
+        await RunCodeFixTestAsync(test, expected, fixedCode, 0);
+    }
+
+    [Fact]
+    public async Task CodeFix_SimplifiesTernaryNullCheck_WithTypeCast()
+    {
+        var test =
+            @"
+using System.Linq;
+using System.Collections.Generic;
+
+class Sample
+{
+    public int Id { get; set; }
+    public Child Child { get; set; }
+}
+
+class Child
+{
+    public int Id { get; set; }
+}
+
+class Test
+{
+    void Method()
+    {
+        var list = new List<Sample>();
+        var result = list.AsQueryable().{|#0:Select|}(x => new { Value = x.Child != null ? (int?)x.Child.Id : null });
+    }
+}";
+
+        var fixedCode =
+            @"
+using System.Linq;
+using System.Collections.Generic;
+
+class Sample
+{
+    public int Id { get; set; }
+    public Child Child { get; set; }
+}
+
+class Child
+{
+    public int Id { get; set; }
+}
+
+class Test
+{
+    void Method()
+    {
+        var list = new List<Sample>();
+        var result = list.AsQueryable().SelectExpr(x => new { Value = x.Child?.Id });
+    }
+}";
+
+        var expected = new DiagnosticResult(
+            SelectToSelectExprAnonymousAnalyzer.DiagnosticId,
+            DiagnosticSeverity.Info
+        ).WithLocation(0);
+
+        await RunCodeFixTestAsync(test, expected, fixedCode, 0);
+    }
+
+    [Fact]
+    public async Task CodeFix_SimplifiesTernaryNullCheck_WithNullCast()
+    {
+        var test =
+            @"
+using System.Linq;
+using System.Collections.Generic;
+
+class Sample
+{
+    public int Id { get; set; }
+    public Child Child { get; set; }
+}
+
+class Child
+{
+    public int Id { get; set; }
+}
+
+class Test
+{
+    void Method()
+    {
+        var list = new List<Sample>();
+        var result = list.AsQueryable().{|#0:Select|}(x => new { Value = x.Child != null ? x.Child.Id : (int?)null });
+    }
+}";
+
+        var fixedCode =
+            @"
+using System.Linq;
+using System.Collections.Generic;
+
+class Sample
+{
+    public int Id { get; set; }
+    public Child Child { get; set; }
+}
+
+class Child
+{
+    public int Id { get; set; }
+}
+
+class Test
+{
+    void Method()
+    {
+        var list = new List<Sample>();
+        var result = list.AsQueryable().SelectExpr(x => new { Value = x.Child?.Id });
+    }
+}";
+
+        var expected = new DiagnosticResult(
+            SelectToSelectExprAnonymousAnalyzer.DiagnosticId,
+            DiagnosticSeverity.Info
+        ).WithLocation(0);
+
+        await RunCodeFixTestAsync(test, expected, fixedCode, 0);
+    }
+
+    [Fact]
+    public async Task CodeFix_SimplifiesTernaryNullCheck_Nested()
+    {
+        var test =
+            @"
+using System.Linq;
+using System.Collections.Generic;
+
+class Sample
+{
+    public int Id { get; set; }
+    public Child Child3 { get; set; }
+}
+
+class Child
+{
+    public int Id { get; set; }
+    public Child Child { get; set; }
+}
+
+class Test
+{
+    void Method()
+    {
+        var list = new List<Sample>();
+        var result = list.AsQueryable().{|#0:Select|}(x => new { Value = x.Child3 != null && x.Child3.Child != null ? x.Child3.Child.Id : null });
+    }
+}";
+
+        var fixedCode =
+            @"
+using System.Linq;
+using System.Collections.Generic;
+
+class Sample
+{
+    public int Id { get; set; }
+    public Child Child3 { get; set; }
+}
+
+class Child
+{
+    public int Id { get; set; }
+    public Child Child { get; set; }
+}
+
+class Test
+{
+    void Method()
+    {
+        var list = new List<Sample>();
+        var result = list.AsQueryable().SelectExpr(x => new { Value = x.Child3?.Child?.Id });
+    }
+}";
+
+        var expected = new DiagnosticResult(
+            SelectToSelectExprAnonymousAnalyzer.DiagnosticId,
+            DiagnosticSeverity.Info
+        ).WithLocation(0);
+
+        await RunCodeFixTestAsync(test, expected, fixedCode, 0);
+    }
+
+    [Fact]
+    public async Task CodeFix_SimplifiesTernaryNullCheck_DeepNesting()
+    {
+        var test =
+            @"
+using System.Linq;
+using System.Collections.Generic;
+
+class Sample
+{
+    public int Id { get; set; }
+    public Child Child { get; set; }
+}
+
+class Child
+{
+    public int Id { get; set; }
+    public Child Child { get; set; }
+}
+
+class Test
+{
+    void Method()
+    {
+        var list = new List<Sample>();
+        var result = list.AsQueryable().{|#0:Select|}(x => new { Value = x.Child != null && x.Child.Child != null && x.Child.Child.Child != null ? x.Child.Child.Child.Id : null });
+    }
+}";
+
+        var fixedCode =
+            @"
+using System.Linq;
+using System.Collections.Generic;
+
+class Sample
+{
+    public int Id { get; set; }
+    public Child Child { get; set; }
+}
+
+class Child
+{
+    public int Id { get; set; }
+    public Child Child { get; set; }
+}
+
+class Test
+{
+    void Method()
+    {
+        var list = new List<Sample>();
+        var result = list.AsQueryable().SelectExpr(x => new { Value = x.Child?.Child?.Child?.Id });
+    }
+}";
+
+        var expected = new DiagnosticResult(
+            SelectToSelectExprAnonymousAnalyzer.DiagnosticId,
+            DiagnosticSeverity.Info
+        ).WithLocation(0);
+
+        await RunCodeFixTestAsync(test, expected, fixedCode, 0);
+    }
+
     private static async Task RunCodeFixTestAsync(
         string source,
         DiagnosticResult expected,

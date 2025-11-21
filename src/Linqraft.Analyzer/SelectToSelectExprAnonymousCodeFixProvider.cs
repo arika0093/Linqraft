@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.Composition;
 using System.Linq;
@@ -85,8 +86,11 @@ public class SelectToSelectExprAnonymousCodeFixProvider : CodeFixProvider
         if (newExpression == null)
             return document;
 
-        // Replace the invocation
-        var newInvocation = invocation.WithExpression(newExpression);
+        // Simplify ternary null checks in the lambda body
+        var newInvocation = SimplifyTernaryNullChecksInInvocation(
+            invocation.WithExpression(newExpression)
+        );
+
         var newRoot = root.ReplaceNode(invocation, newInvocation);
 
         return document.WithSyntaxRoot(newRoot);
@@ -130,8 +134,11 @@ public class SelectToSelectExprAnonymousCodeFixProvider : CodeFixProvider
         if (newExpression == null)
             return document;
 
-        // Replace the expression
-        var newInvocation = invocation.WithExpression(newExpression);
+        // Replace the expression and simplify ternary null checks
+        var newInvocation = SimplifyTernaryNullChecksInInvocation(
+            invocation.WithExpression(newExpression)
+        );
+
         var newRoot = root.ReplaceNode(invocation, newInvocation);
 
         return document.WithSyntaxRoot(newRoot);
@@ -240,6 +247,47 @@ public class SelectToSelectExprAnonymousCodeFixProvider : CodeFixProvider
         }
 
         return null;
+    }
+
+    private static InvocationExpressionSyntax SimplifyTernaryNullChecksInInvocation(
+        InvocationExpressionSyntax invocation
+    )
+    {
+        // Find and simplify ternary null checks in lambda body
+        var newArguments = new List<ArgumentSyntax>();
+        foreach (var argument in invocation.ArgumentList.Arguments)
+        {
+            if (
+                argument.Expression is SimpleLambdaExpressionSyntax simpleLambda
+                && simpleLambda.Body is ExpressionSyntax bodyExpr
+            )
+            {
+                var simplifiedBody = TernaryNullCheckSimplifier.SimplifyTernaryNullChecks(
+                    bodyExpr
+                );
+                var newLambda = simpleLambda.WithBody(simplifiedBody);
+                newArguments.Add(argument.WithExpression(newLambda));
+            }
+            else if (
+                argument.Expression is ParenthesizedLambdaExpressionSyntax parenLambda
+                && parenLambda.Body is ExpressionSyntax parenBodyExpr
+            )
+            {
+                var simplifiedBody = TernaryNullCheckSimplifier.SimplifyTernaryNullChecks(
+                    parenBodyExpr
+                );
+                var newLambda = parenLambda.WithBody(simplifiedBody);
+                newArguments.Add(argument.WithExpression(newLambda));
+            }
+            else
+            {
+                newArguments.Add(argument);
+            }
+        }
+
+        return invocation.WithArgumentList(
+            SyntaxFactory.ArgumentList(SyntaxFactory.SeparatedList(newArguments))
+        );
     }
 
     private static string GenerateDtoName(
