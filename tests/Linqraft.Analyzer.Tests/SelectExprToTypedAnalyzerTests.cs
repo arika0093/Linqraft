@@ -40,7 +40,7 @@ class Test
         var expected = VerifyCS
             .Diagnostic(SelectExprToTypedAnalyzer.DiagnosticId)
             .WithLocation(0)
-            .WithSeverity(DiagnosticSeverity.Info)
+            .WithSeverity(DiagnosticSeverity.Hidden)
             .WithArguments("Sample", "ResultDto_T27C3JAA");
 
         await VerifyCS.VerifyAnalyzerAsync(test, expected);
@@ -132,7 +132,7 @@ class Test
         var expected = VerifyCS
             .Diagnostic(SelectExprToTypedAnalyzer.DiagnosticId)
             .WithLocation(0)
-            .WithSeverity(DiagnosticSeverity.Info)
+            .WithSeverity(DiagnosticSeverity.Hidden)
             .WithArguments("Sample", "UsersDto_REIXTLBA");
 
         await VerifyCS.VerifyAnalyzerAsync(test, expected);
@@ -165,7 +165,7 @@ class Test
         var expected = VerifyCS
             .Diagnostic(SelectExprToTypedAnalyzer.DiagnosticId)
             .WithLocation(0)
-            .WithSeverity(DiagnosticSeverity.Info)
+            .WithSeverity(DiagnosticSeverity.Hidden)
             .WithArguments("Sample", "UsersDto_REIXTLBA");
 
         await VerifyCS.VerifyAnalyzerAsync(test, expected);
@@ -223,7 +223,7 @@ class Test
 
         var expected = new DiagnosticResult(
             SelectExprToTypedAnalyzer.DiagnosticId,
-            DiagnosticSeverity.Info
+            DiagnosticSeverity.Hidden
         )
             .WithLocation(0)
             .WithArguments("Sample", "ResultDto_T27C3JAA");
@@ -278,7 +278,7 @@ class Test
 
         var expected = new DiagnosticResult(
             SelectExprToTypedAnalyzer.DiagnosticId,
-            DiagnosticSeverity.Info
+            DiagnosticSeverity.Hidden
         )
             .WithLocation(0)
             .WithArguments("Sample", "UsersDto_REIXTLBA");
