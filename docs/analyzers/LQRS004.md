@@ -17,16 +17,18 @@ Detects conditional (ternary) expressions where one branch returns `null` (or a 
 - The condition doesn't include a null-check.
 
 ## Suggested Transformation
-The analyzer reports an informational diagnostic; possible simplifications include using null-conditional/propagation patterns (e.g. `source?.Property`) or restructuring expressions to avoid redundant null-check ternaries. The project currently provides the diagnostic as a suggestion rather than an automated rewrite in all cases because semantic-preserving transformations can be context dependent.
+The analyzer reports an informational diagnostic and suggests a null-propagation style replacement when the pattern is a simple null check that guards an object creation. A common safe transformation is to move the nullable operator into the member access so that inner member accesses use the null-conditional operator.
 
-## Example
-Before:
+Because this transformation changes the position of nullability (e.g. from the selector producing `null` to the individual property access becoming nullable), it is handled separately from the `Select` → `SelectExpr` conversions (`LQRS002`/`LQRS003`). The `SelectExpr` conversions intentionally do not perform this rewrite automatically because moving the nullable operator may change semantics in subtle ways.
+
+### Replacement example
+Given a conditional like:
 ```csharp
-var dto = input != null ? new ProductDto { Id = input.Id } : null;
+x.A != null ? new { B = x.A.B } : null
+```
+the analyzer suggests replacing the object-creating ternary with a projection that uses null-conditional access inside the object initializer:
+```csharp
+new { B = x.A?.B }
 ```
 
-After (conceptual simplification using null-propagation):
-```csharp
-var dto = input is null ? null : new ProductDto { Id = input.Id };
-// or when safe to use property projection: var dto = input?.Let(i => new ProductDto { Id = i.Id });
-```
+This effectively collapses the ternary and moves the `?.` into the member access, producing an object whose properties are null when the source is null instead of returning `null` for the whole object. Because the resulting nullability shape differs from the original expression, the analyzer treats this as a separate informational suggestion rather than part of `Select`→`SelectExpr` automated conversions.
