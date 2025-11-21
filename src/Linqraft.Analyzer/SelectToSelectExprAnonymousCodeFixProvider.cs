@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.Composition;
 using System.Linq;
@@ -77,14 +78,32 @@ public class SelectToSelectExprAnonymousCodeFixProvider : CodeFixProvider
         if (root == null)
             return document;
 
+        // Find the anonymous type in the lambda
+        var anonymousType = FindAnonymousTypeInArguments(invocation.ArgumentList);
+        
         // Replace "Select" with "SelectExpr"
         var newExpression = ReplaceMethodName(invocation.Expression, "SelectExpr");
         if (newExpression == null)
             return document;
 
-        // Replace the invocation
-        var newInvocation = invocation.WithExpression(newExpression);
-        var newRoot = root.ReplaceNode(invocation, newInvocation);
+        // Simplify null checks in the anonymous type if present
+        SyntaxNode? simplifiedAnonymousType = anonymousType != null 
+            ? NullConditionalHelper.SimplifyNullChecks(anonymousType) 
+            : null;
+
+        // Build replacements dictionary
+        var replacements = new Dictionary<SyntaxNode, SyntaxNode>
+        {
+            { invocation.Expression, newExpression }
+        };
+
+        if (anonymousType != null && simplifiedAnonymousType != null)
+        {
+            replacements[anonymousType] = simplifiedAnonymousType;
+        }
+
+        // Apply all replacements
+        var newRoot = root.ReplaceNodes(replacements.Keys, (oldNode, _) => replacements[oldNode]);
 
         return document.WithSyntaxRoot(newRoot);
     }
@@ -127,9 +146,18 @@ public class SelectToSelectExprAnonymousCodeFixProvider : CodeFixProvider
         if (newExpression == null)
             return document;
 
-        // Replace the expression
-        var newInvocation = invocation.WithExpression(newExpression);
-        var newRoot = root.ReplaceNode(invocation, newInvocation);
+        // Simplify null checks in the anonymous type
+        var simplifiedAnonymousType = NullConditionalHelper.SimplifyNullChecks(anonymousType);
+
+        // Build replacements dictionary
+        var replacements = new Dictionary<SyntaxNode, SyntaxNode>
+        {
+            { invocation.Expression, newExpression },
+            { anonymousType, simplifiedAnonymousType }
+        };
+
+        // Apply all replacements
+        var newRoot = root.ReplaceNodes(replacements.Keys, (oldNode, _) => replacements[oldNode]);
 
         return document.WithSyntaxRoot(newRoot);
     }

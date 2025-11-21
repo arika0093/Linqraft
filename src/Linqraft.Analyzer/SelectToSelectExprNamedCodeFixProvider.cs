@@ -106,14 +106,15 @@ public class SelectToSelectExprNamedCodeFixProvider : CodeFixProvider
         if (newExpression == null)
             return document;
 
-        // Convert the named object creation to anonymous type
+        // Convert the named object creation to anonymous type and simplify null checks
         var anonymousCreation = ConvertToAnonymousType(objectCreation);
+        var simplifiedAnonymous = NullConditionalHelper.SimplifyNullChecks(anonymousCreation);
         
         // Replace both nodes in one operation using a dictionary
         var replacements = new Dictionary<SyntaxNode, SyntaxNode>
         {
             { invocation.Expression, newExpression },
-            { objectCreation, anonymousCreation }
+            { objectCreation, simplifiedAnonymous }
         };
         
         var newRoot = root.ReplaceNodes(replacements.Keys, (oldNode, _) => replacements[oldNode]);
@@ -131,14 +132,32 @@ public class SelectToSelectExprNamedCodeFixProvider : CodeFixProvider
         if (root == null)
             return document;
 
+        // Find the object creation in arguments
+        var objectCreation = FindNamedObjectCreationInArguments(invocation.ArgumentList);
+
         // Replace "Select" with "SelectExpr"
         var newExpression = ReplaceMethodName(invocation.Expression, "SelectExpr");
         if (newExpression == null)
             return document;
 
-        // Replace the invocation
-        var newInvocation = invocation.WithExpression(newExpression);
-        var newRoot = root.ReplaceNode(invocation, newInvocation);
+        // Simplify null checks in the object creation if present
+        SyntaxNode? simplifiedObjectCreation = objectCreation != null 
+            ? NullConditionalHelper.SimplifyNullChecks(objectCreation) 
+            : null;
+
+        // Build replacements dictionary
+        var replacements = new Dictionary<SyntaxNode, SyntaxNode>
+        {
+            { invocation.Expression, newExpression }
+        };
+
+        if (objectCreation != null && simplifiedObjectCreation != null)
+        {
+            replacements[objectCreation] = simplifiedObjectCreation;
+        }
+
+        // Apply all replacements
+        var newRoot = root.ReplaceNodes(replacements.Keys, (oldNode, _) => replacements[oldNode]);
 
         return document.WithSyntaxRoot(newRoot);
     }
