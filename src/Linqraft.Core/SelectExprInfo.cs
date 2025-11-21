@@ -301,6 +301,45 @@ public abstract record SelectExprInfo
         {
             return ConvertNullableAccessToExplicitCheckWithRoslyn(syntax, property.TypeSymbol);
         }
+        // if static/constant expression, return expression with full-name resolution
+        if (
+            syntax is MemberAccessExpressionSyntax memberAccess
+            && memberAccess.Kind() == SyntaxKind.SimpleMemberAccessExpression
+        )
+        {
+            var symbolInfo = SemanticModel.GetSymbolInfo(memberAccess);
+
+            // Check if it's a static field or const field
+            if (
+                symbolInfo.Symbol is IFieldSymbol fieldSymbol
+                && (fieldSymbol.IsStatic || fieldSymbol.IsConst)
+            )
+            {
+                var containingType = fieldSymbol.ContainingType;
+                var fullTypeName = containingType.ToDisplayString(
+                    SymbolDisplayFormat.FullyQualifiedFormat
+                );
+                var memberName = fieldSymbol.Name;
+                return $"{fullTypeName}.{memberName}";
+            }
+            // Check if it's a static property
+            else if (symbolInfo.Symbol is IPropertySymbol propertySymbol && propertySymbol.IsStatic)
+            {
+                var containingType = propertySymbol.ContainingType;
+                var fullTypeName = containingType.ToDisplayString(
+                    SymbolDisplayFormat.FullyQualifiedFormat
+                );
+                var memberName = propertySymbol.Name;
+                return $"{fullTypeName}.{memberName}";
+            }
+        }
+
+        // if object creation expression, convert type names to fully qualified names
+        if (syntax is ObjectCreationExpressionSyntax objectCreation)
+        {
+            return ConvertObjectCreationToFullyQualified(objectCreation);
+        }
+
         // Regular property access
         return expression;
     }
@@ -823,5 +862,45 @@ public abstract record SelectExprInfo
             Accessibility.ProtectedOrInternal => "protected internal",
             _ => "public", // Default to public
         };
+    }
+
+    /// <summary>
+    /// Converts an object creation expression to use fully qualified type names
+    /// </summary>
+    protected string ConvertObjectCreationToFullyQualified(
+        ObjectCreationExpressionSyntax objectCreation
+    )
+    {
+        var typeInfo = SemanticModel.GetTypeInfo(objectCreation);
+        if (typeInfo.Type is not INamedTypeSymbol typeSymbol)
+        {
+            // Fallback to original expression if type cannot be resolved
+            return objectCreation.ToString();
+        }
+
+        // Get the fully qualified type name
+        var fullyQualifiedTypeName = typeSymbol.ToDisplayString(
+            SymbolDisplayFormat.FullyQualifiedFormat
+        );
+
+        // Build the new object creation expression with fully qualified type name
+        var result = new StringBuilder();
+        result.Append("new ");
+        result.Append(fullyQualifiedTypeName);
+
+        // Preserve argument list if present
+        if (objectCreation.ArgumentList != null)
+        {
+            result.Append(objectCreation.ArgumentList.ToString());
+        }
+
+        // Preserve initializer if present
+        if (objectCreation.Initializer != null)
+        {
+            result.Append(' ');
+            result.Append(objectCreation.Initializer.ToString());
+        }
+
+        return result.ToString();
     }
 }
