@@ -4,12 +4,14 @@ This document describes the Roslyn analyzers included in the Linqraft.Analyzer p
 
 ## Overview
 
-Linqraft provides two analyzers with corresponding code fix providers to improve code quality and type safety when working with LINQ queries and anonymous types.
+Linqraft provides several analyzers with corresponding code fix providers to improve code quality and type safety when working with LINQ queries and anonymous types.
 
 | Diagnostic ID | Analyzer | Description |
 |--------------|----------|-------------|
 | [LQRF001](#lqrf001-anonymoustypetodtoanalyzer) | AnonymousTypeToDtoAnalyzer | Detects anonymous types that can be converted to DTO classes |
 | [LQRS001](#lqrs001-selectexprtotypedanalyzer) | SelectExprToTypedAnalyzer | Detects SelectExpr calls without type arguments |
+| [LQRS002](#lqrs002-selecttoselectexpranonymousanalyzer) | SelectToSelectExprAnonymousAnalyzer | Detects IQueryable.Select with anonymous types that can be converted to SelectExpr |
+| [LQRS003](#lqrs003-selecttoselectexprnamedanalyzer) | SelectToSelectExprNamedAnalyzer | Detects IQueryable.Select with named types that can be converted to SelectExpr |
 | [LQRE001](#lqre001-localvariablecaptureanalyzer) | LocalVariableCaptureAnalyzer | Detects local variables used in SelectExpr without capture parameter |
 
 ---
@@ -168,6 +170,189 @@ The generated DTO name follows these rules:
 4. Default fallback: `ResultDto_HASH`
 
 The hash suffix (8 characters, A-Z and 0-9) is generated from the property names using the FNV-1a algorithm to ensure uniqueness.
+
+---
+
+## LQRS002: SelectToSelectExprAnonymousAnalyzer
+
+**Severity:** Info
+**Category:** Design
+**Default:** Enabled
+
+### Description
+
+This analyzer detects `IQueryable.Select()` calls with anonymous type projections that can be converted to `SelectExpr` for better performance and type safety. It only triggers for `IQueryable` (not `IEnumerable`).
+
+### When it triggers
+
+The analyzer reports a diagnostic when:
+
+1. A `Select()` method is called on an `IQueryable<T>` source
+2. The lambda body contains an anonymous type creation (`new { ... }`)
+
+### Code Fixes
+
+The `SelectToSelectExprAnonymousCodeFixProvider` provides two fix options:
+
+1. **Convert to SelectExpr (anonymous pattern)** - Converts `Select` to `SelectExpr` keeping the anonymous type
+2. **Convert to SelectExpr<T, TDto> (explicit DTO pattern)** - Converts to typed `SelectExpr` with generated DTO name
+
+### Examples
+
+#### Example 1: Anonymous pattern
+
+**Before:**
+```csharp
+public class ProductRepository
+{
+    public void GetProducts(IQueryable<Product> query)
+    {
+        var result = query.Select(x => new  // LQRS002: IQueryable.Select with anonymous type can be converted to SelectExpr
+        {
+            x.Id,
+            x.Name,
+            x.Price
+        });
+    }
+}
+```
+
+**After applying "Convert to SelectExpr (anonymous pattern)":**
+```csharp
+public class ProductRepository
+{
+    public void GetProducts(IQueryable<Product> query)
+    {
+        var result = query.SelectExpr(x => new
+        {
+            x.Id,
+            x.Name,
+            x.Price
+        });
+    }
+}
+```
+
+**After applying "Convert to SelectExpr<T, TDto> (explicit DTO pattern)":**
+```csharp
+public class ProductRepository
+{
+    public void GetProducts(IQueryable<Product> query)
+    {
+        var result = query.SelectExpr<Product, ResultDto_XXXXXXXX>(x => new
+        {
+            x.Id,
+            x.Name,
+            x.Price
+        });
+    }
+}
+```
+
+### When it doesn't trigger
+
+- `IEnumerable.Select()` calls (only `IQueryable` is supported)
+- `Select()` calls without anonymous types
+- `Select()` calls with named type projections (handled by LQRS003)
+
+---
+
+## LQRS003: SelectToSelectExprNamedAnalyzer
+
+**Severity:** Info
+**Category:** Design
+**Default:** Enabled
+
+### Description
+
+This analyzer detects `IQueryable.Select()` calls with named/predefined type projections that can be converted to `SelectExpr` for better performance and type safety. It only triggers for `IQueryable` (not `IEnumerable`).
+
+### When it triggers
+
+The analyzer reports a diagnostic when:
+
+1. A `Select()` method is called on an `IQueryable<T>` source
+2. The lambda body contains an object creation expression with a named type (`new SomeDto { ... }`)
+
+### Code Fixes
+
+The `SelectToSelectExprNamedCodeFixProvider` provides two fix options:
+
+1. **Convert to SelectExpr<T, TDto> (explicit DTO pattern)** - Converts to typed `SelectExpr` with generated DTO name
+2. **Convert to SelectExpr (predefined DTO pattern)** - Converts `Select` to `SelectExpr` keeping the named type
+
+### Examples
+
+#### Example 1: Predefined DTO pattern
+
+**Before:**
+```csharp
+public class ProductDto
+{
+    public int Id { get; set; }
+    public string Name { get; set; }
+}
+
+public class ProductRepository
+{
+    public void GetProducts(IQueryable<Product> query)
+    {
+        var result = query.Select(x => new ProductDto  // LQRS003: IQueryable.Select with named type can be converted to SelectExpr
+        {
+            Id = x.Id,
+            Name = x.Name
+        });
+    }
+}
+```
+
+**After applying "Convert to SelectExpr (predefined DTO pattern)":**
+```csharp
+public class ProductDto
+{
+    public int Id { get; set; }
+    public string Name { get; set; }
+}
+
+public class ProductRepository
+{
+    public void GetProducts(IQueryable<Product> query)
+    {
+        var result = query.SelectExpr(x => new ProductDto
+        {
+            Id = x.Id,
+            Name = x.Name
+        });
+    }
+}
+```
+
+**After applying "Convert to SelectExpr<T, TDto> (explicit DTO pattern)":**
+```csharp
+public class ProductDto
+{
+    public int Id { get; set; }
+    public string Name { get; set; }
+}
+
+public class ProductRepository
+{
+    public void GetProducts(IQueryable<Product> query)
+    {
+        var result = query.SelectExpr<Product, ResultDto_XXXXXXXX>(x => new ProductDto
+        {
+            Id = x.Id,
+            Name = x.Name
+        });
+    }
+}
+```
+
+### When it doesn't trigger
+
+- `IEnumerable.Select()` calls (only `IQueryable` is supported)
+- `Select()` calls without object creation
+- `Select()` calls with anonymous types (handled by LQRS002)
 
 ---
 
