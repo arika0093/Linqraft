@@ -81,12 +81,14 @@ public class TernaryNullCheckToConditionalCodeFixProvider : CodeFixProvider
         var whenFalseIsNull = IsNullOrNullCast(conditional.WhenFalse);
 
         ExpressionSyntax objectCreationExpr;
+        ExpressionSyntax originalObjectCreationWithTrivia;
         List<ExpressionSyntax> effectiveNullChecks;
 
         if (whenFalseIsNull && !whenTrueIsNull)
         {
             // Standard case: condition ? new{} : null
             objectCreationExpr = whenTrueExpr;
+            originalObjectCreationWithTrivia = conditional.WhenTrue;
             effectiveNullChecks = nullChecks;
         }
         else if (whenTrueIsNull && !whenFalseIsNull)
@@ -95,6 +97,7 @@ public class TernaryNullCheckToConditionalCodeFixProvider : CodeFixProvider
             // When the condition is inverted (e.g., p.Child == null ? null : new{}),
             // the null checks need to be inverted conceptually
             objectCreationExpr = whenFalseExpr;
+            originalObjectCreationWithTrivia = conditional.WhenFalse;
             effectiveNullChecks = InvertNullChecks(nullChecks);
         }
         else
@@ -108,7 +111,11 @@ public class TernaryNullCheckToConditionalCodeFixProvider : CodeFixProvider
         if (converted == null)
             return document;
 
-        // Preserve the leading and trailing trivia from the original conditional expression
+        // Preserve trivia from the original object creation expression
+        // This maintains the formatting and indentation of the object initializer
+        converted = PreserveTriviaForObjectCreation(converted, originalObjectCreationWithTrivia);
+
+        // Preserve the leading trivia from the entire conditional and trailing trivia for the semicolon
         converted = converted
             .WithLeadingTrivia(conditional.GetLeadingTrivia())
             .WithTrailingTrivia(conditional.GetTrailingTrivia());
@@ -124,6 +131,72 @@ public class TernaryNullCheckToConditionalCodeFixProvider : CodeFixProvider
         // since we're converting member accesses to null-conditional anyway.
         // So we can just return the same list.
         return nullChecks;
+    }
+
+    private static ExpressionSyntax PreserveTriviaForObjectCreation(
+        ExpressionSyntax newExpression,
+        ExpressionSyntax originalExpression
+    )
+    {
+        // For object creation expressions, we need to preserve the trivia structure
+        // to maintain proper indentation and formatting
+        // Note: We do NOT preserve trailing trivia here, as that will come from the conditional
+
+        if (newExpression is ObjectCreationExpressionSyntax newObjCreation
+            && originalExpression is ObjectCreationExpressionSyntax origObjCreation)
+        {
+            // Preserve initializer trivia if present
+            if (newObjCreation.Initializer != null && origObjCreation.Initializer != null)
+            {
+                var newInitializer = newObjCreation.Initializer
+                    .WithOpenBraceToken(
+                        newObjCreation.Initializer.OpenBraceToken
+                            .WithTriviaFrom(origObjCreation.Initializer.OpenBraceToken)
+                    )
+                    .WithCloseBraceToken(
+                        newObjCreation.Initializer.CloseBraceToken
+                            .WithTriviaFrom(origObjCreation.Initializer.CloseBraceToken)
+                    );
+
+                newObjCreation = newObjCreation.WithInitializer(newInitializer);
+            }
+
+            // Only preserve leading trivia of the entire expression
+            return newObjCreation.WithLeadingTrivia(originalExpression.GetLeadingTrivia());
+        }
+
+        if (newExpression is AnonymousObjectCreationExpressionSyntax newAnonCreation
+            && originalExpression is AnonymousObjectCreationExpressionSyntax origAnonCreation)
+        {
+            // Preserve brace trivia for anonymous objects
+            // Important: We must copy the exact tokens with their trivia, especially for the close brace
+            return newAnonCreation
+                .WithNewKeyword(newAnonCreation.NewKeyword.WithTriviaFrom(origAnonCreation.NewKeyword))
+                .WithOpenBraceToken(origAnonCreation.OpenBraceToken)
+                .WithCloseBraceToken(origAnonCreation.CloseBraceToken)
+                .WithLeadingTrivia(originalExpression.GetLeadingTrivia());
+        }
+
+        if (newExpression is AnonymousObjectCreationExpressionSyntax anonCreation
+            && originalExpression is CastExpressionSyntax castToAnon
+            && castToAnon.Expression is AnonymousObjectCreationExpressionSyntax origAnon)
+        {
+            // Handle cast expressions wrapping anonymous objects
+            return anonCreation
+                .WithNewKeyword(anonCreation.NewKeyword.WithTriviaFrom(origAnon.NewKeyword))
+                .WithOpenBraceToken(origAnon.OpenBraceToken)
+                .WithCloseBraceToken(origAnon.CloseBraceToken)
+                .WithLeadingTrivia(castToAnon.GetLeadingTrivia());
+        }
+
+        // For cast expressions, unwrap and preserve trivia
+        if (originalExpression is CastExpressionSyntax cast)
+        {
+            return PreserveTriviaForObjectCreation(newExpression, cast.Expression);
+        }
+
+        // Fallback: just preserve leading trivia
+        return newExpression.WithLeadingTrivia(originalExpression.GetLeadingTrivia());
     }
 
     private static ExpressionSyntax? ConvertObjectCreationToNullConditional(
@@ -156,12 +229,12 @@ public class TernaryNullCheckToConditionalCodeFixProvider : CodeFixProvider
 
             // Build the expression with conditional accesses where needed
             ExpressionSyntax result = SyntaxFactory.IdentifierName(parts[0]);
-            
+
             for (int i = 1; i < parts.Count; i++)
             {
                 // Build the path up to the previous part
                 var previousPath = string.Join(".", parts.Take(i));
-                
+
                 // Check if the previous path was null-checked
                 if (_nullCheckedPaths.Contains(previousPath))
                 {
@@ -198,7 +271,10 @@ public class TernaryNullCheckToConditionalCodeFixProvider : CodeFixProvider
                 }
             }
 
-            return result;
+            // Preserve the trivia from the original node
+            return result
+                .WithLeadingTrivia(node.GetLeadingTrivia())
+                .WithTrailingTrivia(node.GetTrailingTrivia());
         }
 
         private ExpressionSyntax AppendMemberBinding(
