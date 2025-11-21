@@ -35,7 +35,7 @@ public class ApiControllerProducesResponseTypeAnalyzer : DiagnosticAnalyzer
         DiagnosticSeverity.Info,
         isEnabledByDefault: true,
         description: Description,
-        helpLinkUri: "https://github.com/arika0093/Linqraft/blob/main/docs/Analyzers.md#lqrf002-apicontrollerproducesresponsetypeanalyzer"
+        helpLinkUri: $"https://github.com/arika0093/Linqraft/blob/main/docs/analyzer/{DiagnosticId}.md"
     );
 
     public override ImmutableArray<DiagnosticDescriptor> SupportedDiagnostics =>
