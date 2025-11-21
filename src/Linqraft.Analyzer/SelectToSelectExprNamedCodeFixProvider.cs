@@ -49,7 +49,7 @@ public class SelectToSelectExprNamedCodeFixProvider : CodeFixProvider
         // Register three code fixes
         context.RegisterCodeFix(
             CodeAction.Create(
-                title: "Convert to SelectExpr<T, TDto> (convert all nested to anonymous)",
+                title: "Convert to SelectExpr<T, TDto> (convert all to anonymous)",
                 createChangedDocument: c =>
                     ConvertToSelectExprExplicitDtoAllAsync(context.Document, invocation, c),
                 equivalenceKey: "ConvertToSelectExprExplicitDtoAll"
@@ -69,7 +69,7 @@ public class SelectToSelectExprNamedCodeFixProvider : CodeFixProvider
 
         context.RegisterCodeFix(
             CodeAction.Create(
-                title: "Convert to SelectExpr (predefined DTO pattern)",
+                title: "Convert to SelectExpr (use predefined classes)",
                 createChangedDocument: c =>
                     ConvertToSelectExprPredefinedDtoAsync(context.Document, invocation, c),
                 equivalenceKey: "ConvertToSelectExprPredefinedDto"
