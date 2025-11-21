@@ -141,6 +141,9 @@ public class SelectToSelectExprAnonymousCodeFixProvider : CodeFixProvider
 
         var newRoot = root.ReplaceNode(invocation, newInvocation);
 
+        // Add using directive for source type if needed
+        newRoot = AddUsingDirectiveForType(newRoot, sourceType);
+
         return document.WithSyntaxRoot(newRoot);
     }
 
@@ -294,5 +297,28 @@ public class SelectToSelectExprAnonymousCodeFixProvider : CodeFixProvider
     )
     {
         return DtoNamingHelper.GenerateDtoName(invocation, anonymousType);
+    }
+
+    private static SyntaxNode AddUsingDirectiveForType(SyntaxNode root, ITypeSymbol typeSymbol)
+    {
+        if (root is not CompilationUnitSyntax compilationUnit)
+            return root;
+
+        // Get the namespace of the type
+        var namespaceName = typeSymbol.ContainingNamespace?.ToDisplayString();
+        if (string.IsNullOrEmpty(namespaceName) || namespaceName == "<global namespace>")
+            return root;
+
+        // Check if using directive already exists
+        var hasUsing = compilationUnit.Usings.Any(u => u.Name?.ToString() == namespaceName);
+        if (hasUsing)
+            return root;
+
+        // Add using directive (namespaceName is guaranteed non-null here due to the check above)
+        var usingDirective = SyntaxFactory
+            .UsingDirective(SyntaxFactory.ParseName(namespaceName!))
+            .WithTrailingTrivia(SyntaxFactory.CarriageReturnLineFeed);
+
+        return compilationUnit.AddUsings(usingDirective);
     }
 }
