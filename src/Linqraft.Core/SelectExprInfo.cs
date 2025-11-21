@@ -359,23 +359,27 @@ public abstract record SelectExprInfo
         // Get the whenFalse part (usually "null")
         var whenFalse = conditionalExpr.WhenFalse.ToString();
 
+        // Indentation for ternary operator continuation lines (12 spaces for alignment)
+        const int ternaryIndent = 12;
+        var ternarySpaces = new string(' ', indents + ternaryIndent);
+
         // Generate property assignments for the whenTrue DTO
         var propertyAssignments = new List<string>();
         foreach (var prop in nestedStructure.Properties)
         {
-            var assignment = GeneratePropertyAssignment(prop, indents + 4);
-            propertyAssignments.Add($"{spaces}                {prop.Name} = {assignment}");
+            var assignment = GeneratePropertyAssignment(prop, indents + ternaryIndent + 4);
+            propertyAssignments.Add($"{ternarySpaces}    {prop.Name} = {assignment}");
         }
         var propertiesCode = string.Join(",\n", propertyAssignments);
 
         // Build the ternary expression with DTO
         var code = $$"""
             {{condition}}
-            {{spaces}}            ? new {{nestedDtoName}}
-            {{spaces}}            {
+            {{ternarySpaces}}? new {{nestedDtoName}}
+            {{ternarySpaces}}{
             {{propertiesCode}}
-            {{spaces}}            }
-            {{spaces}}            : {{whenFalse}}
+            {{ternarySpaces}}}
+            {{ternarySpaces}}: {{whenFalse}}
             """;
         return code;
     }
