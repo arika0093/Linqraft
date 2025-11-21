@@ -5,24 +5,25 @@
 **Default:** Enabled
 
 ## Description
-Detects `IQueryable.Select()` calls with named/predefined type projections that can be converted to `SelectExpr`.
+Detects `System.Linq` `Select` invocations on `IQueryable<T>` whose selector creates an instance of a named type (e.g. `new SomeDto { ... }`). Such projections can be converted to Linqraft's `SelectExpr` to benefit from Linqraft projection semantics.
 
 ## When It Triggers
-1. `Select()` is called on `IQueryable<T>`.
-2. Lambda body creates a named object (`new SomeDto { ... }`).
+- The `Select` method is invoked from `System.Linq`.
+- The receiver expression is `IQueryable<T>` (or type implementing it).
+- The selector lambda returns a named object (an `ObjectCreationExpressionSyntax`, not an anonymous object).
 
 ## When It Doesn't Trigger
-- `IEnumerable.Select()` calls.
-- `Select()` without object creation.
-- `Select()` with anonymous type (handled by LQRS002).
+- Calls on `IEnumerable<T>`.
+- Selectors that do not create an object.
+- Anonymous-type projections (handled by `LQRS002`).
 
 ## Code Fixes
-`SelectToSelectExprNamedCodeFixProvider`:
-1. Convert to `SelectExpr<T, TDto>` (explicit DTO pattern).
-2. Convert to `SelectExpr` (predefined DTO pattern).
+`SelectToSelectExprNamedCodeFixProvider` can offer conversions such as:
+- Convert to `SelectExpr(...)` preserving the named object creation.
+- Convert to `SelectExpr<TSource, TDto>(...)` with an explicit DTO type argument when appropriate.
 
-## Example (predefined DTO pattern)
-**Before:**
+## Example
+Before:
 ```csharp
 var result = query.Select(x => new ProductDto  // LQRS003
 {
@@ -30,7 +31,8 @@ var result = query.Select(x => new ProductDto  // LQRS003
     Name = x.Name
 });
 ```
-**After:**
+
+After (predefined DTO pattern):
 ```csharp
 var result = query.SelectExpr(x => new ProductDto
 {
@@ -38,7 +40,8 @@ var result = query.SelectExpr(x => new ProductDto
     Name = x.Name
 });
 ```
-**After (explicit DTO pattern):**
+
+After (explicit DTO pattern):
 ```csharp
 var result = query.SelectExpr<Product, ResultDto_XXXXXXXX>(x => new ProductDto
 {

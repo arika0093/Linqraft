@@ -5,19 +5,19 @@
 **Default:** Enabled
 
 ## Description
-When `SelectExpr<T, TDto>` is used inside ASP.NET Core `[ApiController]` actions returning `IActionResult`, adding `[ProducesResponseType]` improves OpenAPI documentation clarity.
+Detects `SelectExpr<T, TDto>` usage inside ASP.NET Core `[ApiController]` action methods that return an untyped `IActionResult` (or `ActionResult` without a type argument) and do not declare a `[ProducesResponseType]` attribute. Adding `[ProducesResponseType]` clarifies the response type for OpenAPI generators.
 
 ## When It Triggers
-- Method is inside a class marked with `[ApiController]`.
-- Return type is (or reduces to) `IActionResult` / compatible.
-- Method body contains `SelectExpr<,>` producing a DTO.
-- No `[ProducesResponseType]` attribute already present.
+- The containing class has an `[ApiController]` attribute.
+- The method return type is `IActionResult` or `ActionResult` (untyped, i.e. not `ActionResult<T>`).
+- The method body contains a `SelectExpr` invocation with type arguments (the analyzer looks for `SelectExpr<,>` usage to infer the DTO type).
+- The method does not already have a `ProducesResponseType` attribute.
 
-## Code Fix (Planned)
-Suggests adding `[ProducesResponseType(typeof(TDto))]` to the action.
+## Suggested Fix
+The analyzer suggests adding `[ProducesResponseType(typeof(TDto))]` (or the appropriate status-code overload) to the action to improve OpenAPI metadata. This is currently reported as an informational suggestion.
 
-## Example (Conceptual)
-**Before:**
+## Example
+Before:
 ```csharp
 [ApiController]
 [Route("api/[controller]")]
@@ -30,7 +30,8 @@ public class ProductsController : ControllerBase
     }
 }
 ```
-**After:**
+
+After (suggested):
 ```csharp
 [ApiController]
 [Route("api/[controller]")]

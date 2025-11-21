@@ -5,37 +5,28 @@
 **Default:** Enabled
 
 ## Description
-Detects ternary expressions performing null checks that return an object creation (anonymous or named) in one branch and `null` (or `(Type?)null`) in the other. These can be simplified using null-conditional operators (`?.`) for readability and to avoid CS8602 warnings.
+Detects conditional (ternary) expressions where one branch returns `null` (or a nullable null-cast) and the other branch returns an object creation (anonymous or named), and the condition contains a null-check expression. Such patterns are often simplifyable using null-conditional (`?.`) chains or other null-safe idioms.
 
 ## When It Triggers
-A conditional expression of the form:
-```csharp
-condition ? new Something { ... } : null
-// or
-condition ? null : new Something { ... }
-```
-Where `condition` (possibly combined with `&&`) includes at least one `x == null` or `x != null` style null check.
+- The node is a conditional expression (`condition ? whenTrue : whenFalse`).
+- The condition contains a null check (e.g. `x != null`, `x == null`) or a logical-and chain that includes a null check.
+- One branch is `null` (or `(Type?)null`) and the other branch constructs an object (`new ...` or anonymous `new { ... }`).
 
 ## When It Doesn't Trigger
 - Neither branch is an object creation.
-- No explicit null check in the condition.
-- Both branches produce non-null object creations.
+- The condition doesn't include a null-check.
 
-## Code Fix (Conceptual)
-Suggests rewriting to use null-conditional chains, e.g.:
-```csharp
-var result = source?.Child != null
-    ? new Something { Value = source.Child.Prop }
-    : null; // potential simplification
-```
-Or direct property projection with `?.` where feasible.
+## Suggested Transformation
+The analyzer reports an informational diagnostic; possible simplifications include using null-conditional/propagation patterns (e.g. `source?.Property`) or restructuring expressions to avoid redundant null-check ternaries. The project currently provides the diagnostic as a suggestion rather than an automated rewrite in all cases because semantic-preserving transformations can be context dependent.
 
 ## Example
-**Before:**
+Before:
 ```csharp
 var dto = input != null ? new ProductDto { Id = input.Id } : null;
 ```
-**After (Simplified):**
+
+After (conceptual simplification using null-propagation):
 ```csharp
-var dto = input?.Id is int id ? new ProductDto { Id = id } : null; // or alternative null-conditional pattern
+var dto = input is null ? null : new ProductDto { Id = input.Id };
+// or when safe to use property projection: var dto = input?.Let(i => new ProductDto { Id = i.Id });
 ```
