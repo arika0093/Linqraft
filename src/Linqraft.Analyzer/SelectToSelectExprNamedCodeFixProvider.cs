@@ -254,6 +254,7 @@ public class SelectToSelectExprNamedCodeFixProvider : CodeFixProvider
             var anonymousSyntax = SyntaxFactory.AnonymousObjectCreationExpression(
                 SyntaxFactory.SeparatedList(
                     objectCreation.Initializer.Expressions.OfType<AssignmentExpressionSyntax>()
+                        .Where(assignment => assignment.Left is IdentifierNameSyntax)
                         .Select(assignment =>
                             SyntaxFactory.AnonymousObjectMemberDeclarator(
                                 SyntaxFactory.NameEquals(
