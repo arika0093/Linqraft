@@ -334,6 +334,80 @@ public abstract record SelectExprInfo
             }
         }
 
+        // if simple identifier, check if it's a static/const member that needs full qualification
+        if (syntax is IdentifierNameSyntax identifierName)
+        {
+            var symbolInfo = SemanticModel.GetSymbolInfo(identifierName);
+
+            // Check if it's a static field or const field
+            if (symbolInfo.Symbol is IFieldSymbol fieldSymbol)
+            {
+                // Check if it's an enum value
+                if (fieldSymbol.ContainingType?.TypeKind == TypeKind.Enum)
+                {
+                    var containingType = fieldSymbol.ContainingType;
+                    var fullTypeName = containingType.ToDisplayString(
+                        SymbolDisplayFormat.FullyQualifiedFormat
+                    );
+                    var memberName = fieldSymbol.Name;
+                    return $"{fullTypeName}.{memberName}";
+                }
+
+                // Check if it's a public/internal const field
+                if (fieldSymbol.IsConst && fieldSymbol.ContainingType is not null)
+                {
+                    if (
+                        fieldSymbol.DeclaredAccessibility == Accessibility.Public
+                        || fieldSymbol.DeclaredAccessibility == Accessibility.Internal
+                    )
+                    {
+                        var containingType = fieldSymbol.ContainingType;
+                        var fullTypeName = containingType.ToDisplayString(
+                            SymbolDisplayFormat.FullyQualifiedFormat
+                        );
+                        var memberName = fieldSymbol.Name;
+                        return $"{fullTypeName}.{memberName}";
+                    }
+                }
+
+                // Check if it's a public/internal static field (non-const)
+                if (fieldSymbol.IsStatic && fieldSymbol.ContainingType is not null)
+                {
+                    if (
+                        fieldSymbol.DeclaredAccessibility == Accessibility.Public
+                        || fieldSymbol.DeclaredAccessibility == Accessibility.Internal
+                    )
+                    {
+                        var containingType = fieldSymbol.ContainingType;
+                        var fullTypeName = containingType.ToDisplayString(
+                            SymbolDisplayFormat.FullyQualifiedFormat
+                        );
+                        var memberName = fieldSymbol.Name;
+                        return $"{fullTypeName}.{memberName}";
+                    }
+                }
+            }
+            // Check if it's a public/internal static property
+            else if (symbolInfo.Symbol is IPropertySymbol propertySymbol)
+            {
+                if (propertySymbol.IsStatic)
+                {
+                    if (
+                        propertySymbol.DeclaredAccessibility == Accessibility.Public
+                        || propertySymbol.DeclaredAccessibility == Accessibility.Internal
+                    )
+                    {
+                        var containingType = propertySymbol.ContainingType;
+                        var fullTypeName = containingType.ToDisplayString(
+                            SymbolDisplayFormat.FullyQualifiedFormat
+                        );
+                        var memberName = propertySymbol.Name;
+                        return $"{fullTypeName}.{memberName}";
+                    }
+                }
+            }
+        }
+
         // if object creation expression, convert type names to fully qualified names
         if (syntax is ObjectCreationExpressionSyntax objectCreation)
         {

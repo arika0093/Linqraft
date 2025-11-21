@@ -369,6 +369,12 @@ public class LocalVariableCaptureAnalyzer : DiagnosticAnalyzer
                 continue;
             }
 
+            // Check if this member actually needs to be captured
+            if (!NeedsCapture(symbol, lambda, lambdaParameters))
+            {
+                continue;
+            }
+
             // Check if this is a field or property that needs to be captured
             if ((symbol.Kind == SymbolKind.Field || symbol.Kind == SymbolKind.Property))
             {
@@ -449,10 +455,70 @@ public class LocalVariableCaptureAnalyzer : DiagnosticAnalyzer
                 return true;
             }
         }
-        // Fields and properties (both instance and static, including const fields)
-        else if (symbol.Kind == SymbolKind.Field || symbol.Kind == SymbolKind.Property)
+        // Fields
+        else if (symbol.Kind == SymbolKind.Field)
         {
-            // All fields and properties need to be captured for complete isolation
+            var fieldSymbol = symbol as IFieldSymbol;
+            if (fieldSymbol == null)
+            {
+                return true;
+            }
+
+            // Enum values can be accessed directly
+            if (fieldSymbol.ContainingType?.TypeKind == TypeKind.Enum)
+            {
+                return false;
+            }
+
+            // Const fields with public or internal accessibility can be accessed directly
+            if (fieldSymbol.IsConst)
+            {
+                if (
+                    fieldSymbol.DeclaredAccessibility == Accessibility.Public
+                    || fieldSymbol.DeclaredAccessibility == Accessibility.Internal
+                )
+                {
+                    return false;
+                }
+            }
+
+            // Static const fields with public or internal accessibility can be accessed directly
+            if (fieldSymbol.IsStatic && fieldSymbol.IsConst)
+            {
+                if (
+                    fieldSymbol.DeclaredAccessibility == Accessibility.Public
+                    || fieldSymbol.DeclaredAccessibility == Accessibility.Internal
+                )
+                {
+                    return false;
+                }
+            }
+
+            // All other fields need to be captured
+            return true;
+        }
+        // Properties
+        else if (symbol.Kind == SymbolKind.Property)
+        {
+            var propertySymbol = symbol as IPropertySymbol;
+            if (propertySymbol == null)
+            {
+                return true;
+            }
+
+            // Static properties with public or internal accessibility can be accessed directly
+            if (propertySymbol.IsStatic)
+            {
+                if (
+                    propertySymbol.DeclaredAccessibility == Accessibility.Public
+                    || propertySymbol.DeclaredAccessibility == Accessibility.Internal
+                )
+                {
+                    return false;
+                }
+            }
+
+            // All other properties need to be captured
             return true;
         }
 

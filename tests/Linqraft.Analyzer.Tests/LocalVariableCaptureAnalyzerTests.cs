@@ -536,7 +536,7 @@ class Test
         {
             Value = {|#0:SampleValue|},
             Text = {|#1:SampleText|},
-            ConstantPi = {|#2:Pi|}
+            ConstantPi = Pi
         });
     }
 }
@@ -555,13 +555,7 @@ class Test
             .WithArguments("SampleText")
             .WithSeverity(DiagnosticSeverity.Error);
 
-        var expected3 = VerifyCS
-            .Diagnostic(LocalVariableCaptureAnalyzer.DiagnosticId)
-            .WithLocation(2)
-            .WithArguments("Pi")
-            .WithSeverity(DiagnosticSeverity.Error);
-
-        await VerifyCS.VerifyAnalyzerAsync(test, expected1, expected2, expected3);
+        await VerifyCS.VerifyAnalyzerAsync(test, expected1, expected2);
     }
 
     [Fact]
@@ -743,6 +737,202 @@ class Test
             .Diagnostic(LocalVariableCaptureAnalyzer.DiagnosticId)
             .WithLocation(0)
             .WithArguments("StaticValue")
+            .WithSeverity(DiagnosticSeverity.Error);
+
+        await VerifyCS.VerifyAnalyzerAsync(test, expected);
+    }
+
+    [Fact]
+    public async Task PublicStaticProperty_NoDiagnostic()
+    {
+        var test =
+            @"
+using System.Linq;
+using System.Collections.Generic;
+
+class Entity
+{
+    public int Value { get; set; }
+}
+
+class AnotherClass
+{
+    public static string StaticValue { get; set; } = ""static"";
+}
+
+class Test
+{
+    void Method()
+    {
+        var list = new List<Entity>();
+        var result = list.AsQueryable().SelectExpr(s => new { Value = AnotherClass.StaticValue });
+    }
+}
+
+" + TestSourceCodes.SelectExprWithFunc;
+
+        await VerifyCS.VerifyAnalyzerAsync(test);
+    }
+
+    [Fact]
+    public async Task InternalStaticProperty_NoDiagnostic()
+    {
+        var test =
+            @"
+using System.Linq;
+using System.Collections.Generic;
+
+class Entity
+{
+    public int Value { get; set; }
+}
+
+class AnotherClass
+{
+    internal static string StaticValue { get; set; } = ""static"";
+}
+
+class Test
+{
+    void Method()
+    {
+        var list = new List<Entity>();
+        var result = list.AsQueryable().SelectExpr(s => new { Value = AnotherClass.StaticValue });
+    }
+}
+
+" + TestSourceCodes.SelectExprWithFunc;
+
+        await VerifyCS.VerifyAnalyzerAsync(test);
+    }
+
+    [Fact]
+    public async Task EnumValue_NoDiagnostic()
+    {
+        var test =
+            @"
+using System.Linq;
+using System.Collections.Generic;
+
+enum SampleEnum
+{
+    ValueA,
+    ValueB
+}
+
+class Entity
+{
+    public int Value { get; set; }
+}
+
+class Test
+{
+    void Method()
+    {
+        var list = new List<Entity>();
+        var result = list.AsQueryable().SelectExpr(s => new { EnumValue = SampleEnum.ValueA });
+    }
+}
+
+" + TestSourceCodes.SelectExprWithFunc;
+
+        await VerifyCS.VerifyAnalyzerAsync(test);
+    }
+
+    [Fact]
+    public async Task PublicConstField_NoDiagnostic()
+    {
+        var test =
+            @"
+using System.Linq;
+using System.Collections.Generic;
+
+class Entity
+{
+    public int Value { get; set; }
+}
+
+class Constants
+{
+    public const double Pi = 3.14;
+}
+
+class Test
+{
+    void Method()
+    {
+        var list = new List<Entity>();
+        var result = list.AsQueryable().SelectExpr(s => new { Constant = Constants.Pi });
+    }
+}
+
+" + TestSourceCodes.SelectExprWithFunc;
+
+        await VerifyCS.VerifyAnalyzerAsync(test);
+    }
+
+    [Fact]
+    public async Task InternalConstField_NoDiagnostic()
+    {
+        var test =
+            @"
+using System.Linq;
+using System.Collections.Generic;
+
+class Entity
+{
+    public int Value { get; set; }
+}
+
+class Constants
+{
+    internal const double Pi = 3.14;
+}
+
+class Test
+{
+    void Method()
+    {
+        var list = new List<Entity>();
+        var result = list.AsQueryable().SelectExpr(s => new { Constant = Constants.Pi });
+    }
+}
+
+" + TestSourceCodes.SelectExprWithFunc;
+
+        await VerifyCS.VerifyAnalyzerAsync(test);
+    }
+
+    [Fact]
+    public async Task PrivateStaticProperty_ReportsDiagnostic()
+    {
+        var test =
+            @"
+using System.Linq;
+using System.Collections.Generic;
+
+class Entity
+{
+    public int Value { get; set; }
+}
+
+class Test
+{
+    private static string PrivateStaticValue { get; set; } = ""private"";
+
+    void Method()
+    {
+        var list = new List<Entity>();
+        var result = list.AsQueryable().SelectExpr(s => new { Value = {|#0:PrivateStaticValue|} });
+    }
+}
+
+" + TestSourceCodes.SelectExprWithFunc;
+
+        var expected = VerifyCS
+            .Diagnostic(LocalVariableCaptureAnalyzer.DiagnosticId)
+            .WithLocation(0)
+            .WithArguments("PrivateStaticValue")
             .WithSeverity(DiagnosticSeverity.Error);
 
         await VerifyCS.VerifyAnalyzerAsync(test, expected);
