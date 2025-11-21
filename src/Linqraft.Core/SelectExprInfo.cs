@@ -336,8 +336,8 @@ public abstract record SelectExprInfo
         var dtoCreation = $"new {nestedDtoName}\n{{\n{propertiesCode}\n}}";
 
         // Replace the anonymous type creation with the DTO creation in the original expression
-        var originalText = syntax.ToString();
-        var anonymousText = anonymousCreation.ToString();
+        var originalText = syntax.ToFullString();
+        var anonymousText = anonymousCreation.ToFullString();
 
         // Simple string replacement approach
         var convertedText = originalText.Replace(anonymousText, dtoCreation);
@@ -399,8 +399,8 @@ public abstract record SelectExprInfo
         var selectInfo = ExtractSelectInfoFromSyntax(syntax);
         if (selectInfo is null)
         {
-            // Fallback to string representation
-            return syntax.ToString();
+            // Fallback to string representation (without trivia)
+            return syntax.ToFullString();
         }
 
         var (baseExpression, paramName, chainedMethods, hasNullableAccess, coalescingDefaultValue) =
@@ -473,8 +473,8 @@ public abstract record SelectExprInfo
         var selectManyInfo = ExtractSelectManyInfoFromSyntax(syntax);
         if (selectManyInfo is null)
         {
-            // Fallback to string representation
-            return syntax.ToString();
+            // Fallback to string representation (without trivia)
+            return syntax.ToFullString();
         }
 
         var (baseExpression, paramName, chainedMethods, hasNullableAccess, coalescingDefaultValue) =
@@ -545,11 +545,11 @@ public abstract record SelectExprInfo
             if (hasNullableAccess)
             {
                 var defaultValue = coalescingDefaultValue ?? "System.Linq.Enumerable.Empty()";
-                return $"{baseExpression} != null ? {syntax} : {defaultValue}";
+                return $"{baseExpression} != null ? {syntax.ToFullString()} : {defaultValue}";
             }
             else
             {
-                return syntax.ToString();
+                return syntax.ToFullString();
             }
         }
     }
@@ -576,7 +576,7 @@ public abstract record SelectExprInfo
             } binaryExpr
         )
         {
-            var rightSide = binaryExpr.Right.ToString().Trim();
+            var rightSide = binaryExpr.Right.ToFullString().Trim();
             coalescingDefaultValue = rightSide == "[]" ? null : rightSide;
             currentSyntax = binaryExpr.Left;
         }
@@ -661,18 +661,18 @@ public abstract record SelectExprInfo
         string baseExpression;
         if (hasNullableAccess && conditionalAccess is not null)
         {
-            baseExpression = conditionalAccess.Expression.ToString();
+            baseExpression = RemoveCommentsFromExpression(conditionalAccess.Expression.ToFullString());
         }
         else if (linqInvocation.Expression is MemberAccessExpressionSyntax linqMember)
         {
-            baseExpression = linqMember.Expression.ToString();
+            baseExpression = RemoveCommentsFromExpression(linqMember.Expression.ToFullString());
         }
         else if (
             linqInvocation.Expression is MemberBindingExpressionSyntax
             && conditionalAccess is not null
         )
         {
-            baseExpression = conditionalAccess.Expression.ToString();
+            baseExpression = RemoveCommentsFromExpression(conditionalAccess.Expression.ToFullString());
         }
         else
         {
@@ -728,11 +728,11 @@ public abstract record SelectExprInfo
             .Any();
 
         if (!hasConditionalAccess)
-            return syntax.ToString();
+            return syntax.ToFullString();
 
         // For now, use the original string-based implementation since it works
         // The Roslyn check above ensures we only call this when appropriate
-        var expression = syntax.ToString();
+        var expression = syntax.ToFullString();
 
         // Build the access path without ?. operators
         var accessPath = expression.Replace("?.", ".");
@@ -823,5 +823,14 @@ public abstract record SelectExprInfo
             Accessibility.ProtectedOrInternal => "protected internal",
             _ => "public", // Default to public
         };
+    }
+
+    /// <summary>
+    /// Converts a syntax node to a string representation without comments or extra whitespace
+    /// </summary>
+    protected string ToStringWithoutComments(SyntaxNode syntax)
+    {
+        // Remove all trivia (including comments) and normalize whitespace
+        return syntax.WithoutTrivia().ToFullString();
     }
 }

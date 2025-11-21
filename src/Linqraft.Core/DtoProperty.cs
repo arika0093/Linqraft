@@ -353,12 +353,26 @@ public record DtoProperty(
         return new DtoProperty(
             Name: propertyName,
             IsNullable: isNullable || hasNullableAccess,
-            OriginalExpression: expression.ToString(),
+            OriginalExpression: RemoveComments(expression.ToFullString()),
             OriginalSyntax: expression,
             TypeSymbol: propertyType,
             NestedStructure: nestedStructure,
             Accessibility: accessibility
         );
+    }
+
+    /// <summary>
+    /// Removes single-line and multi-line comments from C# code
+    /// </summary>
+    private static string RemoveComments(string code)
+    {
+        // Remove single-line comments (// ...)
+        code = System.Text.RegularExpressions.Regex.Replace(code, @"//.*?$", "", System.Text.RegularExpressions.RegexOptions.Multiline);
+        // Remove multi-line comments (/* ... */)
+        code = System.Text.RegularExpressions.Regex.Replace(code, @"/\*.*?\*/", "", System.Text.RegularExpressions.RegexOptions.Singleline);
+        // Normalize whitespace
+        code = System.Text.RegularExpressions.Regex.Replace(code.Trim(), @"\s+", " ");
+        return code;
     }
 
     /// <summary>

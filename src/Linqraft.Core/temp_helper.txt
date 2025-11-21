@@ -1,0 +1,13 @@
+    /// <summary>
+    /// Removes comments from expression string
+    /// </summary>
+    private static string RemoveCommentsFromExpression(string expr)
+    {
+        // Remove single-line comments
+        expr = System.Text.RegularExpressions.Regex.Replace(expr, @"//.*?$", "", System.Text.RegularExpressions.RegexOptions.Multiline);
+        // Remove multi-line comments
+        expr = System.Text.RegularExpressions.Regex.Replace(expr, @"/\*.*?\*/", "", System.Text.RegularExpressions.RegexOptions.Singleline);
+        // Normalize whitespace
+        expr = System.Text.RegularExpressions.Regex.Replace(expr.Trim(), @"\s+", " ");
+        return expr;
+    }
