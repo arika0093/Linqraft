@@ -105,7 +105,7 @@ The generated DTO class name is inferred from context:
 
 ## LQRS001: SelectExprToTypedAnalyzer
 
-**Severity:** Info
+**Severity:** Hidden
 **Category:** Design
 **Default:** Enabled
 
