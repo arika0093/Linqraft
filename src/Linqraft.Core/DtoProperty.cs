@@ -376,71 +376,12 @@ public record DtoProperty(
     /// </summary>
     private static bool ShouldGenerateNullCheckFromSyntax(ExpressionSyntax expression)
     {
-        // 1. If ?. is used, definitely needs null check
-        if (expression.DescendantNodesAndSelf().OfType<ConditionalAccessExpressionSyntax>().Any())
-        {
-            return true;
-        }
-
-        // 2. Check for nested member access (e.g., x.Child.Name)
-        // Count member access depth (excluding lambda parameters)
-        var memberAccesses = expression
-            .DescendantNodesAndSelf()
-            .OfType<MemberAccessExpressionSyntax>()
-            .Where(ma =>
-            {
-                // Exclude nested Select lambdas
-                var parentLambda = ma.Ancestors().OfType<LambdaExpressionSyntax>().FirstOrDefault();
-                var topLambda = expression
-                    .Ancestors()
-                    .OfType<LambdaExpressionSyntax>()
-                    .FirstOrDefault();
-                return parentLambda == topLambda;
-            })
-            .ToList();
-
-        // If there are multiple levels of member access (e.g., s.Child.Name has 2 levels)
-        // generate null check for safety
-        if (memberAccesses.Count >= 2)
-        {
-            // Check if the chain starts from a lambda parameter
-            var firstAccess = memberAccesses.FirstOrDefault();
-            if (firstAccess?.Expression is IdentifierNameSyntax)
-            {
-                // s.Child.Name - has intermediate navigation, needs null check
-                return true;
-            }
-        }
-
-        return false;
+        return NullConditionalHelper.ShouldGenerateNullCheckFromSyntax(expression);
     }
 
     private static bool HasNullableAccess(ExpressionSyntax expression)
     {
-        // Check if ?. operator is used at the top level (excluding nested lambdas)
-        // We need to exclude ConditionalAccessExpressionSyntax that are inside lambda expressions
-        // because those apply to the nested properties, not the outer property
-        var conditionalAccesses = expression
-            .DescendantNodesAndSelf()
-            .OfType<ConditionalAccessExpressionSyntax>();
-
-        foreach (var conditionalAccess in conditionalAccesses)
-        {
-            // Check if this conditional access is inside a lambda expression
-            var ancestors = conditionalAccess.Ancestors();
-            var isInsideLambda = ancestors
-                .TakeWhile(n => n != expression) // Only check ancestors up to the root expression
-                .OfType<LambdaExpressionSyntax>()
-                .Any();
-
-            // If not inside a lambda, this is a top-level nullable access
-            if (!isInsideLambda)
-            {
-                return true;
-            }
-        }
-
-        return false;
+        return NullConditionalHelper.HasNullConditionalAccess(expression);
     }
 
     private static InvocationExpressionSyntax? FindSelectInvocation(ExpressionSyntax expression)
