@@ -46,9 +46,7 @@ public class TernaryNestedDtoTest
             .SelectExpr<Parent, ParentDto>(p => new
             {
                 p.Id,
-                ChildItemInfo = p.Child != null
-                    ? new { Name = p.Child.Name }
-                    : null
+                ChildItemInfo = p.Child != null ? new { Name = p.Child.Name } : null,
             })
             .ToList();
 
@@ -88,9 +86,7 @@ public class TernaryNestedDtoTest
             .SelectExpr(p => new
             {
                 p.Id,
-                ChildItemInfo = p.Child != null
-                    ? new { Name = p.Child.Name }
-                    : null
+                ChildItemInfo = p.Child != null ? new { Name = p.Child.Name } : null,
             })
             .ToList();
 
@@ -130,9 +126,7 @@ public class TernaryNestedDtoTest
             .SelectExpr<Parent, ParentDto2>(p => new
             {
                 p.Id,
-                ChildItemInfo = p.Child == null
-                    ? null
-                    : new { Name = p.Child.Name }
+                ChildItemInfo = p.Child == null ? null : new { Name = p.Child.Name },
             })
             .ToList();
 

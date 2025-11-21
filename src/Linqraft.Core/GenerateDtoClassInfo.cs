@@ -150,9 +150,7 @@ public class GenerateDtoClassInfo
                 // This is needed for ternary operators like: p.Child != null ? new { ... } : null
                 // which produce types like: global::<anonymous type: ...>?
                 var isTypeNullable = propertyType.EndsWith("?");
-                var typeWithoutNullable = isTypeNullable 
-                    ? propertyType[..^1] 
-                    : propertyType;
+                var typeWithoutNullable = isTypeNullable ? propertyType[..^1] : propertyType;
 
                 // Check if this is a direct anonymous type (not wrapped in a collection)
                 // Anonymous types from Roslyn look like: global::<anonymous type: ...>
