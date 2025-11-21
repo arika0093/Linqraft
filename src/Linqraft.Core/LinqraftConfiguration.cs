@@ -14,9 +14,9 @@ public record LinqraftConfiguration
 
     /// <summary>
     /// The namespace where global namespace DTOs should exist.
-    /// Default is "Linqraft"
+    /// Default is "" (empty, meaning DTOs will be generated in the global namespace)
     /// </summary>
-    public string GlobalNamespace { get; init; } = "Linqraft";
+    public string GlobalNamespace { get; init; } = "";
 
     /// <summary>
     /// Whether to generate records instead of classes.

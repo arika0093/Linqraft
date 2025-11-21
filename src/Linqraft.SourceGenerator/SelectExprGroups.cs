@@ -92,7 +92,26 @@ internal class SelectExprGroups
     private string BuildSourceCode(List<string> dtoClasses, List<string> selectExprMethods)
     {
         var indentedExpr = IndentUtility(string.Join("\n", selectExprMethods), 8);
-        var indentedClasses = IndentUtility(string.Join("\n", dtoClasses), 4);
+        
+        // Build the DTO classes section (with or without namespace)
+        string dtoClassesSection;
+        if (string.IsNullOrEmpty(TargetNamespace))
+        {
+            // Generate DTOs in global namespace (no namespace wrapper)
+            dtoClassesSection = string.Join("\n", dtoClasses);
+        }
+        else
+        {
+            // Generate DTOs in the specified namespace
+            var indentedClasses = IndentUtility(string.Join("\n", dtoClasses), 4);
+            dtoClassesSection = $$"""
+                namespace {{TargetNamespace}}
+                {
+                {{indentedClasses}}
+                }
+                """;
+        }
+        
         return $$"""
             {{GenerateFileHeaderPart()}}
 
@@ -104,10 +123,7 @@ internal class SelectExprGroups
                 }
             }
 
-            namespace {{TargetNamespace}}
-            {
-            {{indentedClasses}}
-            }
+            {{dtoClassesSection}}
             """;
     }
 
@@ -129,6 +145,16 @@ internal class SelectExprGroups
 
     protected string GetUsingNamespaceString()
     {
+        if (string.IsNullOrEmpty(TargetNamespace))
+        {
+            // No using statement needed for global namespace
+            return """
+                using System;
+                using System.Linq;
+                using System.Collections.Generic;
+                """;
+        }
+        
         return $"""
             using System;
             using System.Linq;
