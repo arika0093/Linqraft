@@ -170,7 +170,7 @@ using System.Collections.Generic;
 class Sample
 {
     public int Id { get; set; }
-    public Child Foo { get; set; }
+    public Child? Foo { get; set; }
 }
 
 class Child
@@ -183,7 +183,7 @@ class Test
     void Method()
     {
         var list = new List<Sample>();
-        var result = list.AsQueryable().{|#0:Select|}(x => new { Value = x.Foo != null ? x.Foo.Id : null });
+        var result = list.AsQueryable().{|#0:Select|}(x => new { Value = x.Foo != null ? x.Foo.Id : (int?)null });
     }
 }";
 
@@ -195,7 +195,7 @@ using System.Collections.Generic;
 class Sample
 {
     public int Id { get; set; }
-    public Child Foo { get; set; }
+    public Child? Foo { get; set; }
 }
 
 class Child
@@ -231,7 +231,7 @@ using System.Collections.Generic;
 class Sample
 {
     public int Id { get; set; }
-    public Child Child { get; set; }
+    public Child? Child { get; set; }
 }
 
 class Child
@@ -244,7 +244,7 @@ class Test
     void Method()
     {
         var list = new List<Sample>();
-        var result = list.AsQueryable().{|#0:Select|}(x => new { Value = x.Child != null ? (int?)x.Child.Id : null });
+        var result = list.AsQueryable().{|#0:Select|}(x => new { Value = x.Child != null ? (int?)x.Child.Id : (int?)null });
     }
 }";
 
@@ -256,7 +256,7 @@ using System.Collections.Generic;
 class Sample
 {
     public int Id { get; set; }
-    public Child Child { get; set; }
+    public Child? Child { get; set; }
 }
 
 class Child
@@ -292,7 +292,7 @@ using System.Collections.Generic;
 class Sample
 {
     public int Id { get; set; }
-    public Child Child { get; set; }
+    public Child? Child { get; set; }
 }
 
 class Child
@@ -317,7 +317,7 @@ using System.Collections.Generic;
 class Sample
 {
     public int Id { get; set; }
-    public Child Child { get; set; }
+    public Child? Child { get; set; }
 }
 
 class Child
@@ -353,13 +353,13 @@ using System.Collections.Generic;
 class Sample
 {
     public int Id { get; set; }
-    public Child Child3 { get; set; }
+    public Child? Child3 { get; set; }
 }
 
 class Child
 {
     public int Id { get; set; }
-    public Child Child { get; set; }
+    public Child? Child { get; set; }
 }
 
 class Test
@@ -367,7 +367,7 @@ class Test
     void Method()
     {
         var list = new List<Sample>();
-        var result = list.AsQueryable().{|#0:Select|}(x => new { Value = x.Child3 != null && x.Child3.Child != null ? x.Child3.Child.Id : null });
+        var result = list.AsQueryable().{|#0:Select|}(x => new { Value = x.Child3 != null && x.Child3.Child != null ? x.Child3.Child.Id : (int?)null });
     }
 }";
 
@@ -379,13 +379,13 @@ using System.Collections.Generic;
 class Sample
 {
     public int Id { get; set; }
-    public Child Child3 { get; set; }
+    public Child? Child3 { get; set; }
 }
 
 class Child
 {
     public int Id { get; set; }
-    public Child Child { get; set; }
+    public Child? Child { get; set; }
 }
 
 class Test
@@ -416,13 +416,13 @@ using System.Collections.Generic;
 class Sample
 {
     public int Id { get; set; }
-    public Child Child { get; set; }
+    public Child? Child { get; set; }
 }
 
 class Child
 {
     public int Id { get; set; }
-    public Child Child { get; set; }
+    public Child? Child { get; set; }
 }
 
 class Test
@@ -430,7 +430,7 @@ class Test
     void Method()
     {
         var list = new List<Sample>();
-        var result = list.AsQueryable().{|#0:Select|}(x => new { Value = x.Child != null && x.Child.Child != null && x.Child.Child.Child != null ? x.Child.Child.Child.Id : null });
+        var result = list.AsQueryable().{|#0:Select|}(x => new { Value = x.Child != null && x.Child.Child != null && x.Child.Child.Child != null ? x.Child.Child.Child.Id : (int?)null });
     }
 }";
 
@@ -442,13 +442,13 @@ using System.Collections.Generic;
 class Sample
 {
     public int Id { get; set; }
-    public Child Child { get; set; }
+    public Child? Child { get; set; }
 }
 
 class Child
 {
     public int Id { get; set; }
-    public Child Child { get; set; }
+    public Child? Child { get; set; }
 }
 
 class Test
