@@ -2,6 +2,7 @@ using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.Linq;
 using System.Text;
+using Linqraft.Core.Formatting;
 using Linqraft.Core.RoslynHelpers;
 
 namespace Linqraft.Core;

@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using Linqraft.Core;
+using Linqraft.Core.Formatting;
 using Linqraft.Core.RoslynHelpers;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
@@ -101,7 +102,7 @@ internal class SelectExprGroups
         if (string.IsNullOrEmpty(TargetNamespace))
         {
             // Generate DTOs in global namespace (no namespace wrapper)
-            dtoClassesSection = string.Join("\n", dtoClasses);
+            dtoClassesSection = string.Join(CodeFormatter.DefaultNewLine, dtoClasses);
         }
         else
         {
