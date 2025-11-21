@@ -49,6 +49,12 @@ internal static class TernaryNullCheckSimplifier
             // Extract the "when true" expression, removing any type casts
             var whenTrueExpr = RemoveNullableCast(ternary.WhenTrue);
 
+            // Do not simplify if the "when true" expression is an object creation
+            // This prevents incorrect conversion that would make nullable fields non-nullable
+            // and cause CS8602 warnings (e.g., s.Nest.Id instead of s.Nest?.Id)
+            if (IsObjectCreation(whenTrueExpr))
+                return null;
+
             // Build the null-conditional chain
             var nullConditionalExpr = BuildNullConditionalChain(whenTrueExpr, nullChecks);
             if (nullConditionalExpr == null)
@@ -157,6 +163,13 @@ internal static class TernaryNullCheckSimplifier
             // This can be extended as needed
 
             return false;
+        }
+
+        private static bool IsObjectCreation(ExpressionSyntax expr)
+        {
+            // Check if the expression is an object creation (named or anonymous)
+            return expr is ObjectCreationExpressionSyntax
+                || expr is AnonymousObjectCreationExpressionSyntax;
         }
 
         private static ExpressionSyntax RemoveNullableCast(ExpressionSyntax expr)
