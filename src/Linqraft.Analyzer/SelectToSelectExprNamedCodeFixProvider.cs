@@ -324,18 +324,6 @@ public class SelectToSelectExprNamedCodeFixProvider : CodeFixProvider
             return SyntaxFactory.AnonymousObjectCreationExpression();
         }
 
-        // If semantic model is provided, collect fully qualified names for all nested object creations
-        Dictionary<ObjectCreationExpressionSyntax, string>? fullyQualifiedNames = null;
-        if (semanticModel != null)
-        {
-            fullyQualifiedNames = new Dictionary<ObjectCreationExpressionSyntax, string>();
-            CollectFullyQualifiedNames(
-                objectCreation.Initializer,
-                semanticModel,
-                fullyQualifiedNames
-            );
-        }
-
         var members = new List<AnonymousObjectMemberDeclaratorSyntax>();
 
         foreach (var expression in objectCreation.Initializer.Expressions)
@@ -345,11 +333,8 @@ public class SelectToSelectExprNamedCodeFixProvider : CodeFixProvider
                 // Convert assignment like "Id = x.Id" to anonymous member
                 if (assignment.Left is IdentifierNameSyntax identifier)
                 {
-                    // If we have fully qualified names, apply them to nested object creations
-                    var processedRight =
-                        fullyQualifiedNames != null
-                            ? ApplyFullyQualifiedNames(assignment.Right, fullyQualifiedNames)
-                            : assignment.Right;
+                    // Use the right side expression as-is (no FullName conversion needed)
+                    var processedRight = assignment.Right;
 
                     // Create the name equals with preserved identifier trivia
                     var nameEquals = SyntaxFactory
@@ -401,122 +386,6 @@ public class SelectToSelectExprNamedCodeFixProvider : CodeFixProvider
             .WithTrailingTrivia(objectCreation.GetTrailingTrivia());
 
         return result;
-    }
-
-    private static void CollectFullyQualifiedNames(
-        SyntaxNode node,
-        SemanticModel semanticModel,
-        Dictionary<ObjectCreationExpressionSyntax, string> fullyQualifiedNames
-    )
-    {
-        foreach (
-            var objectCreation in node.DescendantNodes().OfType<ObjectCreationExpressionSyntax>()
-        )
-        {
-            var typeInfo = semanticModel.GetTypeInfo(objectCreation);
-            if (typeInfo.Type != null)
-            {
-                var fullyQualifiedName = typeInfo.Type.ToDisplayString(
-                    SymbolDisplayFormat.FullyQualifiedFormat
-                );
-                fullyQualifiedNames[objectCreation] = fullyQualifiedName;
-            }
-        }
-    }
-
-    private static ExpressionSyntax ApplyFullyQualifiedNames(
-        ExpressionSyntax expression,
-        Dictionary<ObjectCreationExpressionSyntax, string> fullyQualifiedNames
-    )
-    {
-        var rewriter = new ApplyFullyQualifiedNamesRewriter(fullyQualifiedNames);
-        return (ExpressionSyntax)rewriter.Visit(expression);
-    }
-
-    private class ApplyFullyQualifiedNamesRewriter : CSharpSyntaxRewriter
-    {
-        private readonly Dictionary<ObjectCreationExpressionSyntax, string> _fullyQualifiedNames;
-
-        public ApplyFullyQualifiedNamesRewriter(
-            Dictionary<ObjectCreationExpressionSyntax, string> fullyQualifiedNames
-        )
-        {
-            _fullyQualifiedNames = fullyQualifiedNames;
-        }
-
-        public override SyntaxNode? VisitObjectCreationExpression(
-            ObjectCreationExpressionSyntax node
-        )
-        {
-            if (_fullyQualifiedNames.TryGetValue(node, out var fullyQualifiedName))
-            {
-                // Parse the fully qualified name as a type
-                var qualifiedType = SyntaxFactory.ParseTypeName(fullyQualifiedName);
-
-                // Create new object creation with fully qualified type, preserving trivia
-                var newNode = SyntaxFactory
-                    .ObjectCreationExpression(qualifiedType)
-                    .WithArgumentList(node.ArgumentList)
-                    .WithInitializer(node.Initializer)
-                    .WithLeadingTrivia(node.GetLeadingTrivia())
-                    .WithTrailingTrivia(node.GetTrailingTrivia());
-
-                // Continue visiting children
-                return base.Visit(newNode) ?? newNode;
-            }
-
-            return base.VisitObjectCreationExpression(node);
-        }
-    }
-
-    private static ExpressionSyntax QualifyNestedObjectCreations(
-        ExpressionSyntax expression,
-        SemanticModel semanticModel
-    )
-    {
-        var rewriter = new FullyQualifyObjectCreationRewriter(semanticModel);
-        return (ExpressionSyntax)rewriter.Visit(expression);
-    }
-
-    private class FullyQualifyObjectCreationRewriter : CSharpSyntaxRewriter
-    {
-        private readonly SemanticModel _semanticModel;
-
-        public FullyQualifyObjectCreationRewriter(SemanticModel semanticModel)
-        {
-            _semanticModel = semanticModel;
-        }
-
-        public override SyntaxNode? VisitObjectCreationExpression(
-            ObjectCreationExpressionSyntax node
-        )
-        {
-            // Get the type symbol for this object creation
-            var typeInfo = _semanticModel.GetTypeInfo(node);
-            if (typeInfo.Type != null)
-            {
-                // Create fully qualified type name
-                var fullyQualifiedName = typeInfo.Type.ToDisplayString(
-                    SymbolDisplayFormat.FullyQualifiedFormat
-                );
-
-                // Parse the fully qualified name as a type
-                var qualifiedType = SyntaxFactory.ParseTypeName(fullyQualifiedName);
-
-                // Create new object creation with fully qualified type, preserving trivia
-                var newNode = SyntaxFactory
-                    .ObjectCreationExpression(qualifiedType)
-                    .WithArgumentList(node.ArgumentList)
-                    .WithInitializer(node.Initializer)
-                    .WithLeadingTrivia(node.GetLeadingTrivia())
-                    .WithTrailingTrivia(node.GetTrailingTrivia());
-
-                // Continue visiting children
-                return base.Visit(newNode) ?? newNode;
-            }
-
-            return base.VisitObjectCreationExpression(node);
-        }
     }
 
     private static AnonymousObjectCreationExpressionSyntax ConvertToAnonymousTypeRecursive(
