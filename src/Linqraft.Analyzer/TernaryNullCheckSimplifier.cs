@@ -73,8 +73,10 @@ internal static class TernaryNullCheckSimplifier
 
             // Handle chained && expressions
             var current = condition;
-            while (current is BinaryExpressionSyntax binary
-                && binary.Kind() == SyntaxKind.LogicalAndExpression)
+            while (
+                current is BinaryExpressionSyntax binary
+                && binary.Kind() == SyntaxKind.LogicalAndExpression
+            )
             {
                 // Check the right side
                 if (IsNullCheckComparison(binary.Right, out var checkedExpr))
@@ -148,10 +150,7 @@ internal static class TernaryNullCheckSimplifier
         private static bool IsEmptyCollectionInitializer(ExpressionSyntax expr)
         {
             // Check for [] pattern (collection expression)
-            if (
-                expr is CollectionExpressionSyntax collection
-                && collection.Elements.Count == 0
-            )
+            if (expr is CollectionExpressionSyntax collection && collection.Elements.Count == 0)
                 return true;
 
             // Check for Array.Empty<T>() or similar patterns
@@ -163,10 +162,7 @@ internal static class TernaryNullCheckSimplifier
         private static ExpressionSyntax RemoveNullableCast(ExpressionSyntax expr)
         {
             // Remove (Type?) cast if present
-            if (
-                expr is CastExpressionSyntax cast
-                && cast.Type is NullableTypeSyntax
-            )
+            if (expr is CastExpressionSyntax cast && cast.Type is NullableTypeSyntax)
             {
                 return cast.Expression;
             }
@@ -190,7 +186,7 @@ internal static class TernaryNullCheckSimplifier
             // Determine which positions need conditional access (?)
             var nullCheckSet = new HashSet<string>(nullChecks.Select(nc => nc.ToString()));
             var needsConditional = new bool[parts.Count - 1];
-            
+
             for (int i = 0; i < parts.Count - 1; i++)
             {
                 var partialPath = string.Join(".", parts.Take(i + 1));
@@ -248,7 +244,7 @@ internal static class TernaryNullCheckSimplifier
 
             // Build the chain of member bindings with possible nested conditional accesses
             var currentName = SyntaxFactory.IdentifierName(parts[startIndex]);
-            
+
             // If this is the last element, just return a member binding
             if (startIndex == parts.Count - 1)
             {
@@ -259,7 +255,11 @@ internal static class TernaryNullCheckSimplifier
             if (startIndex < needsConditional.Length && needsConditional[startIndex])
             {
                 // Build a conditional access for the next member
-                var innerWhenNotNull = BuildWhenNotNullChain(parts, needsConditional, startIndex + 1);
+                var innerWhenNotNull = BuildWhenNotNullChain(
+                    parts,
+                    needsConditional,
+                    startIndex + 1
+                );
                 var memberBinding = SyntaxFactory.MemberBindingExpression(currentName);
                 return SyntaxFactory.ConditionalAccessExpression(memberBinding, innerWhenNotNull);
             }

@@ -262,9 +262,7 @@ public class SelectToSelectExprAnonymousCodeFixProvider : CodeFixProvider
                 && simpleLambda.Body is ExpressionSyntax bodyExpr
             )
             {
-                var simplifiedBody = TernaryNullCheckSimplifier.SimplifyTernaryNullChecks(
-                    bodyExpr
-                );
+                var simplifiedBody = TernaryNullCheckSimplifier.SimplifyTernaryNullChecks(bodyExpr);
                 var newLambda = simpleLambda.WithBody(simplifiedBody);
                 newArguments.Add(argument.WithExpression(newLambda));
             }
