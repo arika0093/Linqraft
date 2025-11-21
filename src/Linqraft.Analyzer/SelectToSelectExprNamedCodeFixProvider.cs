@@ -46,13 +46,23 @@ public class SelectToSelectExprNamedCodeFixProvider : CodeFixProvider
         if (invocation == null)
             return;
 
-        // Register two code fixes: explicit DTO pattern and predefined DTO pattern
+        // Register three code fixes
         context.RegisterCodeFix(
             CodeAction.Create(
-                title: "Convert to SelectExpr<T, TDto> (explicit DTO pattern)",
+                title: "Convert to SelectExpr<T, TDto> (convert all nested to anonymous)",
                 createChangedDocument: c =>
-                    ConvertToSelectExprExplicitDtoAsync(context.Document, invocation, c),
-                equivalenceKey: "ConvertToSelectExprExplicitDto"
+                    ConvertToSelectExprExplicitDtoAllAsync(context.Document, invocation, c),
+                equivalenceKey: "ConvertToSelectExprExplicitDtoAll"
+            ),
+            diagnostic
+        );
+
+        context.RegisterCodeFix(
+            CodeAction.Create(
+                title: "Convert to SelectExpr<T, TDto> (convert root only to anonymous)",
+                createChangedDocument: c =>
+                    ConvertToSelectExprExplicitDtoRootOnlyAsync(context.Document, invocation, c),
+                equivalenceKey: "ConvertToSelectExprExplicitDtoRootOnly"
             ),
             diagnostic
         );
@@ -68,7 +78,7 @@ public class SelectToSelectExprNamedCodeFixProvider : CodeFixProvider
         );
     }
 
-    private static async Task<Document> ConvertToSelectExprExplicitDtoAsync(
+    private static async Task<Document> ConvertToSelectExprExplicitDtoAllAsync(
         Document document,
         InvocationExpressionSyntax invocation,
         CancellationToken cancellationToken
@@ -106,15 +116,67 @@ public class SelectToSelectExprNamedCodeFixProvider : CodeFixProvider
         if (newExpression == null)
             return document;
 
-        // Convert the named object creation to anonymous type and simplify null checks
-        var anonymousCreation = ConvertToAnonymousType(objectCreation);
-        var simplifiedAnonymous = NullConditionalHelper.SimplifyNullChecks(anonymousCreation);
+        // Convert the named object creation to anonymous type (including nested)
+        var anonymousCreation = ConvertToAnonymousTypeRecursive(objectCreation);
         
         // Replace both nodes in one operation using a dictionary
         var replacements = new Dictionary<SyntaxNode, SyntaxNode>
         {
             { invocation.Expression, newExpression },
-            { objectCreation, simplifiedAnonymous }
+            { objectCreation, anonymousCreation }
+        };
+        
+        var newRoot = root.ReplaceNodes(replacements.Keys, (oldNode, _) => replacements[oldNode]);
+
+        return document.WithSyntaxRoot(newRoot);
+    }
+
+    private static async Task<Document> ConvertToSelectExprExplicitDtoRootOnlyAsync(
+        Document document,
+        InvocationExpressionSyntax invocation,
+        CancellationToken cancellationToken
+    )
+    {
+        var semanticModel = await document
+            .GetSemanticModelAsync(cancellationToken)
+            .ConfigureAwait(false);
+        if (semanticModel == null)
+            return document;
+
+        var root = await document.GetSyntaxRootAsync(cancellationToken).ConfigureAwait(false);
+        if (root == null)
+            return document;
+
+        // Get the source type
+        var sourceType = GetSourceType(invocation.Expression, semanticModel, cancellationToken);
+        if (sourceType == null)
+            return document;
+
+        // Find the object creation in arguments
+        var objectCreation = FindNamedObjectCreationInArguments(invocation.ArgumentList);
+        if (objectCreation == null)
+            return document;
+
+        // Generate DTO name from the object creation
+        var dtoName = GenerateDtoName(invocation, objectCreation);
+
+        // Create the new generic SelectExpr call with type arguments
+        var newExpression = CreateTypedSelectExpr(
+            invocation.Expression,
+            sourceType.ToDisplayString(SymbolDisplayFormat.MinimallyQualifiedFormat),
+            dtoName
+        );
+        if (newExpression == null)
+            return document;
+
+        // Convert the named object creation to anonymous type (root only)
+        var anonymousCreation = ConvertToAnonymousType(objectCreation);
+        
+        // Replace both nodes in one operation using a dictionary
+        var replacements = new Dictionary<SyntaxNode, SyntaxNode>
+        {
+            { invocation.Expression, newExpression },
+            { objectCreation, anonymousCreation }
         };
         
         var newRoot = root.ReplaceNodes(replacements.Keys, (oldNode, _) => replacements[oldNode]);
@@ -132,32 +194,14 @@ public class SelectToSelectExprNamedCodeFixProvider : CodeFixProvider
         if (root == null)
             return document;
 
-        // Find the object creation in arguments
-        var objectCreation = FindNamedObjectCreationInArguments(invocation.ArgumentList);
-
         // Replace "Select" with "SelectExpr"
         var newExpression = ReplaceMethodName(invocation.Expression, "SelectExpr");
         if (newExpression == null)
             return document;
 
-        // Simplify null checks in the object creation if present
-        SyntaxNode? simplifiedObjectCreation = objectCreation != null 
-            ? NullConditionalHelper.SimplifyNullChecks(objectCreation) 
-            : null;
-
-        // Build replacements dictionary
-        var replacements = new Dictionary<SyntaxNode, SyntaxNode>
-        {
-            { invocation.Expression, newExpression }
-        };
-
-        if (objectCreation != null && simplifiedObjectCreation != null)
-        {
-            replacements[objectCreation] = simplifiedObjectCreation;
-        }
-
-        // Apply all replacements
-        var newRoot = root.ReplaceNodes(replacements.Keys, (oldNode, _) => replacements[oldNode]);
+        // Replace the invocation
+        var newInvocation = invocation.WithExpression(newExpression);
+        var newRoot = root.ReplaceNode(invocation, newInvocation);
 
         return document.WithSyntaxRoot(newRoot);
     }
@@ -277,6 +321,65 @@ public class SelectToSelectExprNamedCodeFixProvider : CodeFixProvider
         return SyntaxFactory.AnonymousObjectCreationExpression(
             SyntaxFactory.SeparatedList(members)
         );
+    }
+
+    private static AnonymousObjectCreationExpressionSyntax ConvertToAnonymousTypeRecursive(
+        ObjectCreationExpressionSyntax objectCreation
+    )
+    {
+        // Convert object initializer to anonymous object creation, recursively converting nested object creations
+        if (objectCreation.Initializer == null)
+        {
+            return SyntaxFactory.AnonymousObjectCreationExpression();
+        }
+
+        var members = new List<AnonymousObjectMemberDeclaratorSyntax>();
+
+        foreach (var expression in objectCreation.Initializer.Expressions)
+        {
+            if (expression is AssignmentExpressionSyntax assignment)
+            {
+                // Convert assignment like "Id = x.Id" to anonymous member
+                if (assignment.Left is IdentifierNameSyntax identifier)
+                {
+                    // Recursively process the right side to convert nested object creations
+                    var processedRight = ProcessExpressionForNestedConversions(assignment.Right);
+                    
+                    members.Add(
+                        SyntaxFactory.AnonymousObjectMemberDeclarator(
+                            SyntaxFactory.NameEquals(identifier.Identifier.Text),
+                            processedRight
+                        )
+                    );
+                }
+            }
+        }
+
+        return SyntaxFactory.AnonymousObjectCreationExpression(
+            SyntaxFactory.SeparatedList(members)
+        );
+    }
+
+    private static ExpressionSyntax ProcessExpressionForNestedConversions(ExpressionSyntax expression)
+    {
+        // Use a recursive rewriter to find and convert all nested object creations
+        var rewriter = new NestedObjectCreationRewriter();
+        return (ExpressionSyntax)rewriter.Visit(expression);
+    }
+
+    /// <summary>
+    /// Syntax rewriter that converts ObjectCreationExpressionSyntax to AnonymousObjectCreationExpressionSyntax
+    /// </summary>
+    private class NestedObjectCreationRewriter : CSharpSyntaxRewriter
+    {
+        public override SyntaxNode? VisitObjectCreationExpression(ObjectCreationExpressionSyntax node)
+        {
+            // Convert this object creation to anonymous type (non-recursively to avoid infinite loop)
+            var anonymousType = ConvertToAnonymousType(node);
+            
+            // Continue visiting children to convert nested object creations
+            return base.Visit(anonymousType) ?? anonymousType;
+        }
     }
 
     private static ObjectCreationExpressionSyntax? FindNamedObjectCreationInArguments(

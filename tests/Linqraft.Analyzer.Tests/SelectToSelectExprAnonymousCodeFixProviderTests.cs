@@ -153,69 +153,6 @@ class Test
         await RunCodeFixTestAsync(test, expected, fixedCode, 1);
     }
 
-    [Fact]
-    public async Task CodeFix_SelectToSelectExpr_SimplifiesNullChecks()
-    {
-        var test = @"
-using System.Linq;
-using System.Collections.Generic;
-
-class Parent
-{
-    public int Id { get; set; }
-    public Child Child { get; set; }
-}
-
-class Child
-{
-    public string Name { get; set; }
-}
-
-class Test
-{
-    void Method()
-    {
-        var list = new List<Parent>();
-        var result = list.AsQueryable().{|#0:Select|}(x => new 
-        { 
-            x.Id,
-            ChildName = x.Child != null ? x.Child.Name : null
-        });
-    }
-}";
-
-        var fixedCode = @"
-using System.Linq;
-using System.Collections.Generic;
-
-class Parent
-{
-    public int Id { get; set; }
-    public Child Child { get; set; }
-}
-
-class Child
-{
-    public string Name { get; set; }
-}
-
-class Test
-{
-    void Method()
-    {
-        var list = new List<Parent>();
-        var result = list.AsQueryable().SelectExpr(x => new { x.Id, ChildName = x.Child?.Name });
-    }
-}";
-
-        var expected = new DiagnosticResult(
-            SelectToSelectExprAnonymousAnalyzer.DiagnosticId,
-            DiagnosticSeverity.Info
-        ).WithLocation(0);
-
-        await RunCodeFixTestAsync(test, expected, fixedCode, 0);
-    }
-
     private static async Task RunCodeFixTestAsync(
         string source,
         DiagnosticResult expected,

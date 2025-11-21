@@ -66,7 +66,8 @@ class Test
             DiagnosticSeverity.Info
         ).WithLocation(0);
 
-        await RunCodeFixTestAsync(test, expected, fixedCode, 0);
+        // Index 1 = root only conversion
+        await RunCodeFixTestAsync(test, expected, fixedCode, 1);
     }
 
     [Fact]
@@ -127,7 +128,8 @@ class Test
             DiagnosticSeverity.Info
         ).WithLocation(0);
 
-        await RunCodeFixTestAsync(test, expected, fixedCode, 1);
+        // Index 2 = predefined DTO pattern
+        await RunCodeFixTestAsync(test, expected, fixedCode, 2);
     }
 
     [Fact]
@@ -184,11 +186,12 @@ class Test
             DiagnosticSeverity.Info
         ).WithLocation(0);
 
-        await RunCodeFixTestAsync(test, expected, fixedCode, 0);
+        // Index 1 = root only conversion
+        await RunCodeFixTestAsync(test, expected, fixedCode, 1);
     }
 
     [Fact]
-    public async Task CodeFix_SelectToSelectExpr_SimplifiesNullChecks()
+    public async Task CodeFix_SelectToSelectExpr_ExplicitDtoPattern_WithNestedSelect()
     {
         var test = @"
 using System.Linq;
@@ -197,7 +200,7 @@ using System.Collections.Generic;
 class Parent
 {
     public int Id { get; set; }
-    public Child Child { get; set; }
+    public List<Child> Children { get; set; }
 }
 
 class Child
@@ -205,10 +208,15 @@ class Child
     public string Name { get; set; }
 }
 
-class SampleDto
+class ParentDto
 {
     public int Id { get; set; }
-    public string ChildName { get; set; }
+    public List<ChildDto> Children { get; set; }
+}
+
+class ChildDto
+{
+    public string Name { get; set; }
 }
 
 class Test
@@ -216,10 +224,10 @@ class Test
     void Method()
     {
         var list = new List<Parent>();
-        var result = list.AsQueryable().{|#0:Select|}(x => new SampleDto 
+        var result = list.AsQueryable().{|#0:Select|}(x => new ParentDto 
         { 
             Id = x.Id,
-            ChildName = x.Child != null ? x.Child.Name : null
+            Children = x.Children.Select(c => new ChildDto { Name = c.Name }).ToList()
         });
     }
 }";
@@ -231,7 +239,7 @@ using System.Collections.Generic;
 class Parent
 {
     public int Id { get; set; }
-    public Child Child { get; set; }
+    public List<Child> Children { get; set; }
 }
 
 class Child
@@ -239,10 +247,15 @@ class Child
     public string Name { get; set; }
 }
 
-class SampleDto
+class ParentDto
 {
     public int Id { get; set; }
-    public string ChildName { get; set; }
+    public List<ChildDto> Children { get; set; }
+}
+
+class ChildDto
+{
+    public string Name { get; set; }
 }
 
 class Test
@@ -250,7 +263,11 @@ class Test
     void Method()
     {
         var list = new List<Parent>();
-        var result = list.AsQueryable().SelectExpr<Parent, ResultDto_9QIZVDBA>(x => new { Id = x.Id, ChildName = x.Child?.Name });
+        var result = list.AsQueryable().SelectExpr<Parent, ResultDto_TTX2UNAA>(x => new
+        {
+            Id = x.Id,
+            Children = x.Children.Select(c => new { Name = c.Name }).ToList()
+        });
     }
 }";
 
@@ -259,6 +276,7 @@ class Test
             DiagnosticSeverity.Info
         ).WithLocation(0);
 
+        // Index 0 = convert all (including nested)
         await RunCodeFixTestAsync(test, expected, fixedCode, 0);
     }
 
