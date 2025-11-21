@@ -196,8 +196,8 @@ namespace Tutorial
 
 ## Usage
 ### Prerequisites
-This library requirements **C# 12.0 or later**. .NET 8 or later is used C# 12.0 natively.
-The core part uses the C# 12 feature [interceptors](https://learn.microsoft.com/en-us/dotnet/csharp/whats-new/csharp-12#interceptors).
+This library requirements **C# 12.0 or later** because it uses the [interceptor](https://learn.microsoft.com/en-us/dotnet/csharp/whats-new/csharp-12#interceptors) feature.  
+.NET 8 or later is used C# 12.0 natively.
 
 <details>
 <summary>.NET 7 or below setup</summary>
