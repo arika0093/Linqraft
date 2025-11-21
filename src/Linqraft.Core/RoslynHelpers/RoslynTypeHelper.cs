@@ -232,4 +232,101 @@ public static class RoslynTypeHelper
         return typeName.StartsWith("global::<anonymous") ||
                (typeName.Contains("<") && typeName.Contains(">") && typeName.Contains("AnonymousType"));
     }
+
+    /// <summary>
+    /// 式がIQueryable&lt;T&gt;を返すかを判定
+    /// </summary>
+    /// <param name="expression">判定する式</param>
+    /// <param name="semanticModel">セマンティックモデル</param>
+    /// <param name="cancellationToken">キャンセレーショントークン</param>
+    /// <returns>IQueryable&lt;T&gt;を返す場合true</returns>
+    public static bool IsIQueryableExpression(
+        ExpressionSyntax expression,
+        SemanticModel semanticModel,
+        System.Threading.CancellationToken cancellationToken = default
+    )
+    {
+        if (expression == null || semanticModel == null)
+            return false;
+
+        // Get the type of the expression
+        var typeInfo = semanticModel.GetTypeInfo(expression, cancellationToken);
+        var type = typeInfo.Type;
+
+        if (type == null)
+            return false;
+
+        return ImplementsIQueryable(type, semanticModel.Compilation);
+    }
+
+    /// <summary>
+    /// IQueryable&lt;T&gt;からソース型Tを取得
+    /// </summary>
+    /// <param name="expression">IQueryable&lt;T&gt;式</param>
+    /// <param name="semanticModel">セマンティックモデル</param>
+    /// <param name="cancellationToken">キャンセレーショントークン</param>
+    /// <returns>ソース型T、取得できない場合はnull</returns>
+    public static ITypeSymbol? GetSourceTypeFromQueryable(
+        ExpressionSyntax expression,
+        SemanticModel semanticModel,
+        System.Threading.CancellationToken cancellationToken = default
+    )
+    {
+        if (expression == null || semanticModel == null)
+            return null;
+
+        // Get the type of the expression
+        var typeInfo = semanticModel.GetTypeInfo(expression, cancellationToken);
+        var type = typeInfo.Type;
+
+        if (type == null)
+            return null;
+
+        // Check if it implements IQueryable<T>
+        if (!ImplementsIQueryable(type, semanticModel.Compilation))
+            return null;
+
+        // Get the type argument T from IQueryable<T>
+        if (type is INamedTypeSymbol namedType)
+        {
+            // Direct IQueryable<T>
+            if (SymbolEqualityComparer.Default.Equals(
+                namedType.ConstructedFrom,
+                semanticModel.Compilation.GetTypeByMetadataName("System.Linq.IQueryable`1")))
+            {
+                return GetGenericTypeArgument(namedType, 0);
+            }
+
+            // Find IQueryable<T> in interfaces
+            var iqueryableInterface = namedType.AllInterfaces.FirstOrDefault(i =>
+                SymbolEqualityComparer.Default.Equals(
+                    i.ConstructedFrom,
+                    semanticModel.Compilation.GetTypeByMetadataName("System.Linq.IQueryable`1")));
+
+            if (iqueryableInterface != null)
+            {
+                return GetGenericTypeArgument(iqueryableInterface, 0);
+            }
+        }
+
+        return null;
+    }
+
+    /// <summary>
+    /// SyntaxNodeから名前空間名を取得
+    /// </summary>
+    /// <param name="node">SyntaxNode</param>
+    /// <returns>名前空間名、グローバル名前空間の場合は空文字列</returns>
+    public static string GetNamespaceFromSyntaxNode(SyntaxNode node)
+    {
+        if (node == null)
+            return string.Empty;
+
+        // Find the containing namespace or file-scoped namespace
+        var namespaceDecl = node.Ancestors()
+            .OfType<BaseNamespaceDeclarationSyntax>()
+            .FirstOrDefault();
+
+        return namespaceDecl?.Name.ToString() ?? string.Empty;
+    }
 }
