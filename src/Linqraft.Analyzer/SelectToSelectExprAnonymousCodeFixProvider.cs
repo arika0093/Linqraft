@@ -314,10 +314,21 @@ public class SelectToSelectExprAnonymousCodeFixProvider : CodeFixProvider
         if (hasUsing)
             return root;
 
+        // Detect the line ending used in the file by looking at existing using directives
+        var endOfLineTrivia = compilationUnit.Usings.Any()
+            ? compilationUnit.Usings.Last().GetTrailingTrivia().LastOrDefault()
+            : SyntaxFactory.EndOfLine("\n");
+
+        // If the detected trivia is not an end of line, use a default
+        if (endOfLineTrivia.Kind() != SyntaxKind.EndOfLineTrivia)
+        {
+            endOfLineTrivia = SyntaxFactory.EndOfLine("\n");
+        }
+
         // Add using directive (namespaceName is guaranteed non-null here due to the check above)
         var usingDirective = SyntaxFactory
             .UsingDirective(SyntaxFactory.ParseName(namespaceName!))
-            .WithTrailingTrivia(SyntaxFactory.CarriageReturnLineFeed);
+            .WithTrailingTrivia(endOfLineTrivia);
 
         return compilationUnit.AddUsings(usingDirective);
     }
