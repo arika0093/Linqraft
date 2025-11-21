@@ -374,9 +374,13 @@ public abstract record SelectExprInfo
         // Build the DTO creation as a compact single-line or multi-line depending on complexity
         var dtoCreation = $"new {nestedDtoName}\n{{\n{propertiesCode}\n}}";
 
+        // Remove comments from syntax before processing
+        var cleanSyntax = RemoveComments(syntax);
+        var cleanAnonymousCreation = RemoveComments(anonymousCreation);
+
         // Replace the anonymous type creation with the DTO creation in the original expression
-        var originalText = syntax.ToString();
-        var anonymousText = anonymousCreation.ToString();
+        var originalText = cleanSyntax.ToString();
+        var anonymousText = cleanAnonymousCreation.ToString();
 
         // Simple string replacement approach
         var convertedText = originalText.Replace(anonymousText, dtoCreation);
@@ -594,6 +598,25 @@ public abstract record SelectExprInfo
     }
 
     /// <summary>
+    /// Removes all comment trivia from a syntax node
+    /// </summary>
+    private static T RemoveComments<T>(T node) where T : SyntaxNode
+    {
+        return (T)node.ReplaceTrivia(
+            node.DescendantTrivia(descendIntoTrivia: true),
+            (originalTrivia, _) =>
+            {
+                // Remove single-line and multi-line comments
+                if (originalTrivia.IsKind(SyntaxKind.SingleLineCommentTrivia) ||
+                    originalTrivia.IsKind(SyntaxKind.MultiLineCommentTrivia))
+                {
+                    return default;
+                }
+                return originalTrivia;
+            });
+    }
+
+    /// <summary>
     /// Extracts LINQ method invocation information (Select or SelectMany) from syntax
     /// </summary>
     private (
@@ -700,18 +723,24 @@ public abstract record SelectExprInfo
         string baseExpression;
         if (hasNullableAccess && conditionalAccess is not null)
         {
-            baseExpression = conditionalAccess.Expression.ToString();
+            // Remove comments before converting to string
+            var cleanExpression = RemoveComments(conditionalAccess.Expression);
+            baseExpression = cleanExpression.ToString();
         }
         else if (linqInvocation.Expression is MemberAccessExpressionSyntax linqMember)
         {
-            baseExpression = linqMember.Expression.ToString();
+            // Remove comments before converting to string
+            var cleanExpression = RemoveComments(linqMember.Expression);
+            baseExpression = cleanExpression.ToString();
         }
         else if (
             linqInvocation.Expression is MemberBindingExpressionSyntax
             && conditionalAccess is not null
         )
         {
-            baseExpression = conditionalAccess.Expression.ToString();
+            // Remove comments before converting to string
+            var cleanExpression = RemoveComments(conditionalAccess.Expression);
+            baseExpression = cleanExpression.ToString();
         }
         else
         {
@@ -773,12 +802,16 @@ public abstract record SelectExprInfo
         // The Roslyn check above ensures we only call this when appropriate
         var expression = syntax.ToString();
 
+        // Remove comments from syntax before processing
+        var cleanSyntax = RemoveComments(syntax);
+        var cleanExpression = cleanSyntax.ToString();
+
         // Build the access path without ?. operators
-        var accessPath = expression.Replace("?.", ".");
+        var accessPath = cleanExpression.Replace("?.", ".");
 
         // Build null checks using string manipulation (proven to work)
         var checks = new List<string>();
-        var parts = expression.Split(["?."], StringSplitOptions.None);
+        var parts = cleanExpression.Split(["?."], StringSplitOptions.None);
 
         if (parts.Length < 2)
             return expression;
