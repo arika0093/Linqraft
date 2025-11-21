@@ -181,79 +181,114 @@ internal static class TernaryNullCheckSimplifier
             if (nullChecks.Count == 0)
                 return null;
 
-            // Verify that the whenTrueExpr uses the null-checked expressions
-            // and build the appropriate null-conditional chain
+            // Parse the full member access chain
+            var parts = ParseMemberAccessChain(whenTrueExpr);
+            if (parts.Count == 0)
+                return whenTrueExpr;
 
-            // Start with the whenTrueExpr
-            var result = whenTrueExpr;
+            // Determine which positions need conditional access (?)
+            var nullCheckSet = new HashSet<string>(nullChecks.Select(nc => nc.ToString()));
+            var needsConditional = new bool[parts.Count - 1];
+            
+            for (int i = 0; i < parts.Count - 1; i++)
+            {
+                var partialPath = string.Join(".", parts.Take(i + 1));
+                needsConditional[i] = nullCheckSet.Contains(partialPath);
+            }
 
-            // We need to match each null check with the corresponding member access
-            // For example:
-            // - null checks: [s.Foo, s.Foo.Bar]
-            // - whenTrue: s.Foo.Bar.Id
-            // - result: s.Foo?.Bar?.Id
+            // Find the first conditional position
+            int firstConditionalIndex = -1;
+            for (int i = 0; i < needsConditional.Length; i++)
+            {
+                if (needsConditional[i])
+                {
+                    firstConditionalIndex = i;
+                    break;
+                }
+            }
 
-            // Build a mapping of expressions that need to be converted to null-conditional
-            var nullCheckStrings = new HashSet<string>(nullChecks.Select(nc => nc.ToString()));
+            if (firstConditionalIndex == -1)
+                return whenTrueExpr; // No conditionals needed
 
-            // Use a rewriter to convert member accesses to null-conditional accesses
-            var rewriter = new NullConditionalAccessRewriter(nullCheckStrings);
-            result = (ExpressionSyntax)rewriter.Visit(result);
+            // Build the base expression (everything before the first conditional)
+            ExpressionSyntax baseExpr = SyntaxFactory.IdentifierName(parts[0]);
+            for (int i = 1; i <= firstConditionalIndex; i++)
+            {
+                baseExpr = SyntaxFactory.MemberAccessExpression(
+                    SyntaxKind.SimpleMemberAccessExpression,
+                    baseExpr,
+                    SyntaxFactory.IdentifierName(parts[i])
+                );
+            }
 
-            return result;
+            // Build the whenNotNull expression (everything after the first conditional)
+            // This is built recursively from right to left
+            ExpressionSyntax whenNotNull = BuildWhenNotNullChain(
+                parts,
+                needsConditional,
+                firstConditionalIndex + 1
+            );
+
+            return SyntaxFactory.ConditionalAccessExpression(baseExpr, whenNotNull);
         }
-    }
 
-    private class NullConditionalAccessRewriter : CSharpSyntaxRewriter
-    {
-        private readonly HashSet<string> _nullCheckedExpressions;
-
-        public NullConditionalAccessRewriter(HashSet<string> nullCheckedExpressions)
-        {
-            _nullCheckedExpressions = nullCheckedExpressions;
-        }
-
-        public override SyntaxNode? VisitMemberAccessExpression(
-            MemberAccessExpressionSyntax node
+        private static ExpressionSyntax BuildWhenNotNullChain(
+            List<string> parts,
+            bool[] needsConditional,
+            int startIndex
         )
         {
-            // Check if this member access expression's base matches any null check
-            var baseExpr = node.Expression;
-            var baseExprString = baseExpr.ToString();
+            if (startIndex >= parts.Count)
+                return null!;
 
-            if (_nullCheckedExpressions.Contains(baseExprString))
+            // Build from the current position
+            var currentName = SyntaxFactory.IdentifierName(parts[startIndex]);
+            
+            if (startIndex == parts.Count - 1)
             {
-                // Convert to conditional access: a.b -> a?.b
-                var conditionalAccess = SyntaxFactory.ConditionalAccessExpression(
-                    baseExpr,
-                    SyntaxFactory.MemberBindingExpression(node.Name)
-                );
-
-                // Continue visiting the result to handle chained accesses
-                return base.Visit(conditionalAccess);
+                // Last element, just return as member binding
+                return SyntaxFactory.MemberBindingExpression(currentName);
             }
 
-            // Recursively check if we're part of a longer chain
-            // Visit the base expression first
-            var newBase = (ExpressionSyntax)Visit(baseExpr)!;
-
-            // If the base was changed to a conditional access, we need to convert this member access too
-            if (newBase is ConditionalAccessExpressionSyntax)
+            // Check if the next position needs conditional access
+            if (startIndex < needsConditional.Length && needsConditional[startIndex])
             {
-                // We're part of a chain, convert to member binding
-                var conditionalAccess = SyntaxFactory.ConditionalAccessExpression(
-                    baseExpr,
-                    SyntaxFactory.MemberBindingExpression(node.Name)
-                );
-                return base.Visit(conditionalAccess);
+                // Need another conditional access
+                var innerWhenNotNull = BuildWhenNotNullChain(parts, needsConditional, startIndex + 1);
+                var memberBinding = SyntaxFactory.MemberBindingExpression(currentName);
+                return SyntaxFactory.ConditionalAccessExpression(memberBinding, innerWhenNotNull);
+            }
+            else
+            {
+                // Regular member binding
+                return SyntaxFactory.MemberBindingExpression(currentName);
+            }
+        }
+
+        private static List<string> ParseMemberAccessChain(ExpressionSyntax expr)
+        {
+            var parts = new List<string>();
+            var current = expr;
+
+            while (current != null)
+            {
+                switch (current)
+                {
+                    case MemberAccessExpressionSyntax memberAccess:
+                        parts.Insert(0, memberAccess.Name.Identifier.Text);
+                        current = memberAccess.Expression;
+                        break;
+                    case IdentifierNameSyntax identifier:
+                        parts.Insert(0, identifier.Identifier.Text);
+                        current = null;
+                        break;
+                    default:
+                        current = null;
+                        break;
+                }
             }
 
-            if (newBase != baseExpr)
-            {
-                return node.WithExpression(newBase);
-            }
-
-            return base.VisitMemberAccessExpression(node);
+            return parts;
         }
     }
 }
