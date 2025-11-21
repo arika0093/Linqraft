@@ -502,7 +502,7 @@ class Test
         {
             Value = {|#0:SampleValue|},
             Text = {|#1:SampleText|},
-            ConstantPi = {|#2:Pi|}
+            ConstantPi = Pi
         });
     }
 }
@@ -533,7 +533,7 @@ class Test
             Value = SampleValue,
             Text = SampleText,
             ConstantPi = Pi
-        }, capture: new { Pi, SampleText, SampleValue });
+        }, capture: new { SampleText, SampleValue });
     }
 }
 
@@ -549,16 +549,7 @@ class Test
             .WithLocation(1)
             .WithArguments("SampleText");
 
-        var expected3 = VerifyCS
-            .Diagnostic(LocalVariableCaptureAnalyzer.DiagnosticId)
-            .WithLocation(2)
-            .WithArguments("Pi");
-
-        await VerifyCS.VerifyCodeFixAsync(
-            test,
-            new[] { expected1, expected2, expected3 },
-            fixedCode
-        );
+        await VerifyCS.VerifyCodeFixAsync(test, new[] { expected1, expected2 }, fixedCode);
     }
 
     [Fact]
