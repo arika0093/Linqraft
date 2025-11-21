@@ -198,7 +198,7 @@ public record SelectExprInfoExplicitDto : SelectExprInfo
     protected override string GetNestedDtoFullName(string nestedClassName)
     {
         var actualNamespace = GetActualDtoNamespace();
-        
+
         // Handle global namespace case
         if (string.IsNullOrEmpty(actualNamespace))
         {
@@ -209,7 +209,7 @@ public record SelectExprInfoExplicitDto : SelectExprInfo
             }
             return $"global::{nestedClassName}";
         }
-        
+
         // Regular namespace case
         if (ParentClasses.Count > 0)
         {
@@ -253,16 +253,18 @@ public record SelectExprInfoExplicitDto : SelectExprInfo
         if (string.IsNullOrEmpty(actualNamespace))
         {
             // Global namespace: no namespace prefix
-            dtoFullName = ParentClasses.Count > 0
-                ? $"global::{string.Join(".", ParentClasses)}.{dtoName}"
-                : $"global::{dtoName}";
+            dtoFullName =
+                ParentClasses.Count > 0
+                    ? $"global::{string.Join(".", ParentClasses)}.{dtoName}"
+                    : $"global::{dtoName}";
         }
         else
         {
             // Regular namespace case
-            dtoFullName = ParentClasses.Count > 0
-                ? $"global::{actualNamespace}.{string.Join(".", ParentClasses)}.{dtoName}"
-                : $"global::{actualNamespace}.{dtoName}";
+            dtoFullName =
+                ParentClasses.Count > 0
+                    ? $"global::{actualNamespace}.{string.Join(".", ParentClasses)}.{dtoName}"
+                    : $"global::{actualNamespace}.{dtoName}";
         }
 
         var returnTypePrefix = GetReturnTypePrefix();

@@ -65,7 +65,7 @@ public class GenerateDtoClassInfo
                     ? $"{string.Join(".", ParentClasses)}.{ClassName}"
                     : ClassName;
             }
-            
+
             return ParentClasses.Count > 0
                 ? $"{Namespace}.{string.Join(".", ParentClasses)}.{ClassName}"
                 : $"{Namespace}.{ClassName}";

@@ -92,7 +92,7 @@ internal class SelectExprGroups
     private string BuildSourceCode(List<string> dtoClasses, List<string> selectExprMethods)
     {
         var indentedExpr = IndentUtility(string.Join("\n", selectExprMethods), 8);
-        
+
         // Build the DTO classes section (with or without namespace)
         string dtoClassesSection;
         if (string.IsNullOrEmpty(TargetNamespace))
@@ -111,7 +111,7 @@ internal class SelectExprGroups
                 }
                 """;
         }
-        
+
         return $$"""
             {{GenerateFileHeaderPart()}}
 
@@ -154,7 +154,7 @@ internal class SelectExprGroups
                 using System.Collections.Generic;
                 """;
         }
-        
+
         return $"""
             using System;
             using System.Linq;
