@@ -4,6 +4,7 @@ using System.Linq;
 using System.Text;
 using Linqraft.Core.Formatting;
 using Linqraft.Core.RoslynHelpers;
+using Linqraft.Core.SyntaxHelpers;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
@@ -773,22 +774,10 @@ public abstract record SelectExprInfo
             return null;
 
         // Extract lambda parameter name using Roslyn
-        string paramName = "x"; // Default
-        if (linqInvocation.ArgumentList.Arguments.Count > 0)
-        {
-            var arg = linqInvocation.ArgumentList.Arguments[0].Expression;
-            if (arg is SimpleLambdaExpressionSyntax simpleLambda)
-            {
-                paramName = simpleLambda.Parameter.Identifier.Text;
-            }
-            else if (
-                arg is ParenthesizedLambdaExpressionSyntax parenLambda
-                && parenLambda.ParameterList.Parameters.Count > 0
-            )
-            {
-                paramName = parenLambda.ParameterList.Parameters[0].Identifier.Text;
-            }
-        }
+        var lambda = LambdaHelper.FindLambdaInArguments(linqInvocation.ArgumentList);
+        string paramName = lambda is not null
+            ? LambdaHelper.GetLambdaParameterName(lambda)
+            : "x"; // Default
 
         // Extract base expression (the collection being operated on)
         string baseExpression;

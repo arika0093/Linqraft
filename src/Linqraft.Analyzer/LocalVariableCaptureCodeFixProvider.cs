@@ -5,6 +5,7 @@ using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using Linqraft.Core;
+using Linqraft.Core.SyntaxHelpers;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CodeActions;
 using Microsoft.CodeAnalysis.CodeFixes;
@@ -79,7 +80,7 @@ public class LocalVariableCaptureCodeFixProvider : CodeFixProvider
             return document;
 
         // Get lambda parameter names
-        var lambdaParameters = GetLambdaParameterNames(lambda);
+        var lambdaParameters = LambdaHelper.GetLambdaParameterNames(lambda);
 
         // Find all variables that need to be captured (simple local variables)
         var simpleVariablesToCapture = FindSimpleVariablesToCapture(
@@ -359,19 +360,6 @@ public class LocalVariableCaptureCodeFixProvider : CodeFixProvider
         return null;
     }
 
-    private static ImmutableHashSet<string> GetLambdaParameterNames(LambdaExpressionSyntax lambda)
-    {
-        return lambda switch
-        {
-            SimpleLambdaExpressionSyntax simple => ImmutableHashSet.Create(
-                simple.Parameter.Identifier.Text
-            ),
-            ParenthesizedLambdaExpressionSyntax paren => paren
-                .ParameterList.Parameters.Select(p => p.Identifier.Text)
-                .ToImmutableHashSet(),
-            _ => ImmutableHashSet<string>.Empty,
-        };
-    }
 
     private static HashSet<string> FindSimpleVariablesToCapture(
         LambdaExpressionSyntax lambda,

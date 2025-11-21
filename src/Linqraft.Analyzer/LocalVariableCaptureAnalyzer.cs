@@ -2,6 +2,7 @@ using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.Linq;
 using Linqraft.Core;
+using Linqraft.Core.SyntaxHelpers;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
@@ -68,7 +69,7 @@ public class LocalVariableCaptureAnalyzer : DiagnosticAnalyzer
         }
 
         // Get the lambda parameter name(s)
-        var lambdaParameters = GetLambdaParameterNames(lambda);
+        var lambdaParameters = LambdaHelper.GetLambdaParameterNames(lambda);
 
         // Find variables that need to be captured
         var variablesToCapture = FindVariablesToCapture(
@@ -204,19 +205,6 @@ public class LocalVariableCaptureAnalyzer : DiagnosticAnalyzer
         return null;
     }
 
-    private static ImmutableHashSet<string> GetLambdaParameterNames(LambdaExpressionSyntax lambda)
-    {
-        return lambda switch
-        {
-            SimpleLambdaExpressionSyntax simple => ImmutableHashSet.Create(
-                simple.Parameter.Identifier.Text
-            ),
-            ParenthesizedLambdaExpressionSyntax paren => paren
-                .ParameterList.Parameters.Select(p => p.Identifier.Text)
-                .ToImmutableHashSet(),
-            _ => ImmutableHashSet<string>.Empty,
-        };
-    }
 
     private static List<(string Name, Location Location)> FindVariablesToCapture(
         LambdaExpressionSyntax lambda,

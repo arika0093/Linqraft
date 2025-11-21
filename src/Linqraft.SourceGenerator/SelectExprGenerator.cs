@@ -2,6 +2,7 @@
 using System.Linq;
 using System.Xml;
 using Linqraft.Core;
+using Linqraft.Core.SyntaxHelpers;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
@@ -112,7 +113,7 @@ public partial class SelectExprGenerator : IIncrementalGenerator
             return null;
 
         // Extract lambda parameter name
-        var lambdaParamName = GetLambdaParameterName(lambda);
+        var lambdaParamName = LambdaHelper.GetLambdaParameterName(lambda);
 
         // Extract capture argument info (if present)
         var (captureArgExpr, captureType) = GetCaptureInfo(invocation, context.SemanticModel);
@@ -170,20 +171,6 @@ public partial class SelectExprGenerator : IIncrementalGenerator
         return null;
     }
 
-    private static string GetLambdaParameterName(LambdaExpressionSyntax lambda)
-    {
-        return lambda switch
-        {
-            SimpleLambdaExpressionSyntax simple => simple.Parameter.Identifier.Text,
-            ParenthesizedLambdaExpressionSyntax paren
-                when paren.ParameterList.Parameters.Count > 0 => paren
-                .ParameterList
-                .Parameters[0]
-                .Identifier
-                .Text,
-            _ => "s", // fallback to default
-        };
-    }
 
     private static (ExpressionSyntax? captureArgExpr, ITypeSymbol? captureType) GetCaptureInfo(
         InvocationExpressionSyntax invocation,
