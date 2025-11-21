@@ -16,7 +16,10 @@ namespace Linqraft.Analyzer;
 /// <summary>
 /// Code fix provider that converts IQueryable.Select to SelectExpr
 /// </summary>
-[ExportCodeFixProvider(LanguageNames.CSharp, Name = nameof(SelectToSelectExprAnonymousCodeFixProvider))]
+[ExportCodeFixProvider(
+    LanguageNames.CSharp,
+    Name = nameof(SelectToSelectExprAnonymousCodeFixProvider)
+)]
 [Shared]
 public class SelectToSelectExprAnonymousCodeFixProvider : CodeFixProvider
 {
@@ -48,7 +51,7 @@ public class SelectToSelectExprAnonymousCodeFixProvider : CodeFixProvider
         // Register two code fixes: anonymous pattern and explicit DTO pattern
         context.RegisterCodeFix(
             CodeAction.Create(
-                title: "Convert to SelectExpr (anonymous pattern)",
+                title: "Convert to SelectExpr (anonymous)",
                 createChangedDocument: c =>
                     ConvertToSelectExprAnonymousAsync(context.Document, invocation, c),
                 equivalenceKey: "ConvertToSelectExprAnonymous"
@@ -58,7 +61,7 @@ public class SelectToSelectExprAnonymousCodeFixProvider : CodeFixProvider
 
         context.RegisterCodeFix(
             CodeAction.Create(
-                title: "Convert to SelectExpr<T, TDto> (explicit DTO pattern)",
+                title: "Convert to SelectExpr<T, TDto> (explicit DTO)",
                 createChangedDocument: c =>
                     ConvertToSelectExprExplicitDtoAsync(context.Document, invocation, c),
                 equivalenceKey: "ConvertToSelectExprExplicitDto"
