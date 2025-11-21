@@ -243,6 +243,14 @@ public abstract record SelectExprInfo
         // For nested structure cases
         if (property.NestedStructure is not null)
         {
+            // Check if this is a ternary expression with anonymous type (e.g., x != null ? new { ... } : null)
+            if (syntax is ConditionalExpressionSyntax conditionalExpr
+                && conditionalExpr.WhenTrue is AnonymousObjectCreationExpressionSyntax)
+            {
+                // Convert ternary expression with anonymous type to nested DTO
+                return ConvertTernaryAnonymousTypeToDto(conditionalExpr, property.NestedStructure, indents);
+            }
+            
             // Check if this is a direct anonymous type (not a Select call)
             if (syntax is AnonymousObjectCreationExpressionSyntax)
             {
@@ -324,6 +332,50 @@ public abstract record SelectExprInfo
             new {{nestedDtoName}} {
             {{propertiesCode}}
             {{spaces}}}
+            """;
+        return code;
+    }
+
+    /// <summary>
+    /// Converts a ternary expression with anonymous type to a ternary expression with nested DTO
+    /// For example: p.Child != null ? new { Name = p.Child.Name } : null
+    /// Becomes: p.Child != null ? new ChildDto { Name = p.Child.Name } : null
+    /// </summary>
+    protected string ConvertTernaryAnonymousTypeToDto(
+        ConditionalExpressionSyntax conditionalExpr,
+        DtoStructure nestedStructure,
+        int indents
+    )
+    {
+        var spaces = new string(' ', indents);
+        var nestedClassName = GetClassName(nestedStructure);
+        var nestedDtoName = string.IsNullOrEmpty(nestedClassName)
+            ? ""
+            : GetNestedDtoFullName(nestedClassName);
+
+        // Get the condition part (e.g., "p.Child != null")
+        var condition = conditionalExpr.Condition.ToString();
+        
+        // Get the whenFalse part (usually "null")
+        var whenFalse = conditionalExpr.WhenFalse.ToString();
+
+        // Generate property assignments for the whenTrue DTO
+        var propertyAssignments = new List<string>();
+        foreach (var prop in nestedStructure.Properties)
+        {
+            var assignment = GeneratePropertyAssignment(prop, indents + 4);
+            propertyAssignments.Add($"{spaces}                {prop.Name} = {assignment}");
+        }
+        var propertiesCode = string.Join(",\n", propertyAssignments);
+
+        // Build the ternary expression with DTO
+        var code = $$"""
+            {{condition}}
+            {{spaces}}            ? new {{nestedDtoName}}
+            {{spaces}}            {
+            {{propertiesCode}}
+            {{spaces}}            }
+            {{spaces}}            : {{whenFalse}}
             """;
         return code;
     }
