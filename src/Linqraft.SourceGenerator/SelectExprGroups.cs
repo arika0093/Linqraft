@@ -28,17 +28,18 @@ internal class SelectExprGroups
     }
     private string targetNamespace = "";
 
+    public required string TargetFileName { get; set; }
+
     // Determine if the target namespace is global (empty or compiler-generated)
     private bool IsGlobalNamespace =>
         string.IsNullOrEmpty(targetNamespace) || targetNamespace.Contains("<");
 
     public string GetUniqueId()
     {
-        if (IsGlobalNamespace)
-        {
-            return "Global";
-        }
-        return TargetNamespace.Replace('.', '_');
+        var fileNamespace = IsGlobalNamespace ? "Global" : TargetNamespace;
+        var targetNsReplaced = fileNamespace.Replace('.', '_');
+        var filenameReplaced = TargetFileName.Replace('.', '_');
+        return $"{targetNsReplaced}_{filenameReplaced}";
     }
 
     // Generate source code

@@ -4,7 +4,6 @@
     <IsPackable>true</IsPackable>
     <LangVersion>latest</LangVersion>
     <Nullable>enable</Nullable>
-    <RootNamespace>Linqraft</RootNamespace>
     <RestorePackagesWithLockFile>true</RestorePackagesWithLockFile>
     <PackageDescription>Simplifies the writing of Select queries in EFCore by providing automatic DTO class generation and support for nullable expressions.</PackageDescription>
     <PackageProjectUrl>https://github.com/arika0093/Linqraft</PackageProjectUrl>
