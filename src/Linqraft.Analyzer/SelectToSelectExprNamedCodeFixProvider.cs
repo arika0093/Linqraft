@@ -696,7 +696,7 @@ public class SelectToSelectExprNamedCodeFixProvider : CodeFixProvider
             : SyntaxFactory.EndOfLine("\n");
 
         // If the detected trivia is not an end of line, use a default
-        if (endOfLineTrivia.Kind() != SyntaxKind.EndOfLineTrivia)
+        if (!endOfLineTrivia.IsKind(SyntaxKind.EndOfLineTrivia))
         {
             endOfLineTrivia = SyntaxFactory.EndOfLine("\n");
         }
