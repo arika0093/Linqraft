@@ -6,6 +6,7 @@ using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 using Linqraft.Core;
+using Linqraft.Core.Formatting;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CodeActions;
 using Microsoft.CodeAnalysis.CodeFixes;
@@ -168,7 +169,7 @@ public class AnonymousTypeToDtoCodeFixProvider : CodeFixProvider
         }
 
         // Normalize whitespace at the end
-        newRoot = newRoot.NormalizeWhitespace(eol: "\n");
+        newRoot = newRoot.NormalizeWhitespace(eol: CodeFormatter.DefaultNewLine);
 
         return document.WithSyntaxRoot(newRoot);
     }

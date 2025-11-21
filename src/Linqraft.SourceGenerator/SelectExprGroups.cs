@@ -94,7 +94,7 @@ internal class SelectExprGroups
 
     private string BuildSourceCode(List<string> dtoClasses, List<string> selectExprMethods)
     {
-        var indentedExpr = IndentUtility(string.Join("\n", selectExprMethods), 8);
+        var indentedExpr = CodeFormatter.IndentCode(string.Join(CodeFormatter.DefaultNewLine, selectExprMethods), CodeFormatter.IndentSize * 2);
 
         // Build the DTO classes section (with or without namespace)
         string dtoClassesSection;
@@ -106,7 +106,7 @@ internal class SelectExprGroups
         else
         {
             // Generate DTOs in the specified namespace
-            var indentedClasses = IndentUtility(string.Join("\n", dtoClasses), 4);
+            var indentedClasses = CodeFormatter.IndentCode(string.Join(CodeFormatter.DefaultNewLine, dtoClasses), CodeFormatter.IndentSize);
             dtoClassesSection = $$"""
                 namespace {{TargetNamespace}}
                 {
@@ -157,13 +157,6 @@ internal class SelectExprGroups
             """;
     }
 
-    private string IndentUtility(string code, int indentSpaces)
-    {
-        var indent = new string(' ', indentSpaces);
-        var indentedLines = code.Split('\n')
-            .Select(line => string.IsNullOrWhiteSpace(line) ? line : indent + line);
-        return string.Join("\n", indentedLines);
-    }
 }
 
 internal class SelectExprLocations

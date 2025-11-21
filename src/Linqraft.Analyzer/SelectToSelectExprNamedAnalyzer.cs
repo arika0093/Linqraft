@@ -35,7 +35,7 @@ public class SelectToSelectExprNamedAnalyzer : DiagnosticAnalyzer
         DiagnosticSeverity.Info,
         isEnabledByDefault: true,
         description: Description,
-        helpLinkUri: "https://github.com/arika0093/Linqraft/blob/main/docs/Analyzers.md#lqrs003-selecttoselectexprnamedanalyzer"
+        helpLinkUri: $"https://github.com/arika0093/Linqraft/blob/main/docs/analyzer/{DiagnosticId}.md"
     );
 
     public override ImmutableArray<DiagnosticDescriptor> SupportedDiagnostics =>

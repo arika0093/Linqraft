@@ -36,7 +36,7 @@ public class LocalVariableCaptureAnalyzer : DiagnosticAnalyzer
         DiagnosticSeverity.Error,
         isEnabledByDefault: true,
         description: Description,
-        helpLinkUri: "https://github.com/arika0093/Linqraft/blob/main/docs/Analyzers.md#lqre001-localvariablecaptureanalyzer"
+        helpLinkUri: $"https://github.com/arika0093/Linqraft/blob/main/docs/analyzer/{DiagnosticId}.md"
     );
 
     public override ImmutableArray<DiagnosticDescriptor> SupportedDiagnostics =>

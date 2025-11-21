@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
+using Linqraft.Core.Formatting;
 using Linqraft.Core.RoslynHelpers;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
@@ -434,10 +435,10 @@ public abstract record SelectExprInfo
             var assignment = GeneratePropertyAssignment(prop, 0);
             propertyAssignments.Add($"    {prop.Name} = {assignment}");
         }
-        var propertiesCode = string.Join(",\n", propertyAssignments);
+        var propertiesCode = string.Join($",{CodeFormatter.DefaultNewLine}", propertyAssignments);
 
         // Build the DTO creation as a compact single-line or multi-line depending on complexity
-        var dtoCreation = $"new {nestedDtoName}\n{{\n{propertiesCode}\n}}";
+        var dtoCreation = $"new {nestedDtoName}{CodeFormatter.DefaultNewLine}{{{CodeFormatter.DefaultNewLine}{propertiesCode}{CodeFormatter.DefaultNewLine}}}";
 
         // Remove comments from syntax before processing
         var cleanSyntax = RemoveComments(syntax);
@@ -462,7 +463,7 @@ public abstract record SelectExprInfo
         int indents
     )
     {
-        var spaces = new string(' ', indents);
+        var spaces = CodeFormatter.IndentSpaces(indents);
         var nestedClassName = GetClassName(nestedStructure);
         // For anonymous types (empty class name), don't use namespace qualification
         var nestedDtoName = string.IsNullOrEmpty(nestedClassName)
@@ -473,10 +474,10 @@ public abstract record SelectExprInfo
         var propertyAssignments = new List<string>();
         foreach (var prop in nestedStructure.Properties)
         {
-            var assignment = GeneratePropertyAssignment(prop, indents + 4);
-            propertyAssignments.Add($"{spaces}    {prop.Name} = {assignment},");
+            var assignment = GeneratePropertyAssignment(prop, indents + CodeFormatter.IndentSize);
+            propertyAssignments.Add($"{spaces}{CodeFormatter.Indent(1)}{prop.Name} = {assignment},");
         }
-        var propertiesCode = string.Join("\n", propertyAssignments);
+        var propertiesCode = string.Join(CodeFormatter.DefaultNewLine, propertyAssignments);
 
         // Build the new DTO object creation expression
         var code = $$"""
@@ -496,7 +497,7 @@ public abstract record SelectExprInfo
         int indents
     )
     {
-        var spaces = new string(' ', indents);
+        var spaces = CodeFormatter.IndentSpaces(indents);
         var nestedClassName = GetClassName(nestedStructure);
         // For anonymous types (empty class name), don't use namespace qualification
         var nestedDtoName = string.IsNullOrEmpty(nestedClassName)
@@ -531,10 +532,10 @@ public abstract record SelectExprInfo
         var propertyAssignments = new List<string>();
         foreach (var prop in nestedStructure.Properties)
         {
-            var assignment = GeneratePropertyAssignment(prop, indents + 4);
-            propertyAssignments.Add($"{spaces}    {prop.Name} = {assignment},");
+            var assignment = GeneratePropertyAssignment(prop, indents + CodeFormatter.IndentSize);
+            propertyAssignments.Add($"{spaces}{CodeFormatter.Indent(1)}{prop.Name} = {assignment},");
         }
-        var propertiesCode = string.Join("\n", propertyAssignments);
+        var propertiesCode = string.Join(CodeFormatter.DefaultNewLine, propertyAssignments);
 
         // Build the Select expression
         if (hasNullableAccess)
@@ -575,7 +576,7 @@ public abstract record SelectExprInfo
         int indents
     )
     {
-        var spaces = new string(' ', indents);
+        var spaces = CodeFormatter.IndentSpaces(indents);
 
         // Use Roslyn to extract SelectMany information
         var selectManyInfo = ExtractSelectManyInfoFromSyntax(syntax);
@@ -613,10 +614,10 @@ public abstract record SelectExprInfo
             var propertyAssignments = new List<string>();
             foreach (var prop in nestedStructure.Properties)
             {
-                var assignment = GeneratePropertyAssignment(prop, indents + 4);
-                propertyAssignments.Add($"{spaces}    {prop.Name} = {assignment},");
+                var assignment = GeneratePropertyAssignment(prop, indents + CodeFormatter.IndentSize);
+                propertyAssignments.Add($"{spaces}{CodeFormatter.Indent(1)}{prop.Name} = {assignment},");
             }
-            var propertiesCode = string.Join("\n", propertyAssignments);
+            var propertiesCode = string.Join(CodeFormatter.DefaultNewLine, propertyAssignments);
 
             // Build the SelectMany expression with projection
             if (hasNullableAccess)

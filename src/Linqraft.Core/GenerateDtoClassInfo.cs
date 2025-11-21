@@ -98,7 +98,7 @@ public class GenerateDtoClassInfo
         {
             for (int i = 0; i < ParentClasses.Count; i++)
             {
-                var indent = new string(' ', i * 4);
+                var indent = CodeFormatter.Indent(i);
                 // Use the parent class accessibility if available, otherwise default to public
                 var parentAccessibility =
                     i < ParentAccessibilities.Count ? ParentAccessibilities[i] : "public";
@@ -108,7 +108,7 @@ public class GenerateDtoClassInfo
         }
 
         // Build the actual DTO class/record
-        var classIndent = new string(' ', ParentClasses.Count * 4);
+        var classIndent = CodeFormatter.Indent(ParentClasses.Count);
         sb.AppendLine($"{classIndent}{Accessibility} partial {typeKeyword} {ClassName}");
         sb.AppendLine($"{classIndent}{{");
 
@@ -223,7 +223,7 @@ public class GenerateDtoClassInfo
         {
             for (int i = ParentClasses.Count - 1; i >= 0; i--)
             {
-                var indent = new string(' ', i * 4);
+                var indent = CodeFormatter.Indent(i);
                 sb.AppendLine($"{indent}}}");
             }
         }
