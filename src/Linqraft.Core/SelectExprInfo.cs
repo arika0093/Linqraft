@@ -93,7 +93,13 @@ public abstract record SelectExprInfo
     // Get the full name for a nested DTO class (can be overridden for nested class support)
     protected virtual string GetNestedDtoFullName(string nestedClassName)
     {
-        return $"global::{GetDtoNamespace()}.{nestedClassName}";
+        var dtoNamespace = GetDtoNamespace();
+        if (string.IsNullOrEmpty(dtoNamespace))
+        {
+            // Global namespace: no namespace prefix, just use global:: with class name
+            return $"global::{nestedClassName}";
+        }
+        return $"global::{dtoNamespace}.{nestedClassName}";
     }
 
     /// <summary>

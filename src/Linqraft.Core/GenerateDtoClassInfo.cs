@@ -54,10 +54,23 @@ public class GenerateDtoClassInfo
     /// <summary>
     /// Gets the fully qualified name of the DTO class
     /// </summary>
-    public string FullName =>
-        ParentClasses.Count > 0
-            ? $"{Namespace}.{string.Join(".", ParentClasses)}.{ClassName}"
-            : $"{Namespace}.{ClassName}";
+    public string FullName
+    {
+        get
+        {
+            if (string.IsNullOrEmpty(Namespace))
+            {
+                // Global namespace: no namespace prefix
+                return ParentClasses.Count > 0
+                    ? $"{string.Join(".", ParentClasses)}.{ClassName}"
+                    : ClassName;
+            }
+            
+            return ParentClasses.Count > 0
+                ? $"{Namespace}.{string.Join(".", ParentClasses)}.{ClassName}"
+                : $"{Namespace}.{ClassName}";
+        }
+    }
 
     /// <summary>
     /// Builds the C# source code for this DTO class
@@ -120,8 +133,18 @@ public class GenerateDtoClassInfo
                     nc.ClassName == nestedClassName
                 );
 
-                var nestedDtoFullName =
-                    containedNestClasses?.FullName ?? $"{Namespace}.{nestedClassName}";
+                string nestedDtoFullName;
+                if (containedNestClasses != null)
+                {
+                    nestedDtoFullName = containedNestClasses.FullName;
+                }
+                else
+                {
+                    // Fallback: construct the full name based on the current namespace
+                    nestedDtoFullName = string.IsNullOrEmpty(Namespace)
+                        ? nestedClassName
+                        : $"{Namespace}.{nestedClassName}";
+                }
 
                 // Check if this is a direct anonymous type (not wrapped in a collection)
                 // Anonymous types from Roslyn look like: global::<anonymous type: ...>

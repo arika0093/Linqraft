@@ -198,7 +198,19 @@ public record SelectExprInfoExplicitDto : SelectExprInfo
     protected override string GetNestedDtoFullName(string nestedClassName)
     {
         var actualNamespace = GetActualDtoNamespace();
-        // Nested DTOs are placed within the same parent classes as the main DTO
+        
+        // Handle global namespace case
+        if (string.IsNullOrEmpty(actualNamespace))
+        {
+            // Global namespace: no namespace prefix
+            if (ParentClasses.Count > 0)
+            {
+                return $"global::{string.Join(".", ParentClasses)}.{nestedClassName}";
+            }
+            return $"global::{nestedClassName}";
+        }
+        
+        // Regular namespace case
         if (ParentClasses.Count > 0)
         {
             return $"global::{actualNamespace}.{string.Join(".", ParentClasses)}.{nestedClassName}";
@@ -219,7 +231,7 @@ public record SelectExprInfoExplicitDto : SelectExprInfo
 
         if (isGlobalNamespace)
         {
-            return Configuration?.GlobalNamespace ?? "Linqraft";
+            return Configuration?.GlobalNamespace ?? "";
         }
         return TargetNamespace;
     }
@@ -237,10 +249,21 @@ public record SelectExprInfoExplicitDto : SelectExprInfo
         var actualNamespace = GetActualDtoNamespace();
 
         // Build full DTO name with parent classes if nested
-        var dtoFullName =
-            ParentClasses.Count > 0
+        string dtoFullName;
+        if (string.IsNullOrEmpty(actualNamespace))
+        {
+            // Global namespace: no namespace prefix
+            dtoFullName = ParentClasses.Count > 0
+                ? $"global::{string.Join(".", ParentClasses)}.{dtoName}"
+                : $"global::{dtoName}";
+        }
+        else
+        {
+            // Regular namespace case
+            dtoFullName = ParentClasses.Count > 0
                 ? $"global::{actualNamespace}.{string.Join(".", ParentClasses)}.{dtoName}"
                 : $"global::{actualNamespace}.{dtoName}";
+        }
 
         var returnTypePrefix = GetReturnTypePrefix();
         var sb = new StringBuilder();
