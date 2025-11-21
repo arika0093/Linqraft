@@ -153,9 +153,7 @@ public class GenerateDtoClassInfo
                 {
                     // Direct anonymous type (e.g., from .Select(...).FirstOrDefault())
                     // Replace the entire anonymous type with the generated DTO class name
-                    propertyType = string.IsNullOrEmpty(Namespace)
-                        ? $"global::{nestedDtoFullName}"
-                        : $"global::{nestedDtoFullName}";
+                    propertyType = $"global::{nestedDtoFullName}";
                 }
                 else if (propertyType.Contains("<"))
                 {
@@ -167,9 +165,7 @@ public class GenerateDtoClassInfo
                 else
                 {
                     // Single item, non-anonymous type (shouldn't happen often, but handle it)
-                    propertyType = string.IsNullOrEmpty(Namespace)
-                        ? $"global::{nestedDtoFullName}"
-                        : $"global::{nestedDtoFullName}";
+                    propertyType = $"global::{nestedDtoFullName}";
                 }
             }
 
