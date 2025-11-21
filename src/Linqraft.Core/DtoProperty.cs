@@ -178,6 +178,48 @@ public record DtoProperty(
             );
         }
 
+        // Generalized handling for expressions that result in anonymous types
+        // This works for any expression type (ternary operators, method calls, etc.)
+        // Step 1: Evaluate the type of the entire expression
+        if (nestedStructure is null)
+        {
+            var expressionTypeInfo = semanticModel.GetTypeInfo(expression);
+            var expressionType = expressionTypeInfo.Type ?? expressionTypeInfo.ConvertedType;
+
+            // Step 2: If it is (anonymous) or (anonymous?), we need to generate a DTO for that type
+            var underlyingType = expressionType;
+            if (
+                expressionType is INamedTypeSymbol
+                {
+                    NullableAnnotation: NullableAnnotation.Annotated
+                } namedType
+            )
+            {
+                // For nullable anonymous types, get the underlying type
+                underlyingType = namedType.WithNullableAnnotation(NullableAnnotation.NotAnnotated);
+            }
+
+            if (underlyingType != null && underlyingType.IsAnonymousType)
+            {
+                // Step 3: Find the anonymous type creation expression within this expression
+                // It could be anywhere in the syntax tree (e.g., in a ternary branch, method argument, etc.)
+                var anonymousCreation = expression
+                    .DescendantNodesAndSelf()
+                    .OfType<AnonymousObjectCreationExpressionSyntax>()
+                    .FirstOrDefault();
+
+                if (anonymousCreation != null)
+                {
+                    // Analyze the anonymous type using the underlying type as the source
+                    nestedStructure = DtoStructure.AnalyzeAnonymousType(
+                        anonymousCreation,
+                        semanticModel,
+                        underlyingType
+                    );
+                }
+            }
+        }
+
         return new DtoProperty(
             Name: propertyName,
             IsNullable: isNullable || hasNullableAccess,

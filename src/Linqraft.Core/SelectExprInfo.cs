@@ -229,11 +229,22 @@ public abstract record SelectExprInfo
         // For nested structure cases
         if (property.NestedStructure is not null)
         {
-            // Check if this is a direct anonymous type (not a Select call)
-            if (syntax is AnonymousObjectCreationExpressionSyntax)
+            // General approach: Replace any anonymous type creation in the expression with the DTO
+            // This works for direct anonymous types, ternary operators, and any other expression structure
+            var anonymousCreation = syntax
+                .DescendantNodesAndSelf()
+                .OfType<AnonymousObjectCreationExpressionSyntax>()
+                .FirstOrDefault();
+
+            if (anonymousCreation != null)
             {
-                // Convert direct anonymous type to nested DTO
-                return ConvertDirectAnonymousTypeToDto(syntax, property.NestedStructure, indents);
+                // Convert the expression by replacing the anonymous type with the DTO
+                return ConvertExpressionWithAnonymousTypeToDto(
+                    syntax,
+                    anonymousCreation,
+                    property.NestedStructure,
+                    indents
+                );
             }
 
             // For nested Select (collection) case
@@ -260,6 +271,46 @@ public abstract record SelectExprInfo
         }
         // Regular property access
         return expression;
+    }
+
+    /// <summary>
+    /// Converts any expression containing an anonymous type to use the generated DTO instead.
+    /// This is a general approach that works for direct anonymous types, ternary operators,
+    /// method calls, and any other expression structure.
+    /// </summary>
+    protected string ConvertExpressionWithAnonymousTypeToDto(
+        ExpressionSyntax syntax,
+        AnonymousObjectCreationExpressionSyntax anonymousCreation,
+        DtoStructure nestedStructure,
+        int indents
+    )
+    {
+        var nestedClassName = GetClassName(nestedStructure);
+        var nestedDtoName = string.IsNullOrEmpty(nestedClassName)
+            ? ""
+            : GetNestedDtoFullName(nestedClassName);
+
+        // Generate the DTO object creation to replace the anonymous type
+        // We need to preserve indentation based on where the anonymous type appears
+        var propertyAssignments = new List<string>();
+        foreach (var prop in nestedStructure.Properties)
+        {
+            var assignment = GeneratePropertyAssignment(prop, 0);
+            propertyAssignments.Add($"    {prop.Name} = {assignment}");
+        }
+        var propertiesCode = string.Join(",\n", propertyAssignments);
+
+        // Build the DTO creation as a compact single-line or multi-line depending on complexity
+        var dtoCreation = $"new {nestedDtoName}\n{{\n{propertiesCode}\n}}";
+
+        // Replace the anonymous type creation with the DTO creation in the original expression
+        var originalText = syntax.ToString();
+        var anonymousText = anonymousCreation.ToString();
+
+        // Simple string replacement approach
+        var convertedText = originalText.Replace(anonymousText, dtoCreation);
+
+        return convertedText;
     }
 
     /// <summary>

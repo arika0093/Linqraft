@@ -123,30 +123,51 @@ public class GenerateDtoClassInfo
                 var nestedDtoFullName =
                     containedNestClasses?.FullName ?? $"{Namespace}.{nestedClassName}";
 
+                // Handle nullable types: temporarily remove the ? suffix if present
+                // This is needed for ternary operators like: p.Child != null ? new { ... } : null
+                // which produce types like: global::<anonymous type: ...>?
+                var isTypeNullable = propertyType.EndsWith("?");
+                var typeWithoutNullable = isTypeNullable ? propertyType[..^1] : propertyType;
+
                 // Check if this is a direct anonymous type (not wrapped in a collection)
                 // Anonymous types from Roslyn look like: global::<anonymous type: ...>
                 // Collection of anonymous types look like: List<anonymous type> or IEnumerable<anonymous type>
-                if (propertyType.StartsWith("global::<anonymous"))
+                if (typeWithoutNullable.StartsWith("global::<anonymous"))
                 {
                     // Direct anonymous type (e.g., from .Select(...).FirstOrDefault())
                     // Replace the entire anonymous type with the generated DTO class name
                     propertyType = $"global::{nestedDtoFullName}";
+                    // Re-apply nullable marker if it was present in the original type
+                    if (isTypeNullable)
+                    {
+                        propertyType = $"{propertyType}?";
+                    }
                 }
-                else if (propertyType.Contains("<"))
+                else if (typeWithoutNullable.Contains("<"))
                 {
                     // Collection type (e.g., List<...>, IEnumerable<...>)
                     // Extract the base collection type and replace the element type
-                    var baseType = propertyType[..propertyType.IndexOf("<")];
+                    var baseType = typeWithoutNullable[..typeWithoutNullable.IndexOf("<")];
                     propertyType = $"{baseType}<{nestedDtoFullName}>";
+                    // Re-apply nullable marker if it was present in the original type
+                    if (isTypeNullable)
+                    {
+                        propertyType = $"{propertyType}?";
+                    }
                 }
                 else
                 {
                     // Single item, non-anonymous type (shouldn't happen often, but handle it)
                     propertyType = $"global::{nestedDtoFullName}";
+                    // Re-apply nullable marker if it was present in the original type
+                    if (isTypeNullable)
+                    {
+                        propertyType = $"{propertyType}?";
+                    }
                 }
             }
 
-            // Add nullable annotation if the property is nullable
+            // Add nullable annotation if the property is nullable and not already marked
             if (prop.IsNullable && !propertyType.EndsWith("?"))
             {
                 propertyType = $"{propertyType}?";
