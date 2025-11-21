@@ -249,11 +249,16 @@ public abstract record SelectExprInfo
                 .DescendantNodesAndSelf()
                 .OfType<AnonymousObjectCreationExpressionSyntax>()
                 .FirstOrDefault();
-            
+
             if (anonymousCreation != null)
             {
                 // Convert the expression by replacing the anonymous type with the DTO
-                return ConvertExpressionWithAnonymousTypeToDto(syntax, anonymousCreation, property.NestedStructure, indents);
+                return ConvertExpressionWithAnonymousTypeToDto(
+                    syntax,
+                    anonymousCreation,
+                    property.NestedStructure,
+                    indents
+                );
             }
 
             // Check if this contains SelectMany
@@ -302,7 +307,7 @@ public abstract record SelectExprInfo
 
     /// <summary>
     /// Converts any expression containing an anonymous type to use the generated DTO instead.
-    /// This is a general approach that works for direct anonymous types, ternary operators, 
+    /// This is a general approach that works for direct anonymous types, ternary operators,
     /// method calls, and any other expression structure.
     /// </summary>
     protected string ConvertExpressionWithAnonymousTypeToDto(
@@ -333,10 +338,10 @@ public abstract record SelectExprInfo
         // Replace the anonymous type creation with the DTO creation in the original expression
         var originalText = syntax.ToString();
         var anonymousText = anonymousCreation.ToString();
-        
+
         // Simple string replacement approach
         var convertedText = originalText.Replace(anonymousText, dtoCreation);
-        
+
         return convertedText;
     }
 

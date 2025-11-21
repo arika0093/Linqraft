@@ -315,15 +315,20 @@ public record DtoProperty(
         {
             var expressionTypeInfo = semanticModel.GetTypeInfo(expression);
             var expressionType = expressionTypeInfo.Type ?? expressionTypeInfo.ConvertedType;
-            
+
             // Step 2: If it is (anonymous) or (anonymous?), we need to generate a DTO for that type
             var underlyingType = expressionType;
-            if (expressionType is INamedTypeSymbol { NullableAnnotation: NullableAnnotation.Annotated } namedType)
+            if (
+                expressionType is INamedTypeSymbol
+                {
+                    NullableAnnotation: NullableAnnotation.Annotated
+                } namedType
+            )
             {
                 // For nullable anonymous types, get the underlying type
                 underlyingType = namedType.WithNullableAnnotation(NullableAnnotation.NotAnnotated);
             }
-            
+
             if (underlyingType != null && underlyingType.IsAnonymousType)
             {
                 // Step 3: Find the anonymous type creation expression within this expression
@@ -332,7 +337,7 @@ public record DtoProperty(
                     .DescendantNodesAndSelf()
                     .OfType<AnonymousObjectCreationExpressionSyntax>()
                     .FirstOrDefault();
-                
+
                 if (anonymousCreation != null)
                 {
                     // Analyze the anonymous type using the underlying type as the source
