@@ -15,7 +15,8 @@ public class SelectToSelectExprNamedAnalyzerTests
     [Fact]
     public async Task IQueryableSelect_WithNamedType_ReportsDiagnostic()
     {
-        var test = @"
+        var test =
+            @"
 using System.Linq;
 using System.Collections.Generic;
 
@@ -51,7 +52,8 @@ class Test
     [Fact]
     public async Task IQueryableSelect_WithNamedType_InVariableAssignment_ReportsDiagnostic()
     {
-        var test = @"
+        var test =
+            @"
 using System.Linq;
 using System.Collections.Generic;
 
@@ -85,7 +87,8 @@ class Test
     [Fact]
     public async Task IEnumerableSelect_WithNamedType_NoDiagnostic()
     {
-        var test = @"
+        var test =
+            @"
 using System.Linq;
 using System.Collections.Generic;
 
@@ -114,7 +117,8 @@ class Test
     [Fact]
     public async Task IQueryableSelect_WithAnonymousType_NoDiagnostic()
     {
-        var test = @"
+        var test =
+            @"
 using System.Linq;
 using System.Collections.Generic;
 
@@ -138,7 +142,8 @@ class Test
     [Fact]
     public async Task IQueryableSelect_WithSimpleProjection_NoDiagnostic()
     {
-        var test = @"
+        var test =
+            @"
 using System.Linq;
 using System.Collections.Generic;
 
@@ -162,7 +167,8 @@ class Test
     [Fact]
     public async Task IQueryableSelect_WithComplexNamedType_ReportsDiagnostic()
     {
-        var test = @"
+        var test =
+            @"
 using System.Linq;
 using System.Collections.Generic;
 

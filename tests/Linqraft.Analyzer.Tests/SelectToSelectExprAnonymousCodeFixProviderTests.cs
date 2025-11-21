@@ -11,7 +11,8 @@ public class SelectToSelectExprAnonymousCodeFixProviderTests
     [Fact]
     public async Task CodeFix_SelectToSelectExpr_AnonymousPattern()
     {
-        var test = @"
+        var test =
+            @"
 using System.Linq;
 using System.Collections.Generic;
 
@@ -30,7 +31,8 @@ class Test
     }
 }";
 
-        var fixedCode = @"
+        var fixedCode =
+            @"
 using System.Linq;
 using System.Collections.Generic;
 
@@ -60,7 +62,8 @@ class Test
     [Fact]
     public async Task CodeFix_SelectToSelectExpr_ExplicitDtoPattern()
     {
-        var test = @"
+        var test =
+            @"
 using System.Linq;
 using System.Collections.Generic;
 
@@ -79,7 +82,8 @@ class Test
     }
 }";
 
-        var fixedCode = @"
+        var fixedCode =
+            @"
 using System.Linq;
 using System.Collections.Generic;
 
@@ -109,7 +113,8 @@ class Test
     [Fact]
     public async Task CodeFix_SelectToSelectExpr_UsesVariableName()
     {
-        var test = @"
+        var test =
+            @"
 using System.Linq;
 using System.Collections.Generic;
 
@@ -127,7 +132,8 @@ class Test
     }
 }";
 
-        var fixedCode = @"
+        var fixedCode =
+            @"
 using System.Linq;
 using System.Collections.Generic;
 

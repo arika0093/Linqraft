@@ -62,15 +62,17 @@ public class SelectToSelectExprAnonymousAnalyzer : DiagnosticAnalyzer
         // Get semantic model and check if it's on IQueryable
         var semanticModel = context.SemanticModel;
         var symbolInfo = semanticModel.GetSymbolInfo(invocation, context.CancellationToken);
-        
+
         if (symbolInfo.Symbol is not IMethodSymbol methodSymbol)
         {
             return;
         }
 
         // Verify it's the Select method from System.Linq
-        if (methodSymbol.Name != "Select" || 
-            !methodSymbol.ContainingNamespace.ToDisplayString().StartsWith("System.Linq"))
+        if (
+            methodSymbol.Name != "Select"
+            || !methodSymbol.ContainingNamespace.ToDisplayString().StartsWith("System.Linq")
+        )
         {
             return;
         }

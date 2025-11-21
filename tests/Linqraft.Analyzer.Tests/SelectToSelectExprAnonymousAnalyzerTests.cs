@@ -15,7 +15,8 @@ public class SelectToSelectExprAnonymousAnalyzerTests
     [Fact]
     public async Task IQueryableSelect_WithAnonymousType_ReportsDiagnostic()
     {
-        var test = @"
+        var test =
+            @"
 using System.Linq;
 using System.Collections.Generic;
 
@@ -45,7 +46,8 @@ class Test
     [Fact]
     public async Task IQueryableSelect_WithAnonymousType_InVariableAssignment_ReportsDiagnostic()
     {
-        var test = @"
+        var test =
+            @"
 using System.Linq;
 using System.Collections.Generic;
 
@@ -74,7 +76,8 @@ class Test
     [Fact]
     public async Task IEnumerableSelect_WithAnonymousType_NoDiagnostic()
     {
-        var test = @"
+        var test =
+            @"
 using System.Linq;
 using System.Collections.Generic;
 
@@ -98,7 +101,8 @@ class Test
     [Fact]
     public async Task IQueryableSelect_WithoutAnonymousType_NoDiagnostic()
     {
-        var test = @"
+        var test =
+            @"
 using System.Linq;
 using System.Collections.Generic;
 
@@ -122,7 +126,8 @@ class Test
     [Fact]
     public async Task IQueryableSelect_WithNamedType_NoDiagnostic()
     {
-        var test = @"
+        var test =
+            @"
 using System.Linq;
 using System.Collections.Generic;
 
@@ -151,7 +156,8 @@ class Test
     [Fact]
     public async Task IQueryableSelect_WithComplexAnonymousType_ReportsDiagnostic()
     {
-        var test = @"
+        var test =
+            @"
 using System.Linq;
 using System.Collections.Generic;
 

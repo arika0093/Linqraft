@@ -118,14 +118,14 @@ public class SelectToSelectExprNamedCodeFixProvider : CodeFixProvider
 
         // Convert the named object creation to anonymous type (including nested)
         var anonymousCreation = ConvertToAnonymousTypeRecursive(objectCreation);
-        
+
         // Replace both nodes in one operation using a dictionary
         var replacements = new Dictionary<SyntaxNode, SyntaxNode>
         {
             { invocation.Expression, newExpression },
-            { objectCreation, anonymousCreation }
+            { objectCreation, anonymousCreation },
         };
-        
+
         var newRoot = root.ReplaceNodes(replacements.Keys, (oldNode, _) => replacements[oldNode]);
 
         return document.WithSyntaxRoot(newRoot);
@@ -171,14 +171,14 @@ public class SelectToSelectExprNamedCodeFixProvider : CodeFixProvider
 
         // Convert the named object creation to anonymous type (root only)
         var anonymousCreation = ConvertToAnonymousType(objectCreation);
-        
+
         // Replace both nodes in one operation using a dictionary
         var replacements = new Dictionary<SyntaxNode, SyntaxNode>
         {
             { invocation.Expression, newExpression },
-            { objectCreation, anonymousCreation }
+            { objectCreation, anonymousCreation },
         };
-        
+
         var newRoot = root.ReplaceNodes(replacements.Keys, (oldNode, _) => replacements[oldNode]);
 
         return document.WithSyntaxRoot(newRoot);
@@ -344,7 +344,7 @@ public class SelectToSelectExprNamedCodeFixProvider : CodeFixProvider
                 {
                     // Recursively process the right side to convert nested object creations
                     var processedRight = ProcessExpressionForNestedConversions(assignment.Right);
-                    
+
                     members.Add(
                         SyntaxFactory.AnonymousObjectMemberDeclarator(
                             SyntaxFactory.NameEquals(identifier.Identifier.Text),
@@ -360,7 +360,9 @@ public class SelectToSelectExprNamedCodeFixProvider : CodeFixProvider
         );
     }
 
-    private static ExpressionSyntax ProcessExpressionForNestedConversions(ExpressionSyntax expression)
+    private static ExpressionSyntax ProcessExpressionForNestedConversions(
+        ExpressionSyntax expression
+    )
     {
         // Use a recursive rewriter to find and convert all nested object creations
         var rewriter = new NestedObjectCreationRewriter();
@@ -372,11 +374,13 @@ public class SelectToSelectExprNamedCodeFixProvider : CodeFixProvider
     /// </summary>
     private class NestedObjectCreationRewriter : CSharpSyntaxRewriter
     {
-        public override SyntaxNode? VisitObjectCreationExpression(ObjectCreationExpressionSyntax node)
+        public override SyntaxNode? VisitObjectCreationExpression(
+            ObjectCreationExpressionSyntax node
+        )
         {
             // Convert this object creation to anonymous type (non-recursively to avoid infinite loop)
             var anonymousType = ConvertToAnonymousType(node);
-            
+
             // Continue visiting children to convert nested object creations
             return base.Visit(anonymousType) ?? anonymousType;
         }
@@ -411,14 +415,15 @@ public class SelectToSelectExprNamedCodeFixProvider : CodeFixProvider
     {
         // For explicit DTO pattern, generate a DTO name similar to anonymous types
         // We'll use the existing naming logic but pass the initializer as if it were anonymous
-        
+
         // If there's an initializer, convert it to represent the properties
         if (objectCreation.Initializer != null)
         {
             // Create a synthetic anonymous object for naming purposes
             var anonymousSyntax = SyntaxFactory.AnonymousObjectCreationExpression(
                 SyntaxFactory.SeparatedList(
-                    objectCreation.Initializer.Expressions.OfType<AssignmentExpressionSyntax>()
+                    objectCreation
+                        .Initializer.Expressions.OfType<AssignmentExpressionSyntax>()
                         .Where(assignment => assignment.Left is IdentifierNameSyntax)
                         .Select(assignment =>
                             SyntaxFactory.AnonymousObjectMemberDeclarator(
@@ -430,7 +435,7 @@ public class SelectToSelectExprNamedCodeFixProvider : CodeFixProvider
                         )
                 )
             );
-            
+
             return DtoNamingHelper.GenerateDtoName(invocation, anonymousSyntax);
         }
 
