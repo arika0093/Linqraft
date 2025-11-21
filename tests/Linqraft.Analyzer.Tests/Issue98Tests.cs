@@ -188,7 +188,7 @@ class Test
 
         var expected = new DiagnosticResult(
             SelectExprToTypedAnalyzer.DiagnosticId,
-            DiagnosticSeverity.Info
+            DiagnosticSeverity.Hidden
         ).WithLocation(0);
 
         await RunCodeFixTestForTypedAsync(test, expected, fixedCode, 0);
