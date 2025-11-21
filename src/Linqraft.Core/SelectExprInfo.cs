@@ -600,20 +600,25 @@ public abstract record SelectExprInfo
     /// <summary>
     /// Removes all comment trivia from a syntax node
     /// </summary>
-    private static T RemoveComments<T>(T node) where T : SyntaxNode
+    private static T RemoveComments<T>(T node)
+        where T : SyntaxNode
     {
-        return (T)node.ReplaceTrivia(
-            node.DescendantTrivia(descendIntoTrivia: true),
-            (originalTrivia, _) =>
-            {
-                // Remove single-line and multi-line comments
-                if (originalTrivia.IsKind(SyntaxKind.SingleLineCommentTrivia) ||
-                    originalTrivia.IsKind(SyntaxKind.MultiLineCommentTrivia))
+        return (T)
+            node.ReplaceTrivia(
+                node.DescendantTrivia(descendIntoTrivia: true),
+                (originalTrivia, _) =>
                 {
-                    return default;
+                    // Remove single-line and multi-line comments
+                    if (
+                        originalTrivia.IsKind(SyntaxKind.SingleLineCommentTrivia)
+                        || originalTrivia.IsKind(SyntaxKind.MultiLineCommentTrivia)
+                    )
+                    {
+                        return default;
+                    }
+                    return originalTrivia;
                 }
-                return originalTrivia;
-            });
+            );
     }
 
     /// <summary>

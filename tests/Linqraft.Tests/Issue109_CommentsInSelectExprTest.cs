@@ -17,8 +17,18 @@ public class Issue109_CommentsInSelectExprTest
                 Name = "Parent 1",
                 Children =
                 [
-                    new() { Id = 1, Description = "Child 1-1", IsActive = true },
-                    new() { Id = 2, Description = "Child 1-2", IsActive = false },
+                    new()
+                    {
+                        Id = 1,
+                        Description = "Child 1-1",
+                        IsActive = true,
+                    },
+                    new()
+                    {
+                        Id = 2,
+                        Description = "Child 1-2",
+                        IsActive = false,
+                    },
                 ],
             },
             new()
@@ -27,8 +37,18 @@ public class Issue109_CommentsInSelectExprTest
                 Name = "Parent 2",
                 Children =
                 [
-                    new() { Id = 3, Description = "Child 2-1", IsActive = true },
-                    new() { Id = 4, Description = "Child 2-2", IsActive = true },
+                    new()
+                    {
+                        Id = 3,
+                        Description = "Child 2-1",
+                        IsActive = true,
+                    },
+                    new()
+                    {
+                        Id = 4,
+                        Description = "Child 2-2",
+                        IsActive = true,
+                    },
                 ],
             },
         ];
@@ -38,7 +58,8 @@ public class Issue109_CommentsInSelectExprTest
             .SelectExpr<TestForIssue109, TestForIssue109Dto>(s => new
             {
                 Id = s.Id,
-                ActiveChildren = s.Children
+                ActiveChildren = s
+                    .Children
                     // Filter only active children
                     .Where(x => x.IsActive)
                     .Select(x => new { Id = x.Id, Description = x.Description })
@@ -69,9 +90,24 @@ public class Issue109_CommentsInSelectExprTest
                 Name = "Parent 1",
                 Children =
                 [
-                    new() { Id = 1, Description = "Child 1-1", IsActive = true },
-                    new() { Id = 2, Description = "Child 1-2", IsActive = false },
-                    new() { Id = 3, Description = "Child 1-3", IsActive = true },
+                    new()
+                    {
+                        Id = 1,
+                        Description = "Child 1-1",
+                        IsActive = true,
+                    },
+                    new()
+                    {
+                        Id = 2,
+                        Description = "Child 1-2",
+                        IsActive = false,
+                    },
+                    new()
+                    {
+                        Id = 3,
+                        Description = "Child 1-3",
+                        IsActive = true,
+                    },
                 ],
             },
         ];
@@ -81,7 +117,8 @@ public class Issue109_CommentsInSelectExprTest
             .SelectExpr<TestForIssue109, TestForIssue109Dto>(s => new
             {
                 Id = s.Id,
-                ActiveChildren = s.Children
+                ActiveChildren = s
+                    .Children
                     // First filter by IsActive
                     .Where(x => x.IsActive)
                     // Then select the DTO
@@ -90,7 +127,7 @@ public class Issue109_CommentsInSelectExprTest
                         // Map the ID
                         Id = x.Id,
                         // Map the description
-                        Description = x.Description
+                        Description = x.Description,
                     })
                     // Convert to list
                     .ToList(),
@@ -118,6 +155,4 @@ internal class TestForIssue109Child
     public bool IsActive { get; set; }
 }
 
-internal partial class TestForIssue109Dto
-{
-}
+internal partial class TestForIssue109Dto { }
