@@ -55,7 +55,11 @@ public partial class SelectExprGenerator : IIncrementalGenerator
 
                 // record locations by SelectExprInfo Id
                 var exprGroups = infoWithoutNulls
-                    .GroupBy(info => new { Namespace = info.GetNamespaceString() })
+                    .GroupBy(info => new
+                    {
+                        Namespace = info.GetNamespaceString(),
+                        FileName = info.GetFileNameString() ?? "",
+                    })
                     .Select(g =>
                     {
                         var exprs = g.Select(info =>
@@ -68,6 +72,7 @@ public partial class SelectExprGenerator : IIncrementalGenerator
                         return new SelectExprGroups
                         {
                             TargetNamespace = g.Key.Namespace,
+                            TargetFileName = g.Key.FileName,
                             Exprs = [.. exprs],
                             Configuration = config,
                         };

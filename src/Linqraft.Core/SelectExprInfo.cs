@@ -135,6 +135,16 @@ public abstract record SelectExprInfo
     }
 
     /// <summary>
+    /// Gets the file name string where SelectExpr is invoked
+    /// </summary>
+    public string? GetFileNameString()
+    {
+        var filepath = Invocation.GetLocation()?.SourceTree?.FilePath;
+        var fileName = System.IO.Path.GetFileNameWithoutExtension(filepath);
+        return fileName;
+    }
+
+    /// <summary>
     /// Checks if the invocation source is IEnumerable (not IQueryable)
     /// </summary>
     protected bool IsEnumerableInvocation()
