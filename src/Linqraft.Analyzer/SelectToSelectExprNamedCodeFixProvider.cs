@@ -132,6 +132,9 @@ public class SelectToSelectExprNamedCodeFixProvider : CodeFixProvider
 
         var newRoot = root.ReplaceNodes(replacements.Keys, (oldNode, _) => replacements[oldNode]);
 
+        // Add using directive for source type if needed
+        newRoot = AddUsingDirectiveForType(newRoot, sourceType);
+
         return document.WithSyntaxRoot(newRoot);
     }
 
@@ -174,7 +177,7 @@ public class SelectToSelectExprNamedCodeFixProvider : CodeFixProvider
             return document;
 
         // Convert the named object creation to anonymous type (root only)
-        var anonymousCreation = ConvertToAnonymousType(objectCreation);
+        var anonymousCreation = ConvertToAnonymousType(objectCreation, semanticModel);
 
         // Simplify ternary null checks in the anonymous creation
         anonymousCreation = (AnonymousObjectCreationExpressionSyntax)
@@ -188,6 +191,9 @@ public class SelectToSelectExprNamedCodeFixProvider : CodeFixProvider
         };
 
         var newRoot = root.ReplaceNodes(replacements.Keys, (oldNode, _) => replacements[oldNode]);
+
+        // Add using directive for source type if needed
+        newRoot = AddUsingDirectiveForType(newRoot, sourceType);
 
         return document.WithSyntaxRoot(newRoot);
     }
@@ -304,10 +310,26 @@ public class SelectToSelectExprNamedCodeFixProvider : CodeFixProvider
         ObjectCreationExpressionSyntax objectCreation
     )
     {
+        return ConvertToAnonymousType(objectCreation, null);
+    }
+
+    private static AnonymousObjectCreationExpressionSyntax ConvertToAnonymousType(
+        ObjectCreationExpressionSyntax objectCreation,
+        SemanticModel? semanticModel
+    )
+    {
         // Convert object initializer to anonymous object creation
         if (objectCreation.Initializer == null)
         {
             return SyntaxFactory.AnonymousObjectCreationExpression();
+        }
+
+        // If semantic model is provided, collect fully qualified names for all nested object creations
+        Dictionary<ObjectCreationExpressionSyntax, string>? fullyQualifiedNames = null;
+        if (semanticModel != null)
+        {
+            fullyQualifiedNames = new Dictionary<ObjectCreationExpressionSyntax, string>();
+            CollectFullyQualifiedNames(objectCreation.Initializer, semanticModel, fullyQualifiedNames);
         }
 
         var members = new List<AnonymousObjectMemberDeclaratorSyntax>();
@@ -319,19 +341,170 @@ public class SelectToSelectExprNamedCodeFixProvider : CodeFixProvider
                 // Convert assignment like "Id = x.Id" to anonymous member
                 if (assignment.Left is IdentifierNameSyntax identifier)
                 {
-                    members.Add(
-                        SyntaxFactory.AnonymousObjectMemberDeclarator(
-                            SyntaxFactory.NameEquals(identifier.Identifier.Text),
-                            assignment.Right
-                        )
-                    );
+                    // If we have fully qualified names, apply them to nested object creations
+                    var processedRight = fullyQualifiedNames != null
+                        ? ApplyFullyQualifiedNames(assignment.Right, fullyQualifiedNames)
+                        : assignment.Right;
+
+                    // Create the name equals with preserved identifier trivia
+                    var nameEquals = SyntaxFactory
+                        .NameEquals(SyntaxFactory.IdentifierName(identifier.Identifier))
+                        .WithLeadingTrivia(assignment.GetLeadingTrivia());
+
+                    // Create the member with preserved trivia from the right side
+                    var member = SyntaxFactory
+                        .AnonymousObjectMemberDeclarator(nameEquals, processedRight)
+                        .WithTrailingTrivia(assignment.GetTrailingTrivia());
+
+                    members.Add(member);
                 }
             }
         }
 
-        return SyntaxFactory.AnonymousObjectCreationExpression(
-            SyntaxFactory.SeparatedList(members)
+        // Create the separated list preserving separators from the original initializer
+        var separatedMembers = SyntaxFactory.SeparatedList(
+            members,
+            objectCreation.Initializer.Expressions.GetSeparators()
         );
+
+        // Collect all trivia between "new" and the opening brace
+        // This includes trivia from the type node (both leading and trailing)
+        var triviaBeforeOpenBrace = SyntaxTriviaList.Empty;
+        if (objectCreation.Type != null)
+        {
+            triviaBeforeOpenBrace = triviaBeforeOpenBrace
+                .AddRange(objectCreation.Type.GetLeadingTrivia())
+                .AddRange(objectCreation.Type.GetTrailingTrivia());
+        }
+        
+        // Create anonymous object creation preserving trivia
+        var result = SyntaxFactory
+            .AnonymousObjectCreationExpression(
+                SyntaxFactory.Token(SyntaxKind.NewKeyword)
+                    .WithLeadingTrivia(objectCreation.GetLeadingTrivia())
+                    .WithTrailingTrivia(triviaBeforeOpenBrace),
+                SyntaxFactory.Token(SyntaxKind.OpenBraceToken)
+                    .WithTrailingTrivia(objectCreation.Initializer.OpenBraceToken.TrailingTrivia),
+                separatedMembers,
+                SyntaxFactory.Token(SyntaxKind.CloseBraceToken)
+                    .WithLeadingTrivia(objectCreation.Initializer.CloseBraceToken.LeadingTrivia)
+                    .WithTrailingTrivia(objectCreation.Initializer.CloseBraceToken.TrailingTrivia)
+            )
+            .WithTrailingTrivia(objectCreation.GetTrailingTrivia());
+
+        return result;
+    }
+
+    private static void CollectFullyQualifiedNames(
+        SyntaxNode node,
+        SemanticModel semanticModel,
+        Dictionary<ObjectCreationExpressionSyntax, string> fullyQualifiedNames
+    )
+    {
+        foreach (var objectCreation in node.DescendantNodes().OfType<ObjectCreationExpressionSyntax>())
+        {
+            var typeInfo = semanticModel.GetTypeInfo(objectCreation);
+            if (typeInfo.Type != null)
+            {
+                var fullyQualifiedName = typeInfo.Type.ToDisplayString(
+                    SymbolDisplayFormat.FullyQualifiedFormat
+                );
+                fullyQualifiedNames[objectCreation] = fullyQualifiedName;
+            }
+        }
+    }
+
+    private static ExpressionSyntax ApplyFullyQualifiedNames(
+        ExpressionSyntax expression,
+        Dictionary<ObjectCreationExpressionSyntax, string> fullyQualifiedNames
+    )
+    {
+        var rewriter = new ApplyFullyQualifiedNamesRewriter(fullyQualifiedNames);
+        return (ExpressionSyntax)rewriter.Visit(expression);
+    }
+
+    private class ApplyFullyQualifiedNamesRewriter : CSharpSyntaxRewriter
+    {
+        private readonly Dictionary<ObjectCreationExpressionSyntax, string> _fullyQualifiedNames;
+
+        public ApplyFullyQualifiedNamesRewriter(
+            Dictionary<ObjectCreationExpressionSyntax, string> fullyQualifiedNames
+        )
+        {
+            _fullyQualifiedNames = fullyQualifiedNames;
+        }
+
+        public override SyntaxNode? VisitObjectCreationExpression(
+            ObjectCreationExpressionSyntax node
+        )
+        {
+            if (_fullyQualifiedNames.TryGetValue(node, out var fullyQualifiedName))
+            {
+                // Parse the fully qualified name as a type
+                var qualifiedType = SyntaxFactory.ParseTypeName(fullyQualifiedName);
+
+                // Create new object creation with fully qualified type, preserving trivia
+                var newNode = SyntaxFactory.ObjectCreationExpression(qualifiedType)
+                    .WithArgumentList(node.ArgumentList)
+                    .WithInitializer(node.Initializer)
+                    .WithLeadingTrivia(node.GetLeadingTrivia())
+                    .WithTrailingTrivia(node.GetTrailingTrivia());
+
+                // Continue visiting children
+                return base.Visit(newNode) ?? newNode;
+            }
+
+            return base.VisitObjectCreationExpression(node);
+        }
+    }
+
+    private static ExpressionSyntax QualifyNestedObjectCreations(
+        ExpressionSyntax expression,
+        SemanticModel semanticModel
+    )
+    {
+        var rewriter = new FullyQualifyObjectCreationRewriter(semanticModel);
+        return (ExpressionSyntax)rewriter.Visit(expression);
+    }
+
+    private class FullyQualifyObjectCreationRewriter : CSharpSyntaxRewriter
+    {
+        private readonly SemanticModel _semanticModel;
+
+        public FullyQualifyObjectCreationRewriter(SemanticModel semanticModel)
+        {
+            _semanticModel = semanticModel;
+        }
+
+        public override SyntaxNode? VisitObjectCreationExpression(
+            ObjectCreationExpressionSyntax node
+        )
+        {
+            // Get the type symbol for this object creation
+            var typeInfo = _semanticModel.GetTypeInfo(node);
+            if (typeInfo.Type != null)
+            {
+                // Create fully qualified type name
+                var fullyQualifiedName = typeInfo.Type.ToDisplayString(
+                    SymbolDisplayFormat.FullyQualifiedFormat
+                );
+
+                // Parse the fully qualified name as a type
+                var qualifiedType = SyntaxFactory.ParseTypeName(fullyQualifiedName);
+
+                // Create new object creation with fully qualified type, preserving trivia
+                var newNode = SyntaxFactory.ObjectCreationExpression(qualifiedType)
+                    .WithArgumentList(node.ArgumentList)
+                    .WithInitializer(node.Initializer)
+                    .WithLeadingTrivia(node.GetLeadingTrivia())
+                    .WithTrailingTrivia(node.GetTrailingTrivia());
+
+                // Continue visiting children
+                return base.Visit(newNode) ?? newNode;
+            }
+
+            return base.VisitObjectCreationExpression(node);
+        }
     }
 
     private static AnonymousObjectCreationExpressionSyntax ConvertToAnonymousTypeRecursive(
@@ -389,11 +562,24 @@ public class SelectToSelectExprNamedCodeFixProvider : CodeFixProvider
             ObjectCreationExpressionSyntax node
         )
         {
-            // Convert this object creation to anonymous type (non-recursively to avoid infinite loop)
-            var anonymousType = ConvertToAnonymousType(node);
+            // Only convert if it has an initializer with assignment expressions
+            // Don't convert things like "new List()" or "new List<T>()"
+            if (node.Initializer != null && HasAssignmentExpressions(node.Initializer))
+            {
+                // Convert this object creation to anonymous type (non-recursively to avoid infinite loop)
+                var anonymousType = ConvertToAnonymousType(node);
 
-            // Continue visiting children to convert nested object creations
-            return base.Visit(anonymousType) ?? anonymousType;
+                // Continue visiting children to convert nested object creations
+                return base.Visit(anonymousType) ?? anonymousType;
+            }
+
+            // For object creations without proper initializers, don't convert but still visit children
+            return base.VisitObjectCreationExpression(node);
+        }
+
+        private static bool HasAssignmentExpressions(InitializerExpressionSyntax initializer)
+        {
+            return initializer.Expressions.Any(e => e is AssignmentExpressionSyntax);
         }
     }
 
@@ -491,5 +677,39 @@ public class SelectToSelectExprNamedCodeFixProvider : CodeFixProvider
         return invocation.WithArgumentList(
             SyntaxFactory.ArgumentList(SyntaxFactory.SeparatedList(newArguments))
         );
+    }
+
+    private static SyntaxNode AddUsingDirectiveForType(SyntaxNode root, ITypeSymbol typeSymbol)
+    {
+        if (root is not CompilationUnitSyntax compilationUnit)
+            return root;
+
+        // Get the namespace of the type
+        var namespaceName = typeSymbol.ContainingNamespace?.ToDisplayString();
+        if (string.IsNullOrEmpty(namespaceName) || namespaceName == "<global namespace>")
+            return root;
+
+        // Check if using directive already exists
+        var hasUsing = compilationUnit.Usings.Any(u => u.Name?.ToString() == namespaceName);
+        if (hasUsing)
+            return root;
+
+        // Detect the line ending used in the file by looking at existing using directives
+        var endOfLineTrivia = compilationUnit.Usings.Any()
+            ? compilationUnit.Usings.Last().GetTrailingTrivia().LastOrDefault()
+            : SyntaxFactory.EndOfLine("\n");
+
+        // If the detected trivia is not an end of line, use a default
+        if (!endOfLineTrivia.IsKind(SyntaxKind.EndOfLineTrivia))
+        {
+            endOfLineTrivia = SyntaxFactory.EndOfLine("\n");
+        }
+
+        // Add using directive (namespaceName is guaranteed non-null here due to the check above)
+        var usingDirective = SyntaxFactory
+            .UsingDirective(SyntaxFactory.ParseName(namespaceName!))
+            .WithTrailingTrivia(endOfLineTrivia);
+
+        return compilationUnit.AddUsings(usingDirective);
     }
 }
