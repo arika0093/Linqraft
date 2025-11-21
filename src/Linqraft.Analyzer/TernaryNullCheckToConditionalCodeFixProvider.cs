@@ -76,7 +76,7 @@ public class TernaryNullCheckToConditionalCodeFixProvider : CodeFixProvider
         // Determine which branch has the object creation
         var whenTrueExpr = RemoveNullableCast(conditional.WhenTrue);
         var whenFalseExpr = RemoveNullableCast(conditional.WhenFalse);
-        
+
         var whenTrueIsNull = IsNullOrNullCast(conditional.WhenTrue);
         var whenFalseIsNull = IsNullOrNullCast(conditional.WhenFalse);
 
@@ -107,7 +107,10 @@ public class TernaryNullCheckToConditionalCodeFixProvider : CodeFixProvider
         }
 
         // Convert the object creation to use null-conditional operators
-        var converted = ConvertObjectCreationToNullConditional(objectCreationExpr, effectiveNullChecks);
+        var converted = ConvertObjectCreationToNullConditional(
+            objectCreationExpr,
+            effectiveNullChecks
+        );
         if (converted == null)
             return document;
 
@@ -142,20 +145,24 @@ public class TernaryNullCheckToConditionalCodeFixProvider : CodeFixProvider
         // to maintain proper indentation and formatting
         // Note: We do NOT preserve trailing trivia here, as that will come from the conditional
 
-        if (newExpression is ObjectCreationExpressionSyntax newObjCreation
-            && originalExpression is ObjectCreationExpressionSyntax origObjCreation)
+        if (
+            newExpression is ObjectCreationExpressionSyntax newObjCreation
+            && originalExpression is ObjectCreationExpressionSyntax origObjCreation
+        )
         {
             // Preserve initializer trivia if present
             if (newObjCreation.Initializer != null && origObjCreation.Initializer != null)
             {
-                var newInitializer = newObjCreation.Initializer
-                    .WithOpenBraceToken(
-                        newObjCreation.Initializer.OpenBraceToken
-                            .WithTriviaFrom(origObjCreation.Initializer.OpenBraceToken)
+                var newInitializer = newObjCreation
+                    .Initializer.WithOpenBraceToken(
+                        newObjCreation.Initializer.OpenBraceToken.WithTriviaFrom(
+                            origObjCreation.Initializer.OpenBraceToken
+                        )
                     )
                     .WithCloseBraceToken(
-                        newObjCreation.Initializer.CloseBraceToken
-                            .WithTriviaFrom(origObjCreation.Initializer.CloseBraceToken)
+                        newObjCreation.Initializer.CloseBraceToken.WithTriviaFrom(
+                            origObjCreation.Initializer.CloseBraceToken
+                        )
                     );
 
                 newObjCreation = newObjCreation.WithInitializer(newInitializer);
@@ -165,21 +172,27 @@ public class TernaryNullCheckToConditionalCodeFixProvider : CodeFixProvider
             return newObjCreation.WithLeadingTrivia(originalExpression.GetLeadingTrivia());
         }
 
-        if (newExpression is AnonymousObjectCreationExpressionSyntax newAnonCreation
-            && originalExpression is AnonymousObjectCreationExpressionSyntax origAnonCreation)
+        if (
+            newExpression is AnonymousObjectCreationExpressionSyntax newAnonCreation
+            && originalExpression is AnonymousObjectCreationExpressionSyntax origAnonCreation
+        )
         {
             // Preserve brace trivia for anonymous objects
             // Important: We must copy the exact tokens with their trivia, especially for the close brace
             return newAnonCreation
-                .WithNewKeyword(newAnonCreation.NewKeyword.WithTriviaFrom(origAnonCreation.NewKeyword))
+                .WithNewKeyword(
+                    newAnonCreation.NewKeyword.WithTriviaFrom(origAnonCreation.NewKeyword)
+                )
                 .WithOpenBraceToken(origAnonCreation.OpenBraceToken)
                 .WithCloseBraceToken(origAnonCreation.CloseBraceToken)
                 .WithLeadingTrivia(originalExpression.GetLeadingTrivia());
         }
 
-        if (newExpression is AnonymousObjectCreationExpressionSyntax anonCreation
+        if (
+            newExpression is AnonymousObjectCreationExpressionSyntax anonCreation
             && originalExpression is CastExpressionSyntax castToAnon
-            && castToAnon.Expression is AnonymousObjectCreationExpressionSyntax origAnon)
+            && castToAnon.Expression is AnonymousObjectCreationExpressionSyntax origAnon
+        )
         {
             // Handle cast expressions wrapping anonymous objects
             return anonCreation
@@ -218,9 +231,7 @@ public class TernaryNullCheckToConditionalCodeFixProvider : CodeFixProvider
             _nullCheckedPaths = new HashSet<string>(nullChecks.Select(nc => nc.ToString()));
         }
 
-        public override SyntaxNode? VisitMemberAccessExpression(
-            MemberAccessExpressionSyntax node
-        )
+        public override SyntaxNode? VisitMemberAccessExpression(MemberAccessExpressionSyntax node)
         {
             // Decompose the member access chain
             var parts = DecomposeMemberAccessChain(node);

@@ -172,10 +172,7 @@ class Test
         params DiagnosticResult[] expected
     )
     {
-        var test = new CSharpAnalyzerTest<
-            TernaryNullCheckToConditionalAnalyzer,
-            DefaultVerifier
-        >
+        var test = new CSharpAnalyzerTest<TernaryNullCheckToConditionalAnalyzer, DefaultVerifier>
         {
             TestCode = source,
             ReferenceAssemblies = ReferenceAssemblies.Net.Net90,

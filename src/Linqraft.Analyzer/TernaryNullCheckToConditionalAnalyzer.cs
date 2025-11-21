@@ -66,12 +66,12 @@ public class TernaryNullCheckToConditionalAnalyzer : DiagnosticAnalyzer
         // Check if one branch is null and the other contains an object creation
         var whenTrueIsNull = IsNullOrNullCast(conditional.WhenTrue);
         var whenFalseIsNull = IsNullOrNullCast(conditional.WhenFalse);
-        var whenTrueHasObject = 
-            whenTrueExpr is ObjectCreationExpressionSyntax ||
-            whenTrueExpr is AnonymousObjectCreationExpressionSyntax;
-        var whenFalseHasObject = 
-            whenFalseExpr is ObjectCreationExpressionSyntax ||
-            whenFalseExpr is AnonymousObjectCreationExpressionSyntax;
+        var whenTrueHasObject =
+            whenTrueExpr is ObjectCreationExpressionSyntax
+            || whenTrueExpr is AnonymousObjectCreationExpressionSyntax;
+        var whenFalseHasObject =
+            whenFalseExpr is ObjectCreationExpressionSyntax
+            || whenFalseExpr is AnonymousObjectCreationExpressionSyntax;
 
         // Report diagnostic if one branch is null and the other has an object creation
         // This handles both: condition ? new{} : null  AND  condition ? null : new{}
@@ -87,8 +87,10 @@ public class TernaryNullCheckToConditionalAnalyzer : DiagnosticAnalyzer
         // Check for simple null check: x != null or x == null
         if (condition is BinaryExpressionSyntax binary)
         {
-            if (binary.Kind() == SyntaxKind.NotEqualsExpression || 
-                binary.Kind() == SyntaxKind.EqualsExpression)
+            if (
+                binary.Kind() == SyntaxKind.NotEqualsExpression
+                || binary.Kind() == SyntaxKind.EqualsExpression
+            )
             {
                 return IsNullLiteral(binary.Left) || IsNullLiteral(binary.Right);
             }
