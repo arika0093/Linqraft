@@ -140,12 +140,25 @@ public class SelectToSelectExprAnonymousAnalyzer : DiagnosticAnalyzer
             return false;
         }
 
-        // Check if it's IQueryable<T>
+        // Check if it's IQueryable<T> or implements IQueryable<T> (e.g., DbSet<T>)
         if (type is INamedTypeSymbol namedType)
         {
-            // Check the type name and namespace
+            // Check if it's IQueryable<T> itself
             var displayString = namedType.OriginalDefinition.ToDisplayString();
-            return displayString.StartsWith("System.Linq.IQueryable<");
+            if (displayString.StartsWith("System.Linq.IQueryable<"))
+            {
+                return true;
+            }
+
+            // Check if it implements IQueryable<T>
+            foreach (var iface in namedType.AllInterfaces)
+            {
+                var ifaceDisplayString = iface.OriginalDefinition.ToDisplayString();
+                if (ifaceDisplayString.StartsWith("System.Linq.IQueryable<"))
+                {
+                    return true;
+                }
+            }
         }
 
         return false;

@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.Composition;
 using System.Linq;
@@ -105,9 +106,17 @@ public class SelectToSelectExprNamedCodeFixProvider : CodeFixProvider
         if (newExpression == null)
             return document;
 
-        // Replace the expression
-        var newInvocation = invocation.WithExpression(newExpression);
-        var newRoot = root.ReplaceNode(invocation, newInvocation);
+        // Convert the named object creation to anonymous type
+        var anonymousCreation = ConvertToAnonymousType(objectCreation);
+        
+        // Replace both nodes in one operation using a dictionary
+        var replacements = new Dictionary<SyntaxNode, SyntaxNode>
+        {
+            { invocation.Expression, newExpression },
+            { objectCreation, anonymousCreation }
+        };
+        
+        var newRoot = root.ReplaceNodes(replacements.Keys, (oldNode, _) => replacements[oldNode]);
 
         return document.WithSyntaxRoot(newRoot);
     }
@@ -215,6 +224,40 @@ public class SelectToSelectExprNamedCodeFixProvider : CodeFixProvider
         }
 
         return null;
+    }
+
+    private static AnonymousObjectCreationExpressionSyntax ConvertToAnonymousType(
+        ObjectCreationExpressionSyntax objectCreation
+    )
+    {
+        // Convert object initializer to anonymous object creation
+        if (objectCreation.Initializer == null)
+        {
+            return SyntaxFactory.AnonymousObjectCreationExpression();
+        }
+
+        var members = new List<AnonymousObjectMemberDeclaratorSyntax>();
+
+        foreach (var expression in objectCreation.Initializer.Expressions)
+        {
+            if (expression is AssignmentExpressionSyntax assignment)
+            {
+                // Convert assignment like "Id = x.Id" to anonymous member
+                if (assignment.Left is IdentifierNameSyntax identifier)
+                {
+                    members.Add(
+                        SyntaxFactory.AnonymousObjectMemberDeclarator(
+                            SyntaxFactory.NameEquals(identifier.Identifier.Text),
+                            assignment.Right
+                        )
+                    );
+                }
+            }
+        }
+
+        return SyntaxFactory.AnonymousObjectCreationExpression(
+            SyntaxFactory.SeparatedList(members)
+        );
     }
 
     private static ObjectCreationExpressionSyntax? FindNamedObjectCreationInArguments(

@@ -57,7 +57,7 @@ class Test
     void Method()
     {
         var list = new List<Sample>();
-        var result = list.AsQueryable().SelectExpr<Sample, ResultDto_T27C3JAA>(x => new SampleDto { Id = x.Id, Name = x.Name });
+        var result = list.AsQueryable().SelectExpr<Sample, ResultDto_T27C3JAA>(x => new { Id = x.Id, Name = x.Name });
     }
 }";
 
@@ -175,7 +175,7 @@ class Test
     void Method()
     {
         var list = new List<Sample>();
-        var users = list.AsQueryable().SelectExpr<Sample, UsersDto_REIXTLBA>(x => new SampleDto { Id = x.Id });
+        var users = list.AsQueryable().SelectExpr<Sample, UsersDto_REIXTLBA>(x => new { Id = x.Id });
     }
 }";
 
