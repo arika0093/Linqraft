@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using Microsoft.CodeAnalysis;
@@ -84,11 +85,11 @@ internal static class NullConditionalHelper
         var whenTrueStr = whenTrue.ToString();
         var checkedStr = checkedExpression.ToString();
 
-        if (whenTrueStr.StartsWith(checkedStr))
+        if (whenTrueStr.StartsWith(checkedStr, StringComparison.Ordinal))
         {
             // Replace the first occurrence with null conditional
             var remaining = whenTrueStr.Substring(checkedStr.Length);
-            if (remaining.StartsWith("."))
+            if (remaining.StartsWith(".", StringComparison.Ordinal))
             {
                 var nullConditionalStr = checkedStr + "?" + remaining;
                 return SyntaxFactory.ParseExpression(nullConditionalStr);
@@ -116,7 +117,7 @@ internal static class NullConditionalHelper
         // Replace each check with null-conditional
         foreach (var check in checks)
         {
-            if (result.StartsWith(check + "."))
+            if (result.StartsWith(check + ".", StringComparison.Ordinal))
             {
                 result = check + "?." + result.Substring(check.Length + 1);
             }
