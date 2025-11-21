@@ -443,10 +443,12 @@ public class SelectToSelectExprNamedCodeFixProvider : CodeFixProvider
                 // Parse the fully qualified name as a type
                 var qualifiedType = SyntaxFactory.ParseTypeName(fullyQualifiedName);
 
-                // Create new object creation with fully qualified type
+                // Create new object creation with fully qualified type, preserving trivia
                 var newNode = SyntaxFactory.ObjectCreationExpression(qualifiedType)
                     .WithArgumentList(node.ArgumentList)
-                    .WithInitializer(node.Initializer);
+                    .WithInitializer(node.Initializer)
+                    .WithLeadingTrivia(node.GetLeadingTrivia())
+                    .WithTrailingTrivia(node.GetTrailingTrivia());
 
                 // Continue visiting children
                 return base.Visit(newNode) ?? newNode;
@@ -490,10 +492,12 @@ public class SelectToSelectExprNamedCodeFixProvider : CodeFixProvider
                 // Parse the fully qualified name as a type
                 var qualifiedType = SyntaxFactory.ParseTypeName(fullyQualifiedName);
 
-                // Create new object creation with fully qualified type
+                // Create new object creation with fully qualified type, preserving trivia
                 var newNode = SyntaxFactory.ObjectCreationExpression(qualifiedType)
                     .WithArgumentList(node.ArgumentList)
-                    .WithInitializer(node.Initializer);
+                    .WithInitializer(node.Initializer)
+                    .WithLeadingTrivia(node.GetLeadingTrivia())
+                    .WithTrailingTrivia(node.GetTrailingTrivia());
 
                 // Continue visiting children
                 return base.Visit(newNode) ?? newNode;
