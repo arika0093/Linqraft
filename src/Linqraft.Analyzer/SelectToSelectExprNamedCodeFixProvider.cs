@@ -329,7 +329,11 @@ public class SelectToSelectExprNamedCodeFixProvider : CodeFixProvider
         if (semanticModel != null)
         {
             fullyQualifiedNames = new Dictionary<ObjectCreationExpressionSyntax, string>();
-            CollectFullyQualifiedNames(objectCreation.Initializer, semanticModel, fullyQualifiedNames);
+            CollectFullyQualifiedNames(
+                objectCreation.Initializer,
+                semanticModel,
+                fullyQualifiedNames
+            );
         }
 
         var members = new List<AnonymousObjectMemberDeclaratorSyntax>();
@@ -342,9 +346,10 @@ public class SelectToSelectExprNamedCodeFixProvider : CodeFixProvider
                 if (assignment.Left is IdentifierNameSyntax identifier)
                 {
                     // If we have fully qualified names, apply them to nested object creations
-                    var processedRight = fullyQualifiedNames != null
-                        ? ApplyFullyQualifiedNames(assignment.Right, fullyQualifiedNames)
-                        : assignment.Right;
+                    var processedRight =
+                        fullyQualifiedNames != null
+                            ? ApplyFullyQualifiedNames(assignment.Right, fullyQualifiedNames)
+                            : assignment.Right;
 
                     // Create the name equals with preserved identifier trivia
                     var nameEquals = SyntaxFactory
@@ -376,17 +381,20 @@ public class SelectToSelectExprNamedCodeFixProvider : CodeFixProvider
                 .AddRange(objectCreation.Type.GetLeadingTrivia())
                 .AddRange(objectCreation.Type.GetTrailingTrivia());
         }
-        
+
         // Create anonymous object creation preserving trivia
         var result = SyntaxFactory
             .AnonymousObjectCreationExpression(
-                SyntaxFactory.Token(SyntaxKind.NewKeyword)
+                SyntaxFactory
+                    .Token(SyntaxKind.NewKeyword)
                     .WithLeadingTrivia(objectCreation.GetLeadingTrivia())
                     .WithTrailingTrivia(triviaBeforeOpenBrace),
-                SyntaxFactory.Token(SyntaxKind.OpenBraceToken)
+                SyntaxFactory
+                    .Token(SyntaxKind.OpenBraceToken)
                     .WithTrailingTrivia(objectCreation.Initializer.OpenBraceToken.TrailingTrivia),
                 separatedMembers,
-                SyntaxFactory.Token(SyntaxKind.CloseBraceToken)
+                SyntaxFactory
+                    .Token(SyntaxKind.CloseBraceToken)
                     .WithLeadingTrivia(objectCreation.Initializer.CloseBraceToken.LeadingTrivia)
                     .WithTrailingTrivia(objectCreation.Initializer.CloseBraceToken.TrailingTrivia)
             )
@@ -401,7 +409,9 @@ public class SelectToSelectExprNamedCodeFixProvider : CodeFixProvider
         Dictionary<ObjectCreationExpressionSyntax, string> fullyQualifiedNames
     )
     {
-        foreach (var objectCreation in node.DescendantNodes().OfType<ObjectCreationExpressionSyntax>())
+        foreach (
+            var objectCreation in node.DescendantNodes().OfType<ObjectCreationExpressionSyntax>()
+        )
         {
             var typeInfo = semanticModel.GetTypeInfo(objectCreation);
             if (typeInfo.Type != null)
@@ -444,7 +454,8 @@ public class SelectToSelectExprNamedCodeFixProvider : CodeFixProvider
                 var qualifiedType = SyntaxFactory.ParseTypeName(fullyQualifiedName);
 
                 // Create new object creation with fully qualified type, preserving trivia
-                var newNode = SyntaxFactory.ObjectCreationExpression(qualifiedType)
+                var newNode = SyntaxFactory
+                    .ObjectCreationExpression(qualifiedType)
                     .WithArgumentList(node.ArgumentList)
                     .WithInitializer(node.Initializer)
                     .WithLeadingTrivia(node.GetLeadingTrivia())
@@ -493,7 +504,8 @@ public class SelectToSelectExprNamedCodeFixProvider : CodeFixProvider
                 var qualifiedType = SyntaxFactory.ParseTypeName(fullyQualifiedName);
 
                 // Create new object creation with fully qualified type, preserving trivia
-                var newNode = SyntaxFactory.ObjectCreationExpression(qualifiedType)
+                var newNode = SyntaxFactory
+                    .ObjectCreationExpression(qualifiedType)
                     .WithArgumentList(node.ArgumentList)
                     .WithInitializer(node.Initializer)
                     .WithLeadingTrivia(node.GetLeadingTrivia())
