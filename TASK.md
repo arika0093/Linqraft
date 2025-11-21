@@ -266,6 +266,33 @@ public static class NullConditionalHelper
 
 ---
 
+#### 2-6. Trivia処理の高度化・共通化
+**目的**: コードフォーマットの正確性向上
+
+**作業内容**:
+- `Linqraft.Core/SyntaxHelpers/TriviaHelper.cs` を新規作成
+- Analyzer/Generator両方で出力されるコードのフォーマット（空白保持等）を正確に行う
+- Trivia（空白、改行、コメント）処理の共通化
+
+**影響箇所**:
+- 全てのCodeFixProvider
+- Generator内のコード生成箇所
+
+**新規メソッド**:
+```csharp
+public static class TriviaHelper
+{
+    public static SyntaxNode PreserveTrivia(SyntaxNode original, SyntaxNode updated);
+    public static SyntaxToken PreserveLeadingTrivia(SyntaxToken original, SyntaxToken updated);
+    public static SyntaxToken PreserveTrailingTrivia(SyntaxToken original, SyntaxToken updated);
+    public static SyntaxNode NormalizeWhitespace(SyntaxNode node, string indentation);
+}
+```
+
+**期待効果**: コード品質向上、フォーマットの一貫性確保
+
+---
+
 ### フェーズ3: Analyzer/CodeFix の共通化（中優先度）
 
 #### 3-1. 基底Analyzerクラス作成
@@ -446,12 +473,13 @@ public static class SelectExprHelper
 
 - [x] 事前調査完了
 - [x] フェーズ1-2: 型判定処理のRoslyn API化
-- [ ] フェーズ1-1: フォーマッティング統一
-- [ ] フェーズ2-1: ラムダ式ヘルパー作成
-- [ ] フェーズ2-2: 式解析ヘルパー作成
+- [x] フェーズ1-1: フォーマッティング統一
+- [x] フェーズ2-1: ラムダ式ヘルパー作成
+- [x] フェーズ2-2: 式解析ヘルパー作成
 - [ ] フェーズ2-3: LINQメソッド検出ヘルパー作成
 - [ ] フェーズ2-4: 型情報ヘルパー作成
 - [ ] フェーズ2-5: Null条件演算子ヘルパー作成
+- [ ] フェーズ2-6: Trivia処理の高度化・共通化
 - [ ] フェーズ3-1: 基底Analyzerクラス作成
 - [ ] フェーズ3-2: Analyzer共通ヘルパー作成
 - [ ] フェーズ3-3: TernaryNullCheckSimplifier の統合

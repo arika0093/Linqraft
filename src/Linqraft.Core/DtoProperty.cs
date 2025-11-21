@@ -1,5 +1,6 @@
 using System.Linq;
 using Linqraft.Core.RoslynHelpers;
+using Linqraft.Core.SyntaxHelpers;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
@@ -442,77 +443,13 @@ public record DtoProperty(
         return false;
     }
 
-    /// <summary>
-    /// Finds a LINQ method invocation (Select or SelectMany) in an expression
-    /// </summary>
-    private static InvocationExpressionSyntax? FindLinqInvocation(
-        ExpressionSyntax expression,
-        params string[] methodNames
-    )
-    {
-        // Handle binary expressions (e.g., ?? operator): s.OrderItems?.Select(...) ?? []
-        if (expression is BinaryExpressionSyntax binaryExpr)
-        {
-            // Check left side for invocation
-            var leftResult = FindLinqInvocation(binaryExpr.Left, methodNames);
-            if (leftResult is not null)
-                return leftResult;
-        }
-
-        // Handle conditional access (?.): s.OrderItems?.Select(...)
-        if (expression is ConditionalAccessExpressionSyntax conditionalAccess)
-        {
-            // The WhenNotNull part contains the actual method call
-            return FindLinqInvocation(conditionalAccess.WhenNotNull, methodNames);
-        }
-
-        // Handle member binding expression (part of ?. expression): .Select(...)
-        if (expression is MemberBindingExpressionSyntax)
-        {
-            // This is the .Select part of ?.Select - we need to look at the parent
-            return null;
-        }
-
-        // Handle invocation binding expression (part of ?. expression): Select(...)
-        if (
-            expression is InvocationExpressionSyntax invocationBinding
-            && invocationBinding.Expression is MemberBindingExpressionSyntax memberBinding
-            && methodNames.Contains(memberBinding.Name.Identifier.Text)
-        )
-        {
-            return invocationBinding;
-        }
-
-        // Direct invocation: s.Childs.Select(...)
-        if (expression is InvocationExpressionSyntax invocation)
-        {
-            if (
-                invocation.Expression is MemberAccessExpressionSyntax memberAccess
-                && methodNames.Contains(memberAccess.Name.Identifier.Text)
-            )
-            {
-                return invocation;
-            }
-
-            // Chained method call (e.g., ToList, ToArray, etc.): s.Childs.Select(...).ToList()
-            // The invocation is for ToList, but we need to find the LINQ method in its expression
-            if (invocation.Expression is MemberAccessExpressionSyntax chainedMemberAccess)
-            {
-                // Recursively search in the expression part (before the chained method)
-                return FindLinqInvocation(chainedMemberAccess.Expression, methodNames);
-            }
-        }
-
-        return null;
-    }
-
     private static InvocationExpressionSyntax? FindSelectInvocation(ExpressionSyntax expression)
     {
-        return FindLinqInvocation(expression, "Select");
+        return LinqMethodHelper.FindLinqMethodInvocation(expression, "Select");
     }
 
     private static InvocationExpressionSyntax? FindSelectManyInvocation(ExpressionSyntax expression)
     {
-        return FindLinqInvocation(expression, "SelectMany");
+        return LinqMethodHelper.FindLinqMethodInvocation(expression, "SelectMany");
     }
 }

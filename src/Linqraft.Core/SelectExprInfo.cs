@@ -688,133 +688,6 @@ public abstract record SelectExprInfo
             );
     }
 
-    /// <summary>
-    /// Extracts LINQ method invocation information (Select or SelectMany) from syntax
-    /// </summary>
-    private (
-        string baseExpression,
-        string paramName,
-        string chainedMethods,
-        bool hasNullableAccess,
-        string? coalescingDefaultValue
-    )? ExtractLinqInvocationInfo(ExpressionSyntax syntax, string methodName)
-    {
-        string? coalescingDefaultValue = null;
-        var currentSyntax = syntax;
-
-        // Check for coalescing operator (??)
-        if (
-            syntax is BinaryExpressionSyntax
-            {
-                RawKind: (int)SyntaxKind.CoalesceExpression
-            } binaryExpr
-        )
-        {
-            var rightSide = binaryExpr.Right.ToString().Trim();
-            coalescingDefaultValue = rightSide == "[]" ? null : rightSide;
-            currentSyntax = binaryExpr.Left;
-        }
-
-        // Check for conditional access (?.)
-        bool hasNullableAccess = false;
-        ConditionalAccessExpressionSyntax? conditionalAccess = null;
-        if (currentSyntax is ConditionalAccessExpressionSyntax condAccess)
-        {
-            hasNullableAccess = true;
-            conditionalAccess = condAccess;
-            currentSyntax = condAccess.WhenNotNull;
-        }
-
-        // Find the LINQ method invocation
-        InvocationExpressionSyntax? linqInvocation = null;
-        string chainedMethods = "";
-
-        if (currentSyntax is InvocationExpressionSyntax invocation)
-        {
-            // Check if this is the LINQ method or chained (e.g., .Select().ToList())
-            if (
-                invocation.Expression is MemberAccessExpressionSyntax memberAccess
-                && memberAccess.Name.Identifier.Text == methodName
-            )
-            {
-                linqInvocation = invocation;
-            }
-            else if (
-                invocation.Expression is MemberBindingExpressionSyntax memberBinding
-                && memberBinding.Name.Identifier.Text == methodName
-            )
-            {
-                linqInvocation = invocation;
-            }
-            else if (invocation.Expression is MemberAccessExpressionSyntax chainedMember)
-            {
-                // This is a chained method like .ToList()
-                chainedMethods = $".{chainedMember.Name}{invocation.ArgumentList}";
-                if (chainedMember.Expression is InvocationExpressionSyntax innerInvocation)
-                {
-                    if (
-                        innerInvocation.Expression is MemberAccessExpressionSyntax innerMember
-                        && innerMember.Name.Identifier.Text == methodName
-                    )
-                    {
-                        linqInvocation = innerInvocation;
-                    }
-                    else if (
-                        innerInvocation.Expression is MemberBindingExpressionSyntax innerBinding
-                        && innerBinding.Name.Identifier.Text == methodName
-                    )
-                    {
-                        linqInvocation = innerInvocation;
-                    }
-                }
-            }
-        }
-
-        if (linqInvocation is null)
-            return null;
-
-        // Extract lambda parameter name using Roslyn
-        var lambda = LambdaHelper.FindLambdaInArguments(linqInvocation.ArgumentList);
-        string paramName = lambda is not null
-            ? LambdaHelper.GetLambdaParameterName(lambda)
-            : "x"; // Default
-
-        // Extract base expression (the collection being operated on)
-        string baseExpression;
-        if (hasNullableAccess && conditionalAccess is not null)
-        {
-            // Remove comments before converting to string
-            var cleanExpression = RemoveComments(conditionalAccess.Expression);
-            baseExpression = cleanExpression.ToString();
-        }
-        else if (linqInvocation.Expression is MemberAccessExpressionSyntax linqMember)
-        {
-            // Remove comments before converting to string
-            var cleanExpression = RemoveComments(linqMember.Expression);
-            baseExpression = cleanExpression.ToString();
-        }
-        else if (
-            linqInvocation.Expression is MemberBindingExpressionSyntax
-            && conditionalAccess is not null
-        )
-        {
-            // Remove comments before converting to string
-            var cleanExpression = RemoveComments(conditionalAccess.Expression);
-            baseExpression = cleanExpression.ToString();
-        }
-        else
-        {
-            return null;
-        }
-
-        return (
-            baseExpression,
-            paramName,
-            chainedMethods,
-            hasNullableAccess,
-            coalescingDefaultValue
-        );
-    }
 
     private (
         string baseExpression,
@@ -824,7 +697,20 @@ public abstract record SelectExprInfo
         string? coalescingDefaultValue
     )? ExtractSelectManyInfoFromSyntax(ExpressionSyntax syntax)
     {
-        return ExtractLinqInvocationInfo(syntax, "SelectMany");
+        var info = LinqMethodHelper.ExtractLinqInvocationInfo(syntax, "SelectMany");
+        if (info is null)
+            return null;
+
+        // Apply comment removal to base expression
+        var cleanedBaseExpression = RemoveComments(SyntaxFactory.ParseExpression(info.BaseExpression)).ToString();
+
+        return (
+            cleanedBaseExpression,
+            info.ParameterName,
+            info.ChainedMethods,
+            info.HasNullableAccess,
+            info.CoalescingDefaultValue
+        );
     }
 
     private (
@@ -835,7 +721,20 @@ public abstract record SelectExprInfo
         string? coalescingDefaultValue
     )? ExtractSelectInfoFromSyntax(ExpressionSyntax syntax)
     {
-        return ExtractLinqInvocationInfo(syntax, "Select");
+        var info = LinqMethodHelper.ExtractLinqInvocationInfo(syntax, "Select");
+        if (info is null)
+            return null;
+
+        // Apply comment removal to base expression
+        var cleanedBaseExpression = RemoveComments(SyntaxFactory.ParseExpression(info.BaseExpression)).ToString();
+
+        return (
+            cleanedBaseExpression,
+            info.ParameterName,
+            info.ChainedMethods,
+            info.HasNullableAccess,
+            info.CoalescingDefaultValue
+        );
     }
 
     /// <summary>
