@@ -308,22 +308,17 @@ public record DtoProperty(
             );
         }
 
-        // Detect ternary operator with anonymous type
-        // For example: p.Child != null ? new { ... } : null  OR  p.Child == null ? null : new { ... }
-        // The key insight is to examine the type of the entire conditional expression
-        if (
-            nestedStructure is null
-            && expression is ConditionalExpressionSyntax conditionalExpr
-        )
+        // Generalized handling for expressions that result in anonymous types
+        // This works for any expression type (ternary operators, method calls, etc.)
+        // Step 1: Evaluate the type of the entire expression
+        if (nestedStructure is null)
         {
-            // Check if the conditional expression's type is an anonymous type
-            // This handles both branches: WhenTrue and WhenFalse
-            var conditionalTypeInfo = semanticModel.GetTypeInfo(conditionalExpr);
-            var conditionalType = conditionalTypeInfo.Type ?? conditionalTypeInfo.ConvertedType;
+            var expressionTypeInfo = semanticModel.GetTypeInfo(expression);
+            var expressionType = expressionTypeInfo.Type ?? expressionTypeInfo.ConvertedType;
             
-            // Check if the type is an anonymous type (nullable or not)
-            var underlyingType = conditionalType;
-            if (conditionalType is INamedTypeSymbol { NullableAnnotation: NullableAnnotation.Annotated } namedType)
+            // Step 2: If it is (anonymous) or (anonymous?), we need to generate a DTO for that type
+            var underlyingType = expressionType;
+            if (expressionType is INamedTypeSymbol { NullableAnnotation: NullableAnnotation.Annotated } namedType)
             {
                 // For nullable anonymous types, get the underlying type
                 underlyingType = namedType.WithNullableAnnotation(NullableAnnotation.NotAnnotated);
@@ -331,17 +326,12 @@ public record DtoProperty(
             
             if (underlyingType != null && underlyingType.IsAnonymousType)
             {
-                // Find which branch contains the anonymous type creation
-                AnonymousObjectCreationExpressionSyntax? anonymousCreation = null;
-                
-                if (conditionalExpr.WhenTrue is AnonymousObjectCreationExpressionSyntax whenTrueAnonymous)
-                {
-                    anonymousCreation = whenTrueAnonymous;
-                }
-                else if (conditionalExpr.WhenFalse is AnonymousObjectCreationExpressionSyntax whenFalseAnonymous)
-                {
-                    anonymousCreation = whenFalseAnonymous;
-                }
+                // Step 3: Find the anonymous type creation expression within this expression
+                // It could be anywhere in the syntax tree (e.g., in a ternary branch, method argument, etc.)
+                var anonymousCreation = expression
+                    .DescendantNodesAndSelf()
+                    .OfType<AnonymousObjectCreationExpressionSyntax>()
+                    .FirstOrDefault();
                 
                 if (anonymousCreation != null)
                 {
