@@ -16,32 +16,26 @@ public class SelectExprToTypedAnalyzerTests
     public async Task SelectExpr_WithoutTypeArgs_ReportsDiagnostic()
     {
         var test =
-            @"
+            $@"
 using System.Linq;
 using System.Collections.Generic;
 
 class Sample
-{
-    public int Id { get; set; }
-    public string Name { get; set; }
-}
+{{
+    public int Id {{ get; set; }}
+    public string Name {{ get; set; }}
+}}
 
 class Test
-{
+{{
     void Method()
-    {
+    {{
         var list = new List<Sample>();
-        var result = list.AsQueryable().{|#0:SelectExpr|}(x => new { x.Id, x.Name });
-    }
-}
+        var result = list.AsQueryable().{{|#0:SelectExpr|}}(x => new {{ x.Id, x.Name }});
+    }}
+}}
 
-static class Extensions
-{
-    public static IQueryable<TResult> SelectExpr<TSource, TResult>(
-        this IQueryable<TSource> source,
-        System.Linq.Expressions.Expression<System.Func<TSource, TResult>> selector)
-        => source.Select(selector);
-}";
+{TestSourceCodes.SelectExprWithExpression}";
 
         var expected = VerifyCS
             .Diagnostic(SelectExprToTypedAnalyzer.DiagnosticId)
@@ -56,36 +50,30 @@ static class Extensions
     public async Task SelectExpr_WithTypeArgs_NoDiagnostic()
     {
         var test =
-            @"
+            $@"
 using System.Linq;
 using System.Collections.Generic;
 
 class Sample
-{
-    public int Id { get; set; }
-}
+{{
+    public int Id {{ get; set; }}
+}}
 
 class SampleDto
-{
-    public int Id { get; set; }
-}
+{{
+    public int Id {{ get; set; }}
+}}
 
 class Test
-{
+{{
     void Method()
-    {
+    {{
         var list = new List<Sample>();
-        var result = list.AsQueryable().SelectExpr<Sample, SampleDto>(x => new { x.Id });
-    }
-}
+        var result = list.AsQueryable().SelectExpr<Sample, SampleDto>(x => new {{ x.Id }});
+    }}
+}}
 
-static class Extensions
-{
-    public static IQueryable<TResult> SelectExpr<TSource, TResult>(
-        this IQueryable<TSource> source,
-        System.Linq.Expressions.Expression<System.Func<TSource, object>> selector)
-        => throw new System.NotImplementedException();
-}";
+{TestSourceCodes.SelectExprWithExpressionObject}";
 
         await VerifyCS.VerifyAnalyzerAsync(test);
     }
@@ -94,31 +82,25 @@ static class Extensions
     public async Task SelectExpr_WithoutAnonymousType_NoDiagnostic()
     {
         var test =
-            @"
+            $@"
 using System.Linq;
 using System.Collections.Generic;
 
 class Sample
-{
-    public int Id { get; set; }
-}
+{{
+    public int Id {{ get; set; }}
+}}
 
 class Test
-{
+{{
     void Method()
-    {
+    {{
         var list = new List<Sample>();
         var result = list.AsQueryable().SelectExpr(x => x.Id);
-    }
-}
+    }}
+}}
 
-static class Extensions
-{
-    public static IQueryable<TResult> SelectExpr<TSource, TResult>(
-        this IQueryable<TSource> source,
-        System.Linq.Expressions.Expression<System.Func<TSource, TResult>> selector)
-        => source.Select(selector);
-}";
+{TestSourceCodes.SelectExprWithExpression}";
 
         await VerifyCS.VerifyAnalyzerAsync(test);
     }
@@ -127,31 +109,25 @@ static class Extensions
     public async Task SelectExpr_InVariableDeclaration_UsesVariableName()
     {
         var test =
-            @"
+            $@"
 using System.Linq;
 using System.Collections.Generic;
 
 class Sample
-{
-    public int Id { get; set; }
-}
+{{
+    public int Id {{ get; set; }}
+}}
 
 class Test
-{
+{{
     void Method()
-    {
+    {{
         var list = new List<Sample>();
-        var users = list.AsQueryable().{|#0:SelectExpr|}(x => new { x.Id });
-    }
-}
+        var users = list.AsQueryable().{{|#0:SelectExpr|}}(x => new {{ x.Id }});
+    }}
+}}
 
-static class Extensions
-{
-    public static IQueryable<TResult> SelectExpr<TSource, TResult>(
-        this IQueryable<TSource> source,
-        System.Linq.Expressions.Expression<System.Func<TSource, TResult>> selector)
-        => source.Select(selector);
-}";
+{TestSourceCodes.SelectExprWithExpression}";
 
         var expected = VerifyCS
             .Diagnostic(SelectExprToTypedAnalyzer.DiagnosticId)
@@ -166,31 +142,25 @@ static class Extensions
     public async Task SelectExpr_InMethodWithGetPrefix_UsesMethodName()
     {
         var test =
-            @"
+            $@"
 using System.Linq;
 using System.Collections.Generic;
 
 class Sample
-{
-    public int Id { get; set; }
-}
+{{
+    public int Id {{ get; set; }}
+}}
 
 class Test
-{
+{{
     object GetUsers()
-    {
+    {{
         var list = new List<Sample>();
-        return list.AsQueryable().{|#0:SelectExpr|}(x => new { x.Id });
-    }
-}
+        return list.AsQueryable().{{|#0:SelectExpr|}}(x => new {{ x.Id }});
+    }}
+}}
 
-static class Extensions
-{
-    public static IQueryable<TResult> SelectExpr<TSource, TResult>(
-        this IQueryable<TSource> source,
-        System.Linq.Expressions.Expression<System.Func<TSource, TResult>> selector)
-        => source.Select(selector);
-}";
+{TestSourceCodes.SelectExprWithExpression}";
 
         var expected = VerifyCS
             .Diagnostic(SelectExprToTypedAnalyzer.DiagnosticId)
@@ -208,60 +178,48 @@ public class SelectExprToTypedCodeFixProviderTests
     public async Task CodeFix_SelectExprWithoutTypeArgs_AddsTypeArgs()
     {
         var test =
-            @"
+            $@"
 using System.Linq;
 using System.Collections.Generic;
 
 class Sample
-{
-    public int Id { get; set; }
-    public string Name { get; set; }
-}
+{{
+    public int Id {{ get; set; }}
+    public string Name {{ get; set; }}
+}}
 
 class Test
-{
+{{
     void Method()
-    {
+    {{
         var list = new List<Sample>();
-        var result = list.AsQueryable().{|#0:SelectExpr|}(x => new { x.Id, x.Name });
-    }
-}
+        var result = list.AsQueryable().{{|#0:SelectExpr|}}(x => new {{ x.Id, x.Name }});
+    }}
+}}
 
-static class Extensions
-{
-    public static IQueryable<TResult> SelectExpr<TSource, TResult>(
-        this IQueryable<TSource> source,
-        System.Linq.Expressions.Expression<System.Func<TSource, TResult>> selector)
-        => source.Select(selector);
-}";
+{TestSourceCodes.SelectExprWithExpression}";
 
         var fixedCode =
-            @"
+            $@"
 using System.Linq;
 using System.Collections.Generic;
 
 class Sample
-{
-    public int Id { get; set; }
-    public string Name { get; set; }
-}
+{{
+    public int Id {{ get; set; }}
+    public string Name {{ get; set; }}
+}}
 
 class Test
-{
+{{
     void Method()
-    {
+    {{
         var list = new List<Sample>();
-        var result = list.AsQueryable().SelectExpr<Sample, ResultDto_T27C3JAA>(x => new { x.Id, x.Name });
-    }
-}
+        var result = list.AsQueryable().SelectExpr<Sample, ResultDto_T27C3JAA>(x => new {{ x.Id, x.Name }});
+    }}
+}}
 
-static class Extensions
-{
-    public static IQueryable<TResult> SelectExpr<TSource, TResult>(
-        this IQueryable<TSource> source,
-        System.Linq.Expressions.Expression<System.Func<TSource, TResult>> selector)
-        => source.Select(selector);
-}";
+{TestSourceCodes.SelectExprWithExpression}";
 
         var expected = new DiagnosticResult(
             SelectExprToTypedAnalyzer.DiagnosticId,
@@ -277,58 +235,46 @@ static class Extensions
     public async Task CodeFix_SelectExprInVariableDeclaration_UsesVariableName()
     {
         var test =
-            @"
+            $@"
 using System.Linq;
 using System.Collections.Generic;
 
 class Sample
-{
-    public int Id { get; set; }
-}
+{{
+    public int Id {{ get; set; }}
+}}
 
 class Test
-{
+{{
     void Method()
-    {
+    {{
         var list = new List<Sample>();
-        var users = list.AsQueryable().{|#0:SelectExpr|}(x => new { x.Id });
-    }
-}
+        var users = list.AsQueryable().{{|#0:SelectExpr|}}(x => new {{ x.Id }});
+    }}
+}}
 
-static class Extensions
-{
-    public static IQueryable<TResult> SelectExpr<TSource, TResult>(
-        this IQueryable<TSource> source,
-        System.Linq.Expressions.Expression<System.Func<TSource, TResult>> selector)
-        => source.Select(selector);
-}";
+{TestSourceCodes.SelectExprWithExpression}";
 
         var fixedCode =
-            @"
+            $@"
 using System.Linq;
 using System.Collections.Generic;
 
 class Sample
-{
-    public int Id { get; set; }
-}
+{{
+    public int Id {{ get; set; }}
+}}
 
 class Test
-{
+{{
     void Method()
-    {
+    {{
         var list = new List<Sample>();
-        var users = list.AsQueryable().SelectExpr<Sample, UsersDto_REIXTLBA>(x => new { x.Id });
-    }
-}
+        var users = list.AsQueryable().SelectExpr<Sample, UsersDto_REIXTLBA>(x => new {{ x.Id }});
+    }}
+}}
 
-static class Extensions
-{
-    public static IQueryable<TResult> SelectExpr<TSource, TResult>(
-        this IQueryable<TSource> source,
-        System.Linq.Expressions.Expression<System.Func<TSource, TResult>> selector)
-        => source.Select(selector);
-}";
+{TestSourceCodes.SelectExprWithExpression}";
 
         var expected = new DiagnosticResult(
             SelectExprToTypedAnalyzer.DiagnosticId,
