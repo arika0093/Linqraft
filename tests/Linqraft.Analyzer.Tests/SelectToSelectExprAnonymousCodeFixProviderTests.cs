@@ -468,6 +468,83 @@ class Test
         await RunCodeFixTestAsync(test, expected, fixedCode, 0);
     }
 
+    [Fact]
+    public async Task CodeFix_DoesNotSimplifyTernaryNullCheck_WhenReturningObject()
+    {
+        var test =
+            @"
+using System.Linq;
+using System.Collections.Generic;
+
+class Sample
+{
+    public int Id { get; set; }
+    public Nest? Nest { get; set; }
+}
+
+class Nest
+{
+    public int Id { get; set; }
+    public string Name { get; set; }
+}
+
+class Test
+{
+    void Method()
+    {
+        var list = new List<Sample>();
+        var result = list.AsQueryable().{|#0:Select|}(s => new {
+            NestField = s.Nest != null
+                ? new {
+                    Id = s.Nest.Id,
+                    Name = s.Nest.Name
+                }
+                : null,
+        });
+    }
+}";
+
+        var fixedCode =
+            @"
+using System.Linq;
+using System.Collections.Generic;
+
+class Sample
+{
+    public int Id { get; set; }
+    public Nest? Nest { get; set; }
+}
+
+class Nest
+{
+    public int Id { get; set; }
+    public string Name { get; set; }
+}
+
+class Test
+{
+    void Method()
+    {
+        var list = new List<Sample>();
+        var result = list.AsQueryable().SelectExpr(s => new {
+            NestField = s.Nest != null
+                ? new {
+                    Id = s.Nest.Id,
+                    Name = s.Nest.Name
+                }
+                : null,
+        });
+    }
+}";
+
+        var expected = new DiagnosticResult(
+            SelectToSelectExprAnonymousAnalyzer.DiagnosticId,
+            DiagnosticSeverity.Info
+        ).WithLocation(0);
+
+        await RunCodeFixTestAsync(test, expected, fixedCode, 0);
+    }
+
     private static async Task RunCodeFixTestAsync(
         string source,
         DiagnosticResult expected,

@@ -42,14 +42,29 @@ internal static class TernaryNullCheckSimplifier
             if (nullChecks.Count == 0)
                 return null;
 
-            // Check if the else clause is null or a null cast
-            if (!IsNullOrNullCast(ternary.WhenFalse))
+            // Extract both expressions, removing any type casts
+            var whenTrueExpr = RemoveNullableCast(ternary.WhenTrue);
+            var whenFalseExpr = RemoveNullableCast(ternary.WhenFalse);
+
+            // Check if one branch is null and the other contains an object creation
+            // If so, don't simplify - this should be handled by LRQS004
+            var whenTrueIsNull = IsNullOrNullCast(ternary.WhenTrue);
+            var whenFalseIsNull = IsNullOrNullCast(ternary.WhenFalse);
+            var whenTrueHasObject = IsObjectCreation(whenTrueExpr);
+            var whenFalseHasObject = IsObjectCreation(whenFalseExpr);
+
+            // If one branch is null and the other has an object creation, skip simplification
+            // This handles both: condition ? new{} : null  AND  condition ? null : new{}
+            if ((whenTrueIsNull && whenFalseHasObject) || (whenFalseIsNull && whenTrueHasObject))
+            {
+                return null;
+            }
+
+            // Only proceed if the else clause is null (standard pattern)
+            if (!whenFalseIsNull)
                 return null;
 
-            // Extract the "when true" expression, removing any type casts
-            var whenTrueExpr = RemoveNullableCast(ternary.WhenTrue);
-
-            // Build the null-conditional chain
+            // Build the null-conditional chain for the WhenTrue expression
             var nullConditionalExpr = BuildNullConditionalChain(whenTrueExpr, nullChecks);
             if (nullConditionalExpr == null)
                 return null;
@@ -157,6 +172,13 @@ internal static class TernaryNullCheckSimplifier
             // This can be extended as needed
 
             return false;
+        }
+
+        private static bool IsObjectCreation(ExpressionSyntax expr)
+        {
+            // Check if the expression is an object creation (named or anonymous)
+            return expr is ObjectCreationExpressionSyntax
+                || expr is AnonymousObjectCreationExpressionSyntax;
         }
 
         private static ExpressionSyntax RemoveNullableCast(ExpressionSyntax expr)
