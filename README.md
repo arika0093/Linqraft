@@ -196,22 +196,21 @@ namespace Tutorial
 
 ## Usage
 ### Prerequisites
-This library requirements **C# 13.0 or later**. .NET 9 or later is used C# 13.0 natively.
+This library requirements **C# 12.0 or later**. .NET 8 or later is used C# 12.0 natively.
 
 internally it uses the following features:
 * [required members](https://learn.microsoft.com/en-us/dotnet/csharp/language-reference/keywords/required): C# 11 feature
 * [C# interceptors](https://learn.microsoft.com/en-us/dotnet/csharp/whats-new/csharp-12#interceptors): C# 12 feature
-* [Overload Resolution Priority](https://learn.microsoft.com/en-us/dotnet/csharp/language-reference/proposals/csharp-13.0/overload-resolution-priority): C# 13 feature
 
 <details>
-<summary>.NET 8 or below setup</summary>
+<summary>.NET 7 or below setup</summary>
 
-Set the `LangVersion` property to `13.0` or later and use [Polysharp](https://github.com/Sergio0694/PolySharp/) to enable C# latest features.
+Set the `LangVersion` property to `12.0` or later and use [Polysharp](https://github.com/Sergio0694/PolySharp/) to enable C# latest features.
 
 ```xml
 <Project>
   <PropertyGroup>
-    <LangVersion>13.0</LangVersion>
+    <LangVersion>12.0</LangVersion>
   </PropertyGroup>
   <ItemGroup>
     <PackageReference Include="Polysharp" Version="1.*" />

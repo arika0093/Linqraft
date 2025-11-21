@@ -54,7 +54,6 @@ internal static class ConstSourceCodes
             /// <summary>
             /// Create select expression method, usable nullable operators, and generate instance DTOs.
             /// </summary>
-            [global::System.Runtime.CompilerServices.OverloadResolutionPriority(-1)]
             public static IQueryable<TResult> SelectExpr<TIn, TResult>(this IQueryable<TIn> query, Func<TIn, object> selector)
                 where TIn : class => throw InvalidException;
 
@@ -69,10 +68,8 @@ internal static class ConstSourceCodes
             /// Create select expression method, with generate instance DTOs.
             /// Works with IEnumerable where nullable operators are supported natively.
             /// </summary>
-            [global::System.Runtime.CompilerServices.OverloadResolutionPriority(-1)]
             public static IEnumerable<TResult> SelectExpr<TIn, TResult>(this IEnumerable<TIn> query, Func<TIn, object> selector)
                 where TIn : class => throw InvalidException;
-
 
             /// <summary>
             /// Create select expression method with captured local variables, usable nullable operators, and generate instance DTOs.
@@ -85,7 +82,6 @@ internal static class ConstSourceCodes
             /// Create select expression method with captured local variables, usable nullable operators, and generate instance DTOs.
             /// Pass local variables as an anonymous object: new { var1, var2, ... }
             /// </summary>
-            [global::System.Runtime.CompilerServices.OverloadResolutionPriority(-1)]
             public static IQueryable<TResult> SelectExpr<TIn, TResult>(this IQueryable<TIn> query, Func<TIn, object> selector, object capture)
                 where TIn : class => throw InvalidException;
 
@@ -102,7 +98,6 @@ internal static class ConstSourceCodes
             /// Works with IEnumerable where nullable operators are supported natively.
             /// Pass local variables as an anonymous object: new { var1, var2, ... }
             /// </summary>
-            [global::System.Runtime.CompilerServices.OverloadResolutionPriority(-1)]
             public static IEnumerable<TResult> SelectExpr<TIn, TResult>(this IEnumerable<TIn> query, Func<TIn, object> selector, object capture)
                 where TIn : class => throw InvalidException;
 
@@ -113,8 +108,6 @@ internal static class ConstSourceCodes
         """); 
             }
         }
-
-        {{OverloadResolutionPriorityAttribute}}
         """";
 
     private const string SelectExprErrorMessage = """
@@ -125,17 +118,6 @@ internal static class ConstSourceCodes
         (2) The Linqraft source generator is not functioning correctly. If this is the case, it is likely due to a bug.
             Please contact us via the Linqraft Issue page.
             https://github.com/arika0093/Linqraft/issues
-        """;
-
-    [StringSyntax("csharp")]
-    private const string OverloadResolutionPriorityAttribute = $$"""
-        namespace System.Runtime.CompilerServices
-        {
-            file sealed class OverloadResolutionPriorityAttribute(int priority) : global::System.Attribute
-            {
-                public int Priority { get; } = priority;
-            }
-        }
         """;
 
     private const string CommonHeader = """
