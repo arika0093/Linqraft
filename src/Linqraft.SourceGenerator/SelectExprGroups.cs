@@ -145,21 +145,12 @@ internal class SelectExprGroups
 
     protected string GetUsingNamespaceString()
     {
-        if (string.IsNullOrEmpty(TargetNamespace))
-        {
-            // No using statement needed for global namespace
-            return """
-                using System;
-                using System.Linq;
-                using System.Collections.Generic;
-                """;
-        }
-
-        return $"""
+        // Always use only System namespaces - no TargetNamespace using directive
+        // All types should use fully qualified names instead
+        return """
             using System;
             using System.Linq;
             using System.Collections.Generic;
-            using {TargetNamespace};
             """;
     }
 
