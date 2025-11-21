@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using Microsoft.CodeAnalysis;
@@ -238,31 +239,35 @@ internal static class TernaryNullCheckSimplifier
             int startIndex
         )
         {
+            // Guard against invalid input
             if (startIndex >= parts.Count)
-                return null!;
+            {
+                // This shouldn't happen in normal usage
+                return SyntaxFactory.IdentifierName("Error");
+            }
 
-            // Build from the current position
+            // Build the chain of member bindings with possible nested conditional accesses
             var currentName = SyntaxFactory.IdentifierName(parts[startIndex]);
             
+            // If this is the last element, just return a member binding
             if (startIndex == parts.Count - 1)
             {
-                // Last element, just return as member binding
                 return SyntaxFactory.MemberBindingExpression(currentName);
             }
 
             // Check if the next position needs conditional access
             if (startIndex < needsConditional.Length && needsConditional[startIndex])
             {
-                // Need another conditional access
+                // Build a conditional access for the next member
                 var innerWhenNotNull = BuildWhenNotNullChain(parts, needsConditional, startIndex + 1);
                 var memberBinding = SyntaxFactory.MemberBindingExpression(currentName);
                 return SyntaxFactory.ConditionalAccessExpression(memberBinding, innerWhenNotNull);
             }
-            else
-            {
-                // Regular member binding
-                return SyntaxFactory.MemberBindingExpression(currentName);
-            }
+
+            // Otherwise, just return this member binding
+            // Note: In typical ternary null check patterns, we won't have consecutive
+            // non-conditional members in the whenNotNull part, so this is the terminal case
+            return SyntaxFactory.MemberBindingExpression(currentName);
         }
 
         private static List<string> ParseMemberAccessChain(ExpressionSyntax expr)
