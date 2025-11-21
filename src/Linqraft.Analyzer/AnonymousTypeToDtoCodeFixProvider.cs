@@ -7,6 +7,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using Linqraft.Core;
 using Linqraft.Core.Formatting;
+using Linqraft.Core.SyntaxHelpers;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CodeActions;
 using Microsoft.CodeAnalysis.CodeFixes;
@@ -569,14 +570,6 @@ public class AnonymousTypeToDtoCodeFixProvider : CodeFixProvider
 
     private static string GetPropertyNameFromExpression(ExpressionSyntax expression)
     {
-        return expression switch
-        {
-            MemberAccessExpressionSyntax memberAccess => memberAccess.Name.Identifier.Text,
-            IdentifierNameSyntax identifier => identifier.Identifier.Text,
-            ConditionalAccessExpressionSyntax conditionalAccess
-                when conditionalAccess.WhenNotNull is MemberBindingExpressionSyntax memberBinding =>
-                memberBinding.Name.Identifier.Text,
-            _ => "Property",
-        };
+        return ExpressionHelper.GetPropertyNameOrDefault(expression, "Property");
     }
 }
