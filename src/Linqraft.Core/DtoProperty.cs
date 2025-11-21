@@ -308,55 +308,51 @@ public record DtoProperty(
             );
         }
 
-        // Detect ternary operator with anonymous type (e.g., x.Child != null ? new { ... } : null)
-        // This handles cases like: ChildInfo = p.Child != null ? new { Name = p.Child.Name } : null
+        // Detect ternary operator with anonymous type
+        // For example: p.Child != null ? new { ... } : null  OR  p.Child == null ? null : new { ... }
+        // The key insight is to examine the type of the entire conditional expression
         if (
             nestedStructure is null
             && expression is ConditionalExpressionSyntax conditionalExpr
-            && conditionalExpr.WhenTrue is AnonymousObjectCreationExpressionSyntax ternaryAnonymous
         )
         {
-            // Get the source type from the anonymous type properties in the "when true" branch
-            ITypeSymbol? sourceTypeForNested = null;
-
-            // Try to infer the source type from the first property that has a member access
-            foreach (var initializer in ternaryAnonymous.Initializers)
+            // Check if the conditional expression's type is an anonymous type
+            // This handles both branches: WhenTrue and WhenFalse
+            var conditionalTypeInfo = semanticModel.GetTypeInfo(conditionalExpr);
+            var conditionalType = conditionalTypeInfo.Type ?? conditionalTypeInfo.ConvertedType;
+            
+            // Check if the type is an anonymous type (nullable or not)
+            var underlyingType = conditionalType;
+            if (conditionalType is INamedTypeSymbol { NullableAnnotation: NullableAnnotation.Annotated } namedType)
             {
-                var initExpr = initializer.Expression;
-                if (initExpr is MemberAccessExpressionSyntax memberAccess)
+                // For nullable anonymous types, get the underlying type
+                underlyingType = namedType.WithNullableAnnotation(NullableAnnotation.NotAnnotated);
+            }
+            
+            if (underlyingType != null && underlyingType.IsAnonymousType)
+            {
+                // Find which branch contains the anonymous type creation
+                AnonymousObjectCreationExpressionSyntax? anonymousCreation = null;
+                
+                if (conditionalExpr.WhenTrue is AnonymousObjectCreationExpressionSyntax whenTrueAnonymous)
                 {
-                    // Get the type of the expression being accessed (e.g., p.Child.Name)
-                    var baseTypeInfo = semanticModel.GetTypeInfo(memberAccess.Expression);
-                    if (baseTypeInfo.Type is not null)
-                    {
-                        sourceTypeForNested = baseTypeInfo.Type;
-                        break;
-                    }
+                    anonymousCreation = whenTrueAnonymous;
+                }
+                else if (conditionalExpr.WhenFalse is AnonymousObjectCreationExpressionSyntax whenFalseAnonymous)
+                {
+                    anonymousCreation = whenFalseAnonymous;
+                }
+                
+                if (anonymousCreation != null)
+                {
+                    // Analyze the anonymous type using the underlying type as the source
+                    nestedStructure = DtoStructure.AnalyzeAnonymousType(
+                        anonymousCreation,
+                        semanticModel,
+                        underlyingType
+                    );
                 }
             }
-
-            // If we couldn't infer the source type, try to get it from the conditional expression's type
-            // For nullable types, we need to get the underlying non-nullable type
-            if (sourceTypeForNested is null && propertyType is INamedTypeSymbol namedType)
-            {
-                // If it's a nullable type like Nullable<T>, get T
-                if (namedType.IsGenericType && namedType.OriginalDefinition.SpecialType == SpecialType.System_Nullable_T)
-                {
-                    sourceTypeForNested = namedType.TypeArguments.FirstOrDefault();
-                }
-                else
-                {
-                    sourceTypeForNested = propertyType;
-                }
-            }
-
-            sourceTypeForNested ??= propertyType;
-
-            nestedStructure = DtoStructure.AnalyzeAnonymousType(
-                ternaryAnonymous,
-                semanticModel,
-                sourceTypeForNested
-            );
         }
 
         return new DtoProperty(

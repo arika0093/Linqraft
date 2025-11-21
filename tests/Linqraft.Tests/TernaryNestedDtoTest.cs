@@ -105,4 +105,46 @@ public class TernaryNestedDtoTest
         second.Id.ShouldBe(2);
         second.ChildItemInfo.ShouldBeNull();
     }
+
+    [Fact]
+    public void TernaryWithNestedAnonymousType_ReversedCondition_ExplicitDto()
+    {
+        var testData = new List<Parent>
+        {
+            new Parent
+            {
+                Id = 1,
+                Name = "Parent1",
+                Child = new Child { Name = "Child1", Value = 10 },
+            },
+            new Parent
+            {
+                Id = 2,
+                Name = "Parent2",
+                Child = null,
+            },
+        };
+
+        var result = testData
+            .AsQueryable()
+            .SelectExpr<Parent, ParentDto2>(p => new
+            {
+                p.Id,
+                ChildItemInfo = p.Child == null
+                    ? null
+                    : new { Name = p.Child.Name }
+            })
+            .ToList();
+
+        result.Count.ShouldBe(2);
+
+        var first = result[0];
+        first.Id.ShouldBe(1);
+        first.ChildItemInfo.ShouldNotBeNull();
+        first.ChildItemInfo!.Name.ShouldBe("Child1");
+
+        var second = result[1];
+        second.Id.ShouldBe(2);
+        second.ChildItemInfo.ShouldBeNull();
+    }
 }

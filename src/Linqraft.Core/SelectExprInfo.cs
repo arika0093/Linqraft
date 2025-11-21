@@ -243,12 +243,17 @@ public abstract record SelectExprInfo
         // For nested structure cases
         if (property.NestedStructure is not null)
         {
-            // Check if this is a ternary expression with anonymous type (e.g., x != null ? new { ... } : null)
-            if (syntax is ConditionalExpressionSyntax conditionalExpr
-                && conditionalExpr.WhenTrue is AnonymousObjectCreationExpressionSyntax)
+            // Check if this is a ternary expression with anonymous type
+            // Handle both: x != null ? new { ... } : null  AND  x == null ? null : new { ... }
+            if (syntax is ConditionalExpressionSyntax conditionalExpr)
             {
-                // Convert ternary expression with anonymous type to nested DTO
-                return ConvertTernaryAnonymousTypeToDto(conditionalExpr, property.NestedStructure, indents);
+                // Check which branch contains the anonymous type
+                if (conditionalExpr.WhenTrue is AnonymousObjectCreationExpressionSyntax ||
+                    conditionalExpr.WhenFalse is AnonymousObjectCreationExpressionSyntax)
+                {
+                    // Convert ternary expression with anonymous type to nested DTO
+                    return ConvertTernaryAnonymousTypeToDto(conditionalExpr, property.NestedStructure, indents);
+                }
             }
             
             // Check if this is a direct anonymous type (not a Select call)
@@ -338,8 +343,9 @@ public abstract record SelectExprInfo
 
     /// <summary>
     /// Converts a ternary expression with anonymous type to a ternary expression with nested DTO
-    /// For example: p.Child != null ? new { Name = p.Child.Name } : null
-    /// Becomes: p.Child != null ? new ChildDto { Name = p.Child.Name } : null
+    /// Handles both patterns:
+    /// - p.Child != null ? new { Name = p.Child.Name } : null
+    /// - p.Child == null ? null : new { Name = p.Child.Name }
     /// </summary>
     protected string ConvertTernaryAnonymousTypeToDto(
         ConditionalExpressionSyntax conditionalExpr,
@@ -353,17 +359,14 @@ public abstract record SelectExprInfo
             ? ""
             : GetNestedDtoFullName(nestedClassName);
 
-        // Get the condition part (e.g., "p.Child != null")
+        // Get the condition part
         var condition = conditionalExpr.Condition.ToString();
-        
-        // Get the whenFalse part (usually "null")
-        var whenFalse = conditionalExpr.WhenFalse.ToString();
 
         // Indentation for ternary operator continuation lines (12 spaces for alignment)
         const int ternaryIndent = 12;
         var ternarySpaces = new string(' ', indents + ternaryIndent);
 
-        // Generate property assignments for the whenTrue DTO
+        // Generate property assignments for the DTO
         var propertyAssignments = new List<string>();
         foreach (var prop in nestedStructure.Properties)
         {
@@ -372,15 +375,37 @@ public abstract record SelectExprInfo
         }
         var propertiesCode = string.Join(",\n", propertyAssignments);
 
-        // Build the ternary expression with DTO
-        var code = $$"""
-            {{condition}}
-            {{ternarySpaces}}? new {{nestedDtoName}}
-            {{ternarySpaces}}{
-            {{propertiesCode}}
-            {{ternarySpaces}}}
-            {{ternarySpaces}}: {{whenFalse}}
-            """;
+        // Determine which branch has the anonymous type
+        bool anonymousInWhenTrue = conditionalExpr.WhenTrue is AnonymousObjectCreationExpressionSyntax;
+
+        string code;
+        if (anonymousInWhenTrue)
+        {
+            // Pattern: condition ? new DTO { ... } : null
+            var whenFalse = conditionalExpr.WhenFalse.ToString();
+            code = $$"""
+                {{condition}}
+                {{ternarySpaces}}? new {{nestedDtoName}}
+                {{ternarySpaces}}{
+                {{propertiesCode}}
+                {{ternarySpaces}}}
+                {{ternarySpaces}}: {{whenFalse}}
+                """;
+        }
+        else
+        {
+            // Pattern: condition ? null : new DTO { ... }
+            var whenTrue = conditionalExpr.WhenTrue.ToString();
+            code = $$"""
+                {{condition}}
+                {{ternarySpaces}}? {{whenTrue}}
+                {{ternarySpaces}}: new {{nestedDtoName}}
+                {{ternarySpaces}}{
+                {{propertiesCode}}
+                {{ternarySpaces}}}
+                """;
+        }
+
         return code;
     }
 
