@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using Linqraft.Core;
+using Linqraft.Core.RoslynHelpers;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
@@ -31,6 +32,8 @@ internal class SelectExprGroups
     public required string TargetFileName { get; set; }
 
     // Determine if the target namespace is global (empty or compiler-generated)
+    // Note: Compiler-generated namespaces contain '<' (e.g., for top-level statements)
+    // TODO: In the future, use INamespaceSymbol.IsGlobalNamespace for more accurate detection
     private bool IsGlobalNamespace =>
         string.IsNullOrEmpty(targetNamespace) || targetNamespace.Contains("<");
 

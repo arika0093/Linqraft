@@ -217,7 +217,7 @@ public class LocalVariableCaptureCodeFixProvider : CodeFixProvider
             var newInvocationStatement = newRoot
                 .DescendantNodes()
                 .OfType<InvocationExpressionSyntax>()
-                .Where(inv => inv.ToString().Contains("SelectExpr"))
+                .Where(inv => SelectExprHelper.IsSelectExprInvocationSyntax(inv.Expression))
                 .Select(inv => inv.AncestorsAndSelf().OfType<StatementSyntax>().FirstOrDefault())
                 .FirstOrDefault(stmt => stmt != null);
 

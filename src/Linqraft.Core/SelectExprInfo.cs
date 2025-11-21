@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
+using Linqraft.Core.RoslynHelpers;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
@@ -163,25 +164,15 @@ public abstract record SelectExprInfo
         if (typeInfo.Type is not INamedTypeSymbol namedType)
             return false;
 
-        // Check if the type is IEnumerable<T> (not IQueryable<T>)
-        var typeDisplayString = namedType.ToDisplayString();
+        var compilation = SemanticModel.Compilation;
 
         // If it's IQueryable, return false
-        if (typeDisplayString.Contains("IQueryable"))
+        if (RoslynTypeHelper.ImplementsIQueryable(namedType, compilation))
             return false;
 
         // If it's IEnumerable (and not a more specific interface like IQueryable), return true
-        if (typeDisplayString.Contains("IEnumerable"))
+        if (RoslynTypeHelper.ImplementsIEnumerable(namedType, compilation))
             return true;
-
-        // Check base interfaces
-        foreach (var baseInterface in namedType.AllInterfaces)
-        {
-            if (baseInterface.Name == "IQueryable")
-                return false;
-            if (baseInterface.Name == "IEnumerable")
-                return true;
-        }
 
         return false;
     }
@@ -262,7 +253,7 @@ public abstract record SelectExprInfo
             }
 
             // Check if this contains SelectMany
-            if (expression.Contains("SelectMany"))
+            if (RoslynTypeHelper.ContainsSelectManyInvocation(syntax))
             {
                 // For nested SelectMany (collection flattening) case
                 var convertedSelectMany = ConvertNestedSelectManyWithRoslyn(
@@ -271,7 +262,7 @@ public abstract record SelectExprInfo
                     indents
                 );
                 // Debug: Check if conversion was performed correctly
-                if (convertedSelectMany == expression && expression.Contains("SelectMany"))
+                if (convertedSelectMany == expression && RoslynTypeHelper.ContainsSelectManyInvocation(syntax))
                 {
                     // If conversion was not performed, leave the original expression as a comment
                     return $"{convertedSelectMany} /* CONVERSION FAILED: {property.Name} */";
@@ -286,7 +277,7 @@ public abstract record SelectExprInfo
                 indents
             );
             // Debug: Check if conversion was performed correctly
-            if (convertedSelect == expression && expression.Contains("Select"))
+            if (convertedSelect == expression && RoslynTypeHelper.ContainsSelectInvocation(syntax))
             {
                 // If conversion was not performed, leave the original expression as a comment
                 return $"{convertedSelect} /* CONVERSION FAILED: {property.Name} */";

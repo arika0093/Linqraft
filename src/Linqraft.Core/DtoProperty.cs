@@ -1,4 +1,5 @@
 using System.Linq;
+using Linqraft.Core.RoslynHelpers;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
@@ -25,9 +26,15 @@ public record DtoProperty(
     {
         get
         {
+            // Check if the type symbol is an error type or invalid
+            if (TypeSymbol is IErrorTypeSymbol || TypeSymbol.SpecialType == SpecialType.System_Object)
+            {
+                return "object";
+            }
+
             var typeName = TypeSymbol.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat);
             // Fallback to a safe type if the type name is empty or invalid
-            if (string.IsNullOrWhiteSpace(typeName) || typeName == "?")
+            if (string.IsNullOrWhiteSpace(typeName))
             {
                 return "object";
             }
