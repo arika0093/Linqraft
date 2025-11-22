@@ -1,6 +1,6 @@
-using System.Collections.Immutable;
 using System.Linq;
 using Linqraft.Core;
+using Linqraft.Core.AnalyzerHelpers;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
@@ -15,37 +15,25 @@ namespace Linqraft.Analyzer;
 /// See documentation: https://github.com/arika0093/Linqraft/blob/main/docs/Analyzers.md#lqrs003-selecttoselectexprnamedanalyzer
 /// </remarks>
 [DiagnosticAnalyzer(LanguageNames.CSharp)]
-public class SelectToSelectExprNamedAnalyzer : DiagnosticAnalyzer
+public class SelectToSelectExprNamedAnalyzer : BaseLinqraftAnalyzer
 {
-    public const string DiagnosticId = "LQRS003";
+    public const string AnalyzerId = "LQRS003";
 
-    private static readonly LocalizableString Title =
+    protected override string DiagnosticId => AnalyzerId;
+
+    protected override LocalizableString Title =>
         "IQueryable.Select can be converted to SelectExpr";
-    private static readonly LocalizableString MessageFormat =
+
+    protected override LocalizableString MessageFormat =>
         "IQueryable.Select with named type can be converted to SelectExpr";
-    private static readonly LocalizableString Description =
+
+    protected override LocalizableString Description =>
         "This Select call on IQueryable can be converted to use SelectExpr for better performance and type safety.";
-    private const string Category = "Design";
 
-    private static readonly DiagnosticDescriptor Rule = new(
-        DiagnosticId,
-        Title,
-        MessageFormat,
-        Category,
-        DiagnosticSeverity.Info,
-        isEnabledByDefault: true,
-        description: Description,
-        helpLinkUri: $"https://github.com/arika0093/Linqraft/blob/main/docs/analyzer/{DiagnosticId}.md"
-    );
+    protected override DiagnosticSeverity Severity => DiagnosticSeverity.Info;
 
-    public override ImmutableArray<DiagnosticDescriptor> SupportedDiagnostics =>
-        ImmutableArray.Create(Rule);
-
-    public override void Initialize(AnalysisContext context)
+    protected override void RegisterActions(AnalysisContext context)
     {
-        context.ConfigureGeneratedCodeAnalysis(GeneratedCodeAnalysisFlags.None);
-        context.EnableConcurrentExecution();
-
         context.RegisterSyntaxNodeAction(AnalyzeInvocation, SyntaxKind.InvocationExpression);
     }
 

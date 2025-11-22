@@ -2,6 +2,7 @@ using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.Linq;
 using Linqraft.Core;
+using Linqraft.Core.AnalyzerHelpers;
 using Linqraft.Core.SyntaxHelpers;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
@@ -17,36 +18,27 @@ namespace Linqraft.Analyzer;
 /// See documentation: https://github.com/arika0093/Linqraft/blob/main/docs/Analyzers.md#lqre001-localvariablecaptureanalyzer
 /// </remarks>
 [DiagnosticAnalyzer(LanguageNames.CSharp)]
-public class LocalVariableCaptureAnalyzer : DiagnosticAnalyzer
+public class LocalVariableCaptureAnalyzer : BaseLinqraftAnalyzer
 {
-    public const string DiagnosticId = "LQRE001";
+    public const string AnalyzerId = "LQRE001";
 
-    private static readonly LocalizableString Title =
+    protected override string DiagnosticId => AnalyzerId;
+
+    protected override LocalizableString Title =>
         "Local variable used in SelectExpr without capture parameter";
-    private static readonly LocalizableString MessageFormat =
+
+    protected override LocalizableString MessageFormat =>
         "Local variable '{0}' is used in SelectExpr. Use the capture parameter to pass local variables.";
-    private static readonly LocalizableString Description =
+
+    protected override LocalizableString Description =>
         "Local variables referenced in SelectExpr should be passed via the capture parameter.";
-    private const string Category = "Usage";
 
-    private static readonly DiagnosticDescriptor Rule = new(
-        DiagnosticId,
-        Title,
-        MessageFormat,
-        Category,
-        DiagnosticSeverity.Error,
-        isEnabledByDefault: true,
-        description: Description,
-        helpLinkUri: $"https://github.com/arika0093/Linqraft/blob/main/docs/analyzer/{DiagnosticId}.md"
-    );
+    protected override string Category => "Usage";
 
-    public override ImmutableArray<DiagnosticDescriptor> SupportedDiagnostics =>
-        ImmutableArray.Create(Rule);
+    protected override DiagnosticSeverity Severity => DiagnosticSeverity.Error;
 
-    public override void Initialize(AnalysisContext context)
+    protected override void RegisterActions(AnalysisContext context)
     {
-        context.ConfigureGeneratedCodeAnalysis(GeneratedCodeAnalysisFlags.None);
-        context.EnableConcurrentExecution();
 
         context.RegisterSyntaxNodeAction(AnalyzeInvocation, SyntaxKind.InvocationExpression);
     }

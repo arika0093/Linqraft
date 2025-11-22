@@ -1,5 +1,5 @@
-using System.Collections.Immutable;
 using System.Linq;
+using Linqraft.Core.AnalyzerHelpers;
 using Linqraft.Core.SyntaxHelpers;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
@@ -16,37 +16,25 @@ namespace Linqraft.Analyzer;
 /// See documentation: https://github.com/arika0093/Linqraft/blob/main/docs/Analyzers.md#lqrs004-ternarynullchecktoconditionalanalyzer
 /// </remarks>
 [DiagnosticAnalyzer(LanguageNames.CSharp)]
-public class TernaryNullCheckToConditionalAnalyzer : DiagnosticAnalyzer
+public class TernaryNullCheckToConditionalAnalyzer : BaseLinqraftAnalyzer
 {
-    public const string DiagnosticId = "LQRS004";
+    public const string AnalyzerId = "LQRS004";
 
-    private static readonly LocalizableString Title =
+    protected override string DiagnosticId => AnalyzerId;
+
+    protected override LocalizableString Title =>
         "Ternary null check can use null-conditional operators";
-    private static readonly LocalizableString MessageFormat =
+
+    protected override LocalizableString MessageFormat =>
         "Ternary null check returning object can be simplified to use null-conditional operators";
-    private static readonly LocalizableString Description =
+
+    protected override LocalizableString Description =>
         "This ternary operator with null check can be simplified to use null-conditional operators (?.) for better readability and to avoid CS8602 warnings.";
-    private const string Category = "Design";
 
-    private static readonly DiagnosticDescriptor Rule = new(
-        DiagnosticId,
-        Title,
-        MessageFormat,
-        Category,
-        DiagnosticSeverity.Info,
-        isEnabledByDefault: true,
-        description: Description,
-        helpLinkUri: $"https://github.com/arika0093/Linqraft/blob/main/docs/analyzer/{DiagnosticId}.md"
-    );
+    protected override DiagnosticSeverity Severity => DiagnosticSeverity.Info;
 
-    public override ImmutableArray<DiagnosticDescriptor> SupportedDiagnostics =>
-        ImmutableArray.Create(Rule);
-
-    public override void Initialize(AnalysisContext context)
+    protected override void RegisterActions(AnalysisContext context)
     {
-        context.ConfigureGeneratedCodeAnalysis(GeneratedCodeAnalysisFlags.None);
-        context.EnableConcurrentExecution();
-
         context.RegisterSyntaxNodeAction(AnalyzeConditional, SyntaxKind.ConditionalExpression);
     }
 
