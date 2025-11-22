@@ -89,7 +89,7 @@ public class SelectToSelectExprAnonymousCodeFixProvider : CodeFixProvider
             return document;
 
         // Simplify ternary null checks in the lambda body
-        var newInvocation = SimplifyTernaryNullChecksInInvocation(
+        var newInvocation = TernaryNullCheckSimplifier.SimplifyTernaryNullChecksInInvocation(
             invocation.WithExpression(newExpression)
         );
 
@@ -137,7 +137,7 @@ public class SelectToSelectExprAnonymousCodeFixProvider : CodeFixProvider
             return document;
 
         // Replace the expression and simplify ternary null checks
-        var newInvocation = SimplifyTernaryNullChecksInInvocation(
+        var newInvocation = TernaryNullCheckSimplifier.SimplifyTernaryNullChecksInInvocation(
             invocation.WithExpression(newExpression)
         );
 
@@ -252,45 +252,6 @@ public class SelectToSelectExprAnonymousCodeFixProvider : CodeFixProvider
         }
 
         return null;
-    }
-
-    private static InvocationExpressionSyntax SimplifyTernaryNullChecksInInvocation(
-        InvocationExpressionSyntax invocation
-    )
-    {
-        // Find and simplify ternary null checks in lambda body
-        var newArguments = new List<ArgumentSyntax>();
-        foreach (var argument in invocation.ArgumentList.Arguments)
-        {
-            if (
-                argument.Expression is SimpleLambdaExpressionSyntax simpleLambda
-                && simpleLambda.Body is ExpressionSyntax bodyExpr
-            )
-            {
-                var simplifiedBody = TernaryNullCheckSimplifier.SimplifyTernaryNullChecks(bodyExpr);
-                var newLambda = simpleLambda.WithBody(simplifiedBody);
-                newArguments.Add(argument.WithExpression(newLambda));
-            }
-            else if (
-                argument.Expression is ParenthesizedLambdaExpressionSyntax parenLambda
-                && parenLambda.Body is ExpressionSyntax parenBodyExpr
-            )
-            {
-                var simplifiedBody = TernaryNullCheckSimplifier.SimplifyTernaryNullChecks(
-                    parenBodyExpr
-                );
-                var newLambda = parenLambda.WithBody(simplifiedBody);
-                newArguments.Add(argument.WithExpression(newLambda));
-            }
-            else
-            {
-                newArguments.Add(argument);
-            }
-        }
-
-        return invocation.WithArgumentList(
-            SyntaxFactory.ArgumentList(SyntaxFactory.SeparatedList(newArguments))
-        );
     }
 
     private static string GenerateDtoName(

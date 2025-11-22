@@ -22,6 +22,47 @@ internal static class TernaryNullCheckSimplifier
         return (ExpressionSyntax)rewriter.Visit(expression);
     }
 
+    /// <summary>
+    /// Simplifies ternary null checks in lambda expressions within an invocation.
+    /// Processes all lambda arguments and applies null-conditional operator simplifications.
+    /// </summary>
+    public static InvocationExpressionSyntax SimplifyTernaryNullChecksInInvocation(
+        InvocationExpressionSyntax invocation
+    )
+    {
+        // Find and simplify ternary null checks in lambda body
+        var newArguments = new List<ArgumentSyntax>();
+        foreach (var argument in invocation.ArgumentList.Arguments)
+        {
+            if (
+                argument.Expression is SimpleLambdaExpressionSyntax simpleLambda
+                && simpleLambda.Body is ExpressionSyntax bodyExpr
+            )
+            {
+                var simplifiedBody = SimplifyTernaryNullChecks(bodyExpr);
+                var newLambda = simpleLambda.WithBody(simplifiedBody);
+                newArguments.Add(argument.WithExpression(newLambda));
+            }
+            else if (
+                argument.Expression is ParenthesizedLambdaExpressionSyntax parenLambda
+                && parenLambda.Body is ExpressionSyntax parenBodyExpr
+            )
+            {
+                var simplifiedBody = SimplifyTernaryNullChecks(parenBodyExpr);
+                var newLambda = parenLambda.WithBody(simplifiedBody);
+                newArguments.Add(argument.WithExpression(newLambda));
+            }
+            else
+            {
+                newArguments.Add(argument);
+            }
+        }
+
+        return invocation.WithArgumentList(
+            SyntaxFactory.ArgumentList(SyntaxFactory.SeparatedList(newArguments))
+        );
+    }
+
     private class TernaryNullCheckRewriter : CSharpSyntaxRewriter
     {
         public override SyntaxNode? VisitConditionalExpression(ConditionalExpressionSyntax node)
