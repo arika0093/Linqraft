@@ -25,7 +25,7 @@ class Test
 }";
 
         var expected = VerifyCS
-            .Diagnostic(AnonymousTypeToDtoAnalyzer.DiagnosticId)
+            .Diagnostic(AnonymousTypeToDtoAnalyzer.AnalyzerId)
             .WithLocation(0)
             .WithSeverity(DiagnosticSeverity.Hidden);
 
@@ -46,7 +46,7 @@ class Test
 }";
 
         var expected = VerifyCS
-            .Diagnostic(AnonymousTypeToDtoAnalyzer.DiagnosticId)
+            .Diagnostic(AnonymousTypeToDtoAnalyzer.AnalyzerId)
             .WithLocation(0)
             .WithSeverity(DiagnosticSeverity.Hidden);
 
@@ -68,7 +68,7 @@ class Test
 }";
 
         var expected = VerifyCS
-            .Diagnostic(AnonymousTypeToDtoAnalyzer.DiagnosticId)
+            .Diagnostic(AnonymousTypeToDtoAnalyzer.AnalyzerId)
             .WithLocation(0)
             .WithSeverity(DiagnosticSeverity.Hidden);
 
@@ -91,7 +91,7 @@ class Test
 }";
 
         var expected = VerifyCS
-            .Diagnostic(AnonymousTypeToDtoAnalyzer.DiagnosticId)
+            .Diagnostic(AnonymousTypeToDtoAnalyzer.AnalyzerId)
             .WithLocation(0)
             .WithSeverity(DiagnosticSeverity.Hidden);
 
@@ -117,7 +117,7 @@ class Test
 }";
 
         var expected = VerifyCS
-            .Diagnostic(AnonymousTypeToDtoAnalyzer.DiagnosticId)
+            .Diagnostic(AnonymousTypeToDtoAnalyzer.AnalyzerId)
             .WithLocation(0)
             .WithSeverity(DiagnosticSeverity.Hidden);
 
@@ -154,7 +154,7 @@ class Test
 }";
 
         var expected = VerifyCS
-            .Diagnostic(AnonymousTypeToDtoAnalyzer.DiagnosticId)
+            .Diagnostic(AnonymousTypeToDtoAnalyzer.AnalyzerId)
             .WithLocation(0)
             .WithSeverity(DiagnosticSeverity.Hidden);
 
@@ -176,11 +176,11 @@ class Test
 }";
 
         var expected1 = VerifyCS
-            .Diagnostic(AnonymousTypeToDtoAnalyzer.DiagnosticId)
+            .Diagnostic(AnonymousTypeToDtoAnalyzer.AnalyzerId)
             .WithLocation(0)
             .WithSeverity(DiagnosticSeverity.Hidden);
         var expected2 = VerifyCS
-            .Diagnostic(AnonymousTypeToDtoAnalyzer.DiagnosticId)
+            .Diagnostic(AnonymousTypeToDtoAnalyzer.AnalyzerId)
             .WithLocation(1)
             .WithSeverity(DiagnosticSeverity.Hidden);
 
@@ -201,11 +201,11 @@ class Test
 }";
 
         var expected1 = VerifyCS
-            .Diagnostic(AnonymousTypeToDtoAnalyzer.DiagnosticId)
+            .Diagnostic(AnonymousTypeToDtoAnalyzer.AnalyzerId)
             .WithLocation(0)
             .WithSeverity(DiagnosticSeverity.Hidden);
         var expected2 = VerifyCS
-            .Diagnostic(AnonymousTypeToDtoAnalyzer.DiagnosticId)
+            .Diagnostic(AnonymousTypeToDtoAnalyzer.AnalyzerId)
             .WithLocation(1)
             .WithSeverity(DiagnosticSeverity.Hidden);
 
@@ -239,7 +239,7 @@ class Test
 }";
 
         var expected = VerifyCS
-            .Diagnostic(AnonymousTypeToDtoAnalyzer.DiagnosticId)
+            .Diagnostic(AnonymousTypeToDtoAnalyzer.AnalyzerId)
             .WithLocation(0)
             .WithSeverity(DiagnosticSeverity.Hidden);
 
@@ -283,7 +283,7 @@ class Test
 }";
 
         var expected = VerifyCS
-            .Diagnostic(AnonymousTypeToDtoAnalyzer.DiagnosticId)
+            .Diagnostic(AnonymousTypeToDtoAnalyzer.AnalyzerId)
             .WithLocation(0)
             .WithSeverity(DiagnosticSeverity.Hidden);
 
@@ -319,7 +319,7 @@ class Test
 }";
 
         var expected = VerifyCS
-            .Diagnostic(AnonymousTypeToDtoAnalyzer.DiagnosticId)
+            .Diagnostic(AnonymousTypeToDtoAnalyzer.AnalyzerId)
             .WithLocation(0)
             .WithSeverity(DiagnosticSeverity.Hidden);
 
@@ -361,7 +361,7 @@ class Test
 }";
 
         var expected = VerifyCS
-            .Diagnostic(AnonymousTypeToDtoAnalyzer.DiagnosticId)
+            .Diagnostic(AnonymousTypeToDtoAnalyzer.AnalyzerId)
             .WithLocation(0)
             .WithSeverity(DiagnosticSeverity.Hidden);
 
@@ -402,11 +402,11 @@ class Test
 }";
 
         var expected1 = VerifyCS
-            .Diagnostic(AnonymousTypeToDtoAnalyzer.DiagnosticId)
+            .Diagnostic(AnonymousTypeToDtoAnalyzer.AnalyzerId)
             .WithLocation(0)
             .WithSeverity(DiagnosticSeverity.Hidden);
         var expected2 = VerifyCS
-            .Diagnostic(AnonymousTypeToDtoAnalyzer.DiagnosticId)
+            .Diagnostic(AnonymousTypeToDtoAnalyzer.AnalyzerId)
             .WithLocation(1)
             .WithSeverity(DiagnosticSeverity.Hidden);
 
@@ -440,7 +440,7 @@ class Test
 }";
 
         var expected = VerifyCS
-            .Diagnostic(AnonymousTypeToDtoAnalyzer.DiagnosticId)
+            .Diagnostic(AnonymousTypeToDtoAnalyzer.AnalyzerId)
             .WithLocation(0)
             .WithSeverity(DiagnosticSeverity.Hidden);
 
@@ -476,7 +476,7 @@ class Test
 }";
 
         var expected = VerifyCS
-            .Diagnostic(AnonymousTypeToDtoAnalyzer.DiagnosticId)
+            .Diagnostic(AnonymousTypeToDtoAnalyzer.AnalyzerId)
             .WithLocation(0)
             .WithSeverity(DiagnosticSeverity.Hidden);
 
@@ -511,7 +511,7 @@ class Test
 }";
 
         var expected = VerifyCS
-            .Diagnostic(AnonymousTypeToDtoAnalyzer.DiagnosticId)
+            .Diagnostic(AnonymousTypeToDtoAnalyzer.AnalyzerId)
             .WithLocation(0)
             .WithSeverity(DiagnosticSeverity.Hidden);
 
@@ -539,7 +539,7 @@ class Test
 }";
 
         var expected = VerifyCS
-            .Diagnostic(AnonymousTypeToDtoAnalyzer.DiagnosticId)
+            .Diagnostic(AnonymousTypeToDtoAnalyzer.AnalyzerId)
             .WithLocation(0)
             .WithSeverity(DiagnosticSeverity.Hidden);
 
@@ -575,7 +575,7 @@ class Test
 }";
 
         var expected = VerifyCS
-            .Diagnostic(AnonymousTypeToDtoAnalyzer.DiagnosticId)
+            .Diagnostic(AnonymousTypeToDtoAnalyzer.AnalyzerId)
             .WithLocation(0)
             .WithSeverity(DiagnosticSeverity.Hidden);
 
@@ -610,7 +610,7 @@ class Test
 }";
 
         var expected = VerifyCS
-            .Diagnostic(AnonymousTypeToDtoAnalyzer.DiagnosticId)
+            .Diagnostic(AnonymousTypeToDtoAnalyzer.AnalyzerId)
             .WithLocation(0)
             .WithSeverity(DiagnosticSeverity.Hidden);
 
@@ -638,7 +638,7 @@ class Test
 
         // Diagnostic expected because SelectExpr has no explicit type arguments
         var expected = VerifyCS
-            .Diagnostic(AnonymousTypeToDtoAnalyzer.DiagnosticId)
+            .Diagnostic(AnonymousTypeToDtoAnalyzer.AnalyzerId)
             .WithLocation(0)
             .WithSeverity(DiagnosticSeverity.Hidden);
 
@@ -714,11 +714,11 @@ class Test
 
         // Diagnostic expected for both anonymous types because SelectExpr has no explicit type arguments
         var expected1 = VerifyCS
-            .Diagnostic(AnonymousTypeToDtoAnalyzer.DiagnosticId)
+            .Diagnostic(AnonymousTypeToDtoAnalyzer.AnalyzerId)
             .WithLocation(0)
             .WithSeverity(DiagnosticSeverity.Hidden);
         var expected2 = VerifyCS
-            .Diagnostic(AnonymousTypeToDtoAnalyzer.DiagnosticId)
+            .Diagnostic(AnonymousTypeToDtoAnalyzer.AnalyzerId)
             .WithLocation(1)
             .WithSeverity(DiagnosticSeverity.Hidden);
 

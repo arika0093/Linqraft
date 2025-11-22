@@ -46,7 +46,7 @@ namespace TestNamespace
 }";
 
         var expected = new DiagnosticResult(
-            AnonymousTypeToDtoAnalyzer.DiagnosticId,
+            AnonymousTypeToDtoAnalyzer.AnalyzerId,
             DiagnosticSeverity.Hidden
         ).WithLocation(0);
 
@@ -89,11 +89,7 @@ namespace TestNamespace
     {
         void Method()
         {
-            var source = new Source
-            {
-                Id = 1,
-                Name = ""Test""
-            };
+            var source = new Source { Id = 1, Name = ""Test"" };
             var data = new DataDto
             {
                 Id = source.Id,
@@ -110,7 +106,7 @@ namespace TestNamespace
 }";
 
         var expected = new DiagnosticResult(
-            AnonymousTypeToDtoAnalyzer.DiagnosticId,
+            AnonymousTypeToDtoAnalyzer.AnalyzerId,
             DiagnosticSeverity.Hidden
         ).WithLocation(0);
 
@@ -156,7 +152,7 @@ namespace TestNamespace
 }";
 
         var expected = new DiagnosticResult(
-            AnonymousTypeToDtoAnalyzer.DiagnosticId,
+            AnonymousTypeToDtoAnalyzer.AnalyzerId,
             DiagnosticSeverity.Hidden
         ).WithLocation(0);
 
@@ -206,7 +202,7 @@ namespace TestNamespace
 }";
 
         var expected = new DiagnosticResult(
-            AnonymousTypeToDtoAnalyzer.DiagnosticId,
+            AnonymousTypeToDtoAnalyzer.AnalyzerId,
             DiagnosticSeverity.Hidden
         ).WithLocation(0);
 
@@ -249,7 +245,7 @@ public partial class ResultDto
 }";
 
         var expected = new DiagnosticResult(
-            AnonymousTypeToDtoAnalyzer.DiagnosticId,
+            AnonymousTypeToDtoAnalyzer.AnalyzerId,
             DiagnosticSeverity.Hidden
         ).WithLocation(0);
 
@@ -327,12 +323,12 @@ namespace TestNamespace
 }";
 
         var expected0 = new DiagnosticResult(
-            AnonymousTypeToDtoAnalyzer.DiagnosticId,
+            AnonymousTypeToDtoAnalyzer.AnalyzerId,
             DiagnosticSeverity.Hidden
         ).WithLocation(0);
 
         var expected1 = new DiagnosticResult(
-            AnonymousTypeToDtoAnalyzer.DiagnosticId,
+            AnonymousTypeToDtoAnalyzer.AnalyzerId,
             DiagnosticSeverity.Hidden
         ).WithLocation(1);
 
@@ -372,7 +368,7 @@ public partial class ResultDto
 }";
 
         var expected = new DiagnosticResult(
-            AnonymousTypeToDtoAnalyzer.DiagnosticId,
+            AnonymousTypeToDtoAnalyzer.AnalyzerId,
             DiagnosticSeverity.Hidden
         ).WithLocation(0);
 
@@ -444,12 +440,12 @@ public partial class ResultDto
 }";
 
         var expected0 = new DiagnosticResult(
-            AnonymousTypeToDtoAnalyzer.DiagnosticId,
+            AnonymousTypeToDtoAnalyzer.AnalyzerId,
             DiagnosticSeverity.Hidden
         ).WithLocation(0);
 
         var expected1 = new DiagnosticResult(
-            AnonymousTypeToDtoAnalyzer.DiagnosticId,
+            AnonymousTypeToDtoAnalyzer.AnalyzerId,
             DiagnosticSeverity.Hidden
         ).WithLocation(1);
 

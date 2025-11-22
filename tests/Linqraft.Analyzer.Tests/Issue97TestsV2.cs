@@ -64,7 +64,7 @@ class Test
 }";
 
         var expected = new DiagnosticResult(
-            SelectToSelectExprNamedAnalyzer.DiagnosticId,
+            SelectToSelectExprNamedAnalyzer.AnalyzerId,
             DiagnosticSeverity.Info
         ).WithLocation(0);
 

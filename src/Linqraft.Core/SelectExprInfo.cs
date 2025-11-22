@@ -2,6 +2,9 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
+using Linqraft.Core.Formatting;
+using Linqraft.Core.RoslynHelpers;
+using Linqraft.Core.SyntaxHelpers;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
@@ -163,25 +166,15 @@ public abstract record SelectExprInfo
         if (typeInfo.Type is not INamedTypeSymbol namedType)
             return false;
 
-        // Check if the type is IEnumerable<T> (not IQueryable<T>)
-        var typeDisplayString = namedType.ToDisplayString();
+        var compilation = SemanticModel.Compilation;
 
         // If it's IQueryable, return false
-        if (typeDisplayString.Contains("IQueryable"))
+        if (RoslynTypeHelper.ImplementsIQueryable(namedType, compilation))
             return false;
 
         // If it's IEnumerable (and not a more specific interface like IQueryable), return true
-        if (typeDisplayString.Contains("IEnumerable"))
+        if (RoslynTypeHelper.ImplementsIEnumerable(namedType, compilation))
             return true;
-
-        // Check base interfaces
-        foreach (var baseInterface in namedType.AllInterfaces)
-        {
-            if (baseInterface.Name == "IQueryable")
-                return false;
-            if (baseInterface.Name == "IEnumerable")
-                return true;
-        }
 
         return false;
     }
@@ -262,7 +255,7 @@ public abstract record SelectExprInfo
             }
 
             // Check if this contains SelectMany
-            if (expression.Contains("SelectMany"))
+            if (RoslynTypeHelper.ContainsSelectManyInvocation(syntax))
             {
                 // For nested SelectMany (collection flattening) case
                 var convertedSelectMany = ConvertNestedSelectManyWithRoslyn(
@@ -271,7 +264,7 @@ public abstract record SelectExprInfo
                     indents
                 );
                 // Debug: Check if conversion was performed correctly
-                if (convertedSelectMany == expression && expression.Contains("SelectMany"))
+                if (convertedSelectMany == expression && RoslynTypeHelper.ContainsSelectManyInvocation(syntax))
                 {
                     // If conversion was not performed, leave the original expression as a comment
                     return $"{convertedSelectMany} /* CONVERSION FAILED: {property.Name} */";
@@ -286,7 +279,7 @@ public abstract record SelectExprInfo
                 indents
             );
             // Debug: Check if conversion was performed correctly
-            if (convertedSelect == expression && expression.Contains("Select"))
+            if (convertedSelect == expression && RoslynTypeHelper.ContainsSelectInvocation(syntax))
             {
                 // If conversion was not performed, leave the original expression as a comment
                 return $"{convertedSelect} /* CONVERSION FAILED: {property.Name} */";
@@ -443,10 +436,10 @@ public abstract record SelectExprInfo
             var assignment = GeneratePropertyAssignment(prop, 0);
             propertyAssignments.Add($"    {prop.Name} = {assignment}");
         }
-        var propertiesCode = string.Join(",\n", propertyAssignments);
+        var propertiesCode = string.Join($",{CodeFormatter.DefaultNewLine}", propertyAssignments);
 
         // Build the DTO creation as a compact single-line or multi-line depending on complexity
-        var dtoCreation = $"new {nestedDtoName}\n{{\n{propertiesCode}\n}}";
+        var dtoCreation = $"new {nestedDtoName}{CodeFormatter.DefaultNewLine}{{{CodeFormatter.DefaultNewLine}{propertiesCode}{CodeFormatter.DefaultNewLine}}}";
 
         // Remove comments from syntax before processing
         var cleanSyntax = RemoveComments(syntax);
@@ -471,7 +464,7 @@ public abstract record SelectExprInfo
         int indents
     )
     {
-        var spaces = new string(' ', indents);
+        var spaces = CodeFormatter.IndentSpaces(indents);
         var nestedClassName = GetClassName(nestedStructure);
         // For anonymous types (empty class name), don't use namespace qualification
         var nestedDtoName = string.IsNullOrEmpty(nestedClassName)
@@ -482,10 +475,10 @@ public abstract record SelectExprInfo
         var propertyAssignments = new List<string>();
         foreach (var prop in nestedStructure.Properties)
         {
-            var assignment = GeneratePropertyAssignment(prop, indents + 4);
-            propertyAssignments.Add($"{spaces}    {prop.Name} = {assignment},");
+            var assignment = GeneratePropertyAssignment(prop, indents + CodeFormatter.IndentSize);
+            propertyAssignments.Add($"{spaces}{CodeFormatter.Indent(1)}{prop.Name} = {assignment},");
         }
-        var propertiesCode = string.Join("\n", propertyAssignments);
+        var propertiesCode = string.Join(CodeFormatter.DefaultNewLine, propertyAssignments);
 
         // Build the new DTO object creation expression
         var code = $$"""
@@ -505,7 +498,7 @@ public abstract record SelectExprInfo
         int indents
     )
     {
-        var spaces = new string(' ', indents);
+        var spaces = CodeFormatter.IndentSpaces(indents);
         var nestedClassName = GetClassName(nestedStructure);
         // For anonymous types (empty class name), don't use namespace qualification
         var nestedDtoName = string.IsNullOrEmpty(nestedClassName)
@@ -540,10 +533,10 @@ public abstract record SelectExprInfo
         var propertyAssignments = new List<string>();
         foreach (var prop in nestedStructure.Properties)
         {
-            var assignment = GeneratePropertyAssignment(prop, indents + 4);
-            propertyAssignments.Add($"{spaces}    {prop.Name} = {assignment},");
+            var assignment = GeneratePropertyAssignment(prop, indents + CodeFormatter.IndentSize);
+            propertyAssignments.Add($"{spaces}{CodeFormatter.Indent(1)}{prop.Name} = {assignment},");
         }
-        var propertiesCode = string.Join("\n", propertyAssignments);
+        var propertiesCode = string.Join(CodeFormatter.DefaultNewLine, propertyAssignments);
 
         // Build the Select expression
         if (hasNullableAccess)
@@ -584,7 +577,7 @@ public abstract record SelectExprInfo
         int indents
     )
     {
-        var spaces = new string(' ', indents);
+        var spaces = CodeFormatter.IndentSpaces(indents);
 
         // Use Roslyn to extract SelectMany information
         var selectManyInfo = ExtractSelectManyInfoFromSyntax(syntax);
@@ -622,10 +615,10 @@ public abstract record SelectExprInfo
             var propertyAssignments = new List<string>();
             foreach (var prop in nestedStructure.Properties)
             {
-                var assignment = GeneratePropertyAssignment(prop, indents + 4);
-                propertyAssignments.Add($"{spaces}    {prop.Name} = {assignment},");
+                var assignment = GeneratePropertyAssignment(prop, indents + CodeFormatter.IndentSize);
+                propertyAssignments.Add($"{spaces}{CodeFormatter.Indent(1)}{prop.Name} = {assignment},");
             }
-            var propertiesCode = string.Join("\n", propertyAssignments);
+            var propertiesCode = string.Join(CodeFormatter.DefaultNewLine, propertyAssignments);
 
             // Build the SelectMany expression with projection
             if (hasNullableAccess)
@@ -695,145 +688,6 @@ public abstract record SelectExprInfo
             );
     }
 
-    /// <summary>
-    /// Extracts LINQ method invocation information (Select or SelectMany) from syntax
-    /// </summary>
-    private (
-        string baseExpression,
-        string paramName,
-        string chainedMethods,
-        bool hasNullableAccess,
-        string? coalescingDefaultValue
-    )? ExtractLinqInvocationInfo(ExpressionSyntax syntax, string methodName)
-    {
-        string? coalescingDefaultValue = null;
-        var currentSyntax = syntax;
-
-        // Check for coalescing operator (??)
-        if (
-            syntax is BinaryExpressionSyntax
-            {
-                RawKind: (int)SyntaxKind.CoalesceExpression
-            } binaryExpr
-        )
-        {
-            var rightSide = binaryExpr.Right.ToString().Trim();
-            coalescingDefaultValue = rightSide == "[]" ? null : rightSide;
-            currentSyntax = binaryExpr.Left;
-        }
-
-        // Check for conditional access (?.)
-        bool hasNullableAccess = false;
-        ConditionalAccessExpressionSyntax? conditionalAccess = null;
-        if (currentSyntax is ConditionalAccessExpressionSyntax condAccess)
-        {
-            hasNullableAccess = true;
-            conditionalAccess = condAccess;
-            currentSyntax = condAccess.WhenNotNull;
-        }
-
-        // Find the LINQ method invocation
-        InvocationExpressionSyntax? linqInvocation = null;
-        string chainedMethods = "";
-
-        if (currentSyntax is InvocationExpressionSyntax invocation)
-        {
-            // Check if this is the LINQ method or chained (e.g., .Select().ToList())
-            if (
-                invocation.Expression is MemberAccessExpressionSyntax memberAccess
-                && memberAccess.Name.Identifier.Text == methodName
-            )
-            {
-                linqInvocation = invocation;
-            }
-            else if (
-                invocation.Expression is MemberBindingExpressionSyntax memberBinding
-                && memberBinding.Name.Identifier.Text == methodName
-            )
-            {
-                linqInvocation = invocation;
-            }
-            else if (invocation.Expression is MemberAccessExpressionSyntax chainedMember)
-            {
-                // This is a chained method like .ToList()
-                chainedMethods = $".{chainedMember.Name}{invocation.ArgumentList}";
-                if (chainedMember.Expression is InvocationExpressionSyntax innerInvocation)
-                {
-                    if (
-                        innerInvocation.Expression is MemberAccessExpressionSyntax innerMember
-                        && innerMember.Name.Identifier.Text == methodName
-                    )
-                    {
-                        linqInvocation = innerInvocation;
-                    }
-                    else if (
-                        innerInvocation.Expression is MemberBindingExpressionSyntax innerBinding
-                        && innerBinding.Name.Identifier.Text == methodName
-                    )
-                    {
-                        linqInvocation = innerInvocation;
-                    }
-                }
-            }
-        }
-
-        if (linqInvocation is null)
-            return null;
-
-        // Extract lambda parameter name using Roslyn
-        string paramName = "x"; // Default
-        if (linqInvocation.ArgumentList.Arguments.Count > 0)
-        {
-            var arg = linqInvocation.ArgumentList.Arguments[0].Expression;
-            if (arg is SimpleLambdaExpressionSyntax simpleLambda)
-            {
-                paramName = simpleLambda.Parameter.Identifier.Text;
-            }
-            else if (
-                arg is ParenthesizedLambdaExpressionSyntax parenLambda
-                && parenLambda.ParameterList.Parameters.Count > 0
-            )
-            {
-                paramName = parenLambda.ParameterList.Parameters[0].Identifier.Text;
-            }
-        }
-
-        // Extract base expression (the collection being operated on)
-        string baseExpression;
-        if (hasNullableAccess && conditionalAccess is not null)
-        {
-            // Remove comments before converting to string
-            var cleanExpression = RemoveComments(conditionalAccess.Expression);
-            baseExpression = cleanExpression.ToString();
-        }
-        else if (linqInvocation.Expression is MemberAccessExpressionSyntax linqMember)
-        {
-            // Remove comments before converting to string
-            var cleanExpression = RemoveComments(linqMember.Expression);
-            baseExpression = cleanExpression.ToString();
-        }
-        else if (
-            linqInvocation.Expression is MemberBindingExpressionSyntax
-            && conditionalAccess is not null
-        )
-        {
-            // Remove comments before converting to string
-            var cleanExpression = RemoveComments(conditionalAccess.Expression);
-            baseExpression = cleanExpression.ToString();
-        }
-        else
-        {
-            return null;
-        }
-
-        return (
-            baseExpression,
-            paramName,
-            chainedMethods,
-            hasNullableAccess,
-            coalescingDefaultValue
-        );
-    }
 
     private (
         string baseExpression,
@@ -843,7 +697,20 @@ public abstract record SelectExprInfo
         string? coalescingDefaultValue
     )? ExtractSelectManyInfoFromSyntax(ExpressionSyntax syntax)
     {
-        return ExtractLinqInvocationInfo(syntax, "SelectMany");
+        var info = LinqMethodHelper.ExtractLinqInvocationInfo(syntax, "SelectMany");
+        if (info is null)
+            return null;
+
+        // Apply comment removal to base expression
+        var cleanedBaseExpression = RemoveComments(SyntaxFactory.ParseExpression(info.BaseExpression)).ToString();
+
+        return (
+            cleanedBaseExpression,
+            info.ParameterName,
+            info.ChainedMethods,
+            info.HasNullableAccess,
+            info.CoalescingDefaultValue
+        );
     }
 
     private (
@@ -854,7 +721,20 @@ public abstract record SelectExprInfo
         string? coalescingDefaultValue
     )? ExtractSelectInfoFromSyntax(ExpressionSyntax syntax)
     {
-        return ExtractLinqInvocationInfo(syntax, "Select");
+        var info = LinqMethodHelper.ExtractLinqInvocationInfo(syntax, "Select");
+        if (info is null)
+            return null;
+
+        // Apply comment removal to base expression
+        var cleanedBaseExpression = RemoveComments(SyntaxFactory.ParseExpression(info.BaseExpression)).ToString();
+
+        return (
+            cleanedBaseExpression,
+            info.ParameterName,
+            info.ChainedMethods,
+            info.HasNullableAccess,
+            info.CoalescingDefaultValue
+        );
     }
 
     /// <summary>

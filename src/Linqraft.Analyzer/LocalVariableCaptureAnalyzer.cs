@@ -2,6 +2,8 @@ using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.Linq;
 using Linqraft.Core;
+using Linqraft.Core.AnalyzerHelpers;
+using Linqraft.Core.SyntaxHelpers;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
@@ -16,36 +18,31 @@ namespace Linqraft.Analyzer;
 /// See documentation: https://github.com/arika0093/Linqraft/blob/main/docs/Analyzers.md#lqre001-localvariablecaptureanalyzer
 /// </remarks>
 [DiagnosticAnalyzer(LanguageNames.CSharp)]
-public class LocalVariableCaptureAnalyzer : DiagnosticAnalyzer
+public class LocalVariableCaptureAnalyzer : BaseLinqraftAnalyzer
 {
-    public const string DiagnosticId = "LQRE001";
+    public const string AnalyzerId = "LQRE001";
 
-    private static readonly LocalizableString Title =
-        "Local variable used in SelectExpr without capture parameter";
-    private static readonly LocalizableString MessageFormat =
-        "Local variable '{0}' is used in SelectExpr. Use the capture parameter to pass local variables.";
-    private static readonly LocalizableString Description =
-        "Local variables referenced in SelectExpr should be passed via the capture parameter.";
-    private const string Category = "Usage";
-
-    private static readonly DiagnosticDescriptor Rule = new(
-        DiagnosticId,
-        Title,
-        MessageFormat,
-        Category,
+    private static readonly DiagnosticDescriptor RuleInstance = new(
+        AnalyzerId,
+        "Local variable used in SelectExpr without capture parameter",
+        "Local variable '{0}' is used in SelectExpr. Use the capture parameter to pass local variables.",
+        "Usage",
         DiagnosticSeverity.Error,
         isEnabledByDefault: true,
-        description: Description,
-        helpLinkUri: $"https://github.com/arika0093/Linqraft/blob/main/docs/analyzer/{DiagnosticId}.md"
+        description: "Local variables referenced in SelectExpr should be passed via the capture parameter.",
+        helpLinkUri: $"https://github.com/arika0093/Linqraft/blob/main/docs/analyzer/{AnalyzerId}.md"
     );
 
-    public override ImmutableArray<DiagnosticDescriptor> SupportedDiagnostics =>
-        ImmutableArray.Create(Rule);
+    protected override string DiagnosticId => AnalyzerId;
+    protected override LocalizableString Title => RuleInstance.Title;
+    protected override LocalizableString MessageFormat => RuleInstance.MessageFormat;
+    protected override LocalizableString Description => RuleInstance.Description;
+    protected override string Category => "Usage";
+    protected override DiagnosticSeverity Severity => DiagnosticSeverity.Error;
+    protected override DiagnosticDescriptor Rule => RuleInstance;
 
-    public override void Initialize(AnalysisContext context)
+    protected override void RegisterActions(AnalysisContext context)
     {
-        context.ConfigureGeneratedCodeAnalysis(GeneratedCodeAnalysisFlags.None);
-        context.EnableConcurrentExecution();
 
         context.RegisterSyntaxNodeAction(AnalyzeInvocation, SyntaxKind.InvocationExpression);
     }
@@ -68,7 +65,7 @@ public class LocalVariableCaptureAnalyzer : DiagnosticAnalyzer
         }
 
         // Get the lambda parameter name(s)
-        var lambdaParameters = GetLambdaParameterNames(lambda);
+        var lambdaParameters = LambdaHelper.GetLambdaParameterNames(lambda);
 
         // Find variables that need to be captured
         var variablesToCapture = FindVariablesToCapture(
@@ -90,7 +87,7 @@ public class LocalVariableCaptureAnalyzer : DiagnosticAnalyzer
         {
             if (!capturedVariables.Contains(variableName))
             {
-                var diagnostic = Diagnostic.Create(Rule, location, variableName);
+                var diagnostic = Diagnostic.Create(RuleInstance, location, variableName);
                 context.ReportDiagnostic(diagnostic);
             }
         }
@@ -204,19 +201,6 @@ public class LocalVariableCaptureAnalyzer : DiagnosticAnalyzer
         return null;
     }
 
-    private static ImmutableHashSet<string> GetLambdaParameterNames(LambdaExpressionSyntax lambda)
-    {
-        return lambda switch
-        {
-            SimpleLambdaExpressionSyntax simple => ImmutableHashSet.Create(
-                simple.Parameter.Identifier.Text
-            ),
-            ParenthesizedLambdaExpressionSyntax paren => paren
-                .ParameterList.Parameters.Select(p => p.Identifier.Text)
-                .ToImmutableHashSet(),
-            _ => ImmutableHashSet<string>.Empty,
-        };
-    }
 
     private static List<(string Name, Location Location)> FindVariablesToCapture(
         LambdaExpressionSyntax lambda,

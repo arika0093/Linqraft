@@ -1,5 +1,5 @@
-using System.Collections.Immutable;
 using Linqraft.Core;
+using Linqraft.Core.AnalyzerHelpers;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
@@ -14,36 +14,29 @@ namespace Linqraft.Analyzer;
 /// See documentation: https://github.com/arika0093/Linqraft/blob/main/docs/Analyzers.md#lqrf001-anonymoustypetodtoanalyzer
 /// </remarks>
 [DiagnosticAnalyzer(LanguageNames.CSharp)]
-public class AnonymousTypeToDtoAnalyzer : DiagnosticAnalyzer
+public class AnonymousTypeToDtoAnalyzer : BaseLinqraftAnalyzer
 {
-    public const string DiagnosticId = "LQRF001";
+    public const string AnalyzerId = "LQRF001";
 
-    private static readonly LocalizableString Title = "Anonymous type can be converted to DTO";
-    private static readonly LocalizableString MessageFormat =
-        "Anonymous type can be converted to a DTO class";
-    private static readonly LocalizableString Description =
-        "This anonymous type can be converted to a strongly-typed DTO class for better type safety and reusability.";
-    private const string Category = "Design";
-
-    private static readonly DiagnosticDescriptor Rule = new(
-        DiagnosticId,
-        Title,
-        MessageFormat,
-        Category,
+    private static readonly DiagnosticDescriptor RuleInstance = new(
+        AnalyzerId,
+        "Anonymous type can be converted to DTO",
+        "Anonymous type can be converted to a DTO class",
+        "Design",
         DiagnosticSeverity.Hidden,
         isEnabledByDefault: true,
-        description: Description,
-        helpLinkUri: $"https://github.com/arika0093/Linqraft/blob/main/docs/analyzer/{DiagnosticId}.md"
+        description: "This anonymous type can be converted to a strongly-typed DTO class for better type safety and reusability.",
+        helpLinkUri: $"https://github.com/arika0093/Linqraft/blob/main/docs/analyzer/{AnalyzerId}.md"
     );
 
-    public override ImmutableArray<DiagnosticDescriptor> SupportedDiagnostics =>
-        ImmutableArray.Create(Rule);
+    protected override string DiagnosticId => AnalyzerId;
+    protected override LocalizableString Title => RuleInstance.Title;
+    protected override LocalizableString MessageFormat => RuleInstance.MessageFormat;
+    protected override LocalizableString Description => RuleInstance.Description;
+    protected override DiagnosticDescriptor Rule => RuleInstance;
 
-    public override void Initialize(AnalysisContext context)
+    protected override void RegisterActions(AnalysisContext context)
     {
-        context.ConfigureGeneratedCodeAnalysis(GeneratedCodeAnalysisFlags.None);
-        context.EnableConcurrentExecution();
-
         context.RegisterSyntaxNodeAction(
             AnalyzeAnonymousObjectCreation,
             SyntaxKind.AnonymousObjectCreationExpression
@@ -83,7 +76,7 @@ public class AnonymousTypeToDtoAnalyzer : DiagnosticAnalyzer
         }
 
         // Report diagnostic
-        var diagnostic = Diagnostic.Create(Rule, anonymousObject.GetLocation());
+        var diagnostic = Diagnostic.Create(RuleInstance, anonymousObject.GetLocation());
         context.ReportDiagnostic(diagnostic);
     }
 

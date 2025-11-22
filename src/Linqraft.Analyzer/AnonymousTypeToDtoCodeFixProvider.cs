@@ -6,11 +6,14 @@ using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 using Linqraft.Core;
+using Linqraft.Core.Formatting;
+using Linqraft.Core.SyntaxHelpers;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CodeActions;
 using Microsoft.CodeAnalysis.CodeFixes;
 using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
+using Microsoft.CodeAnalysis.Text;
 
 namespace Linqraft.Analyzer;
 
@@ -22,7 +25,7 @@ namespace Linqraft.Analyzer;
 public class AnonymousTypeToDtoCodeFixProvider : CodeFixProvider
 {
     public sealed override ImmutableArray<string> FixableDiagnosticIds =>
-        ImmutableArray.Create(AnonymousTypeToDtoAnalyzer.DiagnosticId);
+        ImmutableArray.Create(AnonymousTypeToDtoAnalyzer.AnalyzerId);
 
     public sealed override FixAllProvider GetFixAllProvider() =>
         WellKnownFixAllProviders.BatchFixer;
@@ -148,6 +151,11 @@ public class AnonymousTypeToDtoCodeFixProvider : CodeFixProvider
                 var dtoMember = SyntaxFactory.ParseMemberDeclaration(dtoClassCode);
                 if (dtoMember != null)
                 {
+                    // Add leading trivia (empty line before DTO class)
+                    dtoMember = dtoMember.WithLeadingTrivia(
+                        SyntaxFactory.LineFeed
+                    );
+
                     var updatedNamespaceDecl = newRoot
                         .DescendantNodes()
                         .OfType<BaseNamespaceDeclarationSyntax>()
@@ -162,15 +170,59 @@ public class AnonymousTypeToDtoCodeFixProvider : CodeFixProvider
                 var dtoMember = SyntaxFactory.ParseMemberDeclaration(dtoClassCode);
                 if (dtoMember != null && newRoot is CompilationUnitSyntax compilationUnit)
                 {
+                    // Add leading trivia (empty line before DTO class)
+                    // For global namespace, we need two linefeeds (one for empty line, one for line break)
+                    dtoMember = dtoMember.WithLeadingTrivia(
+                        SyntaxFactory.LineFeed,
+                        SyntaxFactory.LineFeed
+                    );
+
                     newRoot = compilationUnit.AddMembers(dtoMember);
                 }
             }
         }
 
-        // Normalize whitespace at the end
-        newRoot = newRoot.NormalizeWhitespace(eol: "\n");
+        var documentWithNewRoot = document.WithSyntaxRoot(newRoot);
 
-        return document.WithSyntaxRoot(newRoot);
+        // Normalize line endings only (don't reformat existing code)
+        var formattedDocument = await CodeFixFormattingHelper.NormalizeLineEndingsOnlyAsync(
+            documentWithNewRoot,
+            cancellationToken
+        ).ConfigureAwait(false);
+
+        // Remove leading and trailing empty lines from the document text
+        var formattedText = await formattedDocument.GetTextAsync(cancellationToken).ConfigureAwait(false);
+        var textContent = formattedText.ToString();
+
+        // Remove leading empty lines
+        var lines = textContent.Split('\n');
+        var firstNonEmptyIndex = 0;
+        while (firstNonEmptyIndex < lines.Length && string.IsNullOrWhiteSpace(lines[firstNonEmptyIndex]))
+        {
+            firstNonEmptyIndex++;
+        }
+
+        // Remove trailing empty lines
+        var lastNonEmptyIndex = lines.Length - 1;
+        while (lastNonEmptyIndex >= 0 && string.IsNullOrWhiteSpace(lines[lastNonEmptyIndex]))
+        {
+            lastNonEmptyIndex--;
+        }
+
+        if (firstNonEmptyIndex > 0 || lastNonEmptyIndex < lines.Length - 1)
+        {
+            var trimmedLines = lines.Skip(firstNonEmptyIndex).Take(lastNonEmptyIndex - firstNonEmptyIndex + 1);
+            var trimmedText = string.Join("\n", trimmedLines);
+
+            var encoding = formattedText.Encoding;
+            formattedDocument = formattedDocument.WithText(
+                encoding != null
+                    ? SourceText.From(trimmedText, encoding)
+                    : SourceText.From(trimmedText)
+            );
+        }
+
+        return formattedDocument;
     }
 
     private async Task<Solution> ConvertToDtoNewFileAsync(
@@ -316,6 +368,9 @@ public class AnonymousTypeToDtoCodeFixProvider : CodeFixProvider
                     SyntaxFactory.SeparatedList(initializers)
                 )
             )
+            .NormalizeWhitespace();
+
+        newObjectCreation = newObjectCreation
             .WithLeadingTrivia(anonymousObject.GetLeadingTrivia())
             .WithTrailingTrivia(anonymousObject.GetTrailingTrivia());
 
@@ -398,7 +453,7 @@ public class AnonymousTypeToDtoCodeFixProvider : CodeFixProvider
                         nestedInitializers.Add(assignment);
                     }
 
-                    return SyntaxFactory
+                    var nestedObjectCreation = SyntaxFactory
                         .ObjectCreationExpression(SyntaxFactory.IdentifierName(nestedClassName))
                         .WithInitializer(
                             SyntaxFactory.InitializerExpression(
@@ -406,6 +461,9 @@ public class AnonymousTypeToDtoCodeFixProvider : CodeFixProvider
                                 SyntaxFactory.SeparatedList(nestedInitializers)
                             )
                         )
+                        .NormalizeWhitespace();
+
+                    return nestedObjectCreation
                         .WithLeadingTrivia(nestedAnonymous.GetLeadingTrivia())
                         .WithTrailingTrivia(nestedAnonymous.GetTrailingTrivia());
                 }
@@ -568,14 +626,6 @@ public class AnonymousTypeToDtoCodeFixProvider : CodeFixProvider
 
     private static string GetPropertyNameFromExpression(ExpressionSyntax expression)
     {
-        return expression switch
-        {
-            MemberAccessExpressionSyntax memberAccess => memberAccess.Name.Identifier.Text,
-            IdentifierNameSyntax identifier => identifier.Identifier.Text,
-            ConditionalAccessExpressionSyntax conditionalAccess
-                when conditionalAccess.WhenNotNull is MemberBindingExpressionSyntax memberBinding =>
-                memberBinding.Name.Identifier.Text,
-            _ => "Property",
-        };
+        return ExpressionHelper.GetPropertyNameOrDefault(expression, "Property");
     }
 }

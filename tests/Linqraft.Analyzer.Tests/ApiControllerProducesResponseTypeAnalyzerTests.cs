@@ -63,7 +63,7 @@ public class SampleController : ControllerBase
 " + TestSourceCodes.SelectExprWithExpressionObject;
 
         var expected = new DiagnosticResult(
-            ApiControllerProducesResponseTypeAnalyzer.DiagnosticId,
+            ApiControllerProducesResponseTypeAnalyzer.AnalyzerId,
             DiagnosticSeverity.Info
         ).WithLocation(0);
 
@@ -265,7 +265,7 @@ public class SampleController : ControllerBase
 " + TestSourceCodes.SelectExprWithExpressionObject;
 
         var expected = new DiagnosticResult(
-            ApiControllerProducesResponseTypeAnalyzer.DiagnosticId,
+            ApiControllerProducesResponseTypeAnalyzer.AnalyzerId,
             DiagnosticSeverity.Info
         ).WithLocation(0);
 
@@ -313,7 +313,7 @@ public class SampleController : ControllerBase
 " + TestSourceCodes.SelectExprWithExpressionObject;
 
         var expected = new DiagnosticResult(
-            ApiControllerProducesResponseTypeAnalyzer.DiagnosticId,
+            ApiControllerProducesResponseTypeAnalyzer.AnalyzerId,
             DiagnosticSeverity.Info
         ).WithLocation(0);
 
@@ -354,7 +354,7 @@ public class SampleController : ControllerBase
 " + TestSourceCodes.SelectExprWithExpressionObject;
 
         var expected = new DiagnosticResult(
-            ApiControllerProducesResponseTypeAnalyzer.DiagnosticId,
+            ApiControllerProducesResponseTypeAnalyzer.AnalyzerId,
             DiagnosticSeverity.Info
         ).WithLocation(0);
 

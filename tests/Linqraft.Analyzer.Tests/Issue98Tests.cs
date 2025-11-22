@@ -59,7 +59,7 @@ class Test
 }";
 
         var expected = new DiagnosticResult(
-            SelectToSelectExprAnonymousAnalyzer.DiagnosticId,
+            SelectToSelectExprAnonymousAnalyzer.AnalyzerId,
             DiagnosticSeverity.Info
         ).WithLocation(0);
 
@@ -129,7 +129,7 @@ class Test
 }";
 
         var expected = new DiagnosticResult(
-            SelectToSelectExprNamedAnalyzer.DiagnosticId,
+            SelectToSelectExprNamedAnalyzer.AnalyzerId,
             DiagnosticSeverity.Info
         ).WithLocation(0);
 
@@ -187,7 +187,7 @@ class Test
 }";
 
         var expected = new DiagnosticResult(
-            SelectExprToTypedAnalyzer.DiagnosticId,
+            SelectExprToTypedAnalyzer.AnalyzerId,
             DiagnosticSeverity.Hidden
         ).WithLocation(0);
 
