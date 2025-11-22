@@ -129,28 +129,18 @@ public class LocalVariableCaptureCodeFixProvider : CodeFixProvider
             // Create local variable declaration: var captured_X = expr;
             var declaration = SyntaxFactory
                 .LocalDeclarationStatement(
-                    SyntaxFactory
-                        .VariableDeclaration(
-                            SyntaxFactory
-                                .IdentifierName("var")
-                                .WithTrailingTrivia(SyntaxFactory.Space),
-                            SyntaxFactory.SingletonSeparatedList(
-                                SyntaxFactory.VariableDeclarator(
-                                    SyntaxFactory.Identifier(capturedVarName),
-                                    null,
-                                    SyntaxFactory
-                                        .EqualsValueClause(
-                                            SyntaxFactory
-                                                .Token(SyntaxKind.EqualsToken)
-                                                .WithLeadingTrivia(SyntaxFactory.Space)
-                                                .WithTrailingTrivia(SyntaxFactory.Space),
-                                            expr
-                                        )
-                                )
+                    SyntaxFactory.VariableDeclaration(
+                        SyntaxFactory.IdentifierName("var"),
+                        SyntaxFactory.SingletonSeparatedList(
+                            SyntaxFactory.VariableDeclarator(
+                                SyntaxFactory.Identifier(capturedVarName),
+                                null,
+                                SyntaxFactory.EqualsValueClause(expr)
                             )
                         )
+                    )
                 )
-                .WithSemicolonToken(SyntaxFactory.Token(SyntaxKind.SemicolonToken))
+                .NormalizeWhitespace()
                 .WithTrailingTrivia(SyntaxFactory.LineFeed);
 
             captureDeclarations.Add(declaration);
@@ -266,9 +256,19 @@ public class LocalVariableCaptureCodeFixProvider : CodeFixProvider
                     var statementIndex = parentBlock.Statements.IndexOf(newInvocationStatement);
                     if (statementIndex >= 0)
                     {
+                        // Get the indentation from the target statement
+                        var targetIndentation = newInvocationStatement.GetLeadingTrivia()
+                            .Where(t => t.IsKind(SyntaxKind.WhitespaceTrivia))
+                            .LastOrDefault();
+
+                        // Apply indentation to all capture declarations
+                        var indentedDeclarations = captureDeclarations
+                            .Select(decl => decl.WithLeadingTrivia(targetIndentation))
+                            .ToList();
+
                         var newStatements = parentBlock.Statements.InsertRange(
                             statementIndex,
-                            captureDeclarations
+                            indentedDeclarations
                         );
                         var newBlock = parentBlock.WithStatements(newStatements);
                         newRoot = newRoot.ReplaceNode(parentBlock, newBlock);
@@ -277,7 +277,7 @@ public class LocalVariableCaptureCodeFixProvider : CodeFixProvider
             }
 
             var documentWithNewRoot = document.WithSyntaxRoot(newRoot);
-            return await CodeFixFormattingHelper.NormalizeLineEndingsOnlyAsync(
+            return await CodeFixFormattingHelper.FormatAndNormalizeLineEndingsAsync(
                 documentWithNewRoot,
                 cancellationToken
             ).ConfigureAwait(false);
@@ -287,7 +287,7 @@ public class LocalVariableCaptureCodeFixProvider : CodeFixProvider
             // No capture declarations, just replace the invocation
             var newRoot = root.ReplaceNode(invocation, newInvocation);
             var documentWithNewRoot = document.WithSyntaxRoot(newRoot);
-            return await CodeFixFormattingHelper.NormalizeLineEndingsOnlyAsync(
+            return await CodeFixFormattingHelper.FormatAndNormalizeLineEndingsAsync(
                 documentWithNewRoot,
                 cancellationToken
             ).ConfigureAwait(false);
