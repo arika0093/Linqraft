@@ -479,8 +479,8 @@ public static class SelectExprHelper
 - [x] フェーズ2-3: LINQメソッド検出ヘルパー作成
 - [x] フェーズ2-4: 型情報ヘルパー作成
 - [x] フェーズ2-5: Null条件演算子ヘルパー作成
-- [ ] フェーズ2-6: Trivia処理の高度化・共通化
-- [ ] フェーズ3-1: 基底Analyzerクラス作成
+- [x] フェーズ2-6: Trivia処理の高度化・共通化
+- [x] フェーズ3-1: 基底Analyzerクラス作成
 - [ ] フェーズ3-2: Analyzer共通ヘルパー作成
 - [ ] フェーズ3-3: TernaryNullCheckSimplifier の統合
 - [ ] フェーズ4: その他の最適化
