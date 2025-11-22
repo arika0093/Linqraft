@@ -373,7 +373,7 @@ public static class CaptureHelper
 
 ---
 
-#### 3-3. TernaryNullCheckSimplifier の統合
+#### ✅ 3-3. TernaryNullCheckSimplifier の統合
 **目的**: null条件演算子変換の共通化
 
 **作業内容**:
