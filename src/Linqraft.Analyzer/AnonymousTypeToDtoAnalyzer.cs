@@ -18,15 +18,22 @@ public class AnonymousTypeToDtoAnalyzer : BaseLinqraftAnalyzer
 {
     public const string AnalyzerId = "LQRF001";
 
+    private static readonly DiagnosticDescriptor RuleInstance = new(
+        AnalyzerId,
+        "Anonymous type can be converted to DTO",
+        "Anonymous type can be converted to a DTO class",
+        "Design",
+        DiagnosticSeverity.Hidden,
+        isEnabledByDefault: true,
+        description: "This anonymous type can be converted to a strongly-typed DTO class for better type safety and reusability.",
+        helpLinkUri: $"https://github.com/arika0093/Linqraft/blob/main/docs/analyzer/{AnalyzerId}.md"
+    );
+
     protected override string DiagnosticId => AnalyzerId;
-
-    protected override LocalizableString Title => "Anonymous type can be converted to DTO";
-
-    protected override LocalizableString MessageFormat =>
-        "Anonymous type can be converted to a DTO class";
-
-    protected override LocalizableString Description =>
-        "This anonymous type can be converted to a strongly-typed DTO class for better type safety and reusability.";
+    protected override LocalizableString Title => RuleInstance.Title;
+    protected override LocalizableString MessageFormat => RuleInstance.MessageFormat;
+    protected override LocalizableString Description => RuleInstance.Description;
+    protected override DiagnosticDescriptor Rule => RuleInstance;
 
     protected override void RegisterActions(AnalysisContext context)
     {
@@ -69,7 +76,7 @@ public class AnonymousTypeToDtoAnalyzer : BaseLinqraftAnalyzer
         }
 
         // Report diagnostic
-        var diagnostic = Diagnostic.Create(Rule, anonymousObject.GetLocation());
+        var diagnostic = Diagnostic.Create(RuleInstance, anonymousObject.GetLocation());
         context.ReportDiagnostic(diagnostic);
     }
 

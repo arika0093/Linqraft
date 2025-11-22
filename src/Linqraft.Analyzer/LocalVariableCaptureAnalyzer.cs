@@ -22,20 +22,24 @@ public class LocalVariableCaptureAnalyzer : BaseLinqraftAnalyzer
 {
     public const string AnalyzerId = "LQRE001";
 
+    private static readonly DiagnosticDescriptor RuleInstance = new(
+        AnalyzerId,
+        "Local variable used in SelectExpr without capture parameter",
+        "Local variable '{0}' is used in SelectExpr. Use the capture parameter to pass local variables.",
+        "Usage",
+        DiagnosticSeverity.Error,
+        isEnabledByDefault: true,
+        description: "Local variables referenced in SelectExpr should be passed via the capture parameter.",
+        helpLinkUri: $"https://github.com/arika0093/Linqraft/blob/main/docs/analyzer/{AnalyzerId}.md"
+    );
+
     protected override string DiagnosticId => AnalyzerId;
-
-    protected override LocalizableString Title =>
-        "Local variable used in SelectExpr without capture parameter";
-
-    protected override LocalizableString MessageFormat =>
-        "Local variable '{0}' is used in SelectExpr. Use the capture parameter to pass local variables.";
-
-    protected override LocalizableString Description =>
-        "Local variables referenced in SelectExpr should be passed via the capture parameter.";
-
+    protected override LocalizableString Title => RuleInstance.Title;
+    protected override LocalizableString MessageFormat => RuleInstance.MessageFormat;
+    protected override LocalizableString Description => RuleInstance.Description;
     protected override string Category => "Usage";
-
     protected override DiagnosticSeverity Severity => DiagnosticSeverity.Error;
+    protected override DiagnosticDescriptor Rule => RuleInstance;
 
     protected override void RegisterActions(AnalysisContext context)
     {
@@ -83,7 +87,7 @@ public class LocalVariableCaptureAnalyzer : BaseLinqraftAnalyzer
         {
             if (!capturedVariables.Contains(variableName))
             {
-                var diagnostic = Diagnostic.Create(Rule, location, variableName);
+                var diagnostic = Diagnostic.Create(RuleInstance, location, variableName);
                 context.ReportDiagnostic(diagnostic);
             }
         }

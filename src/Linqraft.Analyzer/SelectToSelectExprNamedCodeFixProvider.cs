@@ -24,7 +24,7 @@ namespace Linqraft.Analyzer;
 public class SelectToSelectExprNamedCodeFixProvider : CodeFixProvider
 {
     public sealed override ImmutableArray<string> FixableDiagnosticIds =>
-        ImmutableArray.Create(SelectToSelectExprNamedAnalyzer.DiagnosticId);
+        ImmutableArray.Create(SelectToSelectExprNamedAnalyzer.AnalyzerId);
 
     public sealed override FixAllProvider GetFixAllProvider() =>
         WellKnownFixAllProviders.BatchFixer;

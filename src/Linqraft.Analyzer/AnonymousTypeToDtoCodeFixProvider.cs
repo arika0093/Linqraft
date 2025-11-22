@@ -24,7 +24,7 @@ namespace Linqraft.Analyzer;
 public class AnonymousTypeToDtoCodeFixProvider : CodeFixProvider
 {
     public sealed override ImmutableArray<string> FixableDiagnosticIds =>
-        ImmutableArray.Create(AnonymousTypeToDtoAnalyzer.DiagnosticId);
+        ImmutableArray.Create(AnonymousTypeToDtoAnalyzer.AnalyzerId);
 
     public sealed override FixAllProvider GetFixAllProvider() =>
         WellKnownFixAllProviders.BatchFixer;

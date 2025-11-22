@@ -22,7 +22,7 @@ namespace Linqraft.Analyzer;
 public class LocalVariableCaptureCodeFixProvider : CodeFixProvider
 {
     public sealed override ImmutableArray<string> FixableDiagnosticIds =>
-        ImmutableArray.Create(LocalVariableCaptureAnalyzer.DiagnosticId);
+        ImmutableArray.Create(LocalVariableCaptureAnalyzer.AnalyzerId);
 
     public sealed override FixAllProvider GetFixAllProvider() =>
         WellKnownFixAllProviders.BatchFixer;

@@ -20,18 +20,23 @@ public class TernaryNullCheckToConditionalAnalyzer : BaseLinqraftAnalyzer
 {
     public const string AnalyzerId = "LQRS004";
 
+    private static readonly DiagnosticDescriptor RuleInstance = new(
+        AnalyzerId,
+        "Ternary null check can use null-conditional operators",
+        "Ternary null check returning object can be simplified to use null-conditional operators",
+        "Design",
+        DiagnosticSeverity.Info,
+        isEnabledByDefault: true,
+        description: "This ternary operator with null check can be simplified to use null-conditional operators (?.) for better readability and to avoid CS8602 warnings.",
+        helpLinkUri: $"https://github.com/arika0093/Linqraft/blob/main/docs/analyzer/{AnalyzerId}.md"
+    );
+
     protected override string DiagnosticId => AnalyzerId;
-
-    protected override LocalizableString Title =>
-        "Ternary null check can use null-conditional operators";
-
-    protected override LocalizableString MessageFormat =>
-        "Ternary null check returning object can be simplified to use null-conditional operators";
-
-    protected override LocalizableString Description =>
-        "This ternary operator with null check can be simplified to use null-conditional operators (?.) for better readability and to avoid CS8602 warnings.";
-
+    protected override LocalizableString Title => RuleInstance.Title;
+    protected override LocalizableString MessageFormat => RuleInstance.MessageFormat;
+    protected override LocalizableString Description => RuleInstance.Description;
     protected override DiagnosticSeverity Severity => DiagnosticSeverity.Info;
+    protected override DiagnosticDescriptor Rule => RuleInstance;
 
     protected override void RegisterActions(AnalysisContext context)
     {
@@ -66,7 +71,7 @@ public class TernaryNullCheckToConditionalAnalyzer : BaseLinqraftAnalyzer
         // This handles both: condition ? new{} : null  AND  condition ? null : new{}
         if ((whenTrueIsNull && whenFalseHasObject) || (whenFalseIsNull && whenTrueHasObject))
         {
-            var diagnostic = Diagnostic.Create(Rule, conditional.GetLocation());
+            var diagnostic = Diagnostic.Create(RuleInstance, conditional.GetLocation());
             context.ReportDiagnostic(diagnostic);
         }
     }

@@ -19,18 +19,23 @@ public class ApiControllerProducesResponseTypeAnalyzer : BaseLinqraftAnalyzer
 {
     public const string AnalyzerId = "LQRF002";
 
+    private static readonly DiagnosticDescriptor RuleInstance = new(
+        AnalyzerId,
+        "Add ProducesResponseType to clarify API return type",
+        "Add [ProducesResponseType] to clarify the return value of the API and assist in generating OpenAPI documentation",
+        "Design",
+        DiagnosticSeverity.Info,
+        isEnabledByDefault: true,
+        description: "When SelectExpr<T, TDto> is used in ApiController methods that return IActionResult, adding [ProducesResponseType] helps with OpenAPI documentation generation.",
+        helpLinkUri: $"https://github.com/arika0093/Linqraft/blob/main/docs/analyzer/{AnalyzerId}.md"
+    );
+
     protected override string DiagnosticId => AnalyzerId;
-
-    protected override LocalizableString Title =>
-        "Add ProducesResponseType to clarify API return type";
-
-    protected override LocalizableString MessageFormat =>
-        "Add [ProducesResponseType] to clarify the return value of the API and assist in generating OpenAPI documentation";
-
-    protected override LocalizableString Description =>
-        "When SelectExpr<T, TDto> is used in ApiController methods that return IActionResult, adding [ProducesResponseType] helps with OpenAPI documentation generation.";
-
+    protected override LocalizableString Title => RuleInstance.Title;
+    protected override LocalizableString MessageFormat => RuleInstance.MessageFormat;
+    protected override LocalizableString Description => RuleInstance.Description;
     protected override DiagnosticSeverity Severity => DiagnosticSeverity.Info;
+    protected override DiagnosticDescriptor Rule => RuleInstance;
 
     protected override void RegisterActions(AnalysisContext context)
     {
@@ -68,7 +73,7 @@ public class ApiControllerProducesResponseTypeAnalyzer : BaseLinqraftAnalyzer
 
         // Report diagnostic at the SelectExpr invocation location
         var diagnostic = Diagnostic.Create(
-            Rule,
+            RuleInstance,
             selectExprInfo.Value.Invocation.GetLocation(),
             selectExprInfo.Value.DtoTypeName
         );

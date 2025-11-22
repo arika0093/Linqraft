@@ -21,16 +21,22 @@ public class SelectExprToTypedAnalyzer : BaseLinqraftAnalyzer
 {
     public const string AnalyzerId = "LQRS001";
 
+    private static readonly DiagnosticDescriptor RuleInstance = new(
+        AnalyzerId,
+        "SelectExpr can be converted to typed version",
+        "SelectExpr can be converted to SelectExpr<{0}, {1}>",
+        "Design",
+        DiagnosticSeverity.Hidden,
+        isEnabledByDefault: true,
+        description: "This SelectExpr call can be converted to use explicit type arguments for better type safety.",
+        helpLinkUri: $"https://github.com/arika0093/Linqraft/blob/main/docs/analyzer/{AnalyzerId}.md"
+    );
+
     protected override string DiagnosticId => AnalyzerId;
-
-    protected override LocalizableString Title =>
-        "SelectExpr can be converted to typed version";
-
-    protected override LocalizableString MessageFormat =>
-        "SelectExpr can be converted to SelectExpr<{0}, {1}>";
-
-    protected override LocalizableString Description =>
-        "This SelectExpr call can be converted to use explicit type arguments for better type safety.";
+    protected override LocalizableString Title => RuleInstance.Title;
+    protected override LocalizableString MessageFormat => RuleInstance.MessageFormat;
+    protected override LocalizableString Description => RuleInstance.Description;
+    protected override DiagnosticDescriptor Rule => RuleInstance;
 
     protected override void RegisterActions(AnalysisContext context)
     {
@@ -73,7 +79,7 @@ public class SelectExprToTypedAnalyzer : BaseLinqraftAnalyzer
         var location = GetMethodNameLocation(invocation.Expression);
 
         // Report diagnostic
-        var diagnostic = Diagnostic.Create(Rule, location, sourceType.Name, dtoName);
+        var diagnostic = Diagnostic.Create(RuleInstance, location, sourceType.Name, dtoName);
         context.ReportDiagnostic(diagnostic);
     }
 

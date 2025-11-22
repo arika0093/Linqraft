@@ -51,31 +51,29 @@ public abstract class BaseLinqraftAnalyzer : DiagnosticAnalyzer
     protected virtual string HelpLinkUriFormat =>
         "https://github.com/arika0093/Linqraft/blob/main/docs/analyzer/{0}.md";
 
-    private DiagnosticDescriptor? _rule;
+    /// <summary>
+    /// Creates a diagnostic descriptor using the analyzer's configuration.
+    /// This should be called once to initialize a static readonly field in the derived analyzer.
+    /// </summary>
+    protected DiagnosticDescriptor CreateRule()
+    {
+        return new DiagnosticDescriptor(
+            DiagnosticId,
+            Title,
+            MessageFormat,
+            Category,
+            Severity,
+            IsEnabledByDefault,
+            description: Description,
+            helpLinkUri: string.Format(HelpLinkUriFormat, DiagnosticId)
+        );
+    }
 
     /// <summary>
-    /// The diagnostic rule for this analyzer
+    /// The diagnostic rule for this analyzer.
+    /// Derived classes should override this to return their static readonly rule.
     /// </summary>
-    protected DiagnosticDescriptor Rule
-    {
-        get
-        {
-            if (_rule == null)
-            {
-                _rule = new DiagnosticDescriptor(
-                    DiagnosticId,
-                    Title,
-                    MessageFormat,
-                    Category,
-                    Severity,
-                    IsEnabledByDefault,
-                    description: Description,
-                    helpLinkUri: string.Format(HelpLinkUriFormat, DiagnosticId)
-                );
-            }
-            return _rule;
-        }
-    }
+    protected abstract DiagnosticDescriptor Rule { get; }
 
     /// <summary>
     /// The supported diagnostics for this analyzer
