@@ -6,57 +6,57 @@ using System.Linq;
 namespace Linqraft.Core.RoslynHelpers;
 
 /// <summary>
-/// Roslynのセマンティック解析を用いた型判定ヘルパー
-/// 文字列比較による型判定を置き換え、より正確で堅牢な型判定を提供します。
+/// Type checking helper using Roslyn semantic analysis.
+/// Provides more accurate and robust type checking by replacing string-based type comparisons.
 /// </summary>
 public static class RoslynTypeHelper
 {
     /// <summary>
-    /// 型がnullable型かどうかを判定
+    /// Determines whether a type is a nullable type.
     /// </summary>
-    /// <param name="typeSymbol">判定する型シンボル</param>
-    /// <returns>nullable型の場合true</returns>
+    /// <param name="typeSymbol">The type symbol to check</param>
+    /// <returns>True if the type is nullable</returns>
     public static bool IsNullableType(ITypeSymbol typeSymbol)
     {
         if (typeSymbol == null)
             return false;
 
-        // Nullable<T> (値型のnullable)
+        // Nullable<T> (nullable value type)
         if (typeSymbol.OriginalDefinition.SpecialType == SpecialType.System_Nullable_T)
             return true;
 
-        // C# 8.0+ の nullable reference types
+        // C# 8.0+ nullable reference types
         return typeSymbol.NullableAnnotation == NullableAnnotation.Annotated;
     }
 
     /// <summary>
-    /// 型名文字列からnullable判定を行う（レガシーメソッド）
-    /// 可能な限り IsNullableType(ITypeSymbol) を使用してください
+    /// Determines whether a type is nullable based on the type name string (legacy method).
+    /// Use IsNullableType(ITypeSymbol) when possible.
     /// </summary>
-    /// <param name="typeName">型名文字列</param>
-    /// <returns>型名が"?"で終わる場合true</returns>
+    /// <param name="typeName">The type name string</param>
+    /// <returns>True if the type name ends with "?"</returns>
     public static bool IsNullableTypeByString(string typeName)
     {
         return !string.IsNullOrEmpty(typeName) && typeName.EndsWith("?");
     }
 
     /// <summary>
-    /// 型からnullable修飾子を除去
+    /// Removes the nullable modifier from a type.
     /// </summary>
-    /// <param name="typeSymbol">型シンボル</param>
-    /// <returns>nullableでない型シンボル</returns>
+    /// <param name="typeSymbol">The type symbol</param>
+    /// <returns>The non-nullable type symbol</returns>
     public static ITypeSymbol? GetNonNullableType(ITypeSymbol? typeSymbol)
     {
         if (typeSymbol == null)
             return null;
 
-        // Nullable reference types の場合
+        // For nullable reference types
         if (typeSymbol.NullableAnnotation == NullableAnnotation.Annotated)
         {
             return typeSymbol.WithNullableAnnotation(NullableAnnotation.NotAnnotated);
         }
 
-        // Nullable<T> (値型) の場合は基底型を返す
+        // For Nullable<T> (value types), return the underlying type
         if (typeSymbol is INamedTypeSymbol namedType
             && namedType.OriginalDefinition.SpecialType == SpecialType.System_Nullable_T
             && namedType.TypeArguments.Length == 1)
@@ -68,10 +68,10 @@ public static class RoslynTypeHelper
     }
 
     /// <summary>
-    /// 型名文字列から"?"を除去（レガシーメソッド）
+    /// Removes the "?" suffix from a type name string (legacy method).
     /// </summary>
-    /// <param name="typeName">型名文字列</param>
-    /// <returns>"?"を除去した型名</returns>
+    /// <param name="typeName">The type name string</param>
+    /// <returns>The type name with "?" removed</returns>
     public static string RemoveNullableSuffixFromString(string typeName)
     {
         if (string.IsNullOrEmpty(typeName))
@@ -81,11 +81,11 @@ public static class RoslynTypeHelper
     }
 
     /// <summary>
-    /// 型がIQueryable&lt;T&gt;を実装しているかを判定
+    /// Determines whether a type implements IQueryable&lt;T&gt;.
     /// </summary>
-    /// <param name="typeSymbol">判定する型シンボル</param>
-    /// <param name="compilation">コンパイレーション</param>
-    /// <returns>IQueryable&lt;T&gt;を実装している場合true</returns>
+    /// <param name="typeSymbol">The type symbol to check</param>
+    /// <param name="compilation">The compilation</param>
+    /// <returns>True if the type implements IQueryable&lt;T&gt;</returns>
     public static bool ImplementsIQueryable(ITypeSymbol typeSymbol, Compilation compilation)
     {
         if (typeSymbol == null || compilation == null)
@@ -97,11 +97,11 @@ public static class RoslynTypeHelper
 
         if (typeSymbol is INamedTypeSymbol namedType)
         {
-            // 直接IQueryable<T>かチェック
+            // Check if it's directly IQueryable<T>
             if (SymbolEqualityComparer.Default.Equals(namedType.ConstructedFrom, iqueryableSymbol))
                 return true;
 
-            // インターフェースを走査
+            // Scan interfaces
             return namedType.AllInterfaces.Any(i =>
                 SymbolEqualityComparer.Default.Equals(i.ConstructedFrom, iqueryableSymbol));
         }
@@ -110,11 +110,11 @@ public static class RoslynTypeHelper
     }
 
     /// <summary>
-    /// 型がIEnumerable&lt;T&gt;を実装しているかを判定
+    /// Determines whether a type implements IEnumerable&lt;T&gt;.
     /// </summary>
-    /// <param name="typeSymbol">判定する型シンボル</param>
-    /// <param name="compilation">コンパイレーション</param>
-    /// <returns>IEnumerable&lt;T&gt;を実装している場合true</returns>
+    /// <param name="typeSymbol">The type symbol to check</param>
+    /// <param name="compilation">The compilation</param>
+    /// <returns>True if the type implements IEnumerable&lt;T&gt;</returns>
     public static bool ImplementsIEnumerable(ITypeSymbol typeSymbol, Compilation compilation)
     {
         if (typeSymbol == null || compilation == null)
@@ -137,11 +137,11 @@ public static class RoslynTypeHelper
     }
 
     /// <summary>
-    /// ジェネリック型の型引数を安全に取得
+    /// Safely gets a type argument from a generic type.
     /// </summary>
-    /// <param name="typeSymbol">型シンボル</param>
-    /// <param name="index">型引数のインデックス（デフォルト: 0）</param>
-    /// <returns>型引数、存在しない場合はnull</returns>
+    /// <param name="typeSymbol">The type symbol</param>
+    /// <param name="index">The index of the type argument (default: 0)</param>
+    /// <returns>The type argument, or null if it doesn't exist</returns>
     public static ITypeSymbol? GetGenericTypeArgument(ITypeSymbol typeSymbol, int index = 0)
     {
         if (typeSymbol is INamedTypeSymbol namedType
@@ -155,30 +155,30 @@ public static class RoslynTypeHelper
     }
 
     /// <summary>
-    /// 匿名型かどうかを判定
+    /// Determines whether a type is an anonymous type.
     /// </summary>
-    /// <param name="typeSymbol">型シンボル</param>
-    /// <returns>匿名型の場合true</returns>
+    /// <param name="typeSymbol">The type symbol</param>
+    /// <returns>True if the type is an anonymous type</returns>
     public static bool IsAnonymousType(ITypeSymbol? typeSymbol)
     {
         return typeSymbol?.IsAnonymousType ?? false;
     }
 
     /// <summary>
-    /// グローバルネームスペースかどうかを判定
+    /// Determines whether a namespace is the global namespace.
     /// </summary>
-    /// <param name="namespaceSymbol">ネームスペースシンボル</param>
-    /// <returns>グローバルネームスペースの場合true</returns>
+    /// <param name="namespaceSymbol">The namespace symbol</param>
+    /// <returns>True if the namespace is the global namespace</returns>
     public static bool IsGlobalNamespace(INamespaceSymbol? namespaceSymbol)
     {
         return namespaceSymbol?.IsGlobalNamespace ?? false;
     }
 
     /// <summary>
-    /// 式がSelectメソッド呼び出しを含むかを判定
+    /// Determines whether an expression contains a Select method invocation.
     /// </summary>
-    /// <param name="expression">判定する式</param>
-    /// <returns>Selectメソッド呼び出しを含む場合true</returns>
+    /// <param name="expression">The expression to check</param>
+    /// <returns>True if the expression contains a Select method invocation</returns>
     public static bool ContainsSelectInvocation(ExpressionSyntax expression)
     {
         if (expression == null)
@@ -191,10 +191,10 @@ public static class RoslynTypeHelper
     }
 
     /// <summary>
-    /// 式がSelectManyメソッド呼び出しを含むかを判定
+    /// Determines whether an expression contains a SelectMany method invocation.
     /// </summary>
-    /// <param name="expression">判定する式</param>
-    /// <returns>SelectManyメソッド呼び出しを含む場合true</returns>
+    /// <param name="expression">The expression to check</param>
+    /// <returns>True if the expression contains a SelectMany method invocation</returns>
     public static bool ContainsSelectManyInvocation(ExpressionSyntax expression)
     {
         if (expression == null)
@@ -207,39 +207,39 @@ public static class RoslynTypeHelper
     }
 
     /// <summary>
-    /// 型がジェネリック型かどうかを判定（文字列ベース - レガシー用）
-    /// 可能な限り INamedTypeSymbol.IsGenericType を使用してください
+    /// Determines whether a type is generic based on the type name string (legacy - for backwards compatibility).
+    /// Use INamedTypeSymbol.IsGenericType when possible.
     /// </summary>
-    /// <param name="typeName">型名文字列</param>
-    /// <returns>型名に"&lt;"が含まれる場合true</returns>
+    /// <param name="typeName">The type name string</param>
+    /// <returns>True if the type name contains "&lt;"</returns>
     public static bool IsGenericTypeByString(string typeName)
     {
         return !string.IsNullOrEmpty(typeName) && typeName.Contains("<");
     }
 
     /// <summary>
-    /// 型名が匿名型を示すかを判定（文字列ベース - レガシー用）
-    /// 可能な限り IsAnonymousType(ITypeSymbol) を使用してください
+    /// Determines whether a type name indicates an anonymous type (string-based - legacy).
+    /// Use IsAnonymousType(ITypeSymbol) when possible.
     /// </summary>
-    /// <param name="typeName">型名文字列</param>
-    /// <returns>型名が匿名型を示す場合true</returns>
+    /// <param name="typeName">The type name string</param>
+    /// <returns>True if the type name indicates an anonymous type</returns>
     public static bool IsAnonymousTypeByString(string typeName)
     {
         if (string.IsNullOrEmpty(typeName))
             return false;
 
-        // "global::<anonymous" で始まるか、または "<>" を含む
+        // Starts with "global::<anonymous" or contains "<>" and "AnonymousType"
         return typeName.StartsWith("global::<anonymous") ||
                (typeName.Contains("<") && typeName.Contains(">") && typeName.Contains("AnonymousType"));
     }
 
     /// <summary>
-    /// 式がIQueryable&lt;T&gt;を返すかを判定
+    /// Determines whether an expression returns IQueryable&lt;T&gt;.
     /// </summary>
-    /// <param name="expression">判定する式</param>
-    /// <param name="semanticModel">セマンティックモデル</param>
-    /// <param name="cancellationToken">キャンセレーショントークン</param>
-    /// <returns>IQueryable&lt;T&gt;を返す場合true</returns>
+    /// <param name="expression">The expression to check</param>
+    /// <param name="semanticModel">The semantic model</param>
+    /// <param name="cancellationToken">The cancellation token</param>
+    /// <returns>True if the expression returns IQueryable&lt;T&gt;</returns>
     public static bool IsIQueryableExpression(
         ExpressionSyntax expression,
         SemanticModel semanticModel,
@@ -260,12 +260,12 @@ public static class RoslynTypeHelper
     }
 
     /// <summary>
-    /// IQueryable&lt;T&gt;からソース型Tを取得
+    /// Gets the source type T from IQueryable&lt;T&gt;.
     /// </summary>
-    /// <param name="expression">IQueryable&lt;T&gt;式</param>
-    /// <param name="semanticModel">セマンティックモデル</param>
-    /// <param name="cancellationToken">キャンセレーショントークン</param>
-    /// <returns>ソース型T、取得できない場合はnull</returns>
+    /// <param name="expression">The IQueryable&lt;T&gt; expression</param>
+    /// <param name="semanticModel">The semantic model</param>
+    /// <param name="cancellationToken">The cancellation token</param>
+    /// <returns>The source type T, or null if it cannot be obtained</returns>
     public static ITypeSymbol? GetSourceTypeFromQueryable(
         ExpressionSyntax expression,
         SemanticModel semanticModel,
@@ -313,10 +313,10 @@ public static class RoslynTypeHelper
     }
 
     /// <summary>
-    /// SyntaxNodeから名前空間名を取得
+    /// Gets the namespace name from a SyntaxNode.
     /// </summary>
-    /// <param name="node">SyntaxNode</param>
-    /// <returns>名前空間名、グローバル名前空間の場合は空文字列</returns>
+    /// <param name="node">The SyntaxNode</param>
+    /// <returns>The namespace name, or empty string for global namespace</returns>
     public static string GetNamespaceFromSyntaxNode(SyntaxNode node)
     {
         if (node == null)
