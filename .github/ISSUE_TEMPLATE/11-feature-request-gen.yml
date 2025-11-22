@@ -13,7 +13,6 @@ body:
     attributes:
       label: Feature Description
       description: Please provide a detailed description of the feature you are requesting.
-      render: markdown
     validations:
       required: false
   - type: textarea
@@ -38,6 +37,5 @@ body:
     attributes:
       label: Additional Information
       description: Please provide any additional information that might be relevant to the issue.
-      render: markdown
     validations:
       required: false

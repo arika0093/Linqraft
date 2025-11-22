@@ -13,7 +13,6 @@ body:
     attributes:
       label: Feature Description
       description: Please provide a detailed description of the feature you are requesting.
-      render: markdown
     validations:
       required: false
   - type: textarea
@@ -31,7 +30,6 @@ body:
       label: Analyzer Message
       description: Please provide the analyzer message you expect to see.
       placeholder: e.g., "Consider using ... for better performance."
-      render: markdown
     validations:
       required: true
   - type: dropdown
@@ -59,7 +57,6 @@ body:
     attributes:
       label: Code Fix Description
       description: Please provide a detailed description of the code fix you are requesting.
-      render: markdown
     validations:
       required: false
   - type: textarea
@@ -67,6 +64,5 @@ body:
     attributes:
       label: Additional Information
       description: Please provide any additional information that might be relevant to the issue.
-      render: markdown
     validations:
       required: false
