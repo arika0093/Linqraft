@@ -184,8 +184,8 @@ public class AnonymousTypeToDtoCodeFixProvider : CodeFixProvider
 
         var documentWithNewRoot = document.WithSyntaxRoot(newRoot);
 
-        // Format and normalize line endings
-        var formattedDocument = await CodeFixFormattingHelper.FormatAndNormalizeLineEndingsAsync(
+        // Normalize line endings only (don't reformat existing code)
+        var formattedDocument = await CodeFixFormattingHelper.NormalizeLineEndingsOnlyAsync(
             documentWithNewRoot,
             cancellationToken
         ).ConfigureAwait(false);

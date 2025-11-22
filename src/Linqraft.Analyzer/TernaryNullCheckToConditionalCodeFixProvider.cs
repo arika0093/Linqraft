@@ -69,6 +69,11 @@ public class TernaryNullCheckToConditionalCodeFixProvider : CodeFixProvider
         if (root == null)
             return document;
 
+        // Get the containing statement to extract proper indentation
+        var containingStatement = conditional.Ancestors().FirstOrDefault(a =>
+            a is StatementSyntax
+        );
+
         // Extract null checks from the condition
         var nullChecks = ExtractNullChecks(conditional.Condition);
         if (nullChecks.Count == 0)
@@ -108,24 +113,22 @@ public class TernaryNullCheckToConditionalCodeFixProvider : CodeFixProvider
         }
 
         // Convert the object creation to use null-conditional operators
+        // First convert without any trivia preservation
+        var objectWithoutTrivia = objectCreationExpr.WithoutTrivia();
         var converted = ConvertObjectCreationToNullConditional(
-            objectCreationExpr,
+            objectWithoutTrivia,
             effectiveNullChecks
         );
         if (converted == null)
             return document;
 
-        // Preserve trivia from the original object creation expression
-        // This maintains the formatting and indentation of the object initializer
-        converted = PreserveTriviaForObjectCreation(converted, originalObjectCreationWithTrivia);
-
-        // Preserve the leading trivia from the entire conditional and trailing trivia for the semicolon
+        // Preserve overall trivia from conditional, formatter will handle internal structure
         converted = TriviaHelper.PreserveTrivia(conditional, converted);
 
         var newRoot = root.ReplaceNode(conditional, converted);
         var documentWithNewRoot = document.WithSyntaxRoot(newRoot);
 
-        // Format and normalize line endings
+        // Format and normalize line endings to ensure proper indentation
         return await CodeFixFormattingHelper.FormatAndNormalizeLineEndingsAsync(
             documentWithNewRoot,
             cancellationToken
@@ -143,12 +146,20 @@ public class TernaryNullCheckToConditionalCodeFixProvider : CodeFixProvider
 
     private static ExpressionSyntax PreserveTriviaForObjectCreation(
         ExpressionSyntax newExpression,
-        ExpressionSyntax originalExpression
+        ExpressionSyntax originalExpression,
+        SyntaxNode? containingStatement
     )
     {
         // For object creation expressions, we need to preserve the trivia structure
         // to maintain proper indentation and formatting
         // Note: We do NOT preserve trailing trivia here, as that will come from the conditional
+
+        // Get the statement-level indentation from the containing statement
+        var statementIndentation = containingStatement
+            ?.GetLeadingTrivia()
+            .Where(t => t.IsKind(SyntaxKind.WhitespaceTrivia))
+            .LastOrDefault()
+            ?? default;
 
         if (
             newExpression is ObjectCreationExpressionSyntax newObjCreation
@@ -165,9 +176,8 @@ public class TernaryNullCheckToConditionalCodeFixProvider : CodeFixProvider
                         )
                     )
                     .WithCloseBraceToken(
-                        newObjCreation.Initializer.CloseBraceToken.WithTriviaFrom(
-                            origObjCreation.Initializer.CloseBraceToken
-                        )
+                        // Clear all trivia - let the formatter handle it
+                        newObjCreation.Initializer.CloseBraceToken.WithoutTrivia()
                     );
 
                 newObjCreation = newObjCreation.WithInitializer(newInitializer);
@@ -183,12 +193,16 @@ public class TernaryNullCheckToConditionalCodeFixProvider : CodeFixProvider
         )
         {
             // Preserve brace trivia for anonymous objects
+            // Use statement-level indentation instead of the original (which is inside ternary branch)
             return newAnonCreation
                 .WithNewKeyword(
                     newAnonCreation.NewKeyword.WithTriviaFrom(origAnonCreation.NewKeyword)
                 )
                 .WithOpenBraceToken(origAnonCreation.OpenBraceToken)
-                .WithCloseBraceToken(origAnonCreation.CloseBraceToken)
+                .WithCloseBraceToken(
+                    // Clear all trivia - let the formatter handle it
+                    newAnonCreation.CloseBraceToken.WithoutTrivia()
+                )
                 .WithLeadingTrivia(originalExpression.GetLeadingTrivia());
         }
 
@@ -199,17 +213,25 @@ public class TernaryNullCheckToConditionalCodeFixProvider : CodeFixProvider
         )
         {
             // Handle cast expressions wrapping anonymous objects
+            // Use statement-level indentation instead of the original (which is inside ternary branch)
             return anonCreation
                 .WithNewKeyword(anonCreation.NewKeyword.WithTriviaFrom(origAnon.NewKeyword))
                 .WithOpenBraceToken(origAnon.OpenBraceToken)
-                .WithCloseBraceToken(origAnon.CloseBraceToken)
+                .WithCloseBraceToken(
+                    // Clear all trivia - let the formatter handle it
+                    anonCreation.CloseBraceToken.WithoutTrivia()
+                )
                 .WithLeadingTrivia(castToAnon.GetLeadingTrivia());
         }
 
         // For cast expressions, unwrap and preserve trivia
         if (originalExpression is CastExpressionSyntax cast)
         {
-            return PreserveTriviaForObjectCreation(newExpression, cast.Expression);
+            return PreserveTriviaForObjectCreation(
+                newExpression,
+                cast.Expression,
+                containingStatement
+            );
         }
 
         // Fallback: just preserve leading trivia

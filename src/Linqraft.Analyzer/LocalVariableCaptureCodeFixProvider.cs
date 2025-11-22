@@ -287,7 +287,7 @@ public class LocalVariableCaptureCodeFixProvider : CodeFixProvider
             // No capture declarations, just replace the invocation
             var newRoot = root.ReplaceNode(invocation, newInvocation);
             var documentWithNewRoot = document.WithSyntaxRoot(newRoot);
-            return await CodeFixFormattingHelper.FormatAndNormalizeLineEndingsAsync(
+            return await CodeFixFormattingHelper.NormalizeLineEndingsOnlyAsync(
                 documentWithNewRoot,
                 cancellationToken
             ).ConfigureAwait(false);
