@@ -11,7 +11,10 @@
 | [LQRS004](./LQRS004.md) | TernaryNullCheckToConditionalAnalyzer | Suggest simplifying ternary null/object patterns |
 | [LQRE001](./LQRE001.md) | LocalVariableCaptureAnalyzer | Reports missing `capture:` entries for `SelectExpr` selectors |
 
+Basically, all analyzers come with code fixes that can be automatically applied to implement the suggested changes.
+This allows you to fix the above recommendations with a single click.
+
 ## Prefixes
-- `LQRF` - Linqraft Refactoring suggestions (utility improvements)
+- `LQRF` - Linqraft Refactoring suggestions (utility improvements, without SelectExpr)
 - `LQRS` - Linqraft SelectExpr suggestions
 - `LQRE` - Linqraft Errors
