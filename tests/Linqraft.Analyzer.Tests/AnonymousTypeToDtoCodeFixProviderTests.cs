@@ -89,11 +89,7 @@ namespace TestNamespace
     {
         void Method()
         {
-            var source = new Source
-            {
-                Id = 1,
-                Name = ""Test""
-            };
+            var source = new Source { Id = 1, Name = ""Test"" };
             var data = new DataDto
             {
                 Id = source.Id,

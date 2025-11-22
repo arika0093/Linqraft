@@ -189,8 +189,9 @@ class Test
     void Method()
     {
         var s = new Sample();
-        var result = new {
-                Id = s.Nest?.Id
+        var result = new
+        {
+            Id = s.Nest?.Id
         };
     }
 }";
@@ -323,8 +324,9 @@ class Test
     void Method()
     {
         var p = new Parent();
-        var result = new ChildDto {
-                Name = p.Child?.Name
+        var result = new ChildDto
+        {
+            Name = p.Child?.Name
         };
     }
 }";
