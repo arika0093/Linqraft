@@ -35,7 +35,6 @@ body:
       label: Expected Output
       description: Please provide the output you expected to see.
       placeholder: Generated namespace maybe `MyApp.DTOs`.
-      render: markdown
     validations:
       required: true
   - type: textarea
@@ -43,6 +42,5 @@ body:
     attributes:
       label: Additional Information
       description: Please provide any additional information that might be relevant to the issue.
-      render: markdown
     validations:
       required: false

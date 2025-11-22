@@ -23,7 +23,6 @@ body:
       label: Error Message
       description: Please provide the error message or exception details you encountered.
       placeholder: "e.g., System.NullReferenceException: Object reference not set to an instance of an object."
-      render: markdown
     validations:
       required: true
   - type: textarea
@@ -31,6 +30,5 @@ body:
     attributes:
       label: Additional Information
       description: Please provide any additional information that might be relevant to the issue.
-      render: markdown
     validations:
       required: false
