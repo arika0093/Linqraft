@@ -169,10 +169,13 @@ public class AnonymousTypeToDtoCodeFixProvider : CodeFixProvider
             }
         }
 
-        // Normalize whitespace at the end
-        newRoot = TriviaHelper.NormalizeWhitespace(newRoot);
+        var documentWithNewRoot = document.WithSyntaxRoot(newRoot);
 
-        return document.WithSyntaxRoot(newRoot);
+        // Format and normalize line endings
+        return await CodeFixFormattingHelper.FormatAndNormalizeLineEndingsAsync(
+            documentWithNewRoot,
+            cancellationToken
+        ).ConfigureAwait(false);
     }
 
     private async Task<Solution> ConvertToDtoNewFileAsync(

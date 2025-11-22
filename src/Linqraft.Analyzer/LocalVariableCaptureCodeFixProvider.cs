@@ -102,10 +102,6 @@ public class LocalVariableCaptureCodeFixProvider : CodeFixProvider
         // Get already captured variables
         var capturedVariables = GetCapturedVariables(invocation);
 
-        // Use default line ending for consistency with test framework
-        var lineEnding = Linqraft.Core.Formatting.CodeFormatter.DefaultNewLine;
-        var eolTrivia = SyntaxFactory.EndOfLine(lineEnding);
-
         // Generate unique captured variable names and create variable declarations for member accesses
         var captureDeclarations = new List<LocalDeclarationStatementSyntax>();
         var captureMapping = new Dictionary<ExpressionSyntax, string>();
@@ -131,20 +127,18 @@ public class LocalVariableCaptureCodeFixProvider : CodeFixProvider
             captureMapping[expr] = capturedVarName;
 
             // Create local variable declaration: var captured_X = expr;
-            var declaration = SyntaxFactory
-                .LocalDeclarationStatement(
-                    SyntaxFactory.VariableDeclaration(
-                        SyntaxFactory.IdentifierName("var"),
-                        SyntaxFactory.SingletonSeparatedList(
-                            SyntaxFactory.VariableDeclarator(
-                                SyntaxFactory.Identifier(capturedVarName),
-                                null,
-                                SyntaxFactory.EqualsValueClause(expr)
-                            )
+            var declaration = SyntaxFactory.LocalDeclarationStatement(
+                SyntaxFactory.VariableDeclaration(
+                    SyntaxFactory.IdentifierName("var"),
+                    SyntaxFactory.SingletonSeparatedList(
+                        SyntaxFactory.VariableDeclarator(
+                            SyntaxFactory.Identifier(capturedVarName),
+                            null,
+                            SyntaxFactory.EqualsValueClause(expr)
                         )
                     )
                 )
-                .NormalizeWhitespace(eol: lineEnding);
+            );
 
             captureDeclarations.Add(declaration);
         }
@@ -247,13 +241,21 @@ public class LocalVariableCaptureCodeFixProvider : CodeFixProvider
                 }
             }
 
-            return document.WithSyntaxRoot(newRoot);
+            var documentWithNewRoot = document.WithSyntaxRoot(newRoot);
+            return await CodeFixFormattingHelper.FormatAndNormalizeLineEndingsAsync(
+                documentWithNewRoot,
+                cancellationToken
+            ).ConfigureAwait(false);
         }
         else
         {
             // No capture declarations, just replace the invocation
             var newRoot = root.ReplaceNode(invocation, newInvocation);
-            return document.WithSyntaxRoot(newRoot);
+            var documentWithNewRoot = document.WithSyntaxRoot(newRoot);
+            return await CodeFixFormattingHelper.FormatAndNormalizeLineEndingsAsync(
+                documentWithNewRoot,
+                cancellationToken
+            ).ConfigureAwait(false);
         }
     }
 

@@ -94,8 +94,13 @@ public class SelectToSelectExprAnonymousCodeFixProvider : CodeFixProvider
         );
 
         var newRoot = root.ReplaceNode(invocation, newInvocation);
+        var documentWithNewRoot = document.WithSyntaxRoot(newRoot);
 
-        return document.WithSyntaxRoot(newRoot);
+        // Format and normalize line endings
+        return await CodeFixFormattingHelper.FormatAndNormalizeLineEndingsAsync(
+            documentWithNewRoot,
+            cancellationToken
+        ).ConfigureAwait(false);
     }
 
     private static async Task<Document> ConvertToSelectExprExplicitDtoAsync(
@@ -146,7 +151,13 @@ public class SelectToSelectExprAnonymousCodeFixProvider : CodeFixProvider
         // Add using directive for source type if needed
         newRoot = AddUsingDirectiveForType(newRoot, sourceType);
 
-        return document.WithSyntaxRoot(newRoot);
+        var documentWithNewRoot = document.WithSyntaxRoot(newRoot);
+
+        // Format and normalize line endings
+        return await CodeFixFormattingHelper.FormatAndNormalizeLineEndingsAsync(
+            documentWithNewRoot,
+            cancellationToken
+        ).ConfigureAwait(false);
     }
 
     private static ExpressionSyntax? ReplaceMethodName(

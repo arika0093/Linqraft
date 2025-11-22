@@ -11,7 +11,6 @@ public static class TriviaHelper
 {
     /// <summary>
     /// Preserves both leading and trailing trivia from the original node to the updated node
-    /// Normalizes line endings to LF for consistency
     /// </summary>
     /// <typeparam name="T">The type of syntax node</typeparam>
     /// <param name="original">The original node with trivia to preserve</param>
@@ -20,43 +19,8 @@ public static class TriviaHelper
     public static T PreserveTrivia<T>(T original, T updated) where T : SyntaxNode
     {
         return updated
-            .WithLeadingTrivia(NormalizeLineEndingsInTrivia(original.GetLeadingTrivia()))
-            .WithTrailingTrivia(NormalizeLineEndingsInTrivia(original.GetTrailingTrivia()));
-    }
-
-    /// <summary>
-    /// Normalizes line endings in a trivia list to use LF instead of CRLF
-    /// </summary>
-    /// <param name="triviaList">The trivia list to normalize</param>
-    /// <returns>A normalized trivia list with LF line endings</returns>
-    public static SyntaxTriviaList NormalizeLineEndingsInTrivia(SyntaxTriviaList triviaList)
-    {
-        var normalized = new System.Collections.Generic.List<SyntaxTrivia>();
-        foreach (var trivia in triviaList)
-        {
-            if (trivia.IsKind(Microsoft.CodeAnalysis.CSharp.SyntaxKind.EndOfLineTrivia))
-            {
-                // Replace all EOL trivia with LF
-                normalized.Add(SyntaxFactory.EndOfLine(CodeFormatter.DefaultNewLine));
-            }
-            else
-            {
-                normalized.Add(trivia);
-            }
-        }
-        return SyntaxFactory.TriviaList(normalized);
-    }
-
-    /// <summary>
-    /// Normalizes line endings in a syntax token to use LF instead of CRLF
-    /// </summary>
-    /// <param name="token">The token to normalize</param>
-    /// <returns>A token with normalized line endings in its trivia</returns>
-    public static SyntaxToken NormalizeLineEndingsInToken(SyntaxToken token)
-    {
-        return token
-            .WithLeadingTrivia(NormalizeLineEndingsInTrivia(token.LeadingTrivia))
-            .WithTrailingTrivia(NormalizeLineEndingsInTrivia(token.TrailingTrivia));
+            .WithLeadingTrivia(original.GetLeadingTrivia())
+            .WithTrailingTrivia(original.GetTrailingTrivia());
     }
 
     /// <summary>
