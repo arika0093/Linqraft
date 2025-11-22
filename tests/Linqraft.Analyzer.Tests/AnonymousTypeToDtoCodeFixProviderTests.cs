@@ -23,13 +23,6 @@ namespace TestNamespace
     }
 }";
 
-        // TODO: Future improvement - preserve original formatting with proper indentation
-        // Original expected format:
-        //     var result = new ResultDto
-        //     {
-        //         Id = 1,
-        //         Name = "Test"
-        //     };
         var fixedCode =
             @"namespace TestNamespace
 {
@@ -37,15 +30,19 @@ namespace TestNamespace
     {
         void Method()
         {
-            var result = new ResultDto { Id = 1, Name = ""Test"" };
+            var result = new ResultDto
+{
+    Id = 1,
+    Name = ""Test""
+};
         }
     }
 
-    public partial class ResultDto
-    {
-        public required int Id { get; set; }
-        public required string Name { get; set; }
-    }
+public partial class ResultDto
+{
+    public required int Id { get; set; }
+    public required string Name { get; set; }
+}
 }";
 
         var expected = new DiagnosticResult(
@@ -79,13 +76,6 @@ namespace TestNamespace
     }
 }";
 
-        // TODO: Future improvement - preserve original formatting with proper indentation
-        // Original expected format:
-        //     var data = new DataDto
-        //     {
-        //         Id = source.Id,
-        //         Name = source.Name
-        //     };
         var fixedCode =
             @"namespace TestNamespace
 {
@@ -100,15 +90,19 @@ namespace TestNamespace
         void Method()
         {
             var source = new Source { Id = 1, Name = ""Test"" };
-            var data = new DataDto { Id = source.Id, Name = source.Name };
+            var data = new DataDto
+{
+    Id = source.Id,
+    Name = source.Name 
+};
         }
     }
 
-    public partial class DataDto
-    {
-        public required int Id { get; set; }
-        public required string Name { get; set; }
-    }
+public partial class DataDto
+{
+    public required int Id { get; set; }
+    public required string Name { get; set; }
+}
 }";
 
         var expected = new DiagnosticResult(
@@ -135,23 +129,27 @@ namespace TestNamespace
     }
 }";
 
-        // TODO: Future improvement - preserve original formatting with proper indentation
         var fixedCode =
             @"namespace TestNamespace
+
 {
     class Test
     {
         object GetUser()
         {
-            return new UserDto { Id = 1, Name = ""Test"" };
+            return new UserDto
+{
+    Id = 1,
+    Name = ""Test""
+};
         }
     }
 
-    public partial class UserDto
-    {
-        public required int Id { get; set; }
-        public required string Name { get; set; }
-    }
+public partial class UserDto
+{
+    public required int Id { get; set; }
+    public required string Name { get; set; }
+}
 }";
 
         var expected = new DiagnosticResult(
@@ -179,7 +177,6 @@ namespace TestNamespace
     }
 }";
 
-        // TODO: Future improvement - preserve original formatting with proper indentation
         var fixedCode =
             @"namespace TestNamespace
 {
@@ -188,16 +185,21 @@ namespace TestNamespace
         void Method()
         {
             var id = 1;
-            var result = new ResultDto { Id = id, Name = ""Test"", Active = true };
+            var result = new ResultDto
+{
+    Id = id,
+    Name = ""Test"",
+    Active = true
+};
         }
     }
 
-    public partial class ResultDto
-    {
-        public required int Id { get; set; }
-        public required string Name { get; set; }
-        public required bool Active { get; set; }
-    }
+public partial class ResultDto
+{
+    public required int Id { get; set; }
+    public required string Name { get; set; }
+    public required bool Active { get; set; }
+}
 }";
 
         var expected = new DiagnosticResult(
@@ -223,14 +225,17 @@ class Test
     }
 }";
 
-        // TODO: Future improvement - preserve original formatting with proper indentation
         var fixedCode =
             @"namespace TestNamespace;
 class Test
 {
     void Method()
     {
-        var result = new ResultDto { Id = 1, Name = ""Test"" };
+        var result = new ResultDto
+{ 
+    Id = 1,
+    Name = ""Test""
+};
     }
 }
 
@@ -279,7 +284,6 @@ namespace TestNamespace
     }
 }";
 
-        // TODO: Future improvement - preserve original formatting with proper indentation
         var fixedCode =
             @"namespace TestNamespace
 {
@@ -294,21 +298,29 @@ namespace TestNamespace
         void Method()
         {
             var channel = new Channel();
-            var result = new ResultDto { Id = 1, Data = new ChannelDto_B0258595 { Id = channel.Id, Name = channel.Name } };
+            var result = new ResultDto
+{
+    Id = 1,
+    Data = new ChannelDto_B0258595
+    {
+        Id = channel.Id,
+        Name = channel.Name
+    }
+};
         }
     }
 
-    public partial class ChannelDto_B0258595
-    {
-        public required int Id { get; set; }
-        public required string Name { get; set; }
-    }
+public partial class ChannelDto_B0258595
+{
+    public required int Id { get; set; }
+    public required string Name { get; set; }
+}
 
-    public partial class ResultDto
-    {
-        public required int Id { get; set; }
-        public required global::TestNamespace.ChannelDto_B0258595? Data { get; set; }
-    }
+public partial class ResultDto
+{
+    public required int Id { get; set; }
+    public required global::TestNamespace.ChannelDto_B0258595? Data { get; set; }
+}
 }";
 
         var expected0 = new DiagnosticResult(
@@ -337,13 +349,16 @@ class Test
     }
 }";
 
-        // TODO: Future improvement - preserve original formatting with proper indentation
         var fixedCode =
             @"class Test
 {
     void Method()
     {
-        var result = new ResultDto { Id = 1, Name = ""Test"" };
+        var result = new ResultDto
+{
+    Id = 1,
+    Name = ""Test""
+};
     }
 }
 
@@ -389,7 +404,6 @@ class Test
     }
 }";
 
-        // TODO: Future improvement - preserve original formatting with proper indentation
         var fixedCode =
             @"class Item
 {
@@ -402,7 +416,15 @@ class Test
     void Method()
     {
         var item = new Item();
-        var result = new ResultDto { Id = 1, ItemData = new ItemDto_B1D867F4 { Name = item.Name, Value = item.Value } };
+        var result = new ResultDto
+{
+    Id = 1,
+    ItemData = new ItemDto_B1D867F4
+    {
+        Name = item.Name,
+        Value = item.Value
+    }
+};
     }
 }
 
@@ -411,6 +433,7 @@ public partial class ItemDto_B1D867F4
     public required string Name { get; set; }
     public required int Value { get; set; }
 }
+
 
 public partial class ResultDto
 {
