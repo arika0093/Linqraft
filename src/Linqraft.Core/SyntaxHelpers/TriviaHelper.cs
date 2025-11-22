@@ -95,6 +95,42 @@ public static class TriviaHelper
     }
 
     /// <summary>
+    /// Creates an end-of-line trivia using the line ending detected from the given syntax node
+    /// </summary>
+    /// <param name="node">The syntax node to detect line endings from</param>
+    /// <returns>A syntax trivia representing an end-of-line</returns>
+    public static SyntaxTrivia EndOfLine(SyntaxNode node)
+    {
+        var eol = DetectLineEnding(node);
+        return SyntaxFactory.EndOfLine(eol);
+    }
+
+    /// <summary>
+    /// Detects the line ending used in the given syntax node by examining its trivia
+    /// </summary>
+    /// <param name="node">The syntax node to examine</param>
+    /// <returns>The detected line ending string ("\r\n" or "\n")</returns>
+    public static string DetectLineEnding(SyntaxNode node)
+    {
+        // Search through all trivia in the tree to find the first end-of-line
+        var root = node.SyntaxTree?.GetRoot() ?? node;
+        foreach (var trivia in root.DescendantTrivia())
+        {
+            if (trivia.IsKind(Microsoft.CodeAnalysis.CSharp.SyntaxKind.EndOfLineTrivia))
+            {
+                var text = trivia.ToFullString();
+                if (text == "\r\n")
+                    return "\r\n";
+                if (text == "\n")
+                    return "\n";
+            }
+        }
+
+        // Default to LF if no line ending found
+        return CodeFormatter.DefaultNewLine;
+    }
+
+    /// <summary>
     /// Creates a whitespace trivia with the specified number of spaces
     /// </summary>
     /// <param name="count">The number of spaces</param>

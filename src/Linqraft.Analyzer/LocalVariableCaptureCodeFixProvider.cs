@@ -102,6 +102,10 @@ public class LocalVariableCaptureCodeFixProvider : CodeFixProvider
         // Get already captured variables
         var capturedVariables = GetCapturedVariables(invocation);
 
+        // Detect line ending from the original root to maintain consistency
+        var lineEnding = TriviaHelper.DetectLineEnding(root);
+        var eolTrivia = SyntaxFactory.EndOfLine(lineEnding);
+
         // Generate unique captured variable names and create variable declarations for member accesses
         var captureDeclarations = new List<LocalDeclarationStatementSyntax>();
         var captureMapping = new Dictionary<ExpressionSyntax, string>();
@@ -127,18 +131,20 @@ public class LocalVariableCaptureCodeFixProvider : CodeFixProvider
             captureMapping[expr] = capturedVarName;
 
             // Create local variable declaration: var captured_X = expr;
-            var declaration = SyntaxFactory.LocalDeclarationStatement(
-                SyntaxFactory.VariableDeclaration(
-                    SyntaxFactory.IdentifierName("var"),
-                    SyntaxFactory.SingletonSeparatedList(
-                        SyntaxFactory.VariableDeclarator(
-                            SyntaxFactory.Identifier(capturedVarName),
-                            null,
-                            SyntaxFactory.EqualsValueClause(expr)
+            var declaration = SyntaxFactory
+                .LocalDeclarationStatement(
+                    SyntaxFactory.VariableDeclaration(
+                        SyntaxFactory.IdentifierName("var"),
+                        SyntaxFactory.SingletonSeparatedList(
+                            SyntaxFactory.VariableDeclarator(
+                                SyntaxFactory.Identifier(capturedVarName),
+                                null,
+                                SyntaxFactory.EqualsValueClause(expr)
+                            )
                         )
                     )
                 )
-            );
+                .NormalizeWhitespace(eol: lineEnding);
 
             captureDeclarations.Add(declaration);
         }

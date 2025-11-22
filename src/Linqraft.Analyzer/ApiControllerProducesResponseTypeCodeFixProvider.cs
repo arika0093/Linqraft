@@ -87,7 +87,7 @@ public class ApiControllerProducesResponseTypeCodeFixProvider : CodeFixProvider
         // Create the attribute list with proper formatting
         var attributeList = SyntaxFactory
             .AttributeList(SyntaxFactory.SingletonSeparatedList(attribute))
-            .WithTrailingTrivia(TriviaHelper.EndOfLine());
+            .WithTrailingTrivia(TriviaHelper.EndOfLine(root));
 
         // Get existing attributes or create new array
         var attributeLists = methodDeclaration.AttributeLists.Add(attributeList);
@@ -309,7 +309,7 @@ public class ApiControllerProducesResponseTypeCodeFixProvider : CodeFixProvider
         // Add using directive
         var usingDirective = SyntaxFactory
             .UsingDirective(SyntaxFactory.ParseName(namespaceName))
-            .WithTrailingTrivia(TriviaHelper.EndOfLine());
+            .WithTrailingTrivia(TriviaHelper.EndOfLine(root));
 
         return compilationUnit.AddUsings(usingDirective);
     }

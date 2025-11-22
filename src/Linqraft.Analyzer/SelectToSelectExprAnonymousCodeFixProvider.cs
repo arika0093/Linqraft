@@ -319,12 +319,12 @@ public class SelectToSelectExprAnonymousCodeFixProvider : CodeFixProvider
         // Detect the line ending used in the file by looking at existing using directives
         var endOfLineTrivia = compilationUnit.Usings.Any()
             ? compilationUnit.Usings.Last().GetTrailingTrivia().LastOrDefault()
-            : TriviaHelper.EndOfLine();
+            : TriviaHelper.EndOfLine(root);
 
         // If the detected trivia is not an end of line, use a default
         if (!endOfLineTrivia.IsKind(SyntaxKind.EndOfLineTrivia))
         {
-            endOfLineTrivia = TriviaHelper.EndOfLine();
+            endOfLineTrivia = TriviaHelper.EndOfLine(root);
         }
 
         // Add using directive (namespaceName is guaranteed non-null here due to the check above)
