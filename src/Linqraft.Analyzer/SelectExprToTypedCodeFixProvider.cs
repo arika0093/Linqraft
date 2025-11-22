@@ -6,6 +6,7 @@ using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 using Linqraft.Core;
+using Linqraft.Core.AnalyzerHelpers;
 using Linqraft.Core.Formatting;
 using Linqraft.Core.SyntaxHelpers;
 using Microsoft.CodeAnalysis;
@@ -102,7 +103,7 @@ public class SelectExprToTypedCodeFixProvider : CodeFixProvider
         var newRoot = root.ReplaceNode(invocation, newInvocation);
 
         // Add using directive for source type if needed
-        newRoot = AddUsingDirectiveForType(newRoot, sourceType);
+        newRoot = UsingDirectiveHelper.AddUsingDirectiveForType(newRoot, sourceType);
 
         var documentWithNewRoot = document.WithSyntaxRoot(newRoot);
 
@@ -111,40 +112,6 @@ public class SelectExprToTypedCodeFixProvider : CodeFixProvider
             documentWithNewRoot,
             cancellationToken
         ).ConfigureAwait(false);
-    }
-
-    private static SyntaxNode AddUsingDirectiveForType(SyntaxNode root, ITypeSymbol typeSymbol)
-    {
-        if (root is not CompilationUnitSyntax compilationUnit)
-            return root;
-
-        // Get the namespace of the type
-        var namespaceName = typeSymbol.ContainingNamespace?.ToDisplayString();
-        if (string.IsNullOrEmpty(namespaceName) || namespaceName == "<global namespace>")
-            return root;
-
-        // Check if using directive already exists
-        var hasUsing = compilationUnit.Usings.Any(u => u.Name?.ToString() == namespaceName);
-        if (hasUsing)
-            return root;
-
-        // Detect the line ending used in the file by looking at existing using directives
-        var endOfLineTrivia = compilationUnit.Usings.Any()
-            ? compilationUnit.Usings.Last().GetTrailingTrivia().LastOrDefault()
-            : TriviaHelper.EndOfLine(root);
-
-        // If the detected trivia is not an end of line, use a default
-        if (!endOfLineTrivia.IsKind(SyntaxKind.EndOfLineTrivia))
-        {
-            endOfLineTrivia = TriviaHelper.EndOfLine(root);
-        }
-
-        // Add using directive (namespaceName is guaranteed non-null here due to the check above)
-        var usingDirective = SyntaxFactory
-            .UsingDirective(SyntaxFactory.ParseName(namespaceName!))
-            .WithTrailingTrivia(endOfLineTrivia);
-
-        return compilationUnit.AddUsings(usingDirective);
     }
 
     private static ExpressionSyntax? CreateTypedSelectExpr(

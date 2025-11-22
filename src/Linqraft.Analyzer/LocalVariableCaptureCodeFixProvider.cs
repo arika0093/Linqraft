@@ -149,8 +149,8 @@ public class LocalVariableCaptureCodeFixProvider : CodeFixProvider
                                 )
                             )
                         )
-                        .WithSemicolonToken(SyntaxFactory.Token(SyntaxKind.SemicolonToken))
                 )
+                .WithSemicolonToken(SyntaxFactory.Token(SyntaxKind.SemicolonToken))
                 .WithTrailingTrivia(SyntaxFactory.LineFeed);
 
             captureDeclarations.Add(declaration);
@@ -176,17 +176,7 @@ public class LocalVariableCaptureCodeFixProvider : CodeFixProvider
         // Create anonymous object with proper spacing
         var captureObject = SyntaxFactory
             .AnonymousObjectCreationExpression(SyntaxFactory.SeparatedList(captureProperties))
-            .WithNewKeyword(
-                SyntaxFactory.Token(SyntaxKind.NewKeyword).WithTrailingTrivia(SyntaxFactory.Space)
-            )
-            .WithOpenBraceToken(
-                SyntaxFactory.Token(SyntaxKind.OpenBraceToken).WithTrailingTrivia(SyntaxFactory.Space)
-            )
-            .WithCloseBraceToken(
-                SyntaxFactory
-                    .Token(SyntaxKind.CloseBraceToken)
-                    .WithLeadingTrivia(SyntaxFactory.Space)
-            );
+            .NormalizeWhitespace();
 
         // Create named argument for capture with proper spacing
         var captureArgument = SyntaxFactory

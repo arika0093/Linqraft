@@ -47,6 +47,7 @@ public static class UsingDirectiveHelper
         // Add using directive (namespaceName is guaranteed non-null here due to the check above)
         var usingDirective = SyntaxFactory
             .UsingDirective(SyntaxFactory.ParseName(namespaceName!))
+            .NormalizeWhitespace()
             .WithTrailingTrivia(endOfLineTrivia);
 
         return compilationUnit.AddUsings(usingDirective);

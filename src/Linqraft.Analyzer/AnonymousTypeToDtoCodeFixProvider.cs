@@ -13,6 +13,7 @@ using Microsoft.CodeAnalysis.CodeActions;
 using Microsoft.CodeAnalysis.CodeFixes;
 using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
+using Microsoft.CodeAnalysis.Text;
 
 namespace Linqraft.Analyzer;
 
@@ -150,6 +151,11 @@ public class AnonymousTypeToDtoCodeFixProvider : CodeFixProvider
                 var dtoMember = SyntaxFactory.ParseMemberDeclaration(dtoClassCode);
                 if (dtoMember != null)
                 {
+                    // Add leading trivia (empty line before DTO class)
+                    dtoMember = dtoMember.WithLeadingTrivia(
+                        SyntaxFactory.LineFeed
+                    );
+
                     var updatedNamespaceDecl = newRoot
                         .DescendantNodes()
                         .OfType<BaseNamespaceDeclarationSyntax>()
@@ -164,6 +170,13 @@ public class AnonymousTypeToDtoCodeFixProvider : CodeFixProvider
                 var dtoMember = SyntaxFactory.ParseMemberDeclaration(dtoClassCode);
                 if (dtoMember != null && newRoot is CompilationUnitSyntax compilationUnit)
                 {
+                    // Add leading trivia (empty line before DTO class)
+                    // For global namespace, we need two linefeeds (one for empty line, one for line break)
+                    dtoMember = dtoMember.WithLeadingTrivia(
+                        SyntaxFactory.LineFeed,
+                        SyntaxFactory.LineFeed
+                    );
+
                     newRoot = compilationUnit.AddMembers(dtoMember);
                 }
             }
@@ -172,10 +185,44 @@ public class AnonymousTypeToDtoCodeFixProvider : CodeFixProvider
         var documentWithNewRoot = document.WithSyntaxRoot(newRoot);
 
         // Format and normalize line endings
-        return await CodeFixFormattingHelper.FormatAndNormalizeLineEndingsAsync(
+        var formattedDocument = await CodeFixFormattingHelper.FormatAndNormalizeLineEndingsAsync(
             documentWithNewRoot,
             cancellationToken
         ).ConfigureAwait(false);
+
+        // Remove leading and trailing empty lines from the document text
+        var formattedText = await formattedDocument.GetTextAsync(cancellationToken).ConfigureAwait(false);
+        var textContent = formattedText.ToString();
+
+        // Remove leading empty lines
+        var lines = textContent.Split('\n');
+        var firstNonEmptyIndex = 0;
+        while (firstNonEmptyIndex < lines.Length && string.IsNullOrWhiteSpace(lines[firstNonEmptyIndex]))
+        {
+            firstNonEmptyIndex++;
+        }
+
+        // Remove trailing empty lines
+        var lastNonEmptyIndex = lines.Length - 1;
+        while (lastNonEmptyIndex >= 0 && string.IsNullOrWhiteSpace(lines[lastNonEmptyIndex]))
+        {
+            lastNonEmptyIndex--;
+        }
+
+        if (firstNonEmptyIndex > 0 || lastNonEmptyIndex < lines.Length - 1)
+        {
+            var trimmedLines = lines.Skip(firstNonEmptyIndex).Take(lastNonEmptyIndex - firstNonEmptyIndex + 1);
+            var trimmedText = string.Join("\n", trimmedLines);
+
+            var encoding = formattedText.Encoding;
+            formattedDocument = formattedDocument.WithText(
+                encoding != null
+                    ? SourceText.From(trimmedText, encoding)
+                    : SourceText.From(trimmedText)
+            );
+        }
+
+        return formattedDocument;
     }
 
     private async Task<Solution> ConvertToDtoNewFileAsync(
@@ -320,7 +367,8 @@ public class AnonymousTypeToDtoCodeFixProvider : CodeFixProvider
                     SyntaxKind.ObjectInitializerExpression,
                     SyntaxFactory.SeparatedList(initializers)
                 )
-            );
+            )
+            .NormalizeWhitespace();
 
         newObjectCreation = newObjectCreation
             .WithLeadingTrivia(anonymousObject.GetLeadingTrivia())
@@ -412,7 +460,8 @@ public class AnonymousTypeToDtoCodeFixProvider : CodeFixProvider
                                 SyntaxKind.ObjectInitializerExpression,
                                 SyntaxFactory.SeparatedList(nestedInitializers)
                             )
-                        );
+                        )
+                        .NormalizeWhitespace();
 
                     return nestedObjectCreation
                         .WithLeadingTrivia(nestedAnonymous.GetLeadingTrivia())
