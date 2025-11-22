@@ -5,6 +5,7 @@ using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using Linqraft.Core;
+using Linqraft.Core.SyntaxHelpers;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CodeActions;
 using Microsoft.CodeAnalysis.CodeFixes;
@@ -86,7 +87,7 @@ public class ApiControllerProducesResponseTypeCodeFixProvider : CodeFixProvider
         // Create the attribute list with proper formatting
         var attributeList = SyntaxFactory
             .AttributeList(SyntaxFactory.SingletonSeparatedList(attribute))
-            .WithTrailingTrivia(SyntaxFactory.ElasticCarriageReturnLineFeed);
+            .WithTrailingTrivia(TriviaHelper.EndOfLine());
 
         // Get existing attributes or create new array
         var attributeLists = methodDeclaration.AttributeLists.Add(attributeList);
@@ -308,7 +309,7 @@ public class ApiControllerProducesResponseTypeCodeFixProvider : CodeFixProvider
         // Add using directive
         var usingDirective = SyntaxFactory
             .UsingDirective(SyntaxFactory.ParseName(namespaceName))
-            .WithTrailingTrivia(SyntaxFactory.CarriageReturnLineFeed);
+            .WithTrailingTrivia(TriviaHelper.EndOfLine());
 
         return compilationUnit.AddUsings(usingDirective);
     }

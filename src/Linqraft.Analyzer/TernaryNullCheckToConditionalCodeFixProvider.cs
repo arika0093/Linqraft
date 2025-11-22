@@ -4,6 +4,7 @@ using System.Composition;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
+using Linqraft.Core.SyntaxHelpers;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CodeActions;
 using Microsoft.CodeAnalysis.CodeFixes;
@@ -119,9 +120,7 @@ public class TernaryNullCheckToConditionalCodeFixProvider : CodeFixProvider
         converted = PreserveTriviaForObjectCreation(converted, originalObjectCreationWithTrivia);
 
         // Preserve the leading trivia from the entire conditional and trailing trivia for the semicolon
-        converted = converted
-            .WithLeadingTrivia(conditional.GetLeadingTrivia())
-            .WithTrailingTrivia(conditional.GetTrailingTrivia());
+        converted = TriviaHelper.PreserveTrivia(conditional, converted);
 
         var newRoot = root.ReplaceNode(conditional, converted);
         return document.WithSyntaxRoot(newRoot);
@@ -283,9 +282,7 @@ public class TernaryNullCheckToConditionalCodeFixProvider : CodeFixProvider
             }
 
             // Preserve the trivia from the original node
-            return result
-                .WithLeadingTrivia(node.GetLeadingTrivia())
-                .WithTrailingTrivia(node.GetTrailingTrivia());
+            return TriviaHelper.PreserveTrivia(node, result);
         }
 
         private ExpressionSyntax AppendMemberBinding(

@@ -7,6 +7,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using Linqraft.Core;
 using Linqraft.Core.Formatting;
+using Linqraft.Core.SyntaxHelpers;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CodeActions;
 using Microsoft.CodeAnalysis.CodeFixes;
@@ -318,12 +319,12 @@ public class SelectToSelectExprAnonymousCodeFixProvider : CodeFixProvider
         // Detect the line ending used in the file by looking at existing using directives
         var endOfLineTrivia = compilationUnit.Usings.Any()
             ? compilationUnit.Usings.Last().GetTrailingTrivia().LastOrDefault()
-            : SyntaxFactory.EndOfLine("\n");
+            : TriviaHelper.EndOfLine();
 
         // If the detected trivia is not an end of line, use a default
         if (!endOfLineTrivia.IsKind(SyntaxKind.EndOfLineTrivia))
         {
-            endOfLineTrivia = SyntaxFactory.EndOfLine("\n");
+            endOfLineTrivia = TriviaHelper.EndOfLine();
         }
 
         // Add using directive (namespaceName is guaranteed non-null here due to the check above)

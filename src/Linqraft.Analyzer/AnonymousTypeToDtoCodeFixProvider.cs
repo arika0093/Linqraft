@@ -170,7 +170,7 @@ public class AnonymousTypeToDtoCodeFixProvider : CodeFixProvider
         }
 
         // Normalize whitespace at the end
-        newRoot = newRoot.NormalizeWhitespace(eol: CodeFormatter.DefaultNewLine);
+        newRoot = TriviaHelper.NormalizeWhitespace(newRoot);
 
         return document.WithSyntaxRoot(newRoot);
     }
@@ -317,7 +317,9 @@ public class AnonymousTypeToDtoCodeFixProvider : CodeFixProvider
                     SyntaxKind.ObjectInitializerExpression,
                     SyntaxFactory.SeparatedList(initializers)
                 )
-            )
+            );
+
+        newObjectCreation = newObjectCreation
             .WithLeadingTrivia(anonymousObject.GetLeadingTrivia())
             .WithTrailingTrivia(anonymousObject.GetTrailingTrivia());
 
@@ -400,14 +402,16 @@ public class AnonymousTypeToDtoCodeFixProvider : CodeFixProvider
                         nestedInitializers.Add(assignment);
                     }
 
-                    return SyntaxFactory
+                    var nestedObjectCreation = SyntaxFactory
                         .ObjectCreationExpression(SyntaxFactory.IdentifierName(nestedClassName))
                         .WithInitializer(
                             SyntaxFactory.InitializerExpression(
                                 SyntaxKind.ObjectInitializerExpression,
                                 SyntaxFactory.SeparatedList(nestedInitializers)
                             )
-                        )
+                        );
+
+                    return nestedObjectCreation
                         .WithLeadingTrivia(nestedAnonymous.GetLeadingTrivia())
                         .WithTrailingTrivia(nestedAnonymous.GetTrailingTrivia());
                 }
