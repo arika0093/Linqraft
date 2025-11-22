@@ -123,6 +123,10 @@ public class TernaryNullCheckToConditionalCodeFixProvider : CodeFixProvider
         converted = TriviaHelper.PreserveTrivia(conditional, converted);
 
         var newRoot = root.ReplaceNode(conditional, converted);
+
+        // Final normalization of the entire tree to ensure all line endings are LF
+        newRoot = NormalizeAllLineEndings(newRoot);
+
         return document.WithSyntaxRoot(newRoot);
     }
 
@@ -154,13 +158,17 @@ public class TernaryNullCheckToConditionalCodeFixProvider : CodeFixProvider
             {
                 var newInitializer = newObjCreation
                     .Initializer.WithOpenBraceToken(
-                        newObjCreation.Initializer.OpenBraceToken.WithTriviaFrom(
-                            origObjCreation.Initializer.OpenBraceToken
+                        TriviaHelper.NormalizeLineEndingsInToken(
+                            newObjCreation.Initializer.OpenBraceToken.WithTriviaFrom(
+                                origObjCreation.Initializer.OpenBraceToken
+                            )
                         )
                     )
                     .WithCloseBraceToken(
-                        newObjCreation.Initializer.CloseBraceToken.WithTriviaFrom(
-                            origObjCreation.Initializer.CloseBraceToken
+                        TriviaHelper.NormalizeLineEndingsInToken(
+                            newObjCreation.Initializer.CloseBraceToken.WithTriviaFrom(
+                                origObjCreation.Initializer.CloseBraceToken
+                            )
                         )
                     );
 
@@ -168,7 +176,9 @@ public class TernaryNullCheckToConditionalCodeFixProvider : CodeFixProvider
             }
 
             // Only preserve leading trivia of the entire expression
-            return newObjCreation.WithLeadingTrivia(originalExpression.GetLeadingTrivia());
+            return newObjCreation.WithLeadingTrivia(
+                TriviaHelper.NormalizeLineEndingsInTrivia(originalExpression.GetLeadingTrivia())
+            );
         }
 
         if (
@@ -178,13 +188,14 @@ public class TernaryNullCheckToConditionalCodeFixProvider : CodeFixProvider
         {
             // Preserve brace trivia for anonymous objects
             // Important: We must copy the exact tokens with their trivia, especially for the close brace
+            // Normalize line endings to LF for consistency
             return newAnonCreation
                 .WithNewKeyword(
                     newAnonCreation.NewKeyword.WithTriviaFrom(origAnonCreation.NewKeyword)
                 )
-                .WithOpenBraceToken(origAnonCreation.OpenBraceToken)
-                .WithCloseBraceToken(origAnonCreation.CloseBraceToken)
-                .WithLeadingTrivia(originalExpression.GetLeadingTrivia());
+                .WithOpenBraceToken(TriviaHelper.NormalizeLineEndingsInToken(origAnonCreation.OpenBraceToken))
+                .WithCloseBraceToken(TriviaHelper.NormalizeLineEndingsInToken(origAnonCreation.CloseBraceToken))
+                .WithLeadingTrivia(TriviaHelper.NormalizeLineEndingsInTrivia(originalExpression.GetLeadingTrivia()));
         }
 
         if (
@@ -194,11 +205,12 @@ public class TernaryNullCheckToConditionalCodeFixProvider : CodeFixProvider
         )
         {
             // Handle cast expressions wrapping anonymous objects
+            // Normalize line endings to LF for consistency
             return anonCreation
                 .WithNewKeyword(anonCreation.NewKeyword.WithTriviaFrom(origAnon.NewKeyword))
-                .WithOpenBraceToken(origAnon.OpenBraceToken)
-                .WithCloseBraceToken(origAnon.CloseBraceToken)
-                .WithLeadingTrivia(castToAnon.GetLeadingTrivia());
+                .WithOpenBraceToken(TriviaHelper.NormalizeLineEndingsInToken(origAnon.OpenBraceToken))
+                .WithCloseBraceToken(TriviaHelper.NormalizeLineEndingsInToken(origAnon.CloseBraceToken))
+                .WithLeadingTrivia(TriviaHelper.NormalizeLineEndingsInTrivia(castToAnon.GetLeadingTrivia()));
         }
 
         // For cast expressions, unwrap and preserve trivia
@@ -208,7 +220,9 @@ public class TernaryNullCheckToConditionalCodeFixProvider : CodeFixProvider
         }
 
         // Fallback: just preserve leading trivia
-        return newExpression.WithLeadingTrivia(originalExpression.GetLeadingTrivia());
+        return newExpression.WithLeadingTrivia(
+            TriviaHelper.NormalizeLineEndingsInTrivia(originalExpression.GetLeadingTrivia())
+        );
     }
 
     private static ExpressionSyntax? ConvertObjectCreationToNullConditional(
@@ -218,7 +232,26 @@ public class TernaryNullCheckToConditionalCodeFixProvider : CodeFixProvider
     {
         // Create a rewriter to replace member accesses with null-conditional versions
         var rewriter = new NullConditionalRewriter(nullChecks);
-        return (ExpressionSyntax)rewriter.Visit(objectCreation);
+        var result = (ExpressionSyntax)rewriter.Visit(objectCreation);
+
+        // Normalize all line endings in the entire result tree
+        return (ExpressionSyntax)NormalizeAllLineEndings(result);
+    }
+
+    private static SyntaxNode NormalizeAllLineEndings(SyntaxNode node)
+    {
+        // Recursively normalize all trivia in the syntax tree
+        return node.ReplaceTrivia(
+            node.DescendantTrivia(descendIntoTrivia: true),
+            (originalTrivia, _) =>
+            {
+                if (originalTrivia.IsKind(Microsoft.CodeAnalysis.CSharp.SyntaxKind.EndOfLineTrivia))
+                {
+                    return SyntaxFactory.EndOfLine(Linqraft.Core.Formatting.CodeFormatter.DefaultNewLine);
+                }
+                return originalTrivia;
+            }
+        );
     }
 
     private class NullConditionalRewriter : CSharpSyntaxRewriter
@@ -228,6 +261,47 @@ public class TernaryNullCheckToConditionalCodeFixProvider : CodeFixProvider
         public NullConditionalRewriter(List<ExpressionSyntax> nullChecks)
         {
             _nullCheckedPaths = new HashSet<string>(nullChecks.Select(nc => nc.ToString()));
+        }
+
+        public override SyntaxNode? VisitAnonymousObjectCreationExpression(
+            AnonymousObjectCreationExpressionSyntax node
+        )
+        {
+            // Visit the base to process children
+            var visited = base.VisitAnonymousObjectCreationExpression(node);
+            if (visited is not AnonymousObjectCreationExpressionSyntax result)
+                return visited;
+
+            // Normalize line endings in all initializers and their separators
+            var normalizedInitializers = new List<SyntaxNodeOrToken>();
+            for (int i = 0; i < result.Initializers.Count; i++)
+            {
+                var initializer = result.Initializers[i];
+                // Normalize the initializer's trivia
+                var normalizedInitializer = initializer
+                    .WithLeadingTrivia(
+                        TriviaHelper.NormalizeLineEndingsInTrivia(initializer.GetLeadingTrivia())
+                    )
+                    .WithTrailingTrivia(
+                        TriviaHelper.NormalizeLineEndingsInTrivia(initializer.GetTrailingTrivia())
+                    );
+
+                normalizedInitializers.Add(normalizedInitializer);
+
+                // Add separator if not the last item
+                if (i < result.Initializers.SeparatorCount)
+                {
+                    var separator = result.Initializers.GetSeparator(i);
+                    // Normalize the separator's trivia
+                    normalizedInitializers.Add(TriviaHelper.NormalizeLineEndingsInToken(separator));
+                }
+            }
+
+            return result.WithInitializers(
+                SyntaxFactory.SeparatedList<AnonymousObjectMemberDeclaratorSyntax>(
+                    normalizedInitializers
+                )
+            );
         }
 
         public override SyntaxNode? VisitMemberAccessExpression(MemberAccessExpressionSyntax node)

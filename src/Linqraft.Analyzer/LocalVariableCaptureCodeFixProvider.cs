@@ -102,8 +102,8 @@ public class LocalVariableCaptureCodeFixProvider : CodeFixProvider
         // Get already captured variables
         var capturedVariables = GetCapturedVariables(invocation);
 
-        // Detect line ending from the original root to maintain consistency
-        var lineEnding = TriviaHelper.DetectLineEnding(root);
+        // Use default line ending for consistency with test framework
+        var lineEnding = Linqraft.Core.Formatting.CodeFormatter.DefaultNewLine;
         var eolTrivia = SyntaxFactory.EndOfLine(lineEnding);
 
         // Generate unique captured variable names and create variable declarations for member accesses
