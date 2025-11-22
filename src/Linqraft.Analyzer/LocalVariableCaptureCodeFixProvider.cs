@@ -174,9 +174,26 @@ public class LocalVariableCaptureCodeFixProvider : CodeFixProvider
             .ToArray();
 
         // Create anonymous object with proper spacing
+        // Use SeparatedList with comma+space separators
+        var separators = Enumerable.Repeat(
+            SyntaxFactory.Token(SyntaxKind.CommaToken).WithTrailingTrivia(SyntaxFactory.Space),
+            captureProperties.Length - 1
+        );
         var captureObject = SyntaxFactory
-            .AnonymousObjectCreationExpression(SyntaxFactory.SeparatedList(captureProperties))
-            .NormalizeWhitespace();
+            .AnonymousObjectCreationExpression(
+                SyntaxFactory.SeparatedList(captureProperties, separators)
+            )
+            .WithNewKeyword(
+                SyntaxFactory.Token(SyntaxKind.NewKeyword).WithTrailingTrivia(SyntaxFactory.Space)
+            )
+            .WithOpenBraceToken(
+                SyntaxFactory.Token(SyntaxKind.OpenBraceToken).WithTrailingTrivia(SyntaxFactory.Space)
+            )
+            .WithCloseBraceToken(
+                SyntaxFactory
+                    .Token(SyntaxKind.CloseBraceToken)
+                    .WithLeadingTrivia(SyntaxFactory.Space)
+            );
 
         // Create named argument for capture with proper spacing
         var captureArgument = SyntaxFactory
