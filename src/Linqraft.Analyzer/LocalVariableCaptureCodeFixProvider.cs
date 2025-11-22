@@ -127,18 +127,31 @@ public class LocalVariableCaptureCodeFixProvider : CodeFixProvider
             captureMapping[expr] = capturedVarName;
 
             // Create local variable declaration: var captured_X = expr;
-            var declaration = SyntaxFactory.LocalDeclarationStatement(
-                SyntaxFactory.VariableDeclaration(
-                    SyntaxFactory.IdentifierName("var"),
-                    SyntaxFactory.SingletonSeparatedList(
-                        SyntaxFactory.VariableDeclarator(
-                            SyntaxFactory.Identifier(capturedVarName),
-                            null,
-                            SyntaxFactory.EqualsValueClause(expr)
+            var declaration = SyntaxFactory
+                .LocalDeclarationStatement(
+                    SyntaxFactory
+                        .VariableDeclaration(
+                            SyntaxFactory
+                                .IdentifierName("var")
+                                .WithTrailingTrivia(SyntaxFactory.Space),
+                            SyntaxFactory.SingletonSeparatedList(
+                                SyntaxFactory.VariableDeclarator(
+                                    SyntaxFactory.Identifier(capturedVarName),
+                                    null,
+                                    SyntaxFactory
+                                        .EqualsValueClause(
+                                            SyntaxFactory
+                                                .Token(SyntaxKind.EqualsToken)
+                                                .WithLeadingTrivia(SyntaxFactory.Space)
+                                                .WithTrailingTrivia(SyntaxFactory.Space),
+                                            expr
+                                        )
+                                )
+                            )
                         )
-                    )
+                        .WithSemicolonToken(SyntaxFactory.Token(SyntaxKind.SemicolonToken))
                 )
-            );
+                .WithTrailingTrivia(SyntaxFactory.LineFeed);
 
             captureDeclarations.Add(declaration);
         }
@@ -160,16 +173,31 @@ public class LocalVariableCaptureCodeFixProvider : CodeFixProvider
             )
             .ToArray();
 
-        var captureObject = SyntaxFactory.AnonymousObjectCreationExpression(
-            SyntaxFactory.SeparatedList(captureProperties)
-        );
+        // Create anonymous object with proper spacing
+        var captureObject = SyntaxFactory
+            .AnonymousObjectCreationExpression(SyntaxFactory.SeparatedList(captureProperties))
+            .WithNewKeyword(
+                SyntaxFactory.Token(SyntaxKind.NewKeyword).WithTrailingTrivia(SyntaxFactory.Space)
+            )
+            .WithOpenBraceToken(
+                SyntaxFactory.Token(SyntaxKind.OpenBraceToken).WithTrailingTrivia(SyntaxFactory.Space)
+            )
+            .WithCloseBraceToken(
+                SyntaxFactory
+                    .Token(SyntaxKind.CloseBraceToken)
+                    .WithLeadingTrivia(SyntaxFactory.Space)
+            );
 
-        // Create named argument for capture
-        var captureArgument = SyntaxFactory.Argument(
-            SyntaxFactory.NameColon(SyntaxFactory.IdentifierName("capture")),
-            default,
-            captureObject
-        );
+        // Create named argument for capture with proper spacing
+        var captureArgument = SyntaxFactory
+            .Argument(
+                SyntaxFactory
+                    .NameColon(SyntaxFactory.IdentifierName("capture"))
+                    .WithTrailingTrivia(SyntaxFactory.Space),
+                default,
+                captureObject
+            )
+            .WithLeadingTrivia(SyntaxFactory.Space);
 
         // Update or add capture argument
         InvocationExpressionSyntax newInvocation;
@@ -242,7 +270,7 @@ public class LocalVariableCaptureCodeFixProvider : CodeFixProvider
             }
 
             var documentWithNewRoot = document.WithSyntaxRoot(newRoot);
-            return await CodeFixFormattingHelper.FormatAndNormalizeLineEndingsAsync(
+            return await CodeFixFormattingHelper.NormalizeLineEndingsOnlyAsync(
                 documentWithNewRoot,
                 cancellationToken
             ).ConfigureAwait(false);
@@ -252,7 +280,7 @@ public class LocalVariableCaptureCodeFixProvider : CodeFixProvider
             // No capture declarations, just replace the invocation
             var newRoot = root.ReplaceNode(invocation, newInvocation);
             var documentWithNewRoot = document.WithSyntaxRoot(newRoot);
-            return await CodeFixFormattingHelper.FormatAndNormalizeLineEndingsAsync(
+            return await CodeFixFormattingHelper.NormalizeLineEndingsOnlyAsync(
                 documentWithNewRoot,
                 cancellationToken
             ).ConfigureAwait(false);

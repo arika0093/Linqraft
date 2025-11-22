@@ -51,4 +51,30 @@ public static class CodeFixFormattingHelper
                 : SourceText.From(finalNormalizedText)
         );
     }
+
+    /// <summary>
+    /// Normalizes line endings to LF without applying formatter (for providers that handle their own formatting)
+    /// </summary>
+    /// <param name="document">The document to normalize</param>
+    /// <param name="cancellationToken">Cancellation token</param>
+    /// <returns>The document with normalized line endings</returns>
+    public static async Task<Document> NormalizeLineEndingsOnlyAsync(
+        Document document,
+        CancellationToken cancellationToken = default
+    )
+    {
+        // Get the document text and preserve encoding
+        var text = await document.GetTextAsync(cancellationToken).ConfigureAwait(false);
+        var encoding = text.Encoding; // Preserve original encoding (even if null)
+
+        // Normalize line endings to LF
+        var normalizedText = text.ToString().Replace("\r\n", "\n");
+
+        // Return document with normalized line endings
+        return document.WithText(
+            encoding != null
+                ? SourceText.From(normalizedText, encoding)
+                : SourceText.From(normalizedText)
+        );
+    }
 }
