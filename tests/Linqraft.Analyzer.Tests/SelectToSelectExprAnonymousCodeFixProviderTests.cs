@@ -526,9 +526,11 @@ class Test
     void Method()
     {
         var list = new List<Sample>();
-        var result = list.AsQueryable().SelectExpr(s => new {
+        var result = list.AsQueryable().SelectExpr(s => new
+        {
             NestField = s.Nest != null
-                ? new {
+                ? new
+                {
                     Id = s.Nest.Id,
                     Name = s.Nest.Name
                 }
