@@ -634,34 +634,20 @@ public class AnonymousTypeToDtoCodeFixProvider : CodeFixProvider
             semanticModel
         );
 
-        if (replacedValue != initializer.Expression)
-        {
-            // Value was replaced, create new assignment preserving trivia
-            return SyntaxFactory.AssignmentExpression(
-                SyntaxKind.SimpleAssignmentExpression,
-                SyntaxFactory.IdentifierName(propertyName)
-                    .WithLeadingTrivia(initializer.NameEquals.GetLeadingTrivia())
-                    .WithTrailingTrivia(SyntaxFactory.Space),
-                SyntaxFactory.Token(SyntaxKind.EqualsToken)
-                    .WithTrailingTrivia(SyntaxFactory.Space),
-                replacedValue
-            ).WithLeadingTrivia(initializer.GetLeadingTrivia())
-             .WithTrailingTrivia(initializer.GetTrailingTrivia());
-        }
-        else
-        {
-            // No nested replacements, convert NameEquals format to assignment
-            return SyntaxFactory.AssignmentExpression(
-                SyntaxKind.SimpleAssignmentExpression,
-                SyntaxFactory.IdentifierName(propertyName)
-                    .WithLeadingTrivia(initializer.NameEquals.GetLeadingTrivia())
-                    .WithTrailingTrivia(SyntaxFactory.Space),
-                SyntaxFactory.Token(SyntaxKind.EqualsToken)
-                    .WithTrailingTrivia(SyntaxFactory.Space),
-                initializer.Expression
-            ).WithLeadingTrivia(initializer.GetLeadingTrivia())
-             .WithTrailingTrivia(initializer.GetTrailingTrivia());
-        }
+        // Create assignment expression without trivia first
+        var assignment = SyntaxFactory.AssignmentExpression(
+            SyntaxKind.SimpleAssignmentExpression,
+            SyntaxFactory.IdentifierName(propertyName)
+                .WithTrailingTrivia(SyntaxFactory.Space),
+            SyntaxFactory.Token(SyntaxKind.EqualsToken)
+                .WithTrailingTrivia(SyntaxFactory.Space),
+            replacedValue
+        );
+        
+        // Apply trivia from the original initializer
+        return assignment
+            .WithLeadingTrivia(initializer.GetLeadingTrivia())
+            .WithTrailingTrivia(initializer.GetTrailingTrivia());
     }
 
     /// <summary>
@@ -681,15 +667,20 @@ public class AnonymousTypeToDtoCodeFixProvider : CodeFixProvider
             semanticModel
         );
 
-        return SyntaxFactory.AssignmentExpression(
+        // Create assignment expression without trivia first
+        var assignment = SyntaxFactory.AssignmentExpression(
             SyntaxKind.SimpleAssignmentExpression,
             SyntaxFactory.IdentifierName(propertyName)
                 .WithTrailingTrivia(SyntaxFactory.Space),
             SyntaxFactory.Token(SyntaxKind.EqualsToken)
                 .WithTrailingTrivia(SyntaxFactory.Space),
             replacedValue
-        ).WithLeadingTrivia(initializer.GetLeadingTrivia())
-         .WithTrailingTrivia(initializer.GetTrailingTrivia());
+        );
+        
+        // Apply trivia from the original initializer
+        return assignment
+            .WithLeadingTrivia(initializer.GetLeadingTrivia())
+            .WithTrailingTrivia(initializer.GetTrailingTrivia());
     }
 
     private static string GetPropertyNameFromExpression(ExpressionSyntax expression)
