@@ -344,67 +344,9 @@ public class AnonymousTypeToDtoCodeFixProvider : CodeFixProvider
         
         foreach (var initializer in anonymousObject.Initializers)
         {
-            ExpressionSyntax newInitializer;
-            
-            if (initializer.NameEquals != null)
-            {
-                // Already an explicit assignment: Name = value
-                // Just need to replace nested anonymous objects in the value
-                var replacedValue = ReplaceNestedAnonymousObjects(
-                    initializer.Expression,
-                    namespaceName,
-                    semanticModel
-                );
-                
-                if (replacedValue != initializer.Expression)
-                {
-                    // Value was replaced, create new assignment preserving trivia
-                    newInitializer = SyntaxFactory.AssignmentExpression(
-                        SyntaxKind.SimpleAssignmentExpression,
-                        SyntaxFactory.IdentifierName(initializer.NameEquals.Name.Identifier.Text)
-                            .WithLeadingTrivia(initializer.NameEquals.GetLeadingTrivia())
-                            .WithTrailingTrivia(SyntaxFactory.Space),
-                        SyntaxFactory.Token(SyntaxKind.EqualsToken)
-                            .WithTrailingTrivia(SyntaxFactory.Space),
-                        replacedValue
-                    ).WithLeadingTrivia(initializer.GetLeadingTrivia())
-                     .WithTrailingTrivia(initializer.GetTrailingTrivia());
-                }
-                else
-                {
-                    // No nested replacements, convert NameEquals format to assignment
-                    newInitializer = SyntaxFactory.AssignmentExpression(
-                        SyntaxKind.SimpleAssignmentExpression,
-                        SyntaxFactory.IdentifierName(initializer.NameEquals.Name.Identifier.Text)
-                            .WithLeadingTrivia(initializer.NameEquals.GetLeadingTrivia())
-                            .WithTrailingTrivia(SyntaxFactory.Space),
-                        SyntaxFactory.Token(SyntaxKind.EqualsToken)
-                            .WithTrailingTrivia(SyntaxFactory.Space),
-                        initializer.Expression
-                    ).WithLeadingTrivia(initializer.GetLeadingTrivia())
-                     .WithTrailingTrivia(initializer.GetTrailingTrivia());
-                }
-            }
-            else
-            {
-                // Implicit property: x.Name -> Name = x.Name
-                var propertyName = GetPropertyNameFromExpression(initializer.Expression);
-                var replacedValue = ReplaceNestedAnonymousObjects(
-                    initializer.Expression,
-                    namespaceName,
-                    semanticModel
-                );
-                
-                newInitializer = SyntaxFactory.AssignmentExpression(
-                    SyntaxKind.SimpleAssignmentExpression,
-                    SyntaxFactory.IdentifierName(propertyName)
-                        .WithTrailingTrivia(SyntaxFactory.Space),
-                    SyntaxFactory.Token(SyntaxKind.EqualsToken)
-                        .WithTrailingTrivia(SyntaxFactory.Space),
-                    replacedValue
-                ).WithLeadingTrivia(initializer.GetLeadingTrivia())
-                 .WithTrailingTrivia(initializer.GetTrailingTrivia());
-            }
+            var newInitializer = initializer.NameEquals != null
+                ? CreateAssignmentFromNameEquals(initializer, namespaceName, semanticModel)
+                : CreateAssignmentFromImplicitProperty(initializer, namespaceName, semanticModel);
             
             newInitializers.Add(newInitializer);
         }
@@ -485,66 +427,9 @@ public class AnonymousTypeToDtoCodeFixProvider : CodeFixProvider
                     
                     foreach (var initializer in nestedAnonymous.Initializers)
                     {
-                        ExpressionSyntax newInitializer;
-                        
-                        if (initializer.NameEquals != null)
-                        {
-                            // Already an explicit assignment: Name = value
-                            var replacedValue = ReplaceNestedAnonymousObjects(
-                                initializer.Expression,
-                                namespaceName,
-                                semanticModel
-                            );
-                            
-                            if (replacedValue != initializer.Expression)
-                            {
-                                // Value was replaced, create new assignment preserving trivia
-                                newInitializer = SyntaxFactory.AssignmentExpression(
-                                    SyntaxKind.SimpleAssignmentExpression,
-                                    SyntaxFactory.IdentifierName(initializer.NameEquals.Name.Identifier.Text)
-                                        .WithLeadingTrivia(initializer.NameEquals.GetLeadingTrivia())
-                                        .WithTrailingTrivia(SyntaxFactory.Space),
-                                    SyntaxFactory.Token(SyntaxKind.EqualsToken)
-                                        .WithTrailingTrivia(SyntaxFactory.Space),
-                                    replacedValue
-                                ).WithLeadingTrivia(initializer.GetLeadingTrivia())
-                                 .WithTrailingTrivia(initializer.GetTrailingTrivia());
-                            }
-                            else
-                            {
-                                // No nested replacements, convert NameEquals format to assignment
-                                newInitializer = SyntaxFactory.AssignmentExpression(
-                                    SyntaxKind.SimpleAssignmentExpression,
-                                    SyntaxFactory.IdentifierName(initializer.NameEquals.Name.Identifier.Text)
-                                        .WithLeadingTrivia(initializer.NameEquals.GetLeadingTrivia())
-                                        .WithTrailingTrivia(SyntaxFactory.Space),
-                                    SyntaxFactory.Token(SyntaxKind.EqualsToken)
-                                        .WithTrailingTrivia(SyntaxFactory.Space),
-                                    initializer.Expression
-                                ).WithLeadingTrivia(initializer.GetLeadingTrivia())
-                                 .WithTrailingTrivia(initializer.GetTrailingTrivia());
-                            }
-                        }
-                        else
-                        {
-                            // Implicit property: x.Name -> Name = x.Name
-                            var propertyName = GetPropertyNameFromExpression(initializer.Expression);
-                            var replacedValue = ReplaceNestedAnonymousObjects(
-                                initializer.Expression,
-                                namespaceName,
-                                semanticModel
-                            );
-                            
-                            newInitializer = SyntaxFactory.AssignmentExpression(
-                                SyntaxKind.SimpleAssignmentExpression,
-                                SyntaxFactory.IdentifierName(propertyName)
-                                    .WithTrailingTrivia(SyntaxFactory.Space),
-                                SyntaxFactory.Token(SyntaxKind.EqualsToken)
-                                    .WithTrailingTrivia(SyntaxFactory.Space),
-                                replacedValue
-                            ).WithLeadingTrivia(initializer.GetLeadingTrivia())
-                             .WithTrailingTrivia(initializer.GetTrailingTrivia());
-                        }
+                        var newInitializer = initializer.NameEquals != null
+                            ? CreateAssignmentFromNameEquals(initializer, namespaceName, semanticModel)
+                            : CreateAssignmentFromImplicitProperty(initializer, namespaceName, semanticModel);
                         
                         newInitializers.Add(newInitializer);
                     }
@@ -730,6 +615,81 @@ public class AnonymousTypeToDtoCodeFixProvider : CodeFixProvider
             namespaceName,
             semanticModel
         );
+    }
+
+    /// <summary>
+    /// Creates an assignment expression from an anonymous object initializer with explicit name.
+    /// Handles nested anonymous object replacement.
+    /// </summary>
+    private static ExpressionSyntax CreateAssignmentFromNameEquals(
+        AnonymousObjectMemberDeclaratorSyntax initializer,
+        string namespaceName,
+        SemanticModel semanticModel
+    )
+    {
+        var propertyName = initializer.NameEquals!.Name.Identifier.Text;
+        var replacedValue = ReplaceNestedAnonymousObjects(
+            initializer.Expression,
+            namespaceName,
+            semanticModel
+        );
+
+        if (replacedValue != initializer.Expression)
+        {
+            // Value was replaced, create new assignment preserving trivia
+            return SyntaxFactory.AssignmentExpression(
+                SyntaxKind.SimpleAssignmentExpression,
+                SyntaxFactory.IdentifierName(propertyName)
+                    .WithLeadingTrivia(initializer.NameEquals.GetLeadingTrivia())
+                    .WithTrailingTrivia(SyntaxFactory.Space),
+                SyntaxFactory.Token(SyntaxKind.EqualsToken)
+                    .WithTrailingTrivia(SyntaxFactory.Space),
+                replacedValue
+            ).WithLeadingTrivia(initializer.GetLeadingTrivia())
+             .WithTrailingTrivia(initializer.GetTrailingTrivia());
+        }
+        else
+        {
+            // No nested replacements, convert NameEquals format to assignment
+            return SyntaxFactory.AssignmentExpression(
+                SyntaxKind.SimpleAssignmentExpression,
+                SyntaxFactory.IdentifierName(propertyName)
+                    .WithLeadingTrivia(initializer.NameEquals.GetLeadingTrivia())
+                    .WithTrailingTrivia(SyntaxFactory.Space),
+                SyntaxFactory.Token(SyntaxKind.EqualsToken)
+                    .WithTrailingTrivia(SyntaxFactory.Space),
+                initializer.Expression
+            ).WithLeadingTrivia(initializer.GetLeadingTrivia())
+             .WithTrailingTrivia(initializer.GetTrailingTrivia());
+        }
+    }
+
+    /// <summary>
+    /// Creates an assignment expression from an anonymous object initializer with implicit name.
+    /// Handles nested anonymous object replacement.
+    /// </summary>
+    private static ExpressionSyntax CreateAssignmentFromImplicitProperty(
+        AnonymousObjectMemberDeclaratorSyntax initializer,
+        string namespaceName,
+        SemanticModel semanticModel
+    )
+    {
+        var propertyName = GetPropertyNameFromExpression(initializer.Expression);
+        var replacedValue = ReplaceNestedAnonymousObjects(
+            initializer.Expression,
+            namespaceName,
+            semanticModel
+        );
+
+        return SyntaxFactory.AssignmentExpression(
+            SyntaxKind.SimpleAssignmentExpression,
+            SyntaxFactory.IdentifierName(propertyName)
+                .WithTrailingTrivia(SyntaxFactory.Space),
+            SyntaxFactory.Token(SyntaxKind.EqualsToken)
+                .WithTrailingTrivia(SyntaxFactory.Space),
+            replacedValue
+        ).WithLeadingTrivia(initializer.GetLeadingTrivia())
+         .WithTrailingTrivia(initializer.GetTrailingTrivia());
     }
 
     private static string GetPropertyNameFromExpression(ExpressionSyntax expression)
