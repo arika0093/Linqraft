@@ -113,9 +113,7 @@ internal static class TernaryNullCheckSimplifier
                 return null;
 
             // Preserve leading trivia (including continuation indentation)
-            nullConditionalExpr = nullConditionalExpr.WithLeadingTrivia(
-                ternary.GetLeadingTrivia()
-            );
+            nullConditionalExpr = nullConditionalExpr.WithLeadingTrivia(ternary.GetLeadingTrivia());
 
             // If the else clause is not simply null but a collection initializer, use ?? operator
             if (IsEmptyCollectionInitializer(ternary.WhenFalse))
