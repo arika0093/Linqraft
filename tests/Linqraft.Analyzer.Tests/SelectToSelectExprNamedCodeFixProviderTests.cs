@@ -288,6 +288,72 @@ class Test
         await RunCodeFixTestAsync(test, expected, fixedCode, 0);
     }
 
+    [Fact]
+    public async Task CodeFix_AddsCapture_WhenLocalVariableIsUsed()
+    {
+        var test =
+            @"
+using System.Linq;
+using System.Collections.Generic;
+
+class Sample
+{
+    public int Id { get; set; }
+    public string Name { get; set; }
+}
+
+class SampleDto
+{
+    public int Id { get; set; }
+    public int Test { get; set; }
+}
+
+class Test
+{
+    void Method()
+    {
+        var list = new List<Sample>();
+        var test = 10;
+        var result = list.AsQueryable().{|#0:Select|}(x => new SampleDto { Id = x.Id, Test = test });
+    }
+}";
+
+        var fixedCode =
+            @"
+using System.Linq;
+using System.Collections.Generic;
+
+class Sample
+{
+    public int Id { get; set; }
+    public string Name { get; set; }
+}
+
+class SampleDto
+{
+    public int Id { get; set; }
+    public int Test { get; set; }
+}
+
+class Test
+{
+    void Method()
+    {
+        var list = new List<Sample>();
+        var test = 10;
+        var result = list.AsQueryable().SelectExpr(x => new SampleDto { Id = x.Id, Test = test }, capture: new { test });
+    }
+}";
+
+        var expected = new DiagnosticResult(
+            SelectToSelectExprNamedAnalyzer.AnalyzerId,
+            DiagnosticSeverity.Info
+        ).WithLocation(0);
+
+        // Index 2 = use predefined classes
+        await RunCodeFixTestAsync(test, expected, fixedCode, 2);
+    }
+
     private static async Task RunCodeFixTestAsync(
         string source,
         DiagnosticResult expected,

@@ -84,6 +84,15 @@ public class SelectToSelectExprAnonymousCodeFixProvider : CodeFixProvider
         if (root == null)
             return document;
 
+        var semanticModel = await document
+            .GetSemanticModelAsync(cancellationToken)
+            .ConfigureAwait(false);
+        if (semanticModel == null)
+            return document;
+
+        // Find variables that need to be captured BEFORE modifying the syntax tree
+        var variablesToCapture = FindVariablesToCapture(invocation, semanticModel);
+
         // Replace "Select" with "SelectExpr"
         var newExpression = ReplaceMethodName(invocation.Expression, "SelectExpr");
         if (newExpression == null)
@@ -93,6 +102,12 @@ public class SelectToSelectExprAnonymousCodeFixProvider : CodeFixProvider
         var newInvocation = TernaryNullCheckSimplifier.SimplifyTernaryNullChecksInInvocation(
             invocation.WithExpression(newExpression)
         );
+
+        // Add capture parameter if needed
+        if (variablesToCapture.Count > 0)
+        {
+            newInvocation = AddCaptureArgument(newInvocation, variablesToCapture);
+        }
 
         var newRoot = root.ReplaceNode(invocation, newInvocation);
         var documentWithNewRoot = document.WithSyntaxRoot(newRoot);
@@ -118,6 +133,9 @@ public class SelectToSelectExprAnonymousCodeFixProvider : CodeFixProvider
         var root = await document.GetSyntaxRootAsync(cancellationToken).ConfigureAwait(false);
         if (root == null)
             return document;
+
+        // Find variables that need to be captured BEFORE modifying the syntax tree
+        var variablesToCapture = FindVariablesToCapture(invocation, semanticModel);
 
         // Get the source type
         var sourceType = GetSourceType(invocation.Expression, semanticModel, cancellationToken);
@@ -145,6 +163,12 @@ public class SelectToSelectExprAnonymousCodeFixProvider : CodeFixProvider
         var newInvocation = TernaryNullCheckSimplifier.SimplifyTernaryNullChecksInInvocation(
             invocation.WithExpression(newExpression)
         );
+
+        // Add capture parameter if needed
+        if (variablesToCapture.Count > 0)
+        {
+            newInvocation = AddCaptureArgument(newInvocation, variablesToCapture);
+        }
 
         var newRoot = root.ReplaceNode(invocation, newInvocation);
 
@@ -270,5 +294,105 @@ public class SelectToSelectExprAnonymousCodeFixProvider : CodeFixProvider
     )
     {
         return DtoNamingHelper.GenerateDtoName(invocation, anonymousType);
+    }
+
+    /// <summary>
+    /// Finds variables that need to be captured in the invocation's lambda expression.
+    /// </summary>
+    private static HashSet<string> FindVariablesToCapture(
+        InvocationExpressionSyntax invocation,
+        SemanticModel semanticModel
+    )
+    {
+        // Find the lambda expression
+        var lambda = FindLambdaExpression(invocation.ArgumentList);
+        if (lambda == null)
+            return new HashSet<string>();
+
+        // Get lambda parameter names
+        var lambdaParameters = LambdaHelper.GetLambdaParameterNames(lambda);
+
+        // Find variables that need to be captured
+        var variablesToCapture = CaptureHelper.FindSimpleVariablesToCapture(
+            lambda,
+            lambdaParameters,
+            semanticModel
+        );
+
+        // Get already captured variables (if any)
+        var capturedVariables = CaptureHelper.GetCapturedVariables(invocation, semanticModel);
+
+        // Add any new variables to the set
+        capturedVariables.UnionWith(variablesToCapture);
+
+        return capturedVariables;
+    }
+
+    /// <summary>
+    /// Adds a capture argument to the invocation with the specified variables.
+    /// </summary>
+    private static InvocationExpressionSyntax AddCaptureArgument(
+        InvocationExpressionSyntax invocation,
+        HashSet<string> variablesToCapture
+    )
+    {
+        // Create capture argument
+        var captureArgument = CaptureHelper.CreateCaptureArgument(variablesToCapture);
+
+        // Update or add capture argument
+        var existingCaptureArgIndex = FindCaptureArgumentIndex(invocation);
+        if (existingCaptureArgIndex >= 0)
+        {
+            // Replace existing capture argument
+            var arguments = invocation.ArgumentList.Arguments.ToList();
+            arguments[existingCaptureArgIndex] = captureArgument;
+            var newArgumentList = SyntaxFactory.ArgumentList(
+                SyntaxFactory.SeparatedList(arguments)
+            );
+            return invocation.WithArgumentList(newArgumentList);
+        }
+        else
+        {
+            // Add new capture argument
+            var arguments = invocation.ArgumentList.Arguments.ToList();
+            arguments.Add(captureArgument);
+            var newArgumentList = SyntaxFactory.ArgumentList(
+                SyntaxFactory.SeparatedList(arguments)
+            );
+            return invocation.WithArgumentList(newArgumentList);
+        }
+    }
+
+    private static int FindCaptureArgumentIndex(InvocationExpressionSyntax invocation)
+    {
+        for (int i = 0; i < invocation.ArgumentList.Arguments.Count; i++)
+        {
+            var argument = invocation.ArgumentList.Arguments[i];
+            if (argument.NameColon?.Name.Identifier.Text == "capture")
+            {
+                return i;
+            }
+        }
+
+        // Check if there are more than 1 arguments (second would be capture)
+        if (invocation.ArgumentList.Arguments.Count > 1)
+        {
+            return 1;
+        }
+
+        return -1;
+    }
+
+    private static LambdaExpressionSyntax? FindLambdaExpression(ArgumentListSyntax argumentList)
+    {
+        foreach (var argument in argumentList.Arguments)
+        {
+            if (argument.Expression is LambdaExpressionSyntax lambda)
+            {
+                return lambda;
+            }
+        }
+
+        return null;
     }
 }
