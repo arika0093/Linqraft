@@ -56,15 +56,16 @@ class Test
     void Method()
     {
         var s = new Sample();
-        var result = new {
-                Id = s.Nest?.Id,
-                Name = s.Nest?.Name
+        var result = new
+        {
+            Id = s.Nest?.Id,
+            Name = s.Nest?.Name
         };
     }
 }";
 
         var expected = new DiagnosticResult(
-            TernaryNullCheckToConditionalAnalyzer.DiagnosticId,
+            TernaryNullCheckToConditionalAnalyzer.AnalyzerId,
             DiagnosticSeverity.Info
         ).WithLocation(0);
 
@@ -129,15 +130,16 @@ class Test
     void Method()
     {
         var s = new Sample();
-        var result = new {
-                Id = s.Nest?.Id,
-                ChildName = s.Nest?.Child?.Name
+        var result = new
+        {
+            Id = s.Nest?.Id,
+            ChildName = s.Nest?.Child?.Name
         };
     }
 }";
 
         var expected = new DiagnosticResult(
-            TernaryNullCheckToConditionalAnalyzer.DiagnosticId,
+            TernaryNullCheckToConditionalAnalyzer.AnalyzerId,
             DiagnosticSeverity.Info
         ).WithLocation(0);
 
@@ -189,14 +191,15 @@ class Test
     void Method()
     {
         var s = new Sample();
-        var result = new {
-                Id = s.Nest?.Id
+        var result = new
+        {
+            Id = s.Nest?.Id
         };
     }
 }";
 
         var expected = new DiagnosticResult(
-            TernaryNullCheckToConditionalAnalyzer.DiagnosticId,
+            TernaryNullCheckToConditionalAnalyzer.AnalyzerId,
             DiagnosticSeverity.Info
         ).WithLocation(0);
 
@@ -252,15 +255,16 @@ class Test
     void Method()
     {
         var s = new Sample();
-        var result = new {
-                Id = s.Nest?.Id,
-                Name = s.Nest?.Name
+        var result = new
+        {
+            Id = s.Nest?.Id,
+            Name = s.Nest?.Name
         };
     }
 }";
 
         var expected = new DiagnosticResult(
-            TernaryNullCheckToConditionalAnalyzer.DiagnosticId,
+            TernaryNullCheckToConditionalAnalyzer.AnalyzerId,
             DiagnosticSeverity.Info
         ).WithLocation(0);
 
@@ -323,14 +327,15 @@ class Test
     void Method()
     {
         var p = new Parent();
-        var result = new ChildDto {
-                Name = p.Child?.Name
+        var result = new ChildDto
+        {
+            Name = p.Child?.Name
         };
     }
 }";
 
         var expected = new DiagnosticResult(
-            TernaryNullCheckToConditionalAnalyzer.DiagnosticId,
+            TernaryNullCheckToConditionalAnalyzer.AnalyzerId,
             DiagnosticSeverity.Info
         ).WithLocation(0);
 

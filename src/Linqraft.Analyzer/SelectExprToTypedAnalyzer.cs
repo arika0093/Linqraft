@@ -1,8 +1,8 @@
 using System;
-using System.Collections.Immutable;
 using System.Linq;
 using System.Text;
 using Linqraft.Core;
+using Linqraft.Core.AnalyzerHelpers;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
@@ -17,37 +17,29 @@ namespace Linqraft.Analyzer;
 /// See documentation: https://github.com/arika0093/Linqraft/blob/main/docs/Analyzers.md#lqrs001-selectexprtotypedanalyzer
 /// </remarks>
 [DiagnosticAnalyzer(LanguageNames.CSharp)]
-public class SelectExprToTypedAnalyzer : DiagnosticAnalyzer
+public class SelectExprToTypedAnalyzer : BaseLinqraftAnalyzer
 {
-    public const string DiagnosticId = "LQRS001";
+    public const string AnalyzerId = "LQRS001";
 
-    private static readonly LocalizableString Title =
-        "SelectExpr can be converted to typed version";
-    private static readonly LocalizableString MessageFormat =
-        "SelectExpr can be converted to SelectExpr<{0}, {1}>";
-    private static readonly LocalizableString Description =
-        "This SelectExpr call can be converted to use explicit type arguments for better type safety.";
-    private const string Category = "Design";
-
-    private static readonly DiagnosticDescriptor Rule = new(
-        DiagnosticId,
-        Title,
-        MessageFormat,
-        Category,
+    private static readonly DiagnosticDescriptor RuleInstance = new(
+        AnalyzerId,
+        "SelectExpr can be converted to typed version",
+        "SelectExpr can be converted to SelectExpr<{0}, {1}>",
+        "Design",
         DiagnosticSeverity.Hidden,
         isEnabledByDefault: true,
-        description: Description,
-        helpLinkUri: $"https://github.com/arika0093/Linqraft/blob/main/docs/analyzer/{DiagnosticId}.md"
+        description: "This SelectExpr call can be converted to use explicit type arguments for better type safety.",
+        helpLinkUri: $"https://github.com/arika0093/Linqraft/blob/main/docs/analyzer/{AnalyzerId}.md"
     );
 
-    public override ImmutableArray<DiagnosticDescriptor> SupportedDiagnostics =>
-        ImmutableArray.Create(Rule);
+    protected override string DiagnosticId => AnalyzerId;
+    protected override LocalizableString Title => RuleInstance.Title;
+    protected override LocalizableString MessageFormat => RuleInstance.MessageFormat;
+    protected override LocalizableString Description => RuleInstance.Description;
+    protected override DiagnosticDescriptor Rule => RuleInstance;
 
-    public override void Initialize(AnalysisContext context)
+    protected override void RegisterActions(AnalysisContext context)
     {
-        context.ConfigureGeneratedCodeAnalysis(GeneratedCodeAnalysisFlags.None);
-        context.EnableConcurrentExecution();
-
         context.RegisterSyntaxNodeAction(AnalyzeInvocation, SyntaxKind.InvocationExpression);
     }
 
@@ -87,7 +79,7 @@ public class SelectExprToTypedAnalyzer : DiagnosticAnalyzer
         var location = GetMethodNameLocation(invocation.Expression);
 
         // Report diagnostic
-        var diagnostic = Diagnostic.Create(Rule, location, sourceType.Name, dtoName);
+        var diagnostic = Diagnostic.Create(RuleInstance, location, sourceType.Name, dtoName);
         context.ReportDiagnostic(diagnostic);
     }
 

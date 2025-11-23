@@ -39,7 +39,7 @@ class Test
 }";
 
         var expected = new DiagnosticResult(
-            TernaryNullCheckToConditionalAnalyzer.DiagnosticId,
+            TernaryNullCheckToConditionalAnalyzer.AnalyzerId,
             DiagnosticSeverity.Info
         ).WithLocation(0);
 
@@ -71,7 +71,7 @@ class Test
 }";
 
         var expected = new DiagnosticResult(
-            TernaryNullCheckToConditionalAnalyzer.DiagnosticId,
+            TernaryNullCheckToConditionalAnalyzer.AnalyzerId,
             DiagnosticSeverity.Info
         ).WithLocation(0);
 
@@ -160,7 +160,7 @@ class Test
 }";
 
         var expected = new DiagnosticResult(
-            TernaryNullCheckToConditionalAnalyzer.DiagnosticId,
+            TernaryNullCheckToConditionalAnalyzer.AnalyzerId,
             DiagnosticSeverity.Info
         ).WithLocation(0);
 

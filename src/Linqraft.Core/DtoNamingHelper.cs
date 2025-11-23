@@ -1,5 +1,6 @@
 using System.Linq;
 using System.Text;
+using Linqraft.Core.SyntaxHelpers;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
 
 namespace Linqraft.Core;
@@ -106,15 +107,7 @@ public static class DtoNamingHelper
     /// <returns>The extracted property name or "Property" if unable to extract</returns>
     public static string GetPropertyNameFromExpression(ExpressionSyntax expression)
     {
-        return expression switch
-        {
-            MemberAccessExpressionSyntax memberAccess => memberAccess.Name.Identifier.Text,
-            IdentifierNameSyntax identifier => identifier.Identifier.Text,
-            ConditionalAccessExpressionSyntax conditionalAccess
-                when conditionalAccess.WhenNotNull is MemberBindingExpressionSyntax memberBinding =>
-                memberBinding.Name.Identifier.Text,
-            _ => "Property",
-        };
+        return ExpressionHelper.GetPropertyNameOrDefault(expression, "Property");
     }
 
     /// <summary>

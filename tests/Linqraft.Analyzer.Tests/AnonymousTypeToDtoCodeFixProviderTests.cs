@@ -31,22 +31,22 @@ namespace TestNamespace
         void Method()
         {
             var result = new ResultDto
-            {
-                Id = 1,
-                Name = ""Test""
-            };
+{
+    Id = 1,
+    Name = ""Test""
+};
         }
     }
 
-    public partial class ResultDto
-    {
-        public required int Id { get; set; }
-        public required string Name { get; set; }
-    }
+public partial class ResultDto
+{
+    public required int Id { get; set; }
+    public required string Name { get; set; }
+}
 }";
 
         var expected = new DiagnosticResult(
-            AnonymousTypeToDtoAnalyzer.DiagnosticId,
+            AnonymousTypeToDtoAnalyzer.AnalyzerId,
             DiagnosticSeverity.Hidden
         ).WithLocation(0);
 
@@ -89,28 +89,24 @@ namespace TestNamespace
     {
         void Method()
         {
-            var source = new Source
-            {
-                Id = 1,
-                Name = ""Test""
-            };
+            var source = new Source { Id = 1, Name = ""Test"" };
             var data = new DataDto
-            {
-                Id = source.Id,
-                Name = source.Name
-            };
+{
+    Id = source.Id,
+    Name = source.Name
+};
         }
     }
 
-    public partial class DataDto
-    {
-        public required int Id { get; set; }
-        public required string Name { get; set; }
-    }
+public partial class DataDto
+{
+    public required int Id { get; set; }
+    public required string Name { get; set; }
+}
 }";
 
         var expected = new DiagnosticResult(
-            AnonymousTypeToDtoAnalyzer.DiagnosticId,
+            AnonymousTypeToDtoAnalyzer.AnalyzerId,
             DiagnosticSeverity.Hidden
         ).WithLocation(0);
 
@@ -141,22 +137,22 @@ namespace TestNamespace
         object GetUser()
         {
             return new UserDto
-            {
-                Id = 1,
-                Name = ""Test""
-            };
+{
+    Id = 1,
+    Name = ""Test""
+};
         }
     }
 
-    public partial class UserDto
-    {
-        public required int Id { get; set; }
-        public required string Name { get; set; }
-    }
+public partial class UserDto
+{
+    public required int Id { get; set; }
+    public required string Name { get; set; }
+}
 }";
 
         var expected = new DiagnosticResult(
-            AnonymousTypeToDtoAnalyzer.DiagnosticId,
+            AnonymousTypeToDtoAnalyzer.AnalyzerId,
             DiagnosticSeverity.Hidden
         ).WithLocation(0);
 
@@ -189,24 +185,24 @@ namespace TestNamespace
         {
             var id = 1;
             var result = new ResultDto
-            {
-                Id = id,
-                Name = ""Test"",
-                Active = true
-            };
+{
+    Id = id,
+    Name = ""Test"",
+    Active = true
+};
         }
     }
 
-    public partial class ResultDto
-    {
-        public required int Id { get; set; }
-        public required string Name { get; set; }
-        public required bool Active { get; set; }
-    }
+public partial class ResultDto
+{
+    public required int Id { get; set; }
+    public required string Name { get; set; }
+    public required bool Active { get; set; }
+}
 }";
 
         var expected = new DiagnosticResult(
-            AnonymousTypeToDtoAnalyzer.DiagnosticId,
+            AnonymousTypeToDtoAnalyzer.AnalyzerId,
             DiagnosticSeverity.Hidden
         ).WithLocation(0);
 
@@ -219,7 +215,6 @@ namespace TestNamespace
         var test =
             @"
 namespace TestNamespace;
-
 class Test
 {
     void Method()
@@ -235,13 +230,12 @@ class Test
     void Method()
     {
         var result = new ResultDto
-        {
-            Id = 1,
-            Name = ""Test""
-        };
+{
+    Id = 1,
+    Name = ""Test""
+};
     }
 }
-
 public partial class ResultDto
 {
     public required int Id { get; set; }
@@ -249,7 +243,7 @@ public partial class ResultDto
 }";
 
         var expected = new DiagnosticResult(
-            AnonymousTypeToDtoAnalyzer.DiagnosticId,
+            AnonymousTypeToDtoAnalyzer.AnalyzerId,
             DiagnosticSeverity.Hidden
         ).WithLocation(0);
 
@@ -302,37 +296,37 @@ namespace TestNamespace
         {
             var channel = new Channel();
             var result = new ResultDto
-            {
-                Id = 1,
-                Data = new ChannelDto_B0258595
-                {
-                    Id = channel.Id,
-                    Name = channel.Name
-                }
-            };
+{
+    Id = 1,
+    Data = new ChannelDto_B0258595
+    {
+        Id = channel.Id,
+        Name = channel.Name
+    }
+};
         }
     }
 
-    public partial class ChannelDto_B0258595
-    {
-        public required int Id { get; set; }
-        public required string Name { get; set; }
-    }
+public partial class ChannelDto_B0258595
+{
+    public required int Id { get; set; }
+    public required string Name { get; set; }
+}
 
-    public partial class ResultDto
-    {
-        public required int Id { get; set; }
-        public required global::TestNamespace.ChannelDto_B0258595? Data { get; set; }
-    }
+public partial class ResultDto
+{
+    public required int Id { get; set; }
+    public required global::TestNamespace.ChannelDto_B0258595? Data { get; set; }
+}
 }";
 
         var expected0 = new DiagnosticResult(
-            AnonymousTypeToDtoAnalyzer.DiagnosticId,
+            AnonymousTypeToDtoAnalyzer.AnalyzerId,
             DiagnosticSeverity.Hidden
         ).WithLocation(0);
 
         var expected1 = new DiagnosticResult(
-            AnonymousTypeToDtoAnalyzer.DiagnosticId,
+            AnonymousTypeToDtoAnalyzer.AnalyzerId,
             DiagnosticSeverity.Hidden
         ).WithLocation(1);
 
@@ -358,10 +352,10 @@ class Test
     void Method()
     {
         var result = new ResultDto
-        {
-            Id = 1,
-            Name = ""Test""
-        };
+{
+    Id = 1,
+    Name = ""Test""
+};
     }
 }
 
@@ -372,7 +366,7 @@ public partial class ResultDto
 }";
 
         var expected = new DiagnosticResult(
-            AnonymousTypeToDtoAnalyzer.DiagnosticId,
+            AnonymousTypeToDtoAnalyzer.AnalyzerId,
             DiagnosticSeverity.Hidden
         ).WithLocation(0);
 
@@ -420,14 +414,14 @@ class Test
     {
         var item = new Item();
         var result = new ResultDto
-        {
-            Id = 1,
-            ItemData = new ItemDto_B1D867F4
-            {
-                Name = item.Name,
-                Value = item.Value
-            }
-        };
+{
+    Id = 1,
+    ItemData = new ItemDto_B1D867F4
+    {
+        Name = item.Name,
+        Value = item.Value
+    }
+};
     }
 }
 
@@ -437,6 +431,7 @@ public partial class ItemDto_B1D867F4
     public required int Value { get; set; }
 }
 
+
 public partial class ResultDto
 {
     public required int Id { get; set; }
@@ -444,12 +439,12 @@ public partial class ResultDto
 }";
 
         var expected0 = new DiagnosticResult(
-            AnonymousTypeToDtoAnalyzer.DiagnosticId,
+            AnonymousTypeToDtoAnalyzer.AnalyzerId,
             DiagnosticSeverity.Hidden
         ).WithLocation(0);
 
         var expected1 = new DiagnosticResult(
-            AnonymousTypeToDtoAnalyzer.DiagnosticId,
+            AnonymousTypeToDtoAnalyzer.AnalyzerId,
             DiagnosticSeverity.Hidden
         ).WithLocation(1);
 

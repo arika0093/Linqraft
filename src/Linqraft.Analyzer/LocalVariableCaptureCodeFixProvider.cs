@@ -5,6 +5,7 @@ using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using Linqraft.Core;
+using Linqraft.Core.SyntaxHelpers;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CodeActions;
 using Microsoft.CodeAnalysis.CodeFixes;
@@ -21,7 +22,7 @@ namespace Linqraft.Analyzer;
 public class LocalVariableCaptureCodeFixProvider : CodeFixProvider
 {
     public sealed override ImmutableArray<string> FixableDiagnosticIds =>
-        ImmutableArray.Create(LocalVariableCaptureAnalyzer.DiagnosticId);
+        ImmutableArray.Create(LocalVariableCaptureAnalyzer.AnalyzerId);
 
     public sealed override FixAllProvider GetFixAllProvider() =>
         WellKnownFixAllProviders.BatchFixer;
@@ -79,7 +80,7 @@ public class LocalVariableCaptureCodeFixProvider : CodeFixProvider
             return document;
 
         // Get lambda parameter names
-        var lambdaParameters = GetLambdaParameterNames(lambda);
+        var lambdaParameters = LambdaHelper.GetLambdaParameterNames(lambda);
 
         // Find all variables that need to be captured (simple local variables)
         var simpleVariablesToCapture = FindSimpleVariablesToCapture(
@@ -126,18 +127,21 @@ public class LocalVariableCaptureCodeFixProvider : CodeFixProvider
             captureMapping[expr] = capturedVarName;
 
             // Create local variable declaration: var captured_X = expr;
-            var declaration = SyntaxFactory.LocalDeclarationStatement(
-                SyntaxFactory.VariableDeclaration(
-                    SyntaxFactory.IdentifierName("var"),
-                    SyntaxFactory.SingletonSeparatedList(
-                        SyntaxFactory.VariableDeclarator(
-                            SyntaxFactory.Identifier(capturedVarName),
-                            null,
-                            SyntaxFactory.EqualsValueClause(expr)
+            var declaration = SyntaxFactory
+                .LocalDeclarationStatement(
+                    SyntaxFactory.VariableDeclaration(
+                        SyntaxFactory.IdentifierName("var"),
+                        SyntaxFactory.SingletonSeparatedList(
+                            SyntaxFactory.VariableDeclarator(
+                                SyntaxFactory.Identifier(capturedVarName),
+                                null,
+                                SyntaxFactory.EqualsValueClause(expr)
+                            )
                         )
                     )
                 )
-            );
+                .NormalizeWhitespace()
+                .WithTrailingTrivia(SyntaxFactory.LineFeed);
 
             captureDeclarations.Add(declaration);
         }
@@ -159,16 +163,38 @@ public class LocalVariableCaptureCodeFixProvider : CodeFixProvider
             )
             .ToArray();
 
-        var captureObject = SyntaxFactory.AnonymousObjectCreationExpression(
-            SyntaxFactory.SeparatedList(captureProperties)
+        // Create anonymous object with proper spacing
+        // Use SeparatedList with comma+space separators
+        var separators = Enumerable.Repeat(
+            SyntaxFactory.Token(SyntaxKind.CommaToken).WithTrailingTrivia(SyntaxFactory.Space),
+            captureProperties.Length - 1
         );
+        var captureObject = SyntaxFactory
+            .AnonymousObjectCreationExpression(
+                SyntaxFactory.SeparatedList(captureProperties, separators)
+            )
+            .WithNewKeyword(
+                SyntaxFactory.Token(SyntaxKind.NewKeyword).WithTrailingTrivia(SyntaxFactory.Space)
+            )
+            .WithOpenBraceToken(
+                SyntaxFactory.Token(SyntaxKind.OpenBraceToken).WithTrailingTrivia(SyntaxFactory.Space)
+            )
+            .WithCloseBraceToken(
+                SyntaxFactory
+                    .Token(SyntaxKind.CloseBraceToken)
+                    .WithLeadingTrivia(SyntaxFactory.Space)
+            );
 
-        // Create named argument for capture
-        var captureArgument = SyntaxFactory.Argument(
-            SyntaxFactory.NameColon(SyntaxFactory.IdentifierName("capture")),
-            default,
-            captureObject
-        );
+        // Create named argument for capture with proper spacing
+        var captureArgument = SyntaxFactory
+            .Argument(
+                SyntaxFactory
+                    .NameColon(SyntaxFactory.IdentifierName("capture"))
+                    .WithTrailingTrivia(SyntaxFactory.Space),
+                default,
+                captureObject
+            )
+            .WithLeadingTrivia(SyntaxFactory.Space);
 
         // Update or add capture argument
         InvocationExpressionSyntax newInvocation;
@@ -217,7 +243,7 @@ public class LocalVariableCaptureCodeFixProvider : CodeFixProvider
             var newInvocationStatement = newRoot
                 .DescendantNodes()
                 .OfType<InvocationExpressionSyntax>()
-                .Where(inv => inv.ToString().Contains("SelectExpr"))
+                .Where(inv => SelectExprHelper.IsSelectExprInvocationSyntax(inv.Expression))
                 .Select(inv => inv.AncestorsAndSelf().OfType<StatementSyntax>().FirstOrDefault())
                 .FirstOrDefault(stmt => stmt != null);
 
@@ -230,9 +256,19 @@ public class LocalVariableCaptureCodeFixProvider : CodeFixProvider
                     var statementIndex = parentBlock.Statements.IndexOf(newInvocationStatement);
                     if (statementIndex >= 0)
                     {
+                        // Get the indentation from the target statement
+                        var targetIndentation = newInvocationStatement.GetLeadingTrivia()
+                            .Where(t => t.IsKind(SyntaxKind.WhitespaceTrivia))
+                            .LastOrDefault();
+
+                        // Apply indentation to all capture declarations
+                        var indentedDeclarations = captureDeclarations
+                            .Select(decl => decl.WithLeadingTrivia(targetIndentation))
+                            .ToList();
+
                         var newStatements = parentBlock.Statements.InsertRange(
                             statementIndex,
-                            captureDeclarations
+                            indentedDeclarations
                         );
                         var newBlock = parentBlock.WithStatements(newStatements);
                         newRoot = newRoot.ReplaceNode(parentBlock, newBlock);
@@ -240,13 +276,21 @@ public class LocalVariableCaptureCodeFixProvider : CodeFixProvider
                 }
             }
 
-            return document.WithSyntaxRoot(newRoot);
+            var documentWithNewRoot = document.WithSyntaxRoot(newRoot);
+            return await CodeFixFormattingHelper.FormatAndNormalizeLineEndingsAsync(
+                documentWithNewRoot,
+                cancellationToken
+            ).ConfigureAwait(false);
         }
         else
         {
             // No capture declarations, just replace the invocation
             var newRoot = root.ReplaceNode(invocation, newInvocation);
-            return document.WithSyntaxRoot(newRoot);
+            var documentWithNewRoot = document.WithSyntaxRoot(newRoot);
+            return await CodeFixFormattingHelper.NormalizeLineEndingsOnlyAsync(
+                documentWithNewRoot,
+                cancellationToken
+            ).ConfigureAwait(false);
         }
     }
 
@@ -359,19 +403,6 @@ public class LocalVariableCaptureCodeFixProvider : CodeFixProvider
         return null;
     }
 
-    private static ImmutableHashSet<string> GetLambdaParameterNames(LambdaExpressionSyntax lambda)
-    {
-        return lambda switch
-        {
-            SimpleLambdaExpressionSyntax simple => ImmutableHashSet.Create(
-                simple.Parameter.Identifier.Text
-            ),
-            ParenthesizedLambdaExpressionSyntax paren => paren
-                .ParameterList.Parameters.Select(p => p.Identifier.Text)
-                .ToImmutableHashSet(),
-            _ => ImmutableHashSet<string>.Empty,
-        };
-    }
 
     private static HashSet<string> FindSimpleVariablesToCapture(
         LambdaExpressionSyntax lambda,

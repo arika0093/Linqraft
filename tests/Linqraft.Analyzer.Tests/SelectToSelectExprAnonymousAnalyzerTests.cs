@@ -36,7 +36,7 @@ class Test
 }";
 
         var expected = VerifyCS
-            .Diagnostic(SelectToSelectExprAnonymousAnalyzer.DiagnosticId)
+            .Diagnostic(SelectToSelectExprAnonymousAnalyzer.AnalyzerId)
             .WithLocation(0)
             .WithSeverity(DiagnosticSeverity.Info);
 
@@ -66,7 +66,7 @@ class Test
 }";
 
         var expected = VerifyCS
-            .Diagnostic(SelectToSelectExprAnonymousAnalyzer.DiagnosticId)
+            .Diagnostic(SelectToSelectExprAnonymousAnalyzer.AnalyzerId)
             .WithLocation(0)
             .WithSeverity(DiagnosticSeverity.Info);
 
@@ -186,7 +186,7 @@ class Test
 }";
 
         var expected = VerifyCS
-            .Diagnostic(SelectToSelectExprAnonymousAnalyzer.DiagnosticId)
+            .Diagnostic(SelectToSelectExprAnonymousAnalyzer.AnalyzerId)
             .WithLocation(0)
             .WithSeverity(DiagnosticSeverity.Info);
 

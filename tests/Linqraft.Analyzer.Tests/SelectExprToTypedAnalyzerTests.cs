@@ -38,7 +38,7 @@ class Test
 {TestSourceCodes.SelectExprWithExpression}";
 
         var expected = VerifyCS
-            .Diagnostic(SelectExprToTypedAnalyzer.DiagnosticId)
+            .Diagnostic(SelectExprToTypedAnalyzer.AnalyzerId)
             .WithLocation(0)
             .WithSeverity(DiagnosticSeverity.Hidden)
             .WithArguments("Sample", "ResultDto_T27C3JAA");
@@ -130,7 +130,7 @@ class Test
 {TestSourceCodes.SelectExprWithExpression}";
 
         var expected = VerifyCS
-            .Diagnostic(SelectExprToTypedAnalyzer.DiagnosticId)
+            .Diagnostic(SelectExprToTypedAnalyzer.AnalyzerId)
             .WithLocation(0)
             .WithSeverity(DiagnosticSeverity.Hidden)
             .WithArguments("Sample", "UsersDto_REIXTLBA");
@@ -163,7 +163,7 @@ class Test
 {TestSourceCodes.SelectExprWithExpression}";
 
         var expected = VerifyCS
-            .Diagnostic(SelectExprToTypedAnalyzer.DiagnosticId)
+            .Diagnostic(SelectExprToTypedAnalyzer.AnalyzerId)
             .WithLocation(0)
             .WithSeverity(DiagnosticSeverity.Hidden)
             .WithArguments("Sample", "UsersDto_REIXTLBA");
@@ -222,7 +222,7 @@ class Test
 {TestSourceCodes.SelectExprWithExpression}";
 
         var expected = new DiagnosticResult(
-            SelectExprToTypedAnalyzer.DiagnosticId,
+            SelectExprToTypedAnalyzer.AnalyzerId,
             DiagnosticSeverity.Hidden
         )
             .WithLocation(0)
@@ -277,7 +277,7 @@ class Test
 {TestSourceCodes.SelectExprWithExpression}";
 
         var expected = new DiagnosticResult(
-            SelectExprToTypedAnalyzer.DiagnosticId,
+            SelectExprToTypedAnalyzer.AnalyzerId,
             DiagnosticSeverity.Hidden
         )
             .WithLocation(0)

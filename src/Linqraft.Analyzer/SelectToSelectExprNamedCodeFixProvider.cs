@@ -6,6 +6,9 @@ using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using Linqraft.Core;
+using Linqraft.Core.AnalyzerHelpers;
+using Linqraft.Core.Formatting;
+using Linqraft.Core.SyntaxHelpers;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CodeActions;
 using Microsoft.CodeAnalysis.CodeFixes;
@@ -22,7 +25,7 @@ namespace Linqraft.Analyzer;
 public class SelectToSelectExprNamedCodeFixProvider : CodeFixProvider
 {
     public sealed override ImmutableArray<string> FixableDiagnosticIds =>
-        ImmutableArray.Create(SelectToSelectExprNamedAnalyzer.DiagnosticId);
+        ImmutableArray.Create(SelectToSelectExprNamedAnalyzer.AnalyzerId);
 
     public sealed override FixAllProvider GetFixAllProvider() =>
         WellKnownFixAllProviders.BatchFixer;
@@ -133,9 +136,15 @@ public class SelectToSelectExprNamedCodeFixProvider : CodeFixProvider
         var newRoot = root.ReplaceNodes(replacements.Keys, (oldNode, _) => replacements[oldNode]);
 
         // Add using directive for source type if needed
-        newRoot = AddUsingDirectiveForType(newRoot, sourceType);
+        newRoot = UsingDirectiveHelper.AddUsingDirectiveForType(newRoot, sourceType);
 
-        return document.WithSyntaxRoot(newRoot);
+        var documentWithNewRoot = document.WithSyntaxRoot(newRoot);
+
+        // Format and normalize line endings
+        return await CodeFixFormattingHelper.FormatAndNormalizeLineEndingsAsync(
+            documentWithNewRoot,
+            cancellationToken
+        ).ConfigureAwait(false);
     }
 
     private static async Task<Document> ConvertToSelectExprExplicitDtoRootOnlyAsync(
@@ -193,9 +202,15 @@ public class SelectToSelectExprNamedCodeFixProvider : CodeFixProvider
         var newRoot = root.ReplaceNodes(replacements.Keys, (oldNode, _) => replacements[oldNode]);
 
         // Add using directive for source type if needed
-        newRoot = AddUsingDirectiveForType(newRoot, sourceType);
+        newRoot = UsingDirectiveHelper.AddUsingDirectiveForType(newRoot, sourceType);
 
-        return document.WithSyntaxRoot(newRoot);
+        var documentWithNewRoot = document.WithSyntaxRoot(newRoot);
+
+        // Format and normalize line endings
+        return await CodeFixFormattingHelper.FormatAndNormalizeLineEndingsAsync(
+            documentWithNewRoot,
+            cancellationToken
+        ).ConfigureAwait(false);
     }
 
     private static async Task<Document> ConvertToSelectExprPredefinedDtoAsync(
@@ -214,13 +229,18 @@ public class SelectToSelectExprNamedCodeFixProvider : CodeFixProvider
             return document;
 
         // Simplify ternary null checks in the lambda body
-        var newInvocation = SimplifyTernaryNullChecksInInvocation(
+        var newInvocation = TernaryNullCheckSimplifier.SimplifyTernaryNullChecksInInvocation(
             invocation.WithExpression(newExpression)
         );
 
         var newRoot = root.ReplaceNode(invocation, newInvocation);
+        var documentWithNewRoot = document.WithSyntaxRoot(newRoot);
 
-        return document.WithSyntaxRoot(newRoot);
+        // Format and normalize line endings
+        return await CodeFixFormattingHelper.FormatAndNormalizeLineEndingsAsync(
+            documentWithNewRoot,
+            cancellationToken
+        ).ConfigureAwait(false);
     }
 
     private static ExpressionSyntax? ReplaceMethodName(
@@ -519,78 +539,5 @@ public class SelectToSelectExprNamedCodeFixProvider : CodeFixProvider
 
         // Fallback to a default name
         return "ResultDto";
-    }
-
-    private static InvocationExpressionSyntax SimplifyTernaryNullChecksInInvocation(
-        InvocationExpressionSyntax invocation
-    )
-    {
-        // Find and simplify ternary null checks in lambda body
-        var newArguments = new List<ArgumentSyntax>();
-        foreach (var argument in invocation.ArgumentList.Arguments)
-        {
-            if (
-                argument.Expression is SimpleLambdaExpressionSyntax simpleLambda
-                && simpleLambda.Body is ExpressionSyntax bodyExpr
-            )
-            {
-                var simplifiedBody = TernaryNullCheckSimplifier.SimplifyTernaryNullChecks(bodyExpr);
-                var newLambda = simpleLambda.WithBody(simplifiedBody);
-                newArguments.Add(argument.WithExpression(newLambda));
-            }
-            else if (
-                argument.Expression is ParenthesizedLambdaExpressionSyntax parenLambda
-                && parenLambda.Body is ExpressionSyntax parenBodyExpr
-            )
-            {
-                var simplifiedBody = TernaryNullCheckSimplifier.SimplifyTernaryNullChecks(
-                    parenBodyExpr
-                );
-                var newLambda = parenLambda.WithBody(simplifiedBody);
-                newArguments.Add(argument.WithExpression(newLambda));
-            }
-            else
-            {
-                newArguments.Add(argument);
-            }
-        }
-
-        return invocation.WithArgumentList(
-            SyntaxFactory.ArgumentList(SyntaxFactory.SeparatedList(newArguments))
-        );
-    }
-
-    private static SyntaxNode AddUsingDirectiveForType(SyntaxNode root, ITypeSymbol typeSymbol)
-    {
-        if (root is not CompilationUnitSyntax compilationUnit)
-            return root;
-
-        // Get the namespace of the type
-        var namespaceName = typeSymbol.ContainingNamespace?.ToDisplayString();
-        if (string.IsNullOrEmpty(namespaceName) || namespaceName == "<global namespace>")
-            return root;
-
-        // Check if using directive already exists
-        var hasUsing = compilationUnit.Usings.Any(u => u.Name?.ToString() == namespaceName);
-        if (hasUsing)
-            return root;
-
-        // Detect the line ending used in the file by looking at existing using directives
-        var endOfLineTrivia = compilationUnit.Usings.Any()
-            ? compilationUnit.Usings.Last().GetTrailingTrivia().LastOrDefault()
-            : SyntaxFactory.EndOfLine("\n");
-
-        // If the detected trivia is not an end of line, use a default
-        if (!endOfLineTrivia.IsKind(SyntaxKind.EndOfLineTrivia))
-        {
-            endOfLineTrivia = SyntaxFactory.EndOfLine("\n");
-        }
-
-        // Add using directive (namespaceName is guaranteed non-null here due to the check above)
-        var usingDirective = SyntaxFactory
-            .UsingDirective(SyntaxFactory.ParseName(namespaceName!))
-            .WithTrailingTrivia(endOfLineTrivia);
-
-        return compilationUnit.AddUsings(usingDirective);
     }
 }

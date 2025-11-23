@@ -1,6 +1,6 @@
-using System.Collections.Immutable;
 using System.Linq;
 using Linqraft.Core;
+using Linqraft.Core.AnalyzerHelpers;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
@@ -15,37 +15,30 @@ namespace Linqraft.Analyzer;
 /// See documentation: https://github.com/arika0093/Linqraft/blob/main/docs/Analyzers.md#lqrf002-apicontrollerproducesresponsetypeanalyzer
 /// </remarks>
 [DiagnosticAnalyzer(LanguageNames.CSharp)]
-public class ApiControllerProducesResponseTypeAnalyzer : DiagnosticAnalyzer
+public class ApiControllerProducesResponseTypeAnalyzer : BaseLinqraftAnalyzer
 {
-    public const string DiagnosticId = "LQRF002";
+    public const string AnalyzerId = "LQRF002";
 
-    private static readonly LocalizableString Title =
-        "Add ProducesResponseType to clarify API return type";
-    private static readonly LocalizableString MessageFormat =
-        "Add [ProducesResponseType] to clarify the return value of the API and assist in generating OpenAPI documentation";
-    private static readonly LocalizableString Description =
-        "When SelectExpr<T, TDto> is used in ApiController methods that return IActionResult, adding [ProducesResponseType] helps with OpenAPI documentation generation.";
-    private const string Category = "Design";
-
-    private static readonly DiagnosticDescriptor Rule = new(
-        DiagnosticId,
-        Title,
-        MessageFormat,
-        Category,
+    private static readonly DiagnosticDescriptor RuleInstance = new(
+        AnalyzerId,
+        "Add ProducesResponseType to clarify API return type",
+        "Add [ProducesResponseType] to clarify the return value of the API and assist in generating OpenAPI documentation",
+        "Design",
         DiagnosticSeverity.Info,
         isEnabledByDefault: true,
-        description: Description,
-        helpLinkUri: $"https://github.com/arika0093/Linqraft/blob/main/docs/analyzer/{DiagnosticId}.md"
+        description: "When SelectExpr<T, TDto> is used in ApiController methods that return IActionResult, adding [ProducesResponseType] helps with OpenAPI documentation generation.",
+        helpLinkUri: $"https://github.com/arika0093/Linqraft/blob/main/docs/analyzer/{AnalyzerId}.md"
     );
 
-    public override ImmutableArray<DiagnosticDescriptor> SupportedDiagnostics =>
-        ImmutableArray.Create(Rule);
+    protected override string DiagnosticId => AnalyzerId;
+    protected override LocalizableString Title => RuleInstance.Title;
+    protected override LocalizableString MessageFormat => RuleInstance.MessageFormat;
+    protected override LocalizableString Description => RuleInstance.Description;
+    protected override DiagnosticSeverity Severity => DiagnosticSeverity.Info;
+    protected override DiagnosticDescriptor Rule => RuleInstance;
 
-    public override void Initialize(AnalysisContext context)
+    protected override void RegisterActions(AnalysisContext context)
     {
-        context.ConfigureGeneratedCodeAnalysis(GeneratedCodeAnalysisFlags.None);
-        context.EnableConcurrentExecution();
-
         context.RegisterSyntaxNodeAction(AnalyzeMethod, SyntaxKind.MethodDeclaration);
     }
 
@@ -80,7 +73,7 @@ public class ApiControllerProducesResponseTypeAnalyzer : DiagnosticAnalyzer
 
         // Report diagnostic at the SelectExpr invocation location
         var diagnostic = Diagnostic.Create(
-            Rule,
+            RuleInstance,
             selectExprInfo.Value.Invocation.GetLocation(),
             selectExprInfo.Value.DtoTypeName
         );

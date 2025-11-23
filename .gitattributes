@@ -10,7 +10,8 @@
 # The above will handle all files NOT found below
 #
 
-*.cs     text diff=csharp
+# cs file must use LF because some test-case files rely on exact line endings
+*.cs     text diff=csharp eol=lf
 *.cshtml text diff=html
 *.csx    text diff=csharp
 *.sln    text eol=crlf
