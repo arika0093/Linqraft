@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.Composition;
@@ -183,7 +184,7 @@ public class AnonymousTypeToDtoCodeFixProvider : CodeFixProvider
 
         var documentWithNewRoot = document.WithSyntaxRoot(newRoot);
 
-        // Format the entire document to ensure proper indentation
+        // Format the document to ensure proper indentation for DTO classes
         var formattedDocument = await Formatter
             .FormatAsync(documentWithNewRoot, cancellationToken: cancellationToken)
             .ConfigureAwait(false);
@@ -337,10 +338,16 @@ public class AnonymousTypeToDtoCodeFixProvider : CodeFixProvider
         SemanticModel semanticModel
     )
     {
-        // Build the new object creation expression
+        // Detect the indentation of the anonymous object
+        var indentation = GetIndentation(anonymousObject);
+        var eol = TriviaHelper.DetectLineEnding(root);
+
+        // Build the new object creation expression with proper formatting
         var initializers = new List<AssignmentExpressionSyntax>();
-        foreach (var init in anonymousObject.Initializers)
+        var initList = anonymousObject.Initializers.ToList();
+        for (int i = 0; i < initList.Count; i++)
         {
+            var init = initList[i];
             string propertyName;
             ExpressionSyntax valueExpression;
 
@@ -364,26 +371,84 @@ public class AnonymousTypeToDtoCodeFixProvider : CodeFixProvider
 
             var assignment = SyntaxFactory.AssignmentExpression(
                 SyntaxKind.SimpleAssignmentExpression,
-                SyntaxFactory.IdentifierName(propertyName),
+                SyntaxFactory.IdentifierName(propertyName)
+                    .WithTrailingTrivia(SyntaxFactory.Space),
+                SyntaxFactory.Token(SyntaxKind.EqualsToken)
+                    .WithTrailingTrivia(SyntaxFactory.Space),
                 replacedExpression
             );
-            
+
+            // Add proper indentation and line breaks
+            if (i == 0)
+            {
+                assignment = assignment.WithLeadingTrivia(
+                    SyntaxFactory.EndOfLine(eol),
+                    SyntaxFactory.Whitespace(indentation + "    ")
+                );
+            }
+            else
+            {
+                assignment = assignment.WithLeadingTrivia(
+                    SyntaxFactory.Whitespace(indentation + "    ")
+                );
+            }
+
             initializers.Add(assignment);
         }
 
-        // Create the initializer expression
+        // Add comma separators between initializers
+        var separatedList = SyntaxFactory.SeparatedList<ExpressionSyntax>(
+            initializers.Cast<ExpressionSyntax>(),
+            Enumerable.Repeat(
+                SyntaxFactory.Token(SyntaxKind.CommaToken)
+                    .WithTrailingTrivia(SyntaxFactory.EndOfLine(eol)),
+                Math.Max(0, initializers.Count - 1)
+            )
+        );
+
+        // Create the initializer expression with proper formatting
         var initializerExpression = SyntaxFactory.InitializerExpression(
             SyntaxKind.ObjectInitializerExpression,
-            SyntaxFactory.SeparatedList<ExpressionSyntax>(initializers.Cast<ExpressionSyntax>())
+            SyntaxFactory.Token(SyntaxKind.OpenBraceToken),
+            separatedList,
+            SyntaxFactory.Token(SyntaxKind.CloseBraceToken)
+                .WithLeadingTrivia(
+                    SyntaxFactory.EndOfLine(eol),
+                    SyntaxFactory.Whitespace(indentation)
+                )
         );
 
         var newObjectCreation = SyntaxFactory
             .ObjectCreationExpression(
                 SyntaxFactory.IdentifierName(dtoClassName)
             )
-            .WithInitializer(initializerExpression);
+            .WithInitializer(initializerExpression)
+            .WithLeadingTrivia(anonymousObject.GetLeadingTrivia())
+            .WithTrailingTrivia(anonymousObject.GetTrailingTrivia());
 
         return root.ReplaceNode(anonymousObject, newObjectCreation);
+    }
+
+    /// <summary>
+    /// Gets the indentation string for a syntax node by examining its leading trivia
+    /// </summary>
+    private static string GetIndentation(SyntaxNode node)
+    {
+        var leadingTrivia = node.GetLeadingTrivia();
+        for (var i = leadingTrivia.Count - 1; i >= 0; i--)
+        {
+            var trivia = leadingTrivia[i];
+            if (trivia.IsKind(SyntaxKind.WhitespaceTrivia))
+            {
+                return trivia.ToFullString();
+            }
+            if (trivia.IsKind(SyntaxKind.EndOfLineTrivia))
+            {
+                // If we hit a newline before finding whitespace, there's no indentation
+                return "";
+            }
+        }
+        return "";
     }
 
     /// <summary>
@@ -429,10 +494,16 @@ public class AnonymousTypeToDtoCodeFixProvider : CodeFixProvider
                     var nestedClassName =
                         $"{structure.SourceTypeName}Dto_{structure.GetUniqueId()}";
 
-                    // Build nested object creation
+                    // Detect indentation and line ending
+                    var nestedIndentation = GetIndentation(nestedAnonymous);
+                    var eol = TriviaHelper.DetectLineEnding(nestedAnonymous);
+
+                    // Build nested object creation with proper formatting
                     var nestedInitializers = new List<AssignmentExpressionSyntax>();
-                    foreach (var init in nestedAnonymous.Initializers)
+                    var initList = nestedAnonymous.Initializers.ToList();
+                    for (int i = 0; i < initList.Count; i++)
                     {
+                        var init = initList[i];
                         string propertyName;
                         ExpressionSyntax valueExpression;
 
@@ -456,17 +527,51 @@ public class AnonymousTypeToDtoCodeFixProvider : CodeFixProvider
 
                         var assignment = SyntaxFactory.AssignmentExpression(
                             SyntaxKind.SimpleAssignmentExpression,
-                            SyntaxFactory.IdentifierName(propertyName),
+                            SyntaxFactory.IdentifierName(propertyName)
+                                .WithTrailingTrivia(SyntaxFactory.Space),
+                            SyntaxFactory.Token(SyntaxKind.EqualsToken)
+                                .WithTrailingTrivia(SyntaxFactory.Space),
                             replacedExpression
                         );
-                        
+
+                        // Add proper indentation and line breaks
+                        if (i == 0)
+                        {
+                            assignment = assignment.WithLeadingTrivia(
+                                SyntaxFactory.EndOfLine(eol),
+                                SyntaxFactory.Whitespace(nestedIndentation + "    ")
+                            );
+                        }
+                        else
+                        {
+                            assignment = assignment.WithLeadingTrivia(
+                                SyntaxFactory.Whitespace(nestedIndentation + "    ")
+                            );
+                        }
+
                         nestedInitializers.Add(assignment);
                     }
 
-                    // Create the initializer expression
+                    // Add comma separators between initializers
+                    var separatedList = SyntaxFactory.SeparatedList<ExpressionSyntax>(
+                        nestedInitializers.Cast<ExpressionSyntax>(),
+                        Enumerable.Repeat(
+                            SyntaxFactory.Token(SyntaxKind.CommaToken)
+                                .WithTrailingTrivia(SyntaxFactory.EndOfLine(eol)),
+                            Math.Max(0, nestedInitializers.Count - 1)
+                        )
+                    );
+
+                    // Create the initializer expression with proper formatting
                     var nestedInitializerExpression = SyntaxFactory.InitializerExpression(
                         SyntaxKind.ObjectInitializerExpression,
-                        SyntaxFactory.SeparatedList<ExpressionSyntax>(nestedInitializers.Cast<ExpressionSyntax>())
+                        SyntaxFactory.Token(SyntaxKind.OpenBraceToken),
+                        separatedList,
+                        SyntaxFactory.Token(SyntaxKind.CloseBraceToken)
+                            .WithLeadingTrivia(
+                                SyntaxFactory.EndOfLine(eol),
+                                SyntaxFactory.Whitespace(nestedIndentation)
+                            )
                     );
 
                     var nestedObjectCreation = SyntaxFactory
