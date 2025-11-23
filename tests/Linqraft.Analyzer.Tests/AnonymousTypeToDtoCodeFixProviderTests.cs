@@ -30,11 +30,7 @@ namespace TestNamespace
     {
         void Method()
         {
-            var result = new ResultDto
-            {
-                Id = 1,
-                Name = ""Test""
-            };
+            var result = new ResultDto { Id = 1, Name = ""Test"" };
         }
     }
 
@@ -90,11 +86,7 @@ namespace TestNamespace
         void Method()
         {
             var source = new Source { Id = 1, Name = ""Test"" };
-            var data = new DataDto
-            {
-                Id = source.Id,
-                Name = source.Name
-            };
+            var data = new DataDto { Id = source.Id, Name = source.Name };
         }
     }
 
@@ -136,11 +128,7 @@ namespace TestNamespace
     {
         object GetUser()
         {
-            return new UserDto
-            {
-                Id = 1,
-                Name = ""Test""
-            };
+            return new UserDto { Id = 1, Name = ""Test"" };
         }
     }
 
@@ -184,12 +172,7 @@ namespace TestNamespace
         void Method()
         {
             var id = 1;
-            var result = new ResultDto
-            {
-                Id = id,
-                Name = ""Test"",
-                Active = true
-            };
+            var result = new ResultDto { Id = id, Name = ""Test"", Active = true };
         }
     }
 
@@ -229,11 +212,7 @@ class Test
 {
     void Method()
     {
-        var result = new ResultDto
-        {
-            Id = 1,
-            Name = ""Test""
-        };
+        var result = new ResultDto { Id = 1, Name = ""Test"" };
     }
 }
 public partial class ResultDto
@@ -302,7 +281,6 @@ namespace TestNamespace
                 {
                     Id = channel.Id,
                     Name = channel.Name
-
                 }
             };
         }
@@ -352,11 +330,7 @@ class Test
 {
     void Method()
     {
-        var result = new ResultDto
-        {
-            Id = 1,
-            Name = ""Test""
-        };
+        var result = new ResultDto { Id = 1, Name = ""Test"" };
     }
 }
 
@@ -421,7 +395,6 @@ class Test
             {
                 Name = item.Name,
                 Value = item.Value
-
             }
         };
     }
@@ -451,6 +424,75 @@ public partial class ResultDto
         ).WithLocation(1);
 
         await RunCodeFixTestAsync(test, [expected0, expected1], fixedCode);
+    }
+
+    [Fact]
+    public async Task CodeFix_MultilineAnonymousType_PreservesFormatting()
+    {
+        var test =
+            @"
+namespace TestNamespace
+{
+    class SampleClass
+    {
+        public int Id { get; set; }
+        public string Foo { get; set; }
+        public string Bar { get; set; }
+    }
+
+    class Test
+    {
+        void Method()
+        {
+            var s = new SampleClass();
+            var result = {|#0:new
+            {
+                s.Id,
+                s.Foo,
+                s.Bar,
+            }|};
+        }
+    }
+}";
+
+        var fixedCode =
+            @"namespace TestNamespace
+{
+    class SampleClass
+    {
+        public int Id { get; set; }
+        public string Foo { get; set; }
+        public string Bar { get; set; }
+    }
+
+    class Test
+    {
+        void Method()
+        {
+            var s = new SampleClass();
+            var result = new ResultDto
+            {
+                Id = s.Id,
+                Foo = s.Foo,
+                Bar = s.Bar,
+            };
+        }
+    }
+
+    public partial class ResultDto
+    {
+        public required int Id { get; set; }
+        public required string Foo { get; set; }
+        public required string Bar { get; set; }
+    }
+}";
+
+        var expected = new DiagnosticResult(
+            AnonymousTypeToDtoAnalyzer.AnalyzerId,
+            DiagnosticSeverity.Hidden
+        ).WithLocation(0);
+
+        await RunCodeFixTestAsync(test, expected, fixedCode);
     }
 
     private static async Task RunCodeFixTestAsync(
