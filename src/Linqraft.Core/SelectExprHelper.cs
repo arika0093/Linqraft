@@ -33,12 +33,13 @@ public static class SelectExprHelper
 
         // Check if the containing namespace starts with "Linqraft"
         // or is in the global namespace (for test scenarios)
-        var containingNamespace = methodSymbol.ContainingNamespace?.ToDisplayString();
+        var containingNamespace = methodSymbol.ContainingNamespace;
         if (containingNamespace == null)
             return false;
             
-        // Accept if in Linqraft namespace or global namespace (empty string)
-        if (!containingNamespace.StartsWith("Linqraft") && containingNamespace != "")
+        // Accept if in Linqraft namespace or global namespace
+        if (!containingNamespace.ToDisplayString().StartsWith("Linqraft") 
+            && !containingNamespace.IsGlobalNamespace)
             return false;
 
         return true;

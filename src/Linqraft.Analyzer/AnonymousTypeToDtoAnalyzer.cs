@@ -57,8 +57,8 @@ public class AnonymousTypeToDtoAnalyzer : BaseLinqraftAnalyzer
             return;
         }
 
-        // Skip if this is inside a SelectExpr call (Linqraft handles these)
-        if (SelectExprContextHelper.IsInsideSelectExprCall(anonymousObject, context.SemanticModel))
+        // Skip if this is inside a SelectExpr call with type arguments (Linqraft handles these)
+        if (SelectExprContextHelper.IsInsideSelectExprCallWithTypeArgs(anonymousObject, context.SemanticModel))
         {
             return;
         }
