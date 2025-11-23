@@ -52,7 +52,7 @@ public class TernaryNullCheckToConditionalAnalyzer : BaseLinqraftAnalyzer
 
         //
         // Skip if this is not inside a SelectExpr call
-        if (!SelectExprContextHelper.IsInsideSelectExprCall(context.Node))
+        if (!SelectExprContextHelper.IsInsideSelectExprCall(context))
         {
             return;
         }
