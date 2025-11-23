@@ -1,6 +1,3 @@
-using System;
-using System.Linq;
-using System.Text;
 using Linqraft.Core;
 using Linqraft.Core.AnalyzerHelpers;
 using Microsoft.CodeAnalysis;

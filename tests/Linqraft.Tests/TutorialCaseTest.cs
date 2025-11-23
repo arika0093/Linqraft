@@ -1,12 +1,11 @@
 using System.Collections.Generic;
 using System.Linq;
-using Linqraft;
 
 namespace Tutorial;
 
 public class TutorialCaseTest
 {
-    private List<Order> Orders = [];
+    private readonly List<Order> Orders = [];
 
     [Fact]
     public void TryTutorialCaseExplicit()

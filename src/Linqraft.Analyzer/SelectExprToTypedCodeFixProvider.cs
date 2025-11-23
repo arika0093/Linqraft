@@ -1,14 +1,10 @@
-using System;
 using System.Collections.Immutable;
 using System.Composition;
 using System.Linq;
-using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 using Linqraft.Core;
 using Linqraft.Core.AnalyzerHelpers;
-using Linqraft.Core.Formatting;
-using Linqraft.Core.SyntaxHelpers;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CodeActions;
 using Microsoft.CodeAnalysis.CodeFixes;

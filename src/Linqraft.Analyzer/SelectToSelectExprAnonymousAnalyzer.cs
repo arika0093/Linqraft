@@ -1,5 +1,3 @@
-using System.Linq;
-using Linqraft.Core;
 using Linqraft.Core.AnalyzerHelpers;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;

@@ -1,10 +1,10 @@
-﻿using System.Collections.Generic;
+using System.Collections.Generic;
 using System.Linq;
 using GlobalGenerated;
 
 public class LinqraftConfigurationTest
 {
-    private List<Order> Orders =
+    private readonly List<Order> Orders =
     [
         new()
         {

@@ -1,7 +1,5 @@
 using System.Threading.Tasks;
 using Microsoft.CodeAnalysis;
-using Microsoft.CodeAnalysis.Testing;
-using Xunit;
 using VerifyCS = Microsoft.CodeAnalysis.CSharp.Testing.CSharpAnalyzerVerifier<
     Linqraft.Analyzer.UnnecessaryCaptureAnalyzer,
     Microsoft.CodeAnalysis.Testing.DefaultVerifier

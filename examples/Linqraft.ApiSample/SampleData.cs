@@ -1,4 +1,4 @@
-﻿namespace Linqraft.ApiSample;
+namespace Linqraft.ApiSample;
 
 public static class SampleData
 {

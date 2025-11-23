@@ -1,4 +1,3 @@
-using System.Linq;
 using Linqraft.Core.AnalyzerHelpers;
 using Linqraft.Core.SyntaxHelpers;
 using Microsoft.CodeAnalysis;

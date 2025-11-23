@@ -1,5 +1,4 @@
 using BenchmarkDotNet.Running;
-using Microsoft.EntityFrameworkCore;
 
 namespace Linqraft.Benchmark;
 

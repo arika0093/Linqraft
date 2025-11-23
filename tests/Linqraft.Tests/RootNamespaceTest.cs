@@ -1,7 +1,5 @@
-﻿using System;
 using System.Collections.Generic;
 using System.Linq;
-using Linqraft;
 
 public class RootNamespaceTest
 {
@@ -14,7 +12,7 @@ public class RootNamespaceTest
             .ToList();
     }
 
-    private List<RootSampleClass> SampleData =
+    private readonly List<RootSampleClass> SampleData =
     [
         new RootSampleClass { Id = 1, Name = "Alice" },
         new RootSampleClass { Id = 2, Name = "Bob" },

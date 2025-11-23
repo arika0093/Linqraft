@@ -3,10 +3,8 @@ using System.Collections.Generic;
 using System.Linq;
 using Linqraft.Core;
 using Linqraft.Core.Formatting;
-using Linqraft.Core.RoslynHelpers;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
-using Microsoft.CodeAnalysis.CSharp.Syntax;
 
 namespace Linqraft;
 
