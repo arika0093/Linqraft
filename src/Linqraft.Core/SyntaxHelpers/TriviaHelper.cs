@@ -16,7 +16,8 @@ public static class TriviaHelper
     /// <param name="original">The original node with trivia to preserve</param>
     /// <param name="updated">The updated node to receive the trivia</param>
     /// <returns>The updated node with preserved trivia</returns>
-    public static T PreserveTrivia<T>(T original, T updated) where T : SyntaxNode
+    public static T PreserveTrivia<T>(T original, T updated)
+        where T : SyntaxNode
     {
         return updated
             .WithLeadingTrivia(original.GetLeadingTrivia())
@@ -64,7 +65,8 @@ public static class TriviaHelper
     /// <typeparam name="T">The type of syntax node</typeparam>
     /// <param name="node">The node to normalize</param>
     /// <returns>The normalized node</returns>
-    public static T NormalizeWhitespace<T>(T node) where T : SyntaxNode
+    public static T NormalizeWhitespace<T>(T node)
+        where T : SyntaxNode
     {
         return node.NormalizeWhitespace(eol: CodeFormatter.DefaultNewLine);
     }
@@ -76,7 +78,8 @@ public static class TriviaHelper
     /// <param name="node">The node to normalize</param>
     /// <param name="indentation">The indentation string to use (e.g., "    " for 4 spaces)</param>
     /// <returns>The normalized node</returns>
-    public static T NormalizeWhitespace<T>(T node, string indentation) where T : SyntaxNode
+    public static T NormalizeWhitespace<T>(T node, string indentation)
+        where T : SyntaxNode
     {
         return node.NormalizeWhitespace(
             indentation: indentation,

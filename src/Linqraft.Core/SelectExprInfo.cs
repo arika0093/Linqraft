@@ -264,7 +264,10 @@ public abstract record SelectExprInfo
                     indents
                 );
                 // Debug: Check if conversion was performed correctly
-                if (convertedSelectMany == expression && RoslynTypeHelper.ContainsSelectManyInvocation(syntax))
+                if (
+                    convertedSelectMany == expression
+                    && RoslynTypeHelper.ContainsSelectManyInvocation(syntax)
+                )
                 {
                     // If conversion was not performed, leave the original expression as a comment
                     return $"{convertedSelectMany} /* CONVERSION FAILED: {property.Name} */";
@@ -439,7 +442,8 @@ public abstract record SelectExprInfo
         var propertiesCode = string.Join($",{CodeFormatter.DefaultNewLine}", propertyAssignments);
 
         // Build the DTO creation as a compact single-line or multi-line depending on complexity
-        var dtoCreation = $"new {nestedDtoName}{CodeFormatter.DefaultNewLine}{{{CodeFormatter.DefaultNewLine}{propertiesCode}{CodeFormatter.DefaultNewLine}}}";
+        var dtoCreation =
+            $"new {nestedDtoName}{CodeFormatter.DefaultNewLine}{{{CodeFormatter.DefaultNewLine}{propertiesCode}{CodeFormatter.DefaultNewLine}}}";
 
         // Remove comments from syntax before processing
         var cleanSyntax = RemoveComments(syntax);
@@ -476,7 +480,9 @@ public abstract record SelectExprInfo
         foreach (var prop in nestedStructure.Properties)
         {
             var assignment = GeneratePropertyAssignment(prop, indents + CodeFormatter.IndentSize);
-            propertyAssignments.Add($"{spaces}{CodeFormatter.Indent(1)}{prop.Name} = {assignment},");
+            propertyAssignments.Add(
+                $"{spaces}{CodeFormatter.Indent(1)}{prop.Name} = {assignment},"
+            );
         }
         var propertiesCode = string.Join(CodeFormatter.DefaultNewLine, propertyAssignments);
 
@@ -534,7 +540,9 @@ public abstract record SelectExprInfo
         foreach (var prop in nestedStructure.Properties)
         {
             var assignment = GeneratePropertyAssignment(prop, indents + CodeFormatter.IndentSize);
-            propertyAssignments.Add($"{spaces}{CodeFormatter.Indent(1)}{prop.Name} = {assignment},");
+            propertyAssignments.Add(
+                $"{spaces}{CodeFormatter.Indent(1)}{prop.Name} = {assignment},"
+            );
         }
         var propertiesCode = string.Join(CodeFormatter.DefaultNewLine, propertyAssignments);
 
@@ -615,8 +623,13 @@ public abstract record SelectExprInfo
             var propertyAssignments = new List<string>();
             foreach (var prop in nestedStructure.Properties)
             {
-                var assignment = GeneratePropertyAssignment(prop, indents + CodeFormatter.IndentSize);
-                propertyAssignments.Add($"{spaces}{CodeFormatter.Indent(1)}{prop.Name} = {assignment},");
+                var assignment = GeneratePropertyAssignment(
+                    prop,
+                    indents + CodeFormatter.IndentSize
+                );
+                propertyAssignments.Add(
+                    $"{spaces}{CodeFormatter.Indent(1)}{prop.Name} = {assignment},"
+                );
             }
             var propertiesCode = string.Join(CodeFormatter.DefaultNewLine, propertyAssignments);
 
@@ -688,7 +701,6 @@ public abstract record SelectExprInfo
             );
     }
 
-
     private (
         string baseExpression,
         string paramName,
@@ -702,7 +714,10 @@ public abstract record SelectExprInfo
             return null;
 
         // Apply comment removal to base expression
-        var cleanedBaseExpression = RemoveComments(SyntaxFactory.ParseExpression(info.BaseExpression)).ToString();
+        var cleanedBaseExpression = RemoveComments(
+                SyntaxFactory.ParseExpression(info.BaseExpression)
+            )
+            .ToString();
 
         return (
             cleanedBaseExpression,
@@ -726,7 +741,10 @@ public abstract record SelectExprInfo
             return null;
 
         // Apply comment removal to base expression
-        var cleanedBaseExpression = RemoveComments(SyntaxFactory.ParseExpression(info.BaseExpression)).ToString();
+        var cleanedBaseExpression = RemoveComments(
+                SyntaxFactory.ParseExpression(info.BaseExpression)
+            )
+            .ToString();
 
         return (
             cleanedBaseExpression,

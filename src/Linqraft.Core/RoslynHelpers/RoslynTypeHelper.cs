@@ -1,7 +1,7 @@
+using System.Linq;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
-using System.Linq;
 
 namespace Linqraft.Core.RoslynHelpers;
 
@@ -57,9 +57,11 @@ public static class RoslynTypeHelper
         }
 
         // For Nullable<T> (value types), return the underlying type
-        if (typeSymbol is INamedTypeSymbol namedType
+        if (
+            typeSymbol is INamedTypeSymbol namedType
             && namedType.OriginalDefinition.SpecialType == SpecialType.System_Nullable_T
-            && namedType.TypeArguments.Length == 1)
+            && namedType.TypeArguments.Length == 1
+        )
         {
             return namedType.TypeArguments[0];
         }
@@ -103,7 +105,8 @@ public static class RoslynTypeHelper
 
             // Scan interfaces
             return namedType.AllInterfaces.Any(i =>
-                SymbolEqualityComparer.Default.Equals(i.ConstructedFrom, iqueryableSymbol));
+                SymbolEqualityComparer.Default.Equals(i.ConstructedFrom, iqueryableSymbol)
+            );
         }
 
         return false;
@@ -120,7 +123,9 @@ public static class RoslynTypeHelper
         if (typeSymbol == null || compilation == null)
             return false;
 
-        var ienumerableSymbol = compilation.GetTypeByMetadataName("System.Collections.Generic.IEnumerable`1");
+        var ienumerableSymbol = compilation.GetTypeByMetadataName(
+            "System.Collections.Generic.IEnumerable`1"
+        );
         if (ienumerableSymbol == null)
             return false;
 
@@ -130,7 +135,8 @@ public static class RoslynTypeHelper
                 return true;
 
             return namedType.AllInterfaces.Any(i =>
-                SymbolEqualityComparer.Default.Equals(i.ConstructedFrom, ienumerableSymbol));
+                SymbolEqualityComparer.Default.Equals(i.ConstructedFrom, ienumerableSymbol)
+            );
         }
 
         return false;
@@ -144,9 +150,11 @@ public static class RoslynTypeHelper
     /// <returns>The type argument, or null if it doesn't exist</returns>
     public static ITypeSymbol? GetGenericTypeArgument(ITypeSymbol typeSymbol, int index = 0)
     {
-        if (typeSymbol is INamedTypeSymbol namedType
+        if (
+            typeSymbol is INamedTypeSymbol namedType
             && namedType.IsGenericType
-            && namedType.TypeArguments.Length > index)
+            && namedType.TypeArguments.Length > index
+        )
         {
             return namedType.TypeArguments[index];
         }
@@ -184,10 +192,13 @@ public static class RoslynTypeHelper
         if (expression == null)
             return false;
 
-        return expression.DescendantNodes()
+        return expression
+            .DescendantNodes()
             .OfType<InvocationExpressionSyntax>()
-            .Any(inv => inv.Expression is MemberAccessExpressionSyntax ma
-                && ma.Name.Identifier.Text == "Select");
+            .Any(inv =>
+                inv.Expression is MemberAccessExpressionSyntax ma
+                && ma.Name.Identifier.Text == "Select"
+            );
     }
 
     /// <summary>
@@ -200,10 +211,13 @@ public static class RoslynTypeHelper
         if (expression == null)
             return false;
 
-        return expression.DescendantNodes()
+        return expression
+            .DescendantNodes()
             .OfType<InvocationExpressionSyntax>()
-            .Any(inv => inv.Expression is MemberAccessExpressionSyntax ma
-                && ma.Name.Identifier.Text == "SelectMany");
+            .Any(inv =>
+                inv.Expression is MemberAccessExpressionSyntax ma
+                && ma.Name.Identifier.Text == "SelectMany"
+            );
     }
 
     /// <summary>
@@ -229,8 +243,12 @@ public static class RoslynTypeHelper
             return false;
 
         // Starts with "global::<anonymous" or contains "<>" and "AnonymousType"
-        return typeName.StartsWith("global::<anonymous") ||
-               (typeName.Contains("<") && typeName.Contains(">") && typeName.Contains("AnonymousType"));
+        return typeName.StartsWith("global::<anonymous")
+            || (
+                typeName.Contains("<")
+                && typeName.Contains(">")
+                && typeName.Contains("AnonymousType")
+            );
     }
 
     /// <summary>
@@ -290,9 +308,12 @@ public static class RoslynTypeHelper
         if (type is INamedTypeSymbol namedType)
         {
             // Direct IQueryable<T>
-            if (SymbolEqualityComparer.Default.Equals(
-                namedType.ConstructedFrom,
-                semanticModel.Compilation.GetTypeByMetadataName("System.Linq.IQueryable`1")))
+            if (
+                SymbolEqualityComparer.Default.Equals(
+                    namedType.ConstructedFrom,
+                    semanticModel.Compilation.GetTypeByMetadataName("System.Linq.IQueryable`1")
+                )
+            )
             {
                 return GetGenericTypeArgument(namedType, 0);
             }
@@ -301,7 +322,9 @@ public static class RoslynTypeHelper
             var iqueryableInterface = namedType.AllInterfaces.FirstOrDefault(i =>
                 SymbolEqualityComparer.Default.Equals(
                     i.ConstructedFrom,
-                    semanticModel.Compilation.GetTypeByMetadataName("System.Linq.IQueryable`1")));
+                    semanticModel.Compilation.GetTypeByMetadataName("System.Linq.IQueryable`1")
+                )
+            );
 
             if (iqueryableInterface != null)
             {

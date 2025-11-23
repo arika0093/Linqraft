@@ -152,9 +152,7 @@ public class AnonymousTypeToDtoCodeFixProvider : CodeFixProvider
                 if (dtoMember != null)
                 {
                     // Add leading trivia (empty line before DTO class)
-                    dtoMember = dtoMember.WithLeadingTrivia(
-                        SyntaxFactory.LineFeed
-                    );
+                    dtoMember = dtoMember.WithLeadingTrivia(SyntaxFactory.LineFeed);
 
                     var updatedNamespaceDecl = newRoot
                         .DescendantNodes()
@@ -185,19 +183,23 @@ public class AnonymousTypeToDtoCodeFixProvider : CodeFixProvider
         var documentWithNewRoot = document.WithSyntaxRoot(newRoot);
 
         // Normalize line endings only (don't reformat existing code)
-        var formattedDocument = await CodeFixFormattingHelper.NormalizeLineEndingsOnlyAsync(
-            documentWithNewRoot,
-            cancellationToken
-        ).ConfigureAwait(false);
+        var formattedDocument = await CodeFixFormattingHelper
+            .NormalizeLineEndingsOnlyAsync(documentWithNewRoot, cancellationToken)
+            .ConfigureAwait(false);
 
         // Remove leading and trailing empty lines from the document text
-        var formattedText = await formattedDocument.GetTextAsync(cancellationToken).ConfigureAwait(false);
+        var formattedText = await formattedDocument
+            .GetTextAsync(cancellationToken)
+            .ConfigureAwait(false);
         var textContent = formattedText.ToString();
 
         // Remove leading empty lines
         var lines = textContent.Split('\n');
         var firstNonEmptyIndex = 0;
-        while (firstNonEmptyIndex < lines.Length && string.IsNullOrWhiteSpace(lines[firstNonEmptyIndex]))
+        while (
+            firstNonEmptyIndex < lines.Length
+            && string.IsNullOrWhiteSpace(lines[firstNonEmptyIndex])
+        )
         {
             firstNonEmptyIndex++;
         }
@@ -211,7 +213,9 @@ public class AnonymousTypeToDtoCodeFixProvider : CodeFixProvider
 
         if (firstNonEmptyIndex > 0 || lastNonEmptyIndex < lines.Length - 1)
         {
-            var trimmedLines = lines.Skip(firstNonEmptyIndex).Take(lastNonEmptyIndex - firstNonEmptyIndex + 1);
+            var trimmedLines = lines
+                .Skip(firstNonEmptyIndex)
+                .Take(lastNonEmptyIndex - firstNonEmptyIndex + 1);
             var trimmedText = string.Join("\n", trimmedLines);
 
             var encoding = formattedText.Encoding;

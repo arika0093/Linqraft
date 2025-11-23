@@ -35,7 +35,10 @@ public static class ExpressionHelper
     /// <param name="expression">The expression to extract the property name from</param>
     /// <param name="defaultName">The default name to return if unable to extract</param>
     /// <returns>The extracted property name, or the default name if unable to extract</returns>
-    public static string GetPropertyNameOrDefault(ExpressionSyntax expression, string defaultName = "Property")
+    public static string GetPropertyNameOrDefault(
+        ExpressionSyntax expression,
+        string defaultName = "Property"
+    )
     {
         return GetPropertyName(expression) ?? defaultName;
     }
@@ -45,7 +48,9 @@ public static class ExpressionHelper
     /// </summary>
     /// <param name="expression">The expression to search</param>
     /// <returns>The anonymous object creation expression, or null if not found</returns>
-    public static AnonymousObjectCreationExpressionSyntax? FindAnonymousObjectCreation(ExpressionSyntax expression)
+    public static AnonymousObjectCreationExpressionSyntax? FindAnonymousObjectCreation(
+        ExpressionSyntax expression
+    )
     {
         // Check if the expression itself is an anonymous object creation
         if (expression is AnonymousObjectCreationExpressionSyntax anonymousObject)

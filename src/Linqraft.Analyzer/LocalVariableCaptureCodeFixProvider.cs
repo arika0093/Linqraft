@@ -177,7 +177,9 @@ public class LocalVariableCaptureCodeFixProvider : CodeFixProvider
                 SyntaxFactory.Token(SyntaxKind.NewKeyword).WithTrailingTrivia(SyntaxFactory.Space)
             )
             .WithOpenBraceToken(
-                SyntaxFactory.Token(SyntaxKind.OpenBraceToken).WithTrailingTrivia(SyntaxFactory.Space)
+                SyntaxFactory
+                    .Token(SyntaxKind.OpenBraceToken)
+                    .WithTrailingTrivia(SyntaxFactory.Space)
             )
             .WithCloseBraceToken(
                 SyntaxFactory
@@ -257,7 +259,8 @@ public class LocalVariableCaptureCodeFixProvider : CodeFixProvider
                     if (statementIndex >= 0)
                     {
                         // Get the indentation from the target statement
-                        var targetIndentation = newInvocationStatement.GetLeadingTrivia()
+                        var targetIndentation = newInvocationStatement
+                            .GetLeadingTrivia()
                             .Where(t => t.IsKind(SyntaxKind.WhitespaceTrivia))
                             .LastOrDefault();
 
@@ -277,20 +280,18 @@ public class LocalVariableCaptureCodeFixProvider : CodeFixProvider
             }
 
             var documentWithNewRoot = document.WithSyntaxRoot(newRoot);
-            return await CodeFixFormattingHelper.FormatAndNormalizeLineEndingsAsync(
-                documentWithNewRoot,
-                cancellationToken
-            ).ConfigureAwait(false);
+            return await CodeFixFormattingHelper
+                .FormatAndNormalizeLineEndingsAsync(documentWithNewRoot, cancellationToken)
+                .ConfigureAwait(false);
         }
         else
         {
             // No capture declarations, just replace the invocation
             var newRoot = root.ReplaceNode(invocation, newInvocation);
             var documentWithNewRoot = document.WithSyntaxRoot(newRoot);
-            return await CodeFixFormattingHelper.NormalizeLineEndingsOnlyAsync(
-                documentWithNewRoot,
-                cancellationToken
-            ).ConfigureAwait(false);
+            return await CodeFixFormattingHelper
+                .NormalizeLineEndingsOnlyAsync(documentWithNewRoot, cancellationToken)
+                .ConfigureAwait(false);
         }
     }
 
@@ -402,7 +403,6 @@ public class LocalVariableCaptureCodeFixProvider : CodeFixProvider
 
         return null;
     }
-
 
     private static HashSet<string> FindSimpleVariablesToCapture(
         LambdaExpressionSyntax lambda,

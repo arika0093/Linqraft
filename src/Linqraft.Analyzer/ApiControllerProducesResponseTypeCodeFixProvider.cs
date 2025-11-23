@@ -104,10 +104,9 @@ public class ApiControllerProducesResponseTypeCodeFixProvider : CodeFixProvider
         var documentWithNewRoot = document.WithSyntaxRoot(newRoot);
 
         // Format and normalize line endings
-        return await CodeFixFormattingHelper.FormatAndNormalizeLineEndingsAsync(
-            documentWithNewRoot,
-            cancellationToken
-        ).ConfigureAwait(false);
+        return await CodeFixFormattingHelper
+            .FormatAndNormalizeLineEndingsAsync(documentWithNewRoot, cancellationToken)
+            .ConfigureAwait(false);
     }
 
     private static SelectExprInfo? FindSelectExprInfo(

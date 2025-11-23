@@ -28,7 +28,10 @@ public record DtoProperty(
         get
         {
             // Check if the type symbol is an error type or invalid
-            if (TypeSymbol is IErrorTypeSymbol || TypeSymbol.SpecialType == SpecialType.System_Object)
+            if (
+                TypeSymbol is IErrorTypeSymbol
+                || TypeSymbol.SpecialType == SpecialType.System_Object
+            )
             {
                 return "object";
             }

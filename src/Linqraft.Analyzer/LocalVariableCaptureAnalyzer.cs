@@ -43,7 +43,6 @@ public class LocalVariableCaptureAnalyzer : BaseLinqraftAnalyzer
 
     protected override void RegisterActions(AnalysisContext context)
     {
-
         context.RegisterSyntaxNodeAction(AnalyzeInvocation, SyntaxKind.InvocationExpression);
     }
 
@@ -200,7 +199,6 @@ public class LocalVariableCaptureAnalyzer : BaseLinqraftAnalyzer
 
         return null;
     }
-
 
     private static List<(string Name, Location Location)> FindVariablesToCapture(
         LambdaExpressionSyntax lambda,

@@ -195,9 +195,7 @@ public static class LinqMethodHelper
 
         // Extract lambda parameter name using Roslyn
         var lambda = LambdaHelper.FindLambdaInArguments(linqInvocation.ArgumentList);
-        string paramName = lambda is not null
-            ? LambdaHelper.GetLambdaParameterName(lambda)
-            : "x"; // Default
+        string paramName = lambda is not null ? LambdaHelper.GetLambdaParameterName(lambda) : "x"; // Default
 
         // Extract base expression (the collection being operated on)
         string baseExpression;

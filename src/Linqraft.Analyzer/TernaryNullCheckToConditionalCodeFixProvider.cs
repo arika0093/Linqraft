@@ -70,9 +70,7 @@ public class TernaryNullCheckToConditionalCodeFixProvider : CodeFixProvider
             return document;
 
         // Get the containing statement to extract proper indentation
-        var containingStatement = conditional.Ancestors().FirstOrDefault(a =>
-            a is StatementSyntax
-        );
+        var containingStatement = conditional.Ancestors().FirstOrDefault(a => a is StatementSyntax);
 
         // Extract null checks from the condition
         var nullChecks = ExtractNullChecks(conditional.Condition);
@@ -129,10 +127,9 @@ public class TernaryNullCheckToConditionalCodeFixProvider : CodeFixProvider
         var documentWithNewRoot = document.WithSyntaxRoot(newRoot);
 
         // Format and normalize line endings to ensure proper indentation
-        return await CodeFixFormattingHelper.FormatAndNormalizeLineEndingsAsync(
-            documentWithNewRoot,
-            cancellationToken
-        ).ConfigureAwait(false);
+        return await CodeFixFormattingHelper
+            .FormatAndNormalizeLineEndingsAsync(documentWithNewRoot, cancellationToken)
+            .ConfigureAwait(false);
     }
 
     private static List<ExpressionSyntax> InvertNullChecks(List<ExpressionSyntax> nullChecks)
@@ -155,11 +152,11 @@ public class TernaryNullCheckToConditionalCodeFixProvider : CodeFixProvider
         // Note: We do NOT preserve trailing trivia here, as that will come from the conditional
 
         // Get the statement-level indentation from the containing statement
-        var statementIndentation = containingStatement
-            ?.GetLeadingTrivia()
-            .Where(t => t.IsKind(SyntaxKind.WhitespaceTrivia))
-            .LastOrDefault()
-            ?? default;
+        var statementIndentation =
+            containingStatement
+                ?.GetLeadingTrivia()
+                .Where(t => t.IsKind(SyntaxKind.WhitespaceTrivia))
+                .LastOrDefault() ?? default;
 
         if (
             newExpression is ObjectCreationExpressionSyntax newObjCreation

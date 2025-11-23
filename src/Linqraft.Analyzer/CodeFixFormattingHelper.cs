@@ -36,13 +36,14 @@ public static class CodeFixFormattingHelper
         );
 
         // Format the document to fix indentation
-        var formattedDocument = await Formatter.FormatAsync(
-            normalizedDocument,
-            cancellationToken: cancellationToken
-        ).ConfigureAwait(false);
+        var formattedDocument = await Formatter
+            .FormatAsync(normalizedDocument, cancellationToken: cancellationToken)
+            .ConfigureAwait(false);
 
         // Final pass: normalize line endings again (in case formatter introduced CRLF)
-        var finalText = await formattedDocument.GetTextAsync(cancellationToken).ConfigureAwait(false);
+        var finalText = await formattedDocument
+            .GetTextAsync(cancellationToken)
+            .ConfigureAwait(false);
         var finalNormalizedText = finalText.ToString().Replace("\r\n", "\n");
 
         return formattedDocument.WithText(

@@ -320,11 +320,7 @@ public static class NullConditionalHelper
         if (startIndex < needsConditional.Length && needsConditional[startIndex])
         {
             // Build a conditional access for the next member
-            var innerWhenNotNull = BuildWhenNotNullChain(
-                parts,
-                needsConditional,
-                startIndex + 1
-            );
+            var innerWhenNotNull = BuildWhenNotNullChain(parts, needsConditional, startIndex + 1);
             var memberBinding = SyntaxFactory.MemberBindingExpression(currentName);
             return SyntaxFactory.ConditionalAccessExpression(memberBinding, innerWhenNotNull);
         }

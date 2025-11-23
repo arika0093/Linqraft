@@ -171,7 +171,6 @@ public partial class SelectExprGenerator : IIncrementalGenerator
         return null;
     }
 
-
     private static (ExpressionSyntax? captureArgExpr, ITypeSymbol? captureType) GetCaptureInfo(
         InvocationExpressionSyntax invocation,
         SemanticModel semanticModel
