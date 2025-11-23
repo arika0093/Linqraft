@@ -90,7 +90,9 @@ public class UnnecessaryCaptureCodeFixProvider : CodeFixProvider
         var usedVariables = FindUsedVariables(lambda, lambdaParameters, semanticModel);
 
         // Find variables that should remain in capture
-        var variablesToKeep = new HashSet<string>(capturedVariables.Where(v => usedVariables.Contains(v)));
+        var variablesToKeep = new HashSet<string>(
+            capturedVariables.Where(v => usedVariables.Contains(v))
+        );
 
         // Create new invocation with updated or removed capture argument
         InvocationExpressionSyntax newInvocation;
@@ -126,9 +128,7 @@ public class UnnecessaryCaptureCodeFixProvider : CodeFixProvider
         var arguments = invocation.ArgumentList.Arguments.ToList();
         arguments.RemoveAt(captureArgIndex);
 
-        var newArgumentList = SyntaxFactory.ArgumentList(
-            SyntaxFactory.SeparatedList(arguments)
-        );
+        var newArgumentList = SyntaxFactory.ArgumentList(SyntaxFactory.SeparatedList(arguments));
 
         return invocation.WithArgumentList(newArgumentList);
     }
@@ -148,9 +148,7 @@ public class UnnecessaryCaptureCodeFixProvider : CodeFixProvider
         var arguments = invocation.ArgumentList.Arguments.ToList();
         arguments[captureArgIndex] = captureArgument;
 
-        var newArgumentList = SyntaxFactory.ArgumentList(
-            SyntaxFactory.SeparatedList(arguments)
-        );
+        var newArgumentList = SyntaxFactory.ArgumentList(SyntaxFactory.SeparatedList(arguments));
 
         return invocation.WithArgumentList(newArgumentList);
     }

@@ -64,7 +64,10 @@ public class UnnecessaryCaptureAnalyzer : BaseLinqraftAnalyzer
         }
 
         // Get already captured variables
-        var capturedVariables = CaptureHelper.GetCapturedVariables(invocation, context.SemanticModel);
+        var capturedVariables = CaptureHelper.GetCapturedVariables(
+            invocation,
+            context.SemanticModel
+        );
 
         if (capturedVariables.Count == 0)
         {
