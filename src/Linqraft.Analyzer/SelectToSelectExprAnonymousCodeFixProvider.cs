@@ -374,12 +374,6 @@ public class SelectToSelectExprAnonymousCodeFixProvider : CodeFixProvider
             }
         }
 
-        // Check if there are more than 1 arguments (second would be capture)
-        if (invocation.ArgumentList.Arguments.Count > 1)
-        {
-            return 1;
-        }
-
         return -1;
     }
 

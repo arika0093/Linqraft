@@ -256,16 +256,19 @@ public static class CaptureHelper
             }
 
             // Check if this is a field or property that needs to be captured
-            if ((symbol.Kind == SymbolKind.Field || symbol.Kind == SymbolKind.Property))
+            if (symbol.Kind == SymbolKind.Field || symbol.Kind == SymbolKind.Property)
             {
-                // Check if it's 'this.Member' or 'Type.StaticMember' or 'instance.Member'
+                // Check if it's 'this.Member' or 'instance.Member'
                 if (memberAccess.Expression is ThisExpressionSyntax)
                 {
                     memberAccessExpressionsToCapture.Add(memberAccess.Expression);
                 }
-                else if (symbol.IsStatic && memberAccess.Expression is IdentifierNameSyntax)
+                // For static members accessed via type name (e.g., Console.WriteLine),
+                // we don't need to capture the type name identifier
+                else if (symbol.IsStatic)
                 {
-                    memberAccessExpressionsToCapture.Add(memberAccess.Expression);
+                    // Skip - static members don't need their type identifier captured
+                    continue;
                 }
                 else if (memberAccess.Expression is IdentifierNameSyntax exprIdentifier)
                 {
@@ -337,7 +340,6 @@ public static class CaptureHelper
                 continue;
             }
 
-            // Check if it needs to be captured (local variables, parameters, fields, and properties)
             if (symbol.Kind == SymbolKind.Local)
             {
                 // Skip const local variables - they are compile-time values
@@ -415,7 +417,7 @@ public static class CaptureHelper
     /// <returns>An argument syntax node with the capture parameter</returns>
     public static ArgumentSyntax CreateCaptureArgument(IEnumerable<string> variableNames)
     {
-        var orderedNames = variableNames.OrderBy(name => name).ToArray();
+        var orderedNames = variableNames.OrderBy(name => name, StringComparer.Ordinal).ToArray();
 
         // Create anonymous object members
         var captureProperties = orderedNames
@@ -426,7 +428,7 @@ public static class CaptureHelper
 
         // Create anonymous object with proper spacing
         // Use SeparatedList with comma+space separators
-        var separators = System.Linq.Enumerable.Repeat(
+        var separators = Enumerable.Repeat(
             SyntaxFactory.Token(SyntaxKind.CommaToken).WithTrailingTrivia(SyntaxFactory.Space),
             captureProperties.Length - 1
         );
