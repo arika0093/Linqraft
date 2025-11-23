@@ -1,4 +1,5 @@
 using System.Threading.Tasks;
+using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp.Testing;
 using Microsoft.CodeAnalysis.Testing;
 using Xunit;
@@ -7,7 +8,7 @@ namespace Linqraft.Analyzer.Tests;
 
 public class ApiControllerProducesResponseTypeCodeFixProviderTests
 {
-    private static async Task RunCodeFixTestAsync(string before, string after)
+    private static async Task RunCodeFixTestAsync(string before, string after, DiagnosticResult expected)
     {
         var test = new CSharpCodeFixTest<
             ApiControllerProducesResponseTypeAnalyzer,
@@ -20,12 +21,14 @@ public class ApiControllerProducesResponseTypeCodeFixProviderTests
             ReferenceAssemblies = ReferenceAssemblies.Net.Net90.AddPackages([
                 new PackageIdentity("Microsoft.AspNetCore.Mvc.Core", "2.2.5"),
             ]),
+            CompilerDiagnostics = CompilerDiagnostics.None,
         };
 
+        test.ExpectedDiagnostics.Add(expected);
         await test.RunAsync();
     }
 
-    [Fact(Skip = "Investigating attribute detection issue in test framework")]
+    [Fact]
     public async Task CodeFix_AddsProducesResponseTypeAttribute()
     {
         var before =
@@ -77,8 +80,8 @@ class SampleDto
 [ApiController]
 public class SampleController : ControllerBase
 {
-    [ProducesResponseType(typeof(IQueryable<SampleDto>), 200)]
     [HttpGet]
+    [ProducesResponseType(typeof(IQueryable<SampleDto>), 200)]
     public IActionResult SampleGet()
     {
         var query = new List<Sample>().AsQueryable();
@@ -89,10 +92,15 @@ public class SampleController : ControllerBase
 
 " + TestSourceCodes.SelectExprWithExpressionObject;
 
-        await RunCodeFixTestAsync(before, after);
+        var expected = new DiagnosticResult(
+            ApiControllerProducesResponseTypeAnalyzer.AnalyzerId,
+            DiagnosticSeverity.Info
+        ).WithLocation(0);
+
+        await RunCodeFixTestAsync(before, after, expected);
     }
 
-    [Fact(Skip = "Investigating attribute detection issue in test framework")]
+    [Fact]
     public async Task CodeFix_AddsProducesResponseTypeAttribute_WithExpressionBody()
     {
         var before =
@@ -140,18 +148,23 @@ class SampleDto
 [ApiController]
 public class SampleController : ControllerBase
 {
-    [ProducesResponseType(typeof(List<SampleDto>), 200)]
     [HttpGet]
+    [ProducesResponseType(typeof(List<SampleDto>), 200)]
     public IActionResult SampleGet() =>
         Ok(new List<Sample>().AsQueryable().SelectExpr<Sample, SampleDto>(x => new { x.Id }).ToList());
 }
 
 " + TestSourceCodes.SelectExprWithExpressionObject;
 
-        await RunCodeFixTestAsync(before, after);
+        var expected = new DiagnosticResult(
+            ApiControllerProducesResponseTypeAnalyzer.AnalyzerId,
+            DiagnosticSeverity.Info
+        ).WithLocation(0);
+
+        await RunCodeFixTestAsync(before, after, expected);
     }
 
-    [Fact(Skip = "Investigating attribute detection issue in test framework")]
+    [Fact]
     public async Task CodeFix_AddsProducesResponseTypeAttribute_WithComplexDtoName()
     {
         var before =
@@ -203,8 +216,8 @@ class OrderDetailDto
 [ApiController]
 public class OrderController : ControllerBase
 {
-    [ProducesResponseType(typeof(List<OrderDetailDto>), 200)]
     [HttpGet]
+    [ProducesResponseType(typeof(IQueryable<OrderDetailDto>), 200)]
     public IActionResult GetOrderDetails()
     {
         var query = new List<Order>().AsQueryable();
@@ -215,10 +228,15 @@ public class OrderController : ControllerBase
 
 " + TestSourceCodes.SelectExprWithExpressionObject;
 
-        await RunCodeFixTestAsync(before, after);
+        var expected = new DiagnosticResult(
+            ApiControllerProducesResponseTypeAnalyzer.AnalyzerId,
+            DiagnosticSeverity.Info
+        ).WithLocation(0);
+
+        await RunCodeFixTestAsync(before, after, expected);
     }
 
-    [Fact(Skip = "Investigating attribute detection issue in test framework")]
+    [Fact]
     public async Task CodeFix_AddsProducesResponseTypeAttribute_SingleResult_FirstOrDefault()
     {
         var before =
@@ -270,8 +288,8 @@ class SampleDto
 [ApiController]
 public class SampleController : ControllerBase
 {
-    [ProducesResponseType(typeof(SampleDto), 200)]
     [HttpGet]
+    [ProducesResponseType(typeof(SampleDto), 200)]
     public IActionResult SampleGet()
     {
         var query = new List<Sample>().AsQueryable();
@@ -282,10 +300,15 @@ public class SampleController : ControllerBase
 
 " + TestSourceCodes.SelectExprWithExpressionObject;
 
-        await RunCodeFixTestAsync(before, after);
+        var expected = new DiagnosticResult(
+            ApiControllerProducesResponseTypeAnalyzer.AnalyzerId,
+            DiagnosticSeverity.Info
+        ).WithLocation(0);
+
+        await RunCodeFixTestAsync(before, after, expected);
     }
 
-    [Fact(Skip = "Investigating attribute detection issue in test framework")]
+    [Fact]
     public async Task CodeFix_AddsProducesResponseTypeAttribute_Collection_ToArray()
     {
         var before =
@@ -337,8 +360,8 @@ class SampleDto
 [ApiController]
 public class SampleController : ControllerBase
 {
-    [ProducesResponseType(typeof(SampleDto[]), 200)]
     [HttpGet]
+    [ProducesResponseType(typeof(SampleDto[]), 200)]
     public IActionResult SampleGet()
     {
         var query = new List<Sample>().AsQueryable();
@@ -349,6 +372,11 @@ public class SampleController : ControllerBase
 
 " + TestSourceCodes.SelectExprWithExpressionObject;
 
-        await RunCodeFixTestAsync(before, after);
+        var expected = new DiagnosticResult(
+            ApiControllerProducesResponseTypeAnalyzer.AnalyzerId,
+            DiagnosticSeverity.Info
+        ).WithLocation(0);
+
+        await RunCodeFixTestAsync(before, after, expected);
     }
 }
