@@ -371,10 +371,8 @@ public class AnonymousTypeToDtoCodeFixProvider : CodeFixProvider
 
             var assignment = SyntaxFactory.AssignmentExpression(
                 SyntaxKind.SimpleAssignmentExpression,
-                SyntaxFactory.IdentifierName(propertyName)
-                    .WithTrailingTrivia(SyntaxFactory.Space),
-                SyntaxFactory.Token(SyntaxKind.EqualsToken)
-                    .WithTrailingTrivia(SyntaxFactory.Space),
+                SyntaxFactory.IdentifierName(propertyName).WithTrailingTrivia(SyntaxFactory.Space),
+                SyntaxFactory.Token(SyntaxKind.EqualsToken).WithTrailingTrivia(SyntaxFactory.Space),
                 replacedExpression
             );
 
@@ -400,7 +398,8 @@ public class AnonymousTypeToDtoCodeFixProvider : CodeFixProvider
         var separatedList = SyntaxFactory.SeparatedList<ExpressionSyntax>(
             initializers.Cast<ExpressionSyntax>(),
             Enumerable.Repeat(
-                SyntaxFactory.Token(SyntaxKind.CommaToken)
+                SyntaxFactory
+                    .Token(SyntaxKind.CommaToken)
                     .WithTrailingTrivia(SyntaxFactory.EndOfLine(eol)),
                 Math.Max(0, initializers.Count - 1)
             )
@@ -411,7 +410,8 @@ public class AnonymousTypeToDtoCodeFixProvider : CodeFixProvider
             SyntaxKind.ObjectInitializerExpression,
             SyntaxFactory.Token(SyntaxKind.OpenBraceToken),
             separatedList,
-            SyntaxFactory.Token(SyntaxKind.CloseBraceToken)
+            SyntaxFactory
+                .Token(SyntaxKind.CloseBraceToken)
                 .WithLeadingTrivia(
                     SyntaxFactory.EndOfLine(eol),
                     SyntaxFactory.Whitespace(indentation)
@@ -419,9 +419,7 @@ public class AnonymousTypeToDtoCodeFixProvider : CodeFixProvider
         );
 
         var newObjectCreation = SyntaxFactory
-            .ObjectCreationExpression(
-                SyntaxFactory.IdentifierName(dtoClassName)
-            )
+            .ObjectCreationExpression(SyntaxFactory.IdentifierName(dtoClassName))
             .WithInitializer(initializerExpression)
             .WithLeadingTrivia(anonymousObject.GetLeadingTrivia())
             .WithTrailingTrivia(anonymousObject.GetTrailingTrivia());
@@ -527,9 +525,11 @@ public class AnonymousTypeToDtoCodeFixProvider : CodeFixProvider
 
                         var assignment = SyntaxFactory.AssignmentExpression(
                             SyntaxKind.SimpleAssignmentExpression,
-                            SyntaxFactory.IdentifierName(propertyName)
+                            SyntaxFactory
+                                .IdentifierName(propertyName)
                                 .WithTrailingTrivia(SyntaxFactory.Space),
-                            SyntaxFactory.Token(SyntaxKind.EqualsToken)
+                            SyntaxFactory
+                                .Token(SyntaxKind.EqualsToken)
                                 .WithTrailingTrivia(SyntaxFactory.Space),
                             replacedExpression
                         );
@@ -556,7 +556,8 @@ public class AnonymousTypeToDtoCodeFixProvider : CodeFixProvider
                     var separatedList = SyntaxFactory.SeparatedList<ExpressionSyntax>(
                         nestedInitializers.Cast<ExpressionSyntax>(),
                         Enumerable.Repeat(
-                            SyntaxFactory.Token(SyntaxKind.CommaToken)
+                            SyntaxFactory
+                                .Token(SyntaxKind.CommaToken)
                                 .WithTrailingTrivia(SyntaxFactory.EndOfLine(eol)),
                             Math.Max(0, nestedInitializers.Count - 1)
                         )
@@ -567,7 +568,8 @@ public class AnonymousTypeToDtoCodeFixProvider : CodeFixProvider
                         SyntaxKind.ObjectInitializerExpression,
                         SyntaxFactory.Token(SyntaxKind.OpenBraceToken),
                         separatedList,
-                        SyntaxFactory.Token(SyntaxKind.CloseBraceToken)
+                        SyntaxFactory
+                            .Token(SyntaxKind.CloseBraceToken)
                             .WithLeadingTrivia(
                                 SyntaxFactory.EndOfLine(eol),
                                 SyntaxFactory.Whitespace(nestedIndentation)
