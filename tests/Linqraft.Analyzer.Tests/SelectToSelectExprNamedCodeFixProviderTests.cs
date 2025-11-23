@@ -557,7 +557,7 @@ class Test
                 Child3Id = s.Child3.Id,
                 Child3Corge = s.Child3.Corge,
                 Child3ChildId = s.Child3?.Child?.Id,
-                Child3ChildGrault = s.Child3?.Child?.Grault
+                Child3ChildGrault = s.Child3?.Child?.Grault,
             });
     }
 }";
