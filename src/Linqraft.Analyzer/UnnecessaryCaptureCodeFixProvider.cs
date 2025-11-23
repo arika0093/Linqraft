@@ -276,11 +276,10 @@ public class UnnecessaryCaptureCodeFixProvider : CodeFixProvider
                     var memberName = memberAccess.Name.Identifier.Text;
                     usedVariables.Add(memberName);
                 }
-                // Check if it's accessing a static member via type name
+                // Static members accessed via type name don't need capturing
                 else if (symbol.IsStatic && memberAccess.Expression is IdentifierNameSyntax)
                 {
-                    var memberName = memberAccess.Name.Identifier.Text;
-                    usedVariables.Add(memberName);
+                    // Skip - static members don't need to be captured
                 }
                 // Check if it's accessing a member via a local variable/parameter
                 else if (memberAccess.Expression is IdentifierNameSyntax exprIdentifier)
