@@ -78,8 +78,7 @@ public abstract class BaseLinqraftAnalyzer : DiagnosticAnalyzer
     /// <summary>
     /// The supported diagnostics for this analyzer
     /// </summary>
-    public override ImmutableArray<DiagnosticDescriptor> SupportedDiagnostics =>
-        ImmutableArray.Create(Rule);
+    public override ImmutableArray<DiagnosticDescriptor> SupportedDiagnostics => [Rule];
 
     /// <summary>
     /// Initialize the analyzer with standard configuration

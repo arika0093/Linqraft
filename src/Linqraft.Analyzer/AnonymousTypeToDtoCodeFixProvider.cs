@@ -27,7 +27,7 @@ namespace Linqraft.Analyzer;
 public class AnonymousTypeToDtoCodeFixProvider : CodeFixProvider
 {
     public sealed override ImmutableArray<string> FixableDiagnosticIds =>
-        ImmutableArray.Create(AnonymousTypeToDtoAnalyzer.AnalyzerId);
+        [AnonymousTypeToDtoAnalyzer.AnalyzerId];
 
     public sealed override FixAllProvider GetFixAllProvider() =>
         WellKnownFixAllProviders.BatchFixer;
@@ -54,7 +54,7 @@ public class AnonymousTypeToDtoCodeFixProvider : CodeFixProvider
         // Option 1: Add DTO to end of current file (appears first/on top)
         context.RegisterCodeFix(
             CodeAction.Create(
-                title: "Convert to Class (add to current file)",
+                title: "Anonymous Type to Class (same file)",
                 createChangedDocument: c =>
                     ConvertToDtoInSameFileAsync(context.Document, anonymousObject, c),
                 equivalenceKey: "ConvertToDtoSameFile"
@@ -65,7 +65,7 @@ public class AnonymousTypeToDtoCodeFixProvider : CodeFixProvider
         // Option 2: Create new file for DTO
         context.RegisterCodeFix(
             CodeAction.Create(
-                title: "Convert to Class (new file)",
+                title: "Anonymous Type to Class (new file)",
                 createChangedSolution: c =>
                     ConvertToDtoNewFileAsync(context.Document, anonymousObject, c),
                 equivalenceKey: "ConvertToDtoNewFile"

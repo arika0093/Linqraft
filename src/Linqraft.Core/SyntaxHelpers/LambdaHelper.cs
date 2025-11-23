@@ -38,9 +38,7 @@ public static class LambdaHelper
     {
         return lambda switch
         {
-            SimpleLambdaExpressionSyntax simple => ImmutableHashSet.Create(
-                simple.Parameter.Identifier.Text
-            ),
+            SimpleLambdaExpressionSyntax simple => [simple.Parameter.Identifier.Text],
             ParenthesizedLambdaExpressionSyntax paren => paren
                 .ParameterList.Parameters.Select(p => p.Identifier.Text)
                 .ToImmutableHashSet(),

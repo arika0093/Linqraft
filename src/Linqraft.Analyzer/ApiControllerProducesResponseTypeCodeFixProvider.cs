@@ -25,7 +25,7 @@ namespace Linqraft.Analyzer;
 public class ApiControllerProducesResponseTypeCodeFixProvider : CodeFixProvider
 {
     public sealed override ImmutableArray<string> FixableDiagnosticIds =>
-        ImmutableArray.Create(ApiControllerProducesResponseTypeAnalyzer.AnalyzerId);
+        [ApiControllerProducesResponseTypeAnalyzer.AnalyzerId];
 
     public sealed override FixAllProvider GetFixAllProvider() =>
         WellKnownFixAllProviders.BatchFixer;

@@ -204,18 +204,4 @@ public class AnonymousTypeToDtoAnalyzer : BaseLinqraftAnalyzer
 
         return false;
     }
-
-    private static string? GetMethodName(ExpressionSyntax expression)
-    {
-        return expression switch
-        {
-            // obj.Method()
-            MemberAccessExpressionSyntax memberAccess => memberAccess.Name.Identifier.Text,
-            // Method()
-            IdentifierNameSyntax identifier => identifier.Identifier.Text,
-            // obj.Method<T>()
-            MemberBindingExpressionSyntax memberBinding => memberBinding.Name.Identifier.Text,
-            _ => null,
-        };
-    }
 }

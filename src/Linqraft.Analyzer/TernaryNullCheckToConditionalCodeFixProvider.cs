@@ -24,7 +24,7 @@ namespace Linqraft.Analyzer;
 public class TernaryNullCheckToConditionalCodeFixProvider : CodeFixProvider
 {
     public sealed override ImmutableArray<string> FixableDiagnosticIds =>
-        ImmutableArray.Create(TernaryNullCheckToConditionalAnalyzer.AnalyzerId);
+        [TernaryNullCheckToConditionalAnalyzer.AnalyzerId];
 
     public sealed override FixAllProvider GetFixAllProvider() =>
         WellKnownFixAllProviders.BatchFixer;

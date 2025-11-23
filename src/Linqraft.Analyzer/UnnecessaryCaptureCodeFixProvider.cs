@@ -23,7 +23,7 @@ namespace Linqraft.Analyzer;
 public class UnnecessaryCaptureCodeFixProvider : CodeFixProvider
 {
     public sealed override ImmutableArray<string> FixableDiagnosticIds =>
-        ImmutableArray.Create(UnnecessaryCaptureAnalyzer.AnalyzerId);
+        [UnnecessaryCaptureAnalyzer.AnalyzerId];
 
     public sealed override FixAllProvider GetFixAllProvider() =>
         WellKnownFixAllProviders.BatchFixer;
