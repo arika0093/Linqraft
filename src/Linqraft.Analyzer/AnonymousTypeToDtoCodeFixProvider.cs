@@ -338,115 +338,44 @@ public class AnonymousTypeToDtoCodeFixProvider : CodeFixProvider
         SemanticModel semanticModel
     )
     {
-        // Detect the indentation of the anonymous object
-        var indentation = GetIndentation(anonymousObject);
-        var eol = TriviaHelper.DetectLineEnding(root);
-
-        // Build the new object creation expression with proper formatting
-        var initializers = new List<AssignmentExpressionSyntax>();
-        var initList = anonymousObject.Initializers.ToList();
-        for (int i = 0; i < initList.Count; i++)
+        // Convert anonymous object initializers to regular object initializers
+        // This handles both explicit (Name = value) and implicit (x.Name) properties
+        var newInitializers = new List<ExpressionSyntax>();
+        
+        foreach (var initializer in anonymousObject.Initializers)
         {
-            var init = initList[i];
-            string propertyName;
-            ExpressionSyntax valueExpression;
-
-            if (init.NameEquals != null)
-            {
-                propertyName = init.NameEquals.Name.Identifier.Text;
-                valueExpression = init.Expression;
-            }
-            else
-            {
-                propertyName = GetPropertyNameFromExpression(init.Expression);
-                valueExpression = init.Expression;
-            }
-
-            // Check if this property has a nested anonymous object
-            var replacedExpression = ReplaceNestedAnonymousObjects(
-                valueExpression,
-                namespaceName,
-                semanticModel
-            );
-
-            var assignment = SyntaxFactory.AssignmentExpression(
-                SyntaxKind.SimpleAssignmentExpression,
-                SyntaxFactory.IdentifierName(propertyName).WithTrailingTrivia(SyntaxFactory.Space),
-                SyntaxFactory.Token(SyntaxKind.EqualsToken).WithTrailingTrivia(SyntaxFactory.Space),
-                replacedExpression
-            );
-
-            // Add proper indentation and line breaks
-            if (i == 0)
-            {
-                assignment = assignment.WithLeadingTrivia(
-                    SyntaxFactory.EndOfLine(eol),
-                    SyntaxFactory.Whitespace(indentation + "    ")
-                );
-            }
-            else
-            {
-                assignment = assignment.WithLeadingTrivia(
-                    SyntaxFactory.Whitespace(indentation + "    ")
-                );
-            }
-
-            initializers.Add(assignment);
+            var newInitializer = initializer.NameEquals != null
+                ? CreateAssignmentFromNameEquals(initializer, namespaceName, semanticModel)
+                : CreateAssignmentFromImplicitProperty(initializer, namespaceName, semanticModel);
+            
+            newInitializers.Add(newInitializer);
         }
 
-        // Add comma separators between initializers
-        var separatedList = SyntaxFactory.SeparatedList<ExpressionSyntax>(
-            initializers.Cast<ExpressionSyntax>(),
-            Enumerable.Repeat(
-                SyntaxFactory
-                    .Token(SyntaxKind.CommaToken)
-                    .WithTrailingTrivia(SyntaxFactory.EndOfLine(eol)),
-                Math.Max(0, initializers.Count - 1)
-            )
-        );
+        // Preserve the original separators (commas with their trivia)
+        var originalSeparators = anonymousObject.Initializers.GetSeparators().ToList();
+        var newSeparatedList = SyntaxFactory.SeparatedList(newInitializers, originalSeparators);
 
-        // Create the initializer expression with proper formatting
-        var initializerExpression = SyntaxFactory.InitializerExpression(
+        // Create new initializer expression preserving the original braces and their trivia
+        var newInitializerExpression = SyntaxFactory.InitializerExpression(
             SyntaxKind.ObjectInitializerExpression,
-            SyntaxFactory.Token(SyntaxKind.OpenBraceToken),
-            separatedList,
-            SyntaxFactory
-                .Token(SyntaxKind.CloseBraceToken)
-                .WithLeadingTrivia(
-                    SyntaxFactory.EndOfLine(eol),
-                    SyntaxFactory.Whitespace(indentation)
-                )
+            anonymousObject.OpenBraceToken,
+            newSeparatedList,
+            anonymousObject.CloseBraceToken
         );
 
+        // Create the object creation expression, replacing "new" with "new DtoClassName"
         var newObjectCreation = SyntaxFactory
-            .ObjectCreationExpression(SyntaxFactory.IdentifierName(dtoClassName))
-            .WithInitializer(initializerExpression)
-            .WithLeadingTrivia(anonymousObject.GetLeadingTrivia())
+            .ObjectCreationExpression(
+                SyntaxFactory.Token(SyntaxKind.NewKeyword)
+                    .WithLeadingTrivia(anonymousObject.NewKeyword.LeadingTrivia)
+                    .WithTrailingTrivia(SyntaxFactory.Space),
+                SyntaxFactory.IdentifierName(dtoClassName),
+                null, // no argument list
+                newInitializerExpression
+            )
             .WithTrailingTrivia(anonymousObject.GetTrailingTrivia());
 
         return root.ReplaceNode(anonymousObject, newObjectCreation);
-    }
-
-    /// <summary>
-    /// Gets the indentation string for a syntax node by examining its leading trivia
-    /// </summary>
-    private static string GetIndentation(SyntaxNode node)
-    {
-        var leadingTrivia = node.GetLeadingTrivia();
-        for (var i = leadingTrivia.Count - 1; i >= 0; i--)
-        {
-            var trivia = leadingTrivia[i];
-            if (trivia.IsKind(SyntaxKind.WhitespaceTrivia))
-            {
-                return trivia.ToFullString();
-            }
-            if (trivia.IsKind(SyntaxKind.EndOfLineTrivia))
-            {
-                // If we hit a newline before finding whitespace, there's no indentation
-                return "";
-            }
-        }
-        return "";
     }
 
     /// <summary>
@@ -492,93 +421,42 @@ public class AnonymousTypeToDtoCodeFixProvider : CodeFixProvider
                     var nestedClassName =
                         $"{structure.SourceTypeName}Dto_{structure.GetUniqueId()}";
 
-                    // Detect indentation and line ending
-                    var nestedIndentation = GetIndentation(nestedAnonymous);
-                    var eol = TriviaHelper.DetectLineEnding(nestedAnonymous);
-
-                    // Build nested object creation with proper formatting
-                    var nestedInitializers = new List<AssignmentExpressionSyntax>();
-                    var initList = nestedAnonymous.Initializers.ToList();
-                    for (int i = 0; i < initList.Count; i++)
+                    // Convert anonymous object initializers to regular object initializers
+                    // preserving original formatting
+                    var newInitializers = new List<ExpressionSyntax>();
+                    
+                    foreach (var initializer in nestedAnonymous.Initializers)
                     {
-                        var init = initList[i];
-                        string propertyName;
-                        ExpressionSyntax valueExpression;
-
-                        if (init.NameEquals != null)
-                        {
-                            propertyName = init.NameEquals.Name.Identifier.Text;
-                            valueExpression = init.Expression;
-                        }
-                        else
-                        {
-                            propertyName = GetPropertyNameFromExpression(init.Expression);
-                            valueExpression = init.Expression;
-                        }
-
-                        // Recursively process nested expressions
-                        var replacedExpression = ReplaceNestedAnonymousObjects(
-                            valueExpression,
-                            namespaceName,
-                            semanticModel
-                        );
-
-                        var assignment = SyntaxFactory.AssignmentExpression(
-                            SyntaxKind.SimpleAssignmentExpression,
-                            SyntaxFactory
-                                .IdentifierName(propertyName)
-                                .WithTrailingTrivia(SyntaxFactory.Space),
-                            SyntaxFactory
-                                .Token(SyntaxKind.EqualsToken)
-                                .WithTrailingTrivia(SyntaxFactory.Space),
-                            replacedExpression
-                        );
-
-                        // Add proper indentation and line breaks
-                        if (i == 0)
-                        {
-                            assignment = assignment.WithLeadingTrivia(
-                                SyntaxFactory.EndOfLine(eol),
-                                SyntaxFactory.Whitespace(nestedIndentation + "    ")
-                            );
-                        }
-                        else
-                        {
-                            assignment = assignment.WithLeadingTrivia(
-                                SyntaxFactory.Whitespace(nestedIndentation + "    ")
-                            );
-                        }
-
-                        nestedInitializers.Add(assignment);
+                        var newInitializer = initializer.NameEquals != null
+                            ? CreateAssignmentFromNameEquals(initializer, namespaceName, semanticModel)
+                            : CreateAssignmentFromImplicitProperty(initializer, namespaceName, semanticModel);
+                        
+                        newInitializers.Add(newInitializer);
                     }
 
-                    // Add comma separators between initializers
-                    var separatedList = SyntaxFactory.SeparatedList<ExpressionSyntax>(
-                        nestedInitializers.Cast<ExpressionSyntax>(),
-                        Enumerable.Repeat(
-                            SyntaxFactory
-                                .Token(SyntaxKind.CommaToken)
-                                .WithTrailingTrivia(SyntaxFactory.EndOfLine(eol)),
-                            Math.Max(0, nestedInitializers.Count - 1)
-                        )
-                    );
+                    // Preserve the original separators (commas with their trivia)
+                    var originalSeparators = nestedAnonymous.Initializers.GetSeparators().ToList();
+                    var newSeparatedList = SyntaxFactory.SeparatedList(newInitializers, originalSeparators);
 
-                    // Create the initializer expression with proper formatting
+                    // Create new initializer expression preserving the original braces and their trivia
                     var nestedInitializerExpression = SyntaxFactory.InitializerExpression(
                         SyntaxKind.ObjectInitializerExpression,
-                        SyntaxFactory.Token(SyntaxKind.OpenBraceToken),
-                        separatedList,
-                        SyntaxFactory
-                            .Token(SyntaxKind.CloseBraceToken)
-                            .WithLeadingTrivia(
-                                SyntaxFactory.EndOfLine(eol),
-                                SyntaxFactory.Whitespace(nestedIndentation)
-                            )
+                        nestedAnonymous.OpenBraceToken,
+                        newSeparatedList,
+                        nestedAnonymous.CloseBraceToken
                     );
 
+                    // Create the object creation expression, replacing "new" with "new NestedClassName"
                     var nestedObjectCreation = SyntaxFactory
-                        .ObjectCreationExpression(SyntaxFactory.IdentifierName(nestedClassName))
-                        .WithInitializer(nestedInitializerExpression);
+                        .ObjectCreationExpression(
+                            SyntaxFactory.Token(SyntaxKind.NewKeyword)
+                                .WithLeadingTrivia(nestedAnonymous.NewKeyword.LeadingTrivia)
+                                .WithTrailingTrivia(SyntaxFactory.Space),
+                            SyntaxFactory.IdentifierName(nestedClassName),
+                            null, // no argument list
+                            nestedInitializerExpression
+                        )
+                        .WithTrailingTrivia(nestedAnonymous.GetTrailingTrivia());
 
                     return nestedObjectCreation;
                 }
@@ -737,6 +615,72 @@ public class AnonymousTypeToDtoCodeFixProvider : CodeFixProvider
             namespaceName,
             semanticModel
         );
+    }
+
+    /// <summary>
+    /// Creates an assignment expression from an anonymous object initializer with explicit name.
+    /// Handles nested anonymous object replacement.
+    /// </summary>
+    private static ExpressionSyntax CreateAssignmentFromNameEquals(
+        AnonymousObjectMemberDeclaratorSyntax initializer,
+        string namespaceName,
+        SemanticModel semanticModel
+    )
+    {
+        var propertyName = initializer.NameEquals!.Name.Identifier.Text;
+        var replacedValue = ReplaceNestedAnonymousObjects(
+            initializer.Expression,
+            namespaceName,
+            semanticModel
+        );
+
+        // Create assignment expression without trivia first
+        var assignment = SyntaxFactory.AssignmentExpression(
+            SyntaxKind.SimpleAssignmentExpression,
+            SyntaxFactory.IdentifierName(propertyName)
+                .WithTrailingTrivia(SyntaxFactory.Space),
+            SyntaxFactory.Token(SyntaxKind.EqualsToken)
+                .WithTrailingTrivia(SyntaxFactory.Space),
+            replacedValue
+        );
+        
+        // Apply trivia from the original initializer
+        return assignment
+            .WithLeadingTrivia(initializer.GetLeadingTrivia())
+            .WithTrailingTrivia(initializer.GetTrailingTrivia());
+    }
+
+    /// <summary>
+    /// Creates an assignment expression from an anonymous object initializer with implicit name.
+    /// Handles nested anonymous object replacement.
+    /// </summary>
+    private static ExpressionSyntax CreateAssignmentFromImplicitProperty(
+        AnonymousObjectMemberDeclaratorSyntax initializer,
+        string namespaceName,
+        SemanticModel semanticModel
+    )
+    {
+        var propertyName = GetPropertyNameFromExpression(initializer.Expression);
+        var replacedValue = ReplaceNestedAnonymousObjects(
+            initializer.Expression,
+            namespaceName,
+            semanticModel
+        );
+
+        // Create assignment expression without trivia first
+        var assignment = SyntaxFactory.AssignmentExpression(
+            SyntaxKind.SimpleAssignmentExpression,
+            SyntaxFactory.IdentifierName(propertyName)
+                .WithTrailingTrivia(SyntaxFactory.Space),
+            SyntaxFactory.Token(SyntaxKind.EqualsToken)
+                .WithTrailingTrivia(SyntaxFactory.Space),
+            replacedValue
+        );
+        
+        // Apply trivia from the original initializer
+        return assignment
+            .WithLeadingTrivia(initializer.GetLeadingTrivia())
+            .WithTrailingTrivia(initializer.GetTrailingTrivia());
     }
 
     private static string GetPropertyNameFromExpression(ExpressionSyntax expression)
