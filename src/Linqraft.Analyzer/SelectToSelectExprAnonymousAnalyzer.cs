@@ -11,9 +11,6 @@ namespace Linqraft.Analyzer;
 /// <summary>
 /// Analyzer that detects IQueryable.Select calls with anonymous types that can be converted to SelectExpr.
 /// </summary>
-/// <remarks>
-/// See documentation: https://github.com/arika0093/Linqraft/blob/main/docs/Analyzers.md#lqrs002-selecttoselectexpranonymousanalyzer
-/// </remarks>
 [DiagnosticAnalyzer(LanguageNames.CSharp)]
 public class SelectToSelectExprAnonymousAnalyzer : BaseLinqraftAnalyzer
 {

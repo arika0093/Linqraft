@@ -14,9 +14,6 @@ namespace Linqraft.Analyzer;
 /// <summary>
 /// Analyzer that detects unnecessary capture variables in SelectExpr that are not referenced in the lambda.
 /// </summary>
-/// <remarks>
-/// See documentation: https://github.com/arika0093/Linqraft/blob/main/docs/Analyzers.md#lqrs005-unnecessarycaptureanalyzer
-/// </remarks>
 [DiagnosticAnalyzer(LanguageNames.CSharp)]
 public class UnnecessaryCaptureAnalyzer : BaseLinqraftAnalyzer
 {

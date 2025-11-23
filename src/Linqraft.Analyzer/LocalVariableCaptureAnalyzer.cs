@@ -14,9 +14,6 @@ namespace Linqraft.Analyzer;
 /// <summary>
 /// Analyzer that detects local variable usage in SelectExpr without capture parameter.
 /// </summary>
-/// <remarks>
-/// See documentation: https://github.com/arika0093/Linqraft/blob/main/docs/Analyzers.md#lqre001-localvariablecaptureanalyzer
-/// </remarks>
 [DiagnosticAnalyzer(LanguageNames.CSharp)]
 public class LocalVariableCaptureAnalyzer : BaseLinqraftAnalyzer
 {

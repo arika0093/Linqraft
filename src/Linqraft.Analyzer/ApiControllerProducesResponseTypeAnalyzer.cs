@@ -11,9 +11,6 @@ namespace Linqraft.Analyzer;
 /// <summary>
 /// Analyzer that detects SelectExpr usage in ApiController methods without ProducesResponseType attribute.
 /// </summary>
-/// <remarks>
-/// See documentation: https://github.com/arika0093/Linqraft/blob/main/docs/Analyzers.md#lqrf002-apicontrollerproducesresponsetypeanalyzer
-/// </remarks>
 [DiagnosticAnalyzer(LanguageNames.CSharp)]
 public class ApiControllerProducesResponseTypeAnalyzer : BaseLinqraftAnalyzer
 {

@@ -10,9 +10,6 @@ namespace Linqraft.Analyzer;
 /// <summary>
 /// Analyzer that detects anonymous type usages that can be converted to DTOs.
 /// </summary>
-/// <remarks>
-/// See documentation: https://github.com/arika0093/Linqraft/blob/main/docs/Analyzers.md#lqrf001-anonymoustypetodtoanalyzer
-/// </remarks>
 [DiagnosticAnalyzer(LanguageNames.CSharp)]
 public class AnonymousTypeToDtoAnalyzer : BaseLinqraftAnalyzer
 {

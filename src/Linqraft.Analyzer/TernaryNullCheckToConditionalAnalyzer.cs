@@ -12,9 +12,6 @@ namespace Linqraft.Analyzer;
 /// Analyzer that detects ternary operators with null checks that return object creations
 /// and can be converted to use null-conditional operators.
 /// </summary>
-/// <remarks>
-/// See documentation: https://github.com/arika0093/Linqraft/blob/main/docs/Analyzers.md#lqrs004-ternarynullchecktoconditionalanalyzer
-/// </remarks>
 [DiagnosticAnalyzer(LanguageNames.CSharp)]
 public class TernaryNullCheckToConditionalAnalyzer : BaseLinqraftAnalyzer
 {
