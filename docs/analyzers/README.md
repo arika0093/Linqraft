@@ -9,6 +9,7 @@
 | [LQRS002](./LQRS002.md) | SelectToSelectExprAnonymousAnalyzer | `IQueryable.Select` with anonymous projection → `SelectExpr` suggestion |
 | [LQRS003](./LQRS003.md) | SelectToSelectExprNamedAnalyzer | `IQueryable.Select` with named-object projection → `SelectExpr` suggestion |
 | [LQRS004](./LQRS004.md) | TernaryNullCheckToConditionalAnalyzer | Suggest simplifying ternary null/object patterns |
+| [LQRS005](./LQRS005.md) | UnnecessaryCaptureAnalyzer | Capture variables that are not referenced in SelectExpr should be removed |
 | [LQRE001](./LQRE001.md) | LocalVariableCaptureAnalyzer | Reports missing `capture:` entries for `SelectExpr` selectors |
 
 Basically, all analyzers come with code fixes that can be automatically applied to implement the suggested changes.
