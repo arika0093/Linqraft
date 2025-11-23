@@ -13,6 +13,7 @@ using Microsoft.CodeAnalysis.CodeActions;
 using Microsoft.CodeAnalysis.CodeFixes;
 using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
+using Microsoft.CodeAnalysis.Formatting;
 using Microsoft.CodeAnalysis.Text;
 
 namespace Linqraft.Analyzer;
@@ -182,9 +183,14 @@ public class AnonymousTypeToDtoCodeFixProvider : CodeFixProvider
 
         var documentWithNewRoot = document.WithSyntaxRoot(newRoot);
 
-        // Normalize line endings only (don't reformat existing code)
-        var formattedDocument = await CodeFixFormattingHelper
-            .NormalizeLineEndingsOnlyAsync(documentWithNewRoot, cancellationToken)
+        // Format the entire document to ensure proper indentation
+        var formattedDocument = await Formatter
+            .FormatAsync(documentWithNewRoot, cancellationToken: cancellationToken)
+            .ConfigureAwait(false);
+
+        // Normalize line endings
+        formattedDocument = await CodeFixFormattingHelper
+            .NormalizeLineEndingsOnlyAsync(formattedDocument, cancellationToken)
             .ConfigureAwait(false);
 
         // Remove leading and trailing empty lines from the document text
@@ -332,7 +338,7 @@ public class AnonymousTypeToDtoCodeFixProvider : CodeFixProvider
     )
     {
         // Build the new object creation expression
-        var initializers = new List<ExpressionSyntax>();
+        var initializers = new List<AssignmentExpressionSyntax>();
         foreach (var init in anonymousObject.Initializers)
         {
             string propertyName;
@@ -361,22 +367,21 @@ public class AnonymousTypeToDtoCodeFixProvider : CodeFixProvider
                 SyntaxFactory.IdentifierName(propertyName),
                 replacedExpression
             );
+            
             initializers.Add(assignment);
         }
 
-        var newObjectCreation = SyntaxFactory
-            .ObjectCreationExpression(SyntaxFactory.IdentifierName(dtoClassName))
-            .WithInitializer(
-                SyntaxFactory.InitializerExpression(
-                    SyntaxKind.ObjectInitializerExpression,
-                    SyntaxFactory.SeparatedList(initializers)
-                )
-            )
-            .NormalizeWhitespace();
+        // Create the initializer expression
+        var initializerExpression = SyntaxFactory.InitializerExpression(
+            SyntaxKind.ObjectInitializerExpression,
+            SyntaxFactory.SeparatedList<ExpressionSyntax>(initializers.Cast<ExpressionSyntax>())
+        );
 
-        newObjectCreation = newObjectCreation
-            .WithLeadingTrivia(anonymousObject.GetLeadingTrivia())
-            .WithTrailingTrivia(anonymousObject.GetTrailingTrivia());
+        var newObjectCreation = SyntaxFactory
+            .ObjectCreationExpression(
+                SyntaxFactory.IdentifierName(dtoClassName)
+            )
+            .WithInitializer(initializerExpression);
 
         return root.ReplaceNode(anonymousObject, newObjectCreation);
     }
@@ -425,7 +430,7 @@ public class AnonymousTypeToDtoCodeFixProvider : CodeFixProvider
                         $"{structure.SourceTypeName}Dto_{structure.GetUniqueId()}";
 
                     // Build nested object creation
-                    var nestedInitializers = new List<ExpressionSyntax>();
+                    var nestedInitializers = new List<AssignmentExpressionSyntax>();
                     foreach (var init in nestedAnonymous.Initializers)
                     {
                         string propertyName;
@@ -454,22 +459,21 @@ public class AnonymousTypeToDtoCodeFixProvider : CodeFixProvider
                             SyntaxFactory.IdentifierName(propertyName),
                             replacedExpression
                         );
+                        
                         nestedInitializers.Add(assignment);
                     }
 
+                    // Create the initializer expression
+                    var nestedInitializerExpression = SyntaxFactory.InitializerExpression(
+                        SyntaxKind.ObjectInitializerExpression,
+                        SyntaxFactory.SeparatedList<ExpressionSyntax>(nestedInitializers.Cast<ExpressionSyntax>())
+                    );
+
                     var nestedObjectCreation = SyntaxFactory
                         .ObjectCreationExpression(SyntaxFactory.IdentifierName(nestedClassName))
-                        .WithInitializer(
-                            SyntaxFactory.InitializerExpression(
-                                SyntaxKind.ObjectInitializerExpression,
-                                SyntaxFactory.SeparatedList(nestedInitializers)
-                            )
-                        )
-                        .NormalizeWhitespace();
+                        .WithInitializer(nestedInitializerExpression);
 
-                    return nestedObjectCreation
-                        .WithLeadingTrivia(nestedAnonymous.GetLeadingTrivia())
-                        .WithTrailingTrivia(nestedAnonymous.GetTrailingTrivia());
+                    return nestedObjectCreation;
                 }
             }
         }
