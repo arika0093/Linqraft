@@ -50,6 +50,13 @@ public class TernaryNullCheckToConditionalAnalyzer : BaseLinqraftAnalyzer
             return;
         }
 
+        //
+        // Skip if this is not inside a SelectExpr call
+        if (!SelectExprContextHelper.IsInsideSelectExprCall(context.Node))
+        {
+            return;
+        }
+
         // Extract both expressions, removing any type casts
         var whenTrueExpr = NullConditionalHelper.RemoveNullableCast(conditional.WhenTrue);
         var whenFalseExpr = NullConditionalHelper.RemoveNullableCast(conditional.WhenFalse);

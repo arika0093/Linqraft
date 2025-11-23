@@ -58,7 +58,7 @@ public class AnonymousTypeToDtoAnalyzer : BaseLinqraftAnalyzer
         }
 
         // Skip if this is inside a SelectExpr call (Linqraft handles these)
-        if (IsInsideSelectExprCall(anonymousObject))
+        if (SelectExprContextHelper.IsInsideSelectExprCall(anonymousObject))
         {
             return;
         }
@@ -135,68 +135,6 @@ public class AnonymousTypeToDtoAnalyzer : BaseLinqraftAnalyzer
                     parent = parent.Parent;
                     continue;
             }
-        }
-
-        return false;
-    }
-
-    private static bool IsInsideSelectExprCall(
-        AnonymousObjectCreationExpressionSyntax anonymousObject
-    )
-    {
-        var current = anonymousObject.Parent;
-
-        while (current != null)
-        {
-            // Check if we're inside an invocation expression
-            if (current is InvocationExpressionSyntax invocation)
-            {
-                // Check if it's a SelectExpr call with type arguments
-                if (IsSelectExprWithTypeArguments(invocation.Expression))
-                {
-                    return true;
-                }
-            }
-
-            // Stop at method/property declarations
-            if (current is MemberDeclarationSyntax)
-            {
-                break;
-            }
-
-            current = current.Parent;
-        }
-
-        return false;
-    }
-
-    private static bool IsSelectExprWithTypeArguments(ExpressionSyntax expression)
-    {
-        // Get the method name and check for type arguments
-        switch (expression)
-        {
-            // obj.SelectExpr<T, TDto>(...)
-            case MemberAccessExpressionSyntax memberAccess:
-                if (
-                    memberAccess.Name.Identifier.Text == SelectExprHelper.MethodName
-                    && memberAccess.Name is GenericNameSyntax genericName
-                    && genericName.TypeArgumentList.Arguments.Count >= 2
-                )
-                {
-                    return true;
-                }
-                break;
-
-            // SelectExpr<T, TDto>(...) - unlikely but handle it
-            case GenericNameSyntax genericIdentifier:
-                if (
-                    genericIdentifier.Identifier.Text == SelectExprHelper.MethodName
-                    && genericIdentifier.TypeArgumentList.Arguments.Count >= 2
-                )
-                {
-                    return true;
-                }
-                break;
         }
 
         return false;
