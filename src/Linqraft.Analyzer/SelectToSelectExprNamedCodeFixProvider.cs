@@ -425,8 +425,7 @@ public class SelectToSelectExprNamedCodeFixProvider : CodeFixProvider
             objectCreation.Initializer.Expressions.GetSeparators()
         );
 
-        // Collect all trivia between "new" and the opening brace
-        // This includes trivia from the type node (both leading and trailing)
+        // Collect trivia from the type node that appears between 'new' and the opening brace
         var triviaBeforeOpenBrace = SyntaxTriviaList.Empty;
         if (objectCreation.Type != null)
         {
@@ -478,19 +477,55 @@ public class SelectToSelectExprNamedCodeFixProvider : CodeFixProvider
                     // Recursively process the right side to convert nested object creations
                     var processedRight = ProcessExpressionForNestedConversions(assignment.Right);
 
-                    members.Add(
-                        SyntaxFactory.AnonymousObjectMemberDeclarator(
-                            SyntaxFactory.NameEquals(identifier.Identifier.Text),
-                            processedRight
-                        )
-                    );
+                    // Create the name equals with preserved assignment leading trivia
+                    var nameEquals = SyntaxFactory
+                        .NameEquals(SyntaxFactory.IdentifierName(identifier.Identifier))
+                        .WithLeadingTrivia(assignment.GetLeadingTrivia());
+
+                    // Create the member with preserved trivia from the assignment
+                    var member = SyntaxFactory
+                        .AnonymousObjectMemberDeclarator(nameEquals, processedRight)
+                        .WithTrailingTrivia(assignment.GetTrailingTrivia());
+
+                    members.Add(member);
                 }
             }
         }
 
-        return SyntaxFactory.AnonymousObjectCreationExpression(
-            SyntaxFactory.SeparatedList(members)
+        // Create the separated list preserving separators from the original initializer
+        var separatedMembers = SyntaxFactory.SeparatedList(
+            members,
+            objectCreation.Initializer.Expressions.GetSeparators()
         );
+
+        // Collect trivia from the type node that appears between 'new' and the opening brace
+        var triviaBeforeOpenBrace = SyntaxTriviaList.Empty;
+        if (objectCreation.Type != null)
+        {
+            triviaBeforeOpenBrace = triviaBeforeOpenBrace
+                .AddRange(objectCreation.Type.GetLeadingTrivia())
+                .AddRange(objectCreation.Type.GetTrailingTrivia());
+        }
+
+        // Create anonymous object creation preserving trivia
+        var result = SyntaxFactory
+            .AnonymousObjectCreationExpression(
+                SyntaxFactory
+                    .Token(SyntaxKind.NewKeyword)
+                    .WithLeadingTrivia(objectCreation.GetLeadingTrivia())
+                    .WithTrailingTrivia(triviaBeforeOpenBrace),
+                SyntaxFactory
+                    .Token(SyntaxKind.OpenBraceToken)
+                    .WithTrailingTrivia(objectCreation.Initializer.OpenBraceToken.TrailingTrivia),
+                separatedMembers,
+                SyntaxFactory
+                    .Token(SyntaxKind.CloseBraceToken)
+                    .WithLeadingTrivia(objectCreation.Initializer.CloseBraceToken.LeadingTrivia)
+                    .WithTrailingTrivia(objectCreation.Initializer.CloseBraceToken.TrailingTrivia)
+            )
+            .WithTrailingTrivia(objectCreation.GetTrailingTrivia());
+
+        return result;
     }
 
     private static ExpressionSyntax ProcessExpressionForNestedConversions(
