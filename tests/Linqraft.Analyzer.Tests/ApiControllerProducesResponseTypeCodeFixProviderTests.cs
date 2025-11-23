@@ -8,7 +8,11 @@ namespace Linqraft.Analyzer.Tests;
 
 public class ApiControllerProducesResponseTypeCodeFixProviderTests
 {
-    private static async Task RunCodeFixTestAsync(string before, string after, DiagnosticResult expected)
+    private static async Task RunCodeFixTestAsync(
+        string before,
+        string after,
+        DiagnosticResult expected
+    )
     {
         var test = new CSharpCodeFixTest<
             ApiControllerProducesResponseTypeAnalyzer,
