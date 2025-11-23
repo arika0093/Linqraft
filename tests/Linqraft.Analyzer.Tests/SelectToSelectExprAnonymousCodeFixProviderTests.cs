@@ -547,6 +547,114 @@ class Test
         await RunCodeFixTestAsync(test, expected, fixedCode, 0);
     }
 
+    [Fact]
+    public async Task CodeFix_AddsCapture_WhenLocalVariableIsUsed()
+    {
+        var test =
+            @"
+using System.Linq;
+using System.Collections.Generic;
+
+class Sample
+{
+    public int Id { get; set; }
+    public string Name { get; set; }
+}
+
+class Test
+{
+    void Method()
+    {
+        var list = new List<Sample>();
+        var test = 10;
+        var result = list.AsQueryable().{|#0:Select|}(x => new { x.Id, test });
+    }
+}";
+
+        var fixedCode =
+            @"
+using System.Linq;
+using System.Collections.Generic;
+
+class Sample
+{
+    public int Id { get; set; }
+    public string Name { get; set; }
+}
+
+class Test
+{
+    void Method()
+    {
+        var list = new List<Sample>();
+        var test = 10;
+        var result = list.AsQueryable().SelectExpr(x => new { x.Id, test }, capture: new { test });
+    }
+}";
+
+        var expected = new DiagnosticResult(
+            SelectToSelectExprAnonymousAnalyzer.AnalyzerId,
+            DiagnosticSeverity.Info
+        ).WithLocation(0);
+
+        await RunCodeFixTestAsync(test, expected, fixedCode, 0);
+    }
+
+    [Fact]
+    public async Task CodeFix_AddsCapture_WhenMultipleLocalVariablesAreUsed()
+    {
+        var test =
+            @"
+using System.Linq;
+using System.Collections.Generic;
+
+class Sample
+{
+    public int Id { get; set; }
+    public string Name { get; set; }
+}
+
+class Test
+{
+    void Method()
+    {
+        var list = new List<Sample>();
+        var test1 = 10;
+        var test2 = ""hello"";
+        var result = list.AsQueryable().{|#0:Select|}(x => new { x.Id, test1, test2 });
+    }
+}";
+
+        var fixedCode =
+            @"
+using System.Linq;
+using System.Collections.Generic;
+
+class Sample
+{
+    public int Id { get; set; }
+    public string Name { get; set; }
+}
+
+class Test
+{
+    void Method()
+    {
+        var list = new List<Sample>();
+        var test1 = 10;
+        var test2 = ""hello"";
+        var result = list.AsQueryable().SelectExpr(x => new { x.Id, test1, test2 }, capture: new { test1, test2 });
+    }
+}";
+
+        var expected = new DiagnosticResult(
+            SelectToSelectExprAnonymousAnalyzer.AnalyzerId,
+            DiagnosticSeverity.Info
+        ).WithLocation(0);
+
+        await RunCodeFixTestAsync(test, expected, fixedCode, 0);
+    }
+
     private static async Task RunCodeFixTestAsync(
         string source,
         DiagnosticResult expected,
