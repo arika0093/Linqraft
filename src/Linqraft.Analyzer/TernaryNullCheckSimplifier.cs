@@ -112,8 +112,7 @@ internal static class TernaryNullCheckSimplifier
             if (nullConditionalExpr == null)
                 return null;
 
-            // Preserve leading trivia from the entire ternary expression (which includes continuation indentation)
-            // The ternary's leading trivia contains the indentation before the condition
+            // Preserve leading trivia (including continuation indentation)
             nullConditionalExpr = nullConditionalExpr.WithLeadingTrivia(
                 ternary.GetLeadingTrivia()
             );

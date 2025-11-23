@@ -425,8 +425,7 @@ public class SelectToSelectExprNamedCodeFixProvider : CodeFixProvider
             objectCreation.Initializer.Expressions.GetSeparators()
         );
 
-        // Collect all trivia between "new" and the opening brace
-        // This includes trivia from the type node (both leading and trailing)
+        // Collect trivia from the type node that appears between 'new' and the opening brace
         var triviaBeforeOpenBrace = SyntaxTriviaList.Empty;
         if (objectCreation.Type != null)
         {
@@ -478,7 +477,7 @@ public class SelectToSelectExprNamedCodeFixProvider : CodeFixProvider
                     // Recursively process the right side to convert nested object creations
                     var processedRight = ProcessExpressionForNestedConversions(assignment.Right);
 
-                    // Create the name equals with preserved identifier trivia
+                    // Create the name equals with preserved assignment leading trivia
                     var nameEquals = SyntaxFactory
                         .NameEquals(SyntaxFactory.IdentifierName(identifier.Identifier))
                         .WithLeadingTrivia(assignment.GetLeadingTrivia());
@@ -499,8 +498,7 @@ public class SelectToSelectExprNamedCodeFixProvider : CodeFixProvider
             objectCreation.Initializer.Expressions.GetSeparators()
         );
 
-        // Collect all trivia between "new" and the opening brace
-        // This includes trivia from the type node (both leading and trailing)
+        // Collect trivia from the type node that appears between 'new' and the opening brace
         var triviaBeforeOpenBrace = SyntaxTriviaList.Empty;
         if (objectCreation.Type != null)
         {
