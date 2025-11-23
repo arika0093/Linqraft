@@ -302,6 +302,7 @@ namespace TestNamespace
                 {
                     Id = channel.Id,
                     Name = channel.Name
+
                 }
             };
         }
@@ -420,6 +421,7 @@ class Test
             {
                 Name = item.Name,
                 Value = item.Value
+
             }
         };
     }
