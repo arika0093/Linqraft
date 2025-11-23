@@ -93,7 +93,7 @@ namespace TestNamespace
             var data = new DataDto
 {
     Id = source.Id,
-    Name = source.Name 
+    Name = source.Name
 };
         }
     }
@@ -131,7 +131,6 @@ namespace TestNamespace
 
         var fixedCode =
             @"namespace TestNamespace
-
 {
     class Test
     {
@@ -216,7 +215,6 @@ public partial class ResultDto
         var test =
             @"
 namespace TestNamespace;
-
 class Test
 {
     void Method()
@@ -232,13 +230,12 @@ class Test
     void Method()
     {
         var result = new ResultDto
-{ 
+{
     Id = 1,
     Name = ""Test""
 };
     }
 }
-
 public partial class ResultDto
 {
     public required int Id { get; set; }
