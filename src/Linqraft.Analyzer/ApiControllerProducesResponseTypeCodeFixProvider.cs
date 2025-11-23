@@ -90,7 +90,7 @@ public class ApiControllerProducesResponseTypeCodeFixProvider : CodeFixProvider
             .WithTrailingTrivia(TriviaHelper.EndOfLine(root));
 
         // Build a new attribute list: keep all existing attributes, then add the new one at the end
-        var newAttributeLists = new System.Collections.Generic.List<AttributeListSyntax>(methodDeclaration.AttributeLists);
+        var newAttributeLists = new List<AttributeListSyntax>(methodDeclaration.AttributeLists);
         newAttributeLists.Add(attributeList);
         var attributeLists = SyntaxFactory.List(newAttributeLists);
 
