@@ -80,9 +80,11 @@ var items = db.Items.SelectExpr(
 You can suppress the diagnostic using normal Roslyn suppressions (pragma, suppression attributes, or a .editorconfig rule) if you intentionally keep a capture for clarity or future use.
 
 ## Implementation notes
-- Analyzer id: `LQRS005`
-- Implementation: `Linqraft.Analyzer.UnnecessaryCaptureAnalyzer`
-- Code fix: `Linqraft.Analyzer.UnnecessaryCaptureCodeFixProvider`
+- Analyzer id: `LQRS005`  
+- Implementation: `Linqraft.Analyzer.UnnecessaryCaptureAnalyzer`  
+- Code fix: `Linqraft.Analyzer.UnnecessaryCaptureCodeFixProvider`  
 - The implementation finds the lambda, enumerates captures via `CaptureHelper.GetCapturedVariables`, computes used identifiers in the lambda (excluding lambda parameters and identifiers that are part of member/property names), and reports unused captures. The code fix removes or updates the `capture` anonymous object accordingly.
 
 For more details, see implementation in `src/Linqraft.Analyzer/UnnecessaryCaptureAnalyzer.cs` and `UnnecessaryCaptureCodeFixProvider.cs`.
+
+````

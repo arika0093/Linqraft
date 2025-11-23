@@ -1,7 +1,7 @@
 # LQRF002 - ApiControllerProducesResponseTypeAnalyzer
 
-**Severity:** Info
-**Category:** Design
+**Severity:** Info  
+**Category:** Design  
 **Default:** Enabled
 
 ## Description
@@ -45,15 +45,3 @@ public class ProductsController : ControllerBase
     }
 }
 ```
-
-## Notes and edge cases
-- The analyzer infers `TDto` from the `SelectExpr<,>` generic arguments when present.
-- For untyped `SelectExpr` usages the analyzer cannot infer the DTO type and will not report.
-
-## Suppression
-Use Roslyn suppression mechanisms to suppress the suggestion if OpenAPI annotations are managed separately.
-
-## Implementation notes
-- Analyzer id: `LQRF002`
-- Implementation: `Linqraft.Analyzer.ApiControllerProducesResponseTypeAnalyzer`
-

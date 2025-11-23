@@ -1,7 +1,7 @@
 # LQRF001 - AnonymousTypeToDtoAnalyzer
 
-**Severity:** Hidden
-**Category:** Design
+**Severity:** Hidden  
+**Category:** Design  
 **Default:** Enabled
 
 ## Description
@@ -62,15 +62,5 @@ public class UserInfoDto
 }
 ```
 
-## Notes and edge cases
-- Nested anonymous objects are converted into nested DTOs when the fix generates classes.
-- The fixer tries to pick meaningful DTO names using `DtoNamingHelper` and falls back to generated names when necessary.
-
-## Suppression
-Use Roslyn suppression mechanisms to avoid suggestions where anonymous types are preferred.
-
-## Implementation notes
-- Analyzer id: `LQRF001`
-- Implementation: `Linqraft.Analyzer.AnonymousTypeToDtoAnalyzer`
-- Code fix: `Linqraft.Analyzer.AnonymousTypeToDtoCodeFixProvider`
-
+## DTO Naming
+DTO names are inferred by `DtoNamingHelper` using context (variable or method names) and fall back to a generated name when context is insufficient.

@@ -1,7 +1,7 @@
 # LQRE001 - LocalVariableCaptureAnalyzer
 
-**Severity:** Error
-**Category:** Usage
+**Severity:** Error  
+**Category:** Usage  
 **Default:** Enabled
 
 ## Description
@@ -46,16 +46,3 @@ var result = query.SelectExpr(x => new
     AdjustedPrice = x.Price * multiplier
 }, capture: new { multiplier });
 ```
-
-## Notes and edge cases
-- The fixer attempts to minimize changes by reusing existing capture entries and only adding missing names.
-- For complex member access the code fix may introduce a local alias to ensure a valid capture expression.
-
-## Suppression
-Use Roslyn suppression mechanisms to ignore the diagnostic in exceptional cases.
-
-## Implementation notes
-- Analyzer id: `LQRE001`
-- Implementation: `Linqraft.Analyzer.LocalVariableCaptureAnalyzer`
-- Code fix: `Linqraft.Analyzer.LocalVariableCaptureCodeFixProvider`
-
