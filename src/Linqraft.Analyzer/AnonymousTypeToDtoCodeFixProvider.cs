@@ -341,13 +341,18 @@ public class AnonymousTypeToDtoCodeFixProvider : CodeFixProvider
         // Convert anonymous object initializers to regular object initializers
         // This handles both explicit (Name = value) and implicit (x.Name) properties
         var newInitializers = new List<ExpressionSyntax>();
-        
+
         foreach (var initializer in anonymousObject.Initializers)
         {
-            var newInitializer = initializer.NameEquals != null
-                ? CreateAssignmentFromNameEquals(initializer, namespaceName, semanticModel)
-                : CreateAssignmentFromImplicitProperty(initializer, namespaceName, semanticModel);
-            
+            var newInitializer =
+                initializer.NameEquals != null
+                    ? CreateAssignmentFromNameEquals(initializer, namespaceName, semanticModel)
+                    : CreateAssignmentFromImplicitProperty(
+                        initializer,
+                        namespaceName,
+                        semanticModel
+                    );
+
             newInitializers.Add(newInitializer);
         }
 
@@ -366,7 +371,8 @@ public class AnonymousTypeToDtoCodeFixProvider : CodeFixProvider
         // Create the object creation expression, replacing "new" with "new DtoClassName"
         var newObjectCreation = SyntaxFactory
             .ObjectCreationExpression(
-                SyntaxFactory.Token(SyntaxKind.NewKeyword)
+                SyntaxFactory
+                    .Token(SyntaxKind.NewKeyword)
                     .WithLeadingTrivia(anonymousObject.NewKeyword.LeadingTrivia)
                     .WithTrailingTrivia(SyntaxFactory.Space),
                 SyntaxFactory.IdentifierName(dtoClassName),
@@ -424,19 +430,31 @@ public class AnonymousTypeToDtoCodeFixProvider : CodeFixProvider
                     // Convert anonymous object initializers to regular object initializers
                     // preserving original formatting
                     var newInitializers = new List<ExpressionSyntax>();
-                    
+
                     foreach (var initializer in nestedAnonymous.Initializers)
                     {
-                        var newInitializer = initializer.NameEquals != null
-                            ? CreateAssignmentFromNameEquals(initializer, namespaceName, semanticModel)
-                            : CreateAssignmentFromImplicitProperty(initializer, namespaceName, semanticModel);
-                        
+                        var newInitializer =
+                            initializer.NameEquals != null
+                                ? CreateAssignmentFromNameEquals(
+                                    initializer,
+                                    namespaceName,
+                                    semanticModel
+                                )
+                                : CreateAssignmentFromImplicitProperty(
+                                    initializer,
+                                    namespaceName,
+                                    semanticModel
+                                );
+
                         newInitializers.Add(newInitializer);
                     }
 
                     // Preserve the original separators (commas with their trivia)
                     var originalSeparators = nestedAnonymous.Initializers.GetSeparators().ToList();
-                    var newSeparatedList = SyntaxFactory.SeparatedList(newInitializers, originalSeparators);
+                    var newSeparatedList = SyntaxFactory.SeparatedList(
+                        newInitializers,
+                        originalSeparators
+                    );
 
                     // Create new initializer expression preserving the original braces and their trivia
                     var nestedInitializerExpression = SyntaxFactory.InitializerExpression(
@@ -449,7 +467,8 @@ public class AnonymousTypeToDtoCodeFixProvider : CodeFixProvider
                     // Create the object creation expression, replacing "new" with "new NestedClassName"
                     var nestedObjectCreation = SyntaxFactory
                         .ObjectCreationExpression(
-                            SyntaxFactory.Token(SyntaxKind.NewKeyword)
+                            SyntaxFactory
+                                .Token(SyntaxKind.NewKeyword)
                                 .WithLeadingTrivia(nestedAnonymous.NewKeyword.LeadingTrivia)
                                 .WithTrailingTrivia(SyntaxFactory.Space),
                             SyntaxFactory.IdentifierName(nestedClassName),
@@ -637,13 +656,11 @@ public class AnonymousTypeToDtoCodeFixProvider : CodeFixProvider
         // Create assignment expression without trivia first
         var assignment = SyntaxFactory.AssignmentExpression(
             SyntaxKind.SimpleAssignmentExpression,
-            SyntaxFactory.IdentifierName(propertyName)
-                .WithTrailingTrivia(SyntaxFactory.Space),
-            SyntaxFactory.Token(SyntaxKind.EqualsToken)
-                .WithTrailingTrivia(SyntaxFactory.Space),
+            SyntaxFactory.IdentifierName(propertyName).WithTrailingTrivia(SyntaxFactory.Space),
+            SyntaxFactory.Token(SyntaxKind.EqualsToken).WithTrailingTrivia(SyntaxFactory.Space),
             replacedValue
         );
-        
+
         // Apply trivia from the original initializer
         return assignment
             .WithLeadingTrivia(initializer.GetLeadingTrivia())
@@ -670,13 +687,11 @@ public class AnonymousTypeToDtoCodeFixProvider : CodeFixProvider
         // Create assignment expression without trivia first
         var assignment = SyntaxFactory.AssignmentExpression(
             SyntaxKind.SimpleAssignmentExpression,
-            SyntaxFactory.IdentifierName(propertyName)
-                .WithTrailingTrivia(SyntaxFactory.Space),
-            SyntaxFactory.Token(SyntaxKind.EqualsToken)
-                .WithTrailingTrivia(SyntaxFactory.Space),
+            SyntaxFactory.IdentifierName(propertyName).WithTrailingTrivia(SyntaxFactory.Space),
+            SyntaxFactory.Token(SyntaxKind.EqualsToken).WithTrailingTrivia(SyntaxFactory.Space),
             replacedValue
         );
-        
+
         // Apply trivia from the original initializer
         return assignment
             .WithLeadingTrivia(initializer.GetLeadingTrivia())
