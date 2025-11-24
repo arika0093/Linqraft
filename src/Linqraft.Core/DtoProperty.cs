@@ -100,7 +100,7 @@ public record DtoProperty(
         {
             // For collection creation methods, ensure the collection itself is not nullable
             // even if it contains nullable elements
-            if (ShouldForceNonNullableCollection(invocation, expression))
+            if (ShouldForceNonNullableCollection(invocation))
             {
                 // Force the collection to be non-nullable
                 propertyType = propertyType.WithNullableAnnotation(NullableAnnotation.NotAnnotated);
@@ -433,13 +433,10 @@ public record DtoProperty(
     /// <summary>
     /// Determines if a collection invocation should be forced to be non-nullable
     /// </summary>
-    private static bool ShouldForceNonNullableCollection(
-        InvocationExpressionSyntax invocation,
-        ExpressionSyntax expression
-    )
+    private static bool ShouldForceNonNullableCollection(InvocationExpressionSyntax invocation)
     {
         // Check if there's a nullable access operator on the collection itself
-        var hasNullableOnCollection = HasNullableAccess(expression);
+        var hasNullableOnCollection = HasNullableAccess(invocation);
         
         // If there's no nullable access on the collection itself and it's a collection creation method,
         // the collection should not be nullable even if it contains nullable elements
