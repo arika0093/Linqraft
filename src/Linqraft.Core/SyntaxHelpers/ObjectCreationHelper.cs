@@ -7,8 +7,39 @@ using Microsoft.CodeAnalysis.CSharp.Syntax;
 namespace Linqraft.Core.SyntaxHelpers;
 
 /// <summary>
-/// Helper methods for converting between object creation expressions while preserving trivia and structure
+/// Helper methods for converting between object creation expressions while preserving trivia and structure.
+/// 
+/// <para>This helper centralizes the trivia-preserving replacement logic that was originally implemented
+/// in AnonymousTypeToDtoCodeFixProvider. All conversions maintain:</para>
+/// 
+/// <list type="bullet">
+/// <item><description>Original separators (commas with their trivia) using GetSeparators()</description></item>
+/// <item><description>Brace tokens and their trivia (OpenBraceToken, CloseBraceToken)</description></item>
+/// <item><description>Leading and trailing trivia on expressions and members</description></item>
+/// <item><description>Trivia on the 'new' keyword</description></item>
+/// <item><description>Trivia from the type node that appears between 'new' and the opening brace</description></item>
+/// </list>
+/// 
+/// <para>This ensures that code formatting, indentation, comments, and whitespace are preserved
+/// when performing syntax transformations in code fix providers.</para>
 /// </summary>
+/// <remarks>
+/// Example usage in a code fix provider:
+/// <code>
+/// // Convert anonymous to named type
+/// var namedObject = ObjectCreationHelper.ConvertToNamedType(
+///     anonymousObject,
+///     "MyDto",
+///     convertMemberCallback: member => /* custom transformation */
+/// );
+/// 
+/// // Convert named to anonymous type
+/// var anonymousObject = ObjectCreationHelper.ConvertToAnonymousType(objectCreation);
+/// 
+/// // Recursively convert nested objects
+/// var anonymousObject = ObjectCreationHelper.ConvertToAnonymousTypeRecursive(objectCreation);
+/// </code>
+/// </remarks>
 public static class ObjectCreationHelper
 {
     /// <summary>
