@@ -72,7 +72,7 @@ public record DtoProperty(
         // Determine nullability: prefer the expression's type over the targetProperty's type
         // This is important for lambda expressions where the anonymous type may lose nullability info
         NullableAnnotation nullableAnnotation;
-        
+
         // For direct member access (e.g., s.Name), get nullability from the source member
         if (expression is MemberAccessExpressionSyntax memberAccess)
         {
@@ -425,7 +425,7 @@ public record DtoProperty(
         {
             IPropertySymbol prop => prop.Type,
             IFieldSymbol field => field.Type,
-            _ => throw new ArgumentException($"Unsupported symbol type: {symbol.GetType().Name}")
+            _ => throw new ArgumentException($"Unsupported symbol type: {symbol.GetType().Name}"),
         };
         return (type, type.NullableAnnotation);
     }
@@ -437,7 +437,7 @@ public record DtoProperty(
     {
         // Check if there's a nullable access operator on the collection itself
         var hasNullableOnCollection = HasNullableAccess(invocation);
-        
+
         // If there's no nullable access on the collection itself and it's a collection creation method,
         // the collection should not be nullable even if it contains nullable elements
         return !hasNullableOnCollection && IsCollectionCreationMethod(invocation);
@@ -459,7 +459,7 @@ public record DtoProperty(
         "ToImmutableDictionary",
         "ToLookup",
         "AsEnumerable",
-        "AsQueryable"
+        "AsQueryable",
     };
 
     /// <summary>
