@@ -82,7 +82,9 @@ public static class ArgumentListHelper
         var trailingTrivia = originalArg.GetTrailingTrivia();
         
         // If the original argument has leading trivia with newlines/whitespace,
-        // it means it was on a new line. We should move that to the separator before it.
+        // it means it was on a new line. We need to consolidate it onto the same line.
+        // We check for both EndOfLineTrivia and WhitespaceTrivia because when an argument
+        // is on a new line, it typically has both newline and indentation whitespace.
         if (index > 0 && leadingTrivia.Any(t => t.IsKind(SyntaxKind.EndOfLineTrivia) || t.IsKind(SyntaxKind.WhitespaceTrivia)))
         {
             // Check if the separator before this argument has trailing newline trivia
@@ -92,14 +94,16 @@ public static class ArgumentListHelper
                 var separator = separators[separatorIndex];
                 var separatorTrailingTrivia = separator.TrailingTrivia;
                 
-                // If the separator has newline trivia, replace it with just a space
+                // If the separator has newline or whitespace trivia, replace it with just a space
+                // to consolidate the argument onto the same line as the previous argument
                 if (separatorTrailingTrivia.Any(t => t.IsKind(SyntaxKind.EndOfLineTrivia) || t.IsKind(SyntaxKind.WhitespaceTrivia)))
                 {
                     separators[separatorIndex] = SyntaxFactory.Token(SyntaxKind.CommaToken).WithTrailingTrivia(SyntaxFactory.Space);
                 }
             }
             
-            // Remove leading newline/whitespace trivia from the argument
+            // Remove all leading trivia (newlines, indentation whitespace)
+            // This is intentional - we're consolidating the argument onto the same line
             leadingTrivia = SyntaxTriviaList.Empty;
         }
         
