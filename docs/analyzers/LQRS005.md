@@ -1,4 +1,3 @@
-````markdown
 # LQRS005 - UnnecessaryCaptureAnalyzer
 
 **Severity:** Warning  
@@ -87,4 +86,3 @@ You can suppress the diagnostic using normal Roslyn suppressions (pragma, suppre
 
 For more details, see implementation in `src/Linqraft.Analyzer/UnnecessaryCaptureAnalyzer.cs` and `UnnecessaryCaptureCodeFixProvider.cs`.
 
-````
