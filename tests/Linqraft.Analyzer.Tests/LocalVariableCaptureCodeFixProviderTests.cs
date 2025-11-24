@@ -222,6 +222,76 @@ class Test
     }
 
     [Fact]
+    public async Task LocalVariable_InComplexExpression_AddsCapture_Format2()
+    {
+        var test =
+            @"
+using System.Linq;
+using System.Collections.Generic;
+
+class Entity
+{
+    public int Value { get; set; }
+}
+
+class Test
+{
+    void Method()
+    {
+        var multiplier = 10;
+        var offset = 5;
+        var list = new List<Entity>();
+        var result = list.AsQueryable().SelectExpr(
+            s => new { 
+                Result = (s.Value * {|#0:multiplier|}) + {|#1:offset|}
+            }
+        ).ToList();
+    }
+}
+
+" + TestSourceCodes.SelectExprWithFuncAndBothOverloads;
+
+        var fixedCode =
+            @"
+using System.Linq;
+using System.Collections.Generic;
+
+class Entity
+{
+    public int Value { get; set; }
+}
+
+class Test
+{
+    void Method()
+    {
+        var multiplier = 10;
+        var offset = 5;
+        var list = new List<Entity>();
+        var result = list.AsQueryable().SelectExpr(
+            s => new { 
+                Result = (s.Value * multiplier) + offset
+            }, capture: new { multiplier, offset }
+        ).ToList();
+    }
+}
+
+" + TestSourceCodes.SelectExprWithFuncAndBothOverloads;
+
+        var expected1 = VerifyCS
+            .Diagnostic(LocalVariableCaptureAnalyzer.AnalyzerId)
+            .WithLocation(0)
+            .WithArguments("multiplier");
+
+        var expected2 = VerifyCS
+            .Diagnostic(LocalVariableCaptureAnalyzer.AnalyzerId)
+            .WithLocation(1)
+            .WithArguments("offset");
+
+        await VerifyCS.VerifyCodeFixAsync(test, new[] { expected1, expected2 }, fixedCode);
+    }
+
+    [Fact]
     public async Task LocalVariable_WithTypedSelectExpr_AddsCapture()
     {
         var test =

@@ -339,6 +339,66 @@ class Entity
     }
 
     [Fact]
+    public async Task CaptureWithNameEquals_RemovesCaptureArgument_Multiline()
+    {
+        var test =
+            @"
+using System.Linq;
+using System.Collections.Generic;
+
+class Test
+{
+    void Method()
+    {
+        var local = 10;
+        var list = new List<Entity> { new Entity { Id = 1 } };
+        var result = list.AsQueryable().SelectExpr(
+            s => new { s.Id },
+            capture: new { {|#0:capturedLocal|} = local }
+        );
+    }
+}
+
+class Entity
+{
+    public int Id { get; set; }
+}
+
+" + TestSourceCodes.SelectExprWithFuncAndBothOverloads;
+
+        var fixedCode =
+            @"
+using System.Linq;
+using System.Collections.Generic;
+
+class Test
+{
+    void Method()
+    {
+        var local = 10;
+        var list = new List<Entity> { new Entity { Id = 1 } };
+        var result = list.AsQueryable().SelectExpr(
+            s => new { s.Id }
+        );
+    }
+}
+
+class Entity
+{
+    public int Id { get; set; }
+}
+
+" + TestSourceCodes.SelectExprWithFuncAndBothOverloads;
+
+        var expected = VerifyCS
+            .Diagnostic(UnnecessaryCaptureAnalyzer.AnalyzerId)
+            .WithLocation(0)
+            .WithArguments("capturedLocal");
+
+        await VerifyCS.VerifyCodeFixAsync(test, expected, fixedCode);
+    }
+
+    [Fact]
     public async Task PartiallyUnnecessaryWithNameEquals_RemovesOnlyUnnecessary()
     {
         var test =
