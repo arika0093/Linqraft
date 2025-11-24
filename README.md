@@ -351,6 +351,7 @@ var converted = dbContext.Entities
 
 An analyzer is also provided to automatically detect and apply this transformation.
 It is detected as an error, so just apply the code fix.
+
 ![](./assets/local-variable-capture-err.png)
 
 ### Partial Classes
