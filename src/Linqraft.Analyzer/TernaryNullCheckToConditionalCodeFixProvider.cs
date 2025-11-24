@@ -311,15 +311,21 @@ public class TernaryNullCheckToConditionalCodeFixProvider : CodeFixProvider
         {
             // Handle named object creation similar to anonymous
             if (node.Initializer == null)
-                return node;
+                return base.VisitObjectCreationExpression(node);
 
-            // Transform each initializer expression while preserving structure
+            // Transform each initializer expression while preserving structure and trivia
             var newExpressions = new List<ExpressionSyntax>();
 
             foreach (var expression in node.Initializer.Expressions)
             {
-                // Visit to convert member accesses
-                var newExpression = (ExpressionSyntax)Visit(expression);
+                // Visit to convert member accesses, preserving trivia
+                var visitedExpression = (ExpressionSyntax)Visit(expression);
+                
+                // Preserve the trivia from the original expression
+                var newExpression = visitedExpression
+                    .WithLeadingTrivia(expression.GetLeadingTrivia())
+                    .WithTrailingTrivia(expression.GetTrailingTrivia());
+                
                 newExpressions.Add(newExpression);
             }
 
