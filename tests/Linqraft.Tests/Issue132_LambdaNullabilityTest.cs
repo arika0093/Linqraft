@@ -96,6 +96,34 @@ public class Issue132_LambdaNullabilityTest
         first.ChildNames.ShouldNotBeNull();
         first.ChildNames.Count.ShouldBe(2);
     }
+
+    [Fact]
+    public void CollectionSelectWithNullablePropertyInLambda_ListShouldNotBeNullable()
+    {
+        // Issue: When using c?.Id inside Select, the entire List becomes nullable
+        // The List itself should NOT be nullable even though the property inside is
+        Func<object> handler = () =>
+        {
+            PersonWithNullableChildren[] people = [
+                new PersonWithNullableChildren { Id = 1, Name = "John", Children = [
+                    new ChildWithNullableId { Id = 1, Name = "Alice" },
+                    new ChildWithNullableId { Id = null, Name = "Bob" }
+                ]},
+            ];
+            var result = people.AsQueryable().SelectExpr<PersonWithNullableChildren, PersonWithNullableChildrenDto>(s => new
+            {
+                Id = s.Id,
+                Name = s.Name,
+                ChildInfo = s.Children.Select(c => new { c.Name, c.Id }).ToList(),
+            }).ToList();
+            
+            return result;
+        };
+
+        var data = handler() as System.Collections.IList;
+        data.ShouldNotBeNull();
+        data.Count.ShouldBe(1);
+    }
 }
 
 public class Person
@@ -114,5 +142,18 @@ public class PersonWithChildren
 public class Child
 {
     public required int Id { get; set; }
+    public required string Name { get; set; }
+}
+
+public class PersonWithNullableChildren
+{
+    public required int Id { get; set; }
+    public required string? Name { get; set; }
+    public required System.Collections.Generic.List<ChildWithNullableId> Children { get; set; }
+}
+
+public class ChildWithNullableId
+{
+    public required int? Id { get; set; }
     public required string Name { get; set; }
 }

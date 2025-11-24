@@ -93,7 +93,15 @@ public record DtoProperty(
                 nullableAnnotation = propertyType.NullableAnnotation;
             }
         }
-        // For other expressions (method calls, operators, etc.), use targetProperty if available
+        // For invocation expressions (e.g., .Select(...).ToList()), prefer expression's type
+        // The anonymous type may incorrectly mark collections as nullable based on their contents
+        else if (expression is InvocationExpressionSyntax)
+        {
+            // Use the expression's own type information (from typeInfo at line 66)
+            // This preserves correct nullability for collections like List<T>
+            nullableAnnotation = propertyType.NullableAnnotation;
+        }
+        // For other expressions (operators, etc.), use targetProperty if available
         else if (targetProperty is not null)
         {
             (propertyType, nullableAnnotation) = GetTypeInfoFromSymbol(targetProperty);
