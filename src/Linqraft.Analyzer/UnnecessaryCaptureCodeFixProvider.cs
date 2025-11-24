@@ -125,10 +125,10 @@ public class UnnecessaryCaptureCodeFixProvider : CodeFixProvider
             return invocation;
         }
 
-        var arguments = invocation.ArgumentList.Arguments.ToList();
-        arguments.RemoveAt(captureArgIndex);
-
-        var newArgumentList = SyntaxFactory.ArgumentList(SyntaxFactory.SeparatedList(arguments));
+        var newArgumentList = ArgumentListHelper.RemoveArgument(
+            invocation.ArgumentList,
+            captureArgIndex
+        );
 
         return invocation.WithArgumentList(newArgumentList);
     }
@@ -145,10 +145,11 @@ public class UnnecessaryCaptureCodeFixProvider : CodeFixProvider
         }
 
         var captureArgument = CaptureHelper.CreateCaptureArgument(variablesToKeep);
-        var arguments = invocation.ArgumentList.Arguments.ToList();
-        arguments[captureArgIndex] = captureArgument;
-
-        var newArgumentList = SyntaxFactory.ArgumentList(SyntaxFactory.SeparatedList(arguments));
+        var newArgumentList = ArgumentListHelper.ReplaceArgument(
+            invocation.ArgumentList,
+            captureArgIndex,
+            captureArgument
+        );
 
         return invocation.WithArgumentList(newArgumentList);
     }
