@@ -253,9 +253,8 @@ var converted = dbContext.Entities
     );
 ```
 
-An analyzer is also provided to automatically detect and apply this transformation. It is detected as an error, so just apply the code fix.
-
-(sample animation)
+An analyzer is also provided to automatically detect and apply this transformation.
+It is detected as an error, so just apply the code fix.
 
 ### Partial Classes
 You can extend the generated DTO classes as needed since they are output as `partial` classes.
