@@ -1,3 +1,5 @@
+using System;
+using System.Collections.Generic;
 using System.Linq;
 using Linqraft.Core.SyntaxHelpers;
 using Microsoft.CodeAnalysis;
@@ -67,12 +69,53 @@ public record DtoProperty(
         if (propertyType is null)
             return null;
 
-        // If targetProperty is provided (for predefined DTOs), use its type information
+        // Determine nullability: prefer the expression's type over the targetProperty's type
+        // This is important for lambda expressions where the anonymous type may lose nullability info
         NullableAnnotation nullableAnnotation;
-        if (targetProperty is not null)
+        
+        // For direct member access (e.g., s.Name), get nullability from the source member
+        if (expression is MemberAccessExpressionSyntax memberAccess)
         {
-            nullableAnnotation = targetProperty.Type.NullableAnnotation;
-            propertyType = targetProperty.Type;
+            var memberSymbol = semanticModel.GetSymbolInfo(memberAccess).Symbol;
+            if (memberSymbol is IPropertySymbol sourceProp)
+            {
+                (propertyType, nullableAnnotation) = GetTypeInfoFromSymbol(sourceProp);
+            }
+            else if (memberSymbol is IFieldSymbol sourceField)
+            {
+                (propertyType, nullableAnnotation) = GetTypeInfoFromSymbol(sourceField);
+            }
+            else if (targetProperty is not null)
+            {
+                (propertyType, nullableAnnotation) = GetTypeInfoFromSymbol(targetProperty);
+            }
+            else
+            {
+                nullableAnnotation = propertyType.NullableAnnotation;
+            }
+        }
+        // For invocation expressions (e.g., .Select(...).ToList()), prefer expression's type
+        // The anonymous type may incorrectly mark collections as nullable based on their contents
+        else if (expression is InvocationExpressionSyntax invocation)
+        {
+            // For collection creation methods, ensure the collection itself is not nullable
+            // even if it contains nullable elements
+            if (ShouldForceNonNullableCollection(invocation))
+            {
+                // Force the collection to be non-nullable
+                propertyType = propertyType.WithNullableAnnotation(NullableAnnotation.NotAnnotated);
+                nullableAnnotation = NullableAnnotation.NotAnnotated;
+            }
+            else
+            {
+                // Use the expression's own type information (from typeInfo at line 66)
+                nullableAnnotation = propertyType.NullableAnnotation;
+            }
+        }
+        // For other expressions (operators, etc.), use targetProperty if available
+        else if (targetProperty is not null)
+        {
+            (propertyType, nullableAnnotation) = GetTypeInfoFromSymbol(targetProperty);
         }
         else
         {
@@ -296,10 +339,10 @@ public record DtoProperty(
             foreach (var initializer in directAnonymous.Initializers)
             {
                 var initExpr = initializer.Expression;
-                if (initExpr is MemberAccessExpressionSyntax memberAccess)
+                if (initExpr is MemberAccessExpressionSyntax initMemberAccess)
                 {
                     // Get the type of the expression being accessed (e.g., q.Channel)
-                    var baseTypeInfo = semanticModel.GetTypeInfo(memberAccess.Expression);
+                    var baseTypeInfo = semanticModel.GetTypeInfo(initMemberAccess.Expression);
                     if (baseTypeInfo.Type is not null)
                     {
                         sourceTypeForNested = baseTypeInfo.Type;
@@ -369,6 +412,67 @@ public record DtoProperty(
             NestedStructure: nestedStructure,
             Accessibility: accessibility
         );
+    }
+
+    /// <summary>
+    /// Helper method to extract type and nullability annotation from a symbol
+    /// </summary>
+    private static (ITypeSymbol Type, NullableAnnotation NullableAnnotation) GetTypeInfoFromSymbol(
+        ISymbol symbol
+    )
+    {
+        var type = symbol switch
+        {
+            IPropertySymbol prop => prop.Type,
+            IFieldSymbol field => field.Type,
+            _ => throw new ArgumentException($"Unsupported symbol type: {symbol.GetType().Name}")
+        };
+        return (type, type.NullableAnnotation);
+    }
+
+    /// <summary>
+    /// Determines if a collection invocation should be forced to be non-nullable
+    /// </summary>
+    private static bool ShouldForceNonNullableCollection(InvocationExpressionSyntax invocation)
+    {
+        // Check if there's a nullable access operator on the collection itself
+        var hasNullableOnCollection = HasNullableAccess(invocation);
+        
+        // If there's no nullable access on the collection itself and it's a collection creation method,
+        // the collection should not be nullable even if it contains nullable elements
+        return !hasNullableOnCollection && IsCollectionCreationMethod(invocation);
+    }
+
+    /// <summary>
+    /// Collection creation method names that produce non-nullable collections
+    /// </summary>
+    private static readonly HashSet<string> CollectionCreationMethods = new()
+    {
+        "ToList",
+        "ToArray",
+        "ToHashSet",
+        "ToImmutableList",
+        "ToImmutableArray",
+        "ToImmutableHashSet",
+        "ToImmutableSet",
+        "ToDictionary",
+        "ToImmutableDictionary",
+        "ToLookup",
+        "AsEnumerable",
+        "AsQueryable"
+    };
+
+    /// <summary>
+    /// Checks if an invocation is a collection creation method like ToList(), ToArray(), etc.
+    /// </summary>
+    private static bool IsCollectionCreationMethod(InvocationExpressionSyntax invocation)
+    {
+        if (invocation.Expression is MemberAccessExpressionSyntax memberAccess)
+        {
+            var methodName = memberAccess.Name.Identifier.Text;
+            return CollectionCreationMethods.Contains(methodName);
+        }
+        return false;
     }
 
     /// <summary>
