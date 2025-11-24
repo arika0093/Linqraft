@@ -1,7 +1,6 @@
 using System.Text.Json;
 using Linqraft.MinimumSample;
 
-// exec
 var results = SampleData
     .GetOrdersFromOtherSource()
     .AsQueryable()
@@ -11,9 +10,11 @@ var results = SampleData
         CustomerName = s.Customer?.Name,
         CustomerCountry = s.Customer?.Address?.Country?.Name,
         CustomerCity = s.Customer?.Address?.City?.Name,
-        Items = s
-            .OrderItems.Select(oi => new { ProductName = oi.Product?.Name, Quantity = oi.Quantity })
-            .ToList(),
+        Items = s.OrderItems.Select(oi => new
+        {
+            ProductName = oi.Product?.Name,
+            Quantity = oi.Quantity,
+        }),
     })
     .ToList();
 
