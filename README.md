@@ -124,9 +124,9 @@ namespace Tutorial
 
 </details>
 
-Since [analyzers](./docs/analyzers/README.md) are provided to replace existing code with Linqraft, the replacement is completed in an instant.
+Since [analyzers](./docs/analyzers/README.md) are provided to replace existing `Select` code with Linqraft, the replacement is completed in an instant.
 
-(sample animation)
+![](./assets/replace-codefix-sample.gif)
 
 ## Usage
 ### Prerequisites
