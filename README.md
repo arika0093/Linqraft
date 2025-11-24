@@ -8,7 +8,7 @@ Write Select queries easily with on-demand DTO generation and null-coalescing op
 ## Features
 
 Linqraft is a Roslyn Source Generator for easily writing `IQueryable` projections with null-propagation and automatic DTO generation.
-Using this library you can write concise selectors with null-propagation and optionally generate DTO classes automatically.
+With Linqraft, you can write queries like this:
 
 ```csharp
 var orders = await dbContext.Orders
@@ -40,7 +40,8 @@ var orders = await dbContext.Orders
     .ToListAsync();
 ```
 
-By specifying `OrderDto` as the generic parameter for `SelectExpr`, DTO types are generated **automatically** from the anonymous-type selector. That means **you don't need to manually declare** `OrderDto` or `OrderItemDto`.
+By specifying `OrderDto` as the generic parameter for `SelectExpr`, DTO types are generated **automatically** from the anonymous-type selector.
+That means **you don't need to manually declare** `OrderDto` or `OrderItemDto`.
 for example, the generated code looks like this:
 
 <details>
