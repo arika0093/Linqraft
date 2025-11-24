@@ -127,6 +127,93 @@ Since [analyzers](./docs/analyzers/README.md) are provided to replace existing `
 
 ![](./assets/replace-codefix-sample.gif)
 
+## Why Linqraft?
+
+Consider a case where you need to fetch data from a database with many related tables.
+Writing it naively would involve heavy use of `Include` / `ThenInclude`, resulting in code that is hard to read and maintain.
+
+- The Include-based style becomes verbose and hard to follow.
+- Forgetting an `Include` can lead to runtime `NullReferenceException`s that are hard to detect at compile time.
+- Fetching entire object graphs is often wasteful and hurts performance.
+
+```csharp
+// ⚠️ unreadable, inefficient, and error-prone
+var orders = await dbContext.Orders
+    .Include(o => o.Customer).ThenInclude(c => c.Address).ThenInclude(a => a.Country)
+    .Include(o => o.Customer).ThenInclude(c => c.Address).ThenInclude(a => a.City)
+    .Include(o => o.OrderItems).ThenInclude(oi => oi.Product)
+    .ToListAsync();
+```
+
+A better approach is to project into DTOs and select only the fields you need:
+
+```csharp
+// ✅️ readable and efficient
+var orders = await dbContext.Orders
+    .Select(o => new OrderDto
+    {
+        Id = o.Id,
+        CustomerName = o.Customer.Name,
+        CustomerCountry = o.Customer.Address.Country.Name,
+        CustomerCity = o.Customer.Address.City.Name,
+        Items = o.OrderItems.Select(oi => new OrderItemDto
+        {
+            ProductName = oi.Product.Name,
+            Quantity = oi.Quantity
+        })
+    })
+    .ToListAsync();
+```
+
+This yields better performance because only the required data is fetched. But this style has drawbacks:
+
+- If you want to pass the result to other methods or return it from APIs, you usually must define DTO classes manually.
+- When child objects can be null, the expression APIs don't support the `?.` operator directly, forcing verbose null checks using ternary operators.
+
+```csharp
+// 🤔 too ugly code with lots of null checks
+var orders = await dbContext.Orders
+    .Select(o => new OrderDto
+    {
+        Id = o.Id,
+        // in expression trees, ?. is not supported
+        CustomerName = o.Customer != null ? o.Customer.Name : null,
+        // nested null checks get worse
+        CustomerCountry = o.Customer != null && o.Customer.Address != null && o.Customer.Address.Country != null
+            ? o.Customer.Address.Country.Name
+            : null,
+        CustomerCity = o.Customer != null && o.Customer.Address != null && o.Customer.Address.City != null
+            ? o.Customer.Address.City.Name
+            : null,
+        Items = o.OrderItems.Select(oi => new OrderItemDto
+        {
+            // more null checks
+            ProductName = oi.Product != null ? oi.Product.Name : null,
+            Quantity = oi.Quantity
+        })
+    })
+    .ToListAsync();
+
+// 🤔 you must define DTO classes manually
+public class OrderDto
+{
+    public int Id { get; set; }
+    public string? CustomerName { get; set; }
+    public string? CustomerCountry { get; set; }
+    public string? CustomerCity { get; set; }
+    public List<OrderItemDto> Items { get; set; } = [];
+}
+// When child DTOs are deep, the problem worsens
+public class OrderItemDto
+{
+    public string? ProductName { get; set; }
+    public int Quantity { get; set; }
+}
+```
+
+Linqraft solves these problems by providing `SelectExpr`, which supports null-propagation operators and automatic DTO generation.
+This allows you to write clean, efficient queries without boilerplate code.
+
 ## Usage
 ### Prerequisites
 This library requirements **C# 12.0 or later** because it uses the [interceptor](https://learn.microsoft.com/en-us/dotnet/csharp/whats-new/csharp-12#interceptors) feature.  
@@ -160,8 +247,18 @@ Install `Linqraft` from NuGet.
 dotnet add package Linqraft
 ```
 
-> [!TIP]
-> Linqraft is added as a development-only library and is not included in production builds.
+Or add the following to your csproj.
+
+```xml
+<Project>
+  <ItemGroup>
+    <PackageReference Include="Linqraft" Version="0.*">
+      <PrivateAssets>all</PrivateAssets>
+      <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+    </PackageReference>
+  </ItemGroup>
+</Project>
+```
 
 ## Examples
 ### Anonymous pattern
