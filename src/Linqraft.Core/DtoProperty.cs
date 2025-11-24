@@ -95,11 +95,29 @@ public record DtoProperty(
         }
         // For invocation expressions (e.g., .Select(...).ToList()), prefer expression's type
         // The anonymous type may incorrectly mark collections as nullable based on their contents
-        else if (expression is InvocationExpressionSyntax)
+        else if (expression is InvocationExpressionSyntax invocation)
         {
-            // Use the expression's own type information (from typeInfo at line 66)
-            // This preserves correct nullability for collections like List<T>
-            nullableAnnotation = propertyType.NullableAnnotation;
+            // For collection creation methods like ToList(), ToArray(), etc.,
+            // check if there's a nullable access operator on the collection itself
+            var hasNullableOnCollection = HasNullableAccess(expression);
+            
+            // If there's no nullable access on the collection itself, it should not be nullable
+            // even if it contains nullable elements
+            if (!hasNullableOnCollection && IsCollectionCreationMethod(invocation))
+            {
+                // Force the collection to be non-nullable by removing nullable annotation from the type
+                nullableAnnotation = NullableAnnotation.NotAnnotated;
+                // Update the type symbol to remove nullable annotation if present
+                if (propertyType.NullableAnnotation == NullableAnnotation.Annotated)
+                {
+                    propertyType = propertyType.WithNullableAnnotation(NullableAnnotation.NotAnnotated);
+                }
+            }
+            else
+            {
+                // Use the expression's own type information (from typeInfo at line 66)
+                nullableAnnotation = propertyType.NullableAnnotation;
+            }
         }
         // For other expressions (operators, etc.), use targetProperty if available
         else if (targetProperty is not null)
@@ -417,6 +435,20 @@ public record DtoProperty(
             _ => throw new ArgumentException($"Unsupported symbol type: {symbol.GetType().Name}")
         };
         return (type, type.NullableAnnotation);
+    }
+
+    /// <summary>
+    /// Checks if an invocation is a collection creation method like ToList(), ToArray(), etc.
+    /// </summary>
+    private static bool IsCollectionCreationMethod(InvocationExpressionSyntax invocation)
+    {
+        if (invocation.Expression is MemberAccessExpressionSyntax memberAccess)
+        {
+            var methodName = memberAccess.Name.Identifier.Text;
+            return methodName is "ToList" or "ToArray" or "ToHashSet" or "ToImmutableList" 
+                or "ToImmutableArray" or "ToImmutableHashSet";
+        }
+        return false;
     }
 
     /// <summary>
