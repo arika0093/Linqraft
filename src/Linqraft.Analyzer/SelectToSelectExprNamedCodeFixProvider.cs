@@ -397,48 +397,6 @@ public class SelectToSelectExprNamedCodeFixProvider : CodeFixProvider
         return ObjectCreationHelper.ConvertToAnonymousTypeRecursive(objectCreation);
     }
 
-    /// <summary>
-    /// Processes an expression to recursively convert nested object creations to anonymous objects
-    /// </summary>
-    private static ExpressionSyntax ProcessExpressionForNestedConversions(
-        ExpressionSyntax expression
-    )
-    {
-        // Use a recursive rewriter to find and convert all nested object creations
-        var rewriter = new NestedObjectCreationRewriter();
-        return (ExpressionSyntax)rewriter.Visit(expression);
-    }
-
-    /// <summary>
-    /// Syntax rewriter that converts ObjectCreationExpressionSyntax to AnonymousObjectCreationExpressionSyntax
-    /// </summary>
-    private class NestedObjectCreationRewriter : CSharpSyntaxRewriter
-    {
-        public override SyntaxNode? VisitObjectCreationExpression(
-            ObjectCreationExpressionSyntax node
-        )
-        {
-            // Only convert if it has an initializer with assignment expressions
-            // Don't convert things like "new List()" or "new List<T>()"
-            if (node.Initializer != null && HasAssignmentExpressions(node.Initializer))
-            {
-                // Convert this object creation to anonymous type using the helper
-                var anonymousType = ObjectCreationHelper.ConvertToAnonymousType(node);
-
-                // Continue visiting children to convert nested object creations
-                return base.Visit(anonymousType) ?? anonymousType;
-            }
-
-            // For object creations without proper initializers, don't convert but still visit children
-            return base.VisitObjectCreationExpression(node);
-        }
-
-        private static bool HasAssignmentExpressions(InitializerExpressionSyntax initializer)
-        {
-            return initializer.Expressions.Any(e => e is AssignmentExpressionSyntax);
-        }
-    }
-
     private static ObjectCreationExpressionSyntax? FindNamedObjectCreationInArguments(
         ArgumentListSyntax argumentList
     )
