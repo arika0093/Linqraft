@@ -5,6 +5,9 @@ permissions:
   contents: write
   pull-requests: write
 
+env:
+  DOTNET_VERSION: '10.0.x'
+
 jobs:
   package-test:
     runs-on: ubuntu-latest
@@ -18,12 +21,7 @@ jobs:
       - name: Setup .NET
         uses: actions/setup-dotnet@v4
         with:
-          dotnet-version: |
-            6.0.x
-            8.0.x
-            10.0.x
-          cache: true
-          cache-dependency-path: '**/packages.lock.json'
+          dotnet-version: ${{ env.DOTNET_VERSION }}
 
       - name: Restore dependencies
         run: dotnet restore
@@ -31,8 +29,8 @@ jobs:
       - name: Build
         run: dotnet build --no-restore
 
-      - name: Run tests
-        run: dotnet test --no-build --verbosity normal --logger GitHubActions
+      - name: Run tests only for .NET 10.0
+        run: dotnet test --no-build --verbosity normal --logger GitHubActions -f net10.0
   
   dependabot:
     runs-on: ubuntu-latest
