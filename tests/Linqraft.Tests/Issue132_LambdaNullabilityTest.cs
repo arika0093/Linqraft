@@ -10,7 +10,7 @@ public class Issue132_LambdaNullabilityTest
     /// When SelectExpr is called inside a lambda expression (like in minimal API), 
     /// the following phenomena occur:
     /// - A type that should be string? is converted to string
-    /// - A type that should be List<ChildDto> (s.Select(...)) is converted to List<ChildDto>?
+    /// - A type that should be List<string> (s.Children.Select(...).ToList()) is incorrectly made nullable
     /// </summary>
     [Fact]
     public void NullableTypeInLambda_ShouldPreserveNullability()
