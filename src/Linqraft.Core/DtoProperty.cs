@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.Linq;
 using Linqraft.Core.SyntaxHelpers;
 using Microsoft.CodeAnalysis;
@@ -97,21 +98,13 @@ public record DtoProperty(
         // The anonymous type may incorrectly mark collections as nullable based on their contents
         else if (expression is InvocationExpressionSyntax invocation)
         {
-            // For collection creation methods like ToList(), ToArray(), etc.,
-            // check if there's a nullable access operator on the collection itself
-            var hasNullableOnCollection = HasNullableAccess(expression);
-            
-            // If there's no nullable access on the collection itself, it should not be nullable
+            // For collection creation methods, ensure the collection itself is not nullable
             // even if it contains nullable elements
-            if (!hasNullableOnCollection && IsCollectionCreationMethod(invocation))
+            if (ShouldForceNonNullableCollection(invocation, expression))
             {
-                // Force the collection to be non-nullable by removing nullable annotation from the type
+                // Force the collection to be non-nullable
+                propertyType = propertyType.WithNullableAnnotation(NullableAnnotation.NotAnnotated);
                 nullableAnnotation = NullableAnnotation.NotAnnotated;
-                // Update the type symbol to remove nullable annotation if present
-                if (propertyType.NullableAnnotation == NullableAnnotation.Annotated)
-                {
-                    propertyType = propertyType.WithNullableAnnotation(NullableAnnotation.NotAnnotated);
-                }
             }
             else
             {
@@ -438,6 +431,41 @@ public record DtoProperty(
     }
 
     /// <summary>
+    /// Determines if a collection invocation should be forced to be non-nullable
+    /// </summary>
+    private static bool ShouldForceNonNullableCollection(
+        InvocationExpressionSyntax invocation,
+        ExpressionSyntax expression
+    )
+    {
+        // Check if there's a nullable access operator on the collection itself
+        var hasNullableOnCollection = HasNullableAccess(expression);
+        
+        // If there's no nullable access on the collection itself and it's a collection creation method,
+        // the collection should not be nullable even if it contains nullable elements
+        return !hasNullableOnCollection && IsCollectionCreationMethod(invocation);
+    }
+
+    /// <summary>
+    /// Collection creation method names that produce non-nullable collections
+    /// </summary>
+    private static readonly HashSet<string> CollectionCreationMethods = new()
+    {
+        "ToList",
+        "ToArray",
+        "ToHashSet",
+        "ToImmutableList",
+        "ToImmutableArray",
+        "ToImmutableHashSet",
+        "ToImmutableSet",
+        "ToDictionary",
+        "ToImmutableDictionary",
+        "ToLookup",
+        "AsEnumerable",
+        "AsQueryable"
+    };
+
+    /// <summary>
     /// Checks if an invocation is a collection creation method like ToList(), ToArray(), etc.
     /// </summary>
     private static bool IsCollectionCreationMethod(InvocationExpressionSyntax invocation)
@@ -445,8 +473,7 @@ public record DtoProperty(
         if (invocation.Expression is MemberAccessExpressionSyntax memberAccess)
         {
             var methodName = memberAccess.Name.Identifier.Text;
-            return methodName is "ToList" or "ToArray" or "ToHashSet" or "ToImmutableList" 
-                or "ToImmutableArray" or "ToImmutableHashSet";
+            return CollectionCreationMethods.Contains(methodName);
         }
         return false;
     }
