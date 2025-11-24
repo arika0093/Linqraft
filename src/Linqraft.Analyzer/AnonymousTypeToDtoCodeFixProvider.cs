@@ -336,48 +336,28 @@ public class AnonymousTypeToDtoCodeFixProvider : CodeFixProvider
         SemanticModel semanticModel
     )
     {
-        // Convert anonymous object initializers to regular object initializers
-        // This handles both explicit (Name = value) and implicit (x.Name) properties
-        var newInitializers = new List<ExpressionSyntax>();
-
-        foreach (var initializer in anonymousObject.Initializers)
-        {
-            var newInitializer =
-                initializer.NameEquals != null
-                    ? CreateAssignmentFromNameEquals(initializer, namespaceName, semanticModel)
-                    : CreateAssignmentFromImplicitProperty(
+        // Use ObjectCreationHelper to convert with trivia preservation
+        // and handle nested anonymous object replacement
+        var newObjectCreation = ObjectCreationHelper.ConvertToNamedType(
+            anonymousObject,
+            dtoClassName,
+            convertMemberCallback: initializer =>
+            {
+                // For each member, handle nested anonymous object replacement
+                if (initializer.NameEquals != null)
+                {
+                    return CreateAssignmentFromNameEquals(initializer, namespaceName, semanticModel);
+                }
+                else
+                {
+                    return CreateAssignmentFromImplicitProperty(
                         initializer,
                         namespaceName,
                         semanticModel
                     );
-
-            newInitializers.Add(newInitializer);
-        }
-
-        // Preserve the original separators (commas with their trivia)
-        var originalSeparators = anonymousObject.Initializers.GetSeparators().ToList();
-        var newSeparatedList = SyntaxFactory.SeparatedList(newInitializers, originalSeparators);
-
-        // Create new initializer expression preserving the original braces and their trivia
-        var newInitializerExpression = SyntaxFactory.InitializerExpression(
-            SyntaxKind.ObjectInitializerExpression,
-            anonymousObject.OpenBraceToken,
-            newSeparatedList,
-            anonymousObject.CloseBraceToken
+                }
+            }
         );
-
-        // Create the object creation expression, replacing "new" with "new DtoClassName"
-        var newObjectCreation = SyntaxFactory
-            .ObjectCreationExpression(
-                SyntaxFactory
-                    .Token(SyntaxKind.NewKeyword)
-                    .WithLeadingTrivia(anonymousObject.NewKeyword.LeadingTrivia)
-                    .WithTrailingTrivia(SyntaxFactory.Space),
-                SyntaxFactory.IdentifierName(dtoClassName),
-                null, // no argument list
-                newInitializerExpression
-            )
-            .WithTrailingTrivia(anonymousObject.GetTrailingTrivia());
 
         return root.ReplaceNode(anonymousObject, newObjectCreation);
     }
@@ -425,55 +405,30 @@ public class AnonymousTypeToDtoCodeFixProvider : CodeFixProvider
                     var nestedClassName =
                         $"{structure.SourceTypeName}Dto_{structure.GetUniqueId()}";
 
-                    // Convert anonymous object initializers to regular object initializers
-                    // preserving original formatting
-                    var newInitializers = new List<ExpressionSyntax>();
-
-                    foreach (var initializer in nestedAnonymous.Initializers)
-                    {
-                        var newInitializer =
-                            initializer.NameEquals != null
-                                ? CreateAssignmentFromNameEquals(
-                                    initializer,
-                                    namespaceName,
-                                    semanticModel
-                                )
-                                : CreateAssignmentFromImplicitProperty(
+                    // Use ObjectCreationHelper to convert with trivia preservation
+                    var nestedObjectCreation = ObjectCreationHelper.ConvertToNamedType(
+                        nestedAnonymous,
+                        nestedClassName,
+                        convertMemberCallback: initializer =>
+                        {
+                            if (initializer.NameEquals != null)
+                            {
+                                return CreateAssignmentFromNameEquals(
                                     initializer,
                                     namespaceName,
                                     semanticModel
                                 );
-
-                        newInitializers.Add(newInitializer);
-                    }
-
-                    // Preserve the original separators (commas with their trivia)
-                    var originalSeparators = nestedAnonymous.Initializers.GetSeparators().ToList();
-                    var newSeparatedList = SyntaxFactory.SeparatedList(
-                        newInitializers,
-                        originalSeparators
+                            }
+                            else
+                            {
+                                return CreateAssignmentFromImplicitProperty(
+                                    initializer,
+                                    namespaceName,
+                                    semanticModel
+                                );
+                            }
+                        }
                     );
-
-                    // Create new initializer expression preserving the original braces and their trivia
-                    var nestedInitializerExpression = SyntaxFactory.InitializerExpression(
-                        SyntaxKind.ObjectInitializerExpression,
-                        nestedAnonymous.OpenBraceToken,
-                        newSeparatedList,
-                        nestedAnonymous.CloseBraceToken
-                    );
-
-                    // Create the object creation expression, replacing "new" with "new NestedClassName"
-                    var nestedObjectCreation = SyntaxFactory
-                        .ObjectCreationExpression(
-                            SyntaxFactory
-                                .Token(SyntaxKind.NewKeyword)
-                                .WithLeadingTrivia(nestedAnonymous.NewKeyword.LeadingTrivia)
-                                .WithTrailingTrivia(SyntaxFactory.Space),
-                            SyntaxFactory.IdentifierName(nestedClassName),
-                            null, // no argument list
-                            nestedInitializerExpression
-                        )
-                        .WithTrailingTrivia(nestedAnonymous.GetTrailingTrivia());
 
                     return nestedObjectCreation;
                 }

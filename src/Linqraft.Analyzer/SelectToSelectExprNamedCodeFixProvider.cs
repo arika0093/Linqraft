@@ -378,7 +378,7 @@ public class SelectToSelectExprNamedCodeFixProvider : CodeFixProvider
         ObjectCreationExpressionSyntax objectCreation
     )
     {
-        return ConvertToAnonymousType(objectCreation, null);
+        return ObjectCreationHelper.ConvertToAnonymousType(objectCreation);
     }
 
     private static AnonymousObjectCreationExpressionSyntax ConvertToAnonymousType(
@@ -386,148 +386,20 @@ public class SelectToSelectExprNamedCodeFixProvider : CodeFixProvider
         SemanticModel? semanticModel
     )
     {
-        // Convert object initializer to anonymous object creation
-        if (objectCreation.Initializer == null)
-        {
-            return SyntaxFactory.AnonymousObjectCreationExpression();
-        }
-
-        var members = new List<AnonymousObjectMemberDeclaratorSyntax>();
-
-        foreach (var expression in objectCreation.Initializer.Expressions)
-        {
-            if (expression is AssignmentExpressionSyntax assignment)
-            {
-                // Convert assignment like "Id = x.Id" to anonymous member
-                if (assignment.Left is IdentifierNameSyntax identifier)
-                {
-                    // Use the right side expression as-is (no FullName conversion needed)
-                    var processedRight = assignment.Right;
-
-                    // Create the name equals with preserved identifier trivia
-                    var nameEquals = SyntaxFactory
-                        .NameEquals(SyntaxFactory.IdentifierName(identifier.Identifier))
-                        .WithLeadingTrivia(assignment.GetLeadingTrivia());
-
-                    // Create the member with preserved trivia from the right side
-                    var member = SyntaxFactory
-                        .AnonymousObjectMemberDeclarator(nameEquals, processedRight)
-                        .WithTrailingTrivia(assignment.GetTrailingTrivia());
-
-                    members.Add(member);
-                }
-            }
-        }
-
-        // Create the separated list preserving separators from the original initializer
-        var separatedMembers = SyntaxFactory.SeparatedList(
-            members,
-            objectCreation.Initializer.Expressions.GetSeparators()
-        );
-
-        // Collect trivia from the type node that appears between 'new' and the opening brace
-        var triviaBeforeOpenBrace = SyntaxTriviaList.Empty;
-        if (objectCreation.Type != null)
-        {
-            triviaBeforeOpenBrace = triviaBeforeOpenBrace
-                .AddRange(objectCreation.Type.GetLeadingTrivia())
-                .AddRange(objectCreation.Type.GetTrailingTrivia());
-        }
-
-        // Create anonymous object creation preserving trivia
-        var result = SyntaxFactory
-            .AnonymousObjectCreationExpression(
-                SyntaxFactory
-                    .Token(SyntaxKind.NewKeyword)
-                    .WithLeadingTrivia(objectCreation.GetLeadingTrivia())
-                    .WithTrailingTrivia(triviaBeforeOpenBrace),
-                SyntaxFactory
-                    .Token(SyntaxKind.OpenBraceToken)
-                    .WithTrailingTrivia(objectCreation.Initializer.OpenBraceToken.TrailingTrivia),
-                separatedMembers,
-                SyntaxFactory
-                    .Token(SyntaxKind.CloseBraceToken)
-                    .WithLeadingTrivia(objectCreation.Initializer.CloseBraceToken.LeadingTrivia)
-                    .WithTrailingTrivia(objectCreation.Initializer.CloseBraceToken.TrailingTrivia)
-            )
-            .WithTrailingTrivia(objectCreation.GetTrailingTrivia());
-
-        return result;
+        // Use the helper method - semantic model not needed for basic conversion
+        return ObjectCreationHelper.ConvertToAnonymousType(objectCreation);
     }
 
     private static AnonymousObjectCreationExpressionSyntax ConvertToAnonymousTypeRecursive(
         ObjectCreationExpressionSyntax objectCreation
     )
     {
-        // Convert object initializer to anonymous object creation, recursively converting nested object creations
-        if (objectCreation.Initializer == null)
-        {
-            return SyntaxFactory.AnonymousObjectCreationExpression();
-        }
-
-        var members = new List<AnonymousObjectMemberDeclaratorSyntax>();
-
-        foreach (var expression in objectCreation.Initializer.Expressions)
-        {
-            if (expression is AssignmentExpressionSyntax assignment)
-            {
-                // Convert assignment like "Id = x.Id" to anonymous member
-                if (assignment.Left is IdentifierNameSyntax identifier)
-                {
-                    // Recursively process the right side to convert nested object creations
-                    var processedRight = ProcessExpressionForNestedConversions(assignment.Right);
-
-                    // Create the name equals with preserved assignment leading trivia
-                    var nameEquals = SyntaxFactory
-                        .NameEquals(SyntaxFactory.IdentifierName(identifier.Identifier))
-                        .WithLeadingTrivia(assignment.GetLeadingTrivia());
-
-                    // Create the member with preserved trivia from the assignment
-                    var member = SyntaxFactory
-                        .AnonymousObjectMemberDeclarator(nameEquals, processedRight)
-                        .WithTrailingTrivia(assignment.GetTrailingTrivia());
-
-                    members.Add(member);
-                }
-            }
-        }
-
-        // Create the separated list preserving separators from the original initializer
-        var separatedMembers = SyntaxFactory.SeparatedList(
-            members,
-            objectCreation.Initializer.Expressions.GetSeparators()
-        );
-
-        // Collect trivia from the type node that appears between 'new' and the opening brace
-        var triviaBeforeOpenBrace = SyntaxTriviaList.Empty;
-        if (objectCreation.Type != null)
-        {
-            triviaBeforeOpenBrace = triviaBeforeOpenBrace
-                .AddRange(objectCreation.Type.GetLeadingTrivia())
-                .AddRange(objectCreation.Type.GetTrailingTrivia());
-        }
-
-        // Create anonymous object creation preserving trivia
-        var result = SyntaxFactory
-            .AnonymousObjectCreationExpression(
-                SyntaxFactory
-                    .Token(SyntaxKind.NewKeyword)
-                    .WithLeadingTrivia(objectCreation.GetLeadingTrivia())
-                    .WithTrailingTrivia(triviaBeforeOpenBrace),
-                SyntaxFactory
-                    .Token(SyntaxKind.OpenBraceToken)
-                    .WithTrailingTrivia(objectCreation.Initializer.OpenBraceToken.TrailingTrivia),
-                separatedMembers,
-                SyntaxFactory
-                    .Token(SyntaxKind.CloseBraceToken)
-                    .WithLeadingTrivia(objectCreation.Initializer.CloseBraceToken.LeadingTrivia)
-                    .WithTrailingTrivia(objectCreation.Initializer.CloseBraceToken.TrailingTrivia)
-            )
-            .WithTrailingTrivia(objectCreation.GetTrailingTrivia());
-
-        return result;
+        return ObjectCreationHelper.ConvertToAnonymousTypeRecursive(objectCreation);
     }
 
+    /// <summary>
+    /// Processes an expression to recursively convert nested object creations to anonymous objects
+    /// </summary>
     private static ExpressionSyntax ProcessExpressionForNestedConversions(
         ExpressionSyntax expression
     )
@@ -550,8 +422,8 @@ public class SelectToSelectExprNamedCodeFixProvider : CodeFixProvider
             // Don't convert things like "new List()" or "new List<T>()"
             if (node.Initializer != null && HasAssignmentExpressions(node.Initializer))
             {
-                // Convert this object creation to anonymous type (non-recursively to avoid infinite loop)
-                var anonymousType = ConvertToAnonymousType(node);
+                // Convert this object creation to anonymous type using the helper
+                var anonymousType = ObjectCreationHelper.ConvertToAnonymousType(node);
 
                 // Continue visiting children to convert nested object creations
                 return base.Visit(anonymousType) ?? anonymousType;
