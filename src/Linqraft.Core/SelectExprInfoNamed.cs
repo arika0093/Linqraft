@@ -32,9 +32,9 @@ public record SelectExprInfoNamed : SelectExprInfo
     }
 
     /// <summary>
-    /// Gets the DTO class name (uses the source type name)
+    /// Gets the DTO class name (uses the fully qualified source type name for named types)
     /// </summary>
-    protected override string GetClassName(DtoStructure structure) => structure.SourceTypeName;
+    protected override string GetClassName(DtoStructure structure) => structure.SourceTypeFullName;
 
     /// <summary>
     /// Gets the parent DTO class name (fully qualified)

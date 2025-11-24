@@ -96,6 +96,12 @@ public abstract record SelectExprInfo
     // Get the full name for a nested DTO class (can be overridden for nested class support)
     protected virtual string GetNestedDtoFullName(string nestedClassName)
     {
+        // If the className already starts with "global::", it's already fully qualified
+        if (nestedClassName.StartsWith("global::"))
+        {
+            return nestedClassName;
+        }
+
         var dtoNamespace = GetDtoNamespace();
         if (string.IsNullOrEmpty(dtoNamespace))
         {
@@ -236,25 +242,7 @@ public abstract record SelectExprInfo
         // For nested structure cases
         if (property.NestedStructure is not null)
         {
-            // General approach: Replace any anonymous type creation in the expression with the DTO
-            // This works for direct anonymous types, ternary operators, and any other expression structure
-            var anonymousCreation = syntax
-                .DescendantNodesAndSelf()
-                .OfType<AnonymousObjectCreationExpressionSyntax>()
-                .FirstOrDefault();
-
-            if (anonymousCreation != null)
-            {
-                // Convert the expression by replacing the anonymous type with the DTO
-                return ConvertExpressionWithAnonymousTypeToDto(
-                    syntax,
-                    anonymousCreation,
-                    property.NestedStructure,
-                    indents
-                );
-            }
-
-            // Check if this contains SelectMany
+            // Check if this contains SelectMany first
             if (RoslynTypeHelper.ContainsSelectManyInvocation(syntax))
             {
                 // For nested SelectMany (collection flattening) case
@@ -275,19 +263,41 @@ public abstract record SelectExprInfo
                 return convertedSelectMany;
             }
 
-            // For nested Select (collection) case
-            var convertedSelect = ConvertNestedSelectWithRoslyn(
-                syntax,
-                property.NestedStructure,
-                indents
-            );
-            // Debug: Check if conversion was performed correctly
-            if (convertedSelect == expression && RoslynTypeHelper.ContainsSelectInvocation(syntax))
+            // Check if this contains Select (including Select with anonymous types)
+            if (RoslynTypeHelper.ContainsSelectInvocation(syntax))
             {
-                // If conversion was not performed, leave the original expression as a comment
-                return $"{convertedSelect} /* CONVERSION FAILED: {property.Name} */";
+                // For nested Select (collection) case
+                var convertedSelect = ConvertNestedSelectWithRoslyn(
+                    syntax,
+                    property.NestedStructure,
+                    indents
+                );
+                // Debug: Check if conversion was performed correctly
+                if (convertedSelect == expression)
+                {
+                    // If conversion was not performed, leave the original expression as a comment
+                    return $"{convertedSelect} /* CONVERSION FAILED: {property.Name} */";
+                }
+                return convertedSelect;
             }
-            return convertedSelect;
+
+            // General approach for other cases: Replace any anonymous type creation in the expression with the DTO
+            // This works for direct anonymous types, ternary operators, and any other expression structure
+            var anonymousCreation = syntax
+                .DescendantNodesAndSelf()
+                .OfType<AnonymousObjectCreationExpressionSyntax>()
+                .FirstOrDefault();
+
+            if (anonymousCreation != null)
+            {
+                // Convert the expression by replacing the anonymous type with the DTO
+                return ConvertExpressionWithAnonymousTypeToDto(
+                    syntax,
+                    anonymousCreation,
+                    property.NestedStructure,
+                    indents
+                );
+            }
         }
         // If nullable operator is used, convert to explicit null check
         if (
@@ -540,13 +550,11 @@ public abstract record SelectExprInfo
         foreach (var prop in nestedStructure.Properties)
         {
             var assignment = GeneratePropertyAssignment(prop, indents + CodeFormatter.IndentSize);
-            propertyAssignments.Add(
-                $"{spaces}{CodeFormatter.Indent(1)}{prop.Name} = {assignment},"
-            );
+            // Don't add extra indent here - the formatter will handle it
+            propertyAssignments.Add($"{prop.Name} = {assignment},");
         }
-        var propertiesCode = string.Join(CodeFormatter.DefaultNewLine, propertyAssignments);
 
-        // Build the Select expression
+        // Build the Select expression using the formatter
         if (hasNullableAccess)
         {
             // Determine default value
@@ -558,21 +566,26 @@ public abstract record SelectExprInfo
                         : $"System.Linq.Enumerable.Empty<{nestedDtoName}>()"
                 );
 
-            var code = $$"""
-                {{baseExpression}} != null ? {{baseExpression}}.Select({{paramName}} => new {{nestedDtoName}} {
-                {{propertiesCode}}
-                {{spaces}}}){{chainedMethods}} : {{defaultValue}}
-                """;
-            return code;
+            return CodeFormatter.FormatConditionalSelectExpression(
+                baseExpression,
+                paramName,
+                nestedDtoName,
+                propertyAssignments,
+                chainedMethods,
+                defaultValue,
+                indents
+            );
         }
         else
         {
-            var code = $$"""
-                {{baseExpression}}.Select({{paramName}} => new {{nestedDtoName}} {
-                {{propertiesCode}}
-                {{spaces}}}){{chainedMethods}}
-                """;
-            return code;
+            return CodeFormatter.FormatSelectExpression(
+                baseExpression,
+                paramName,
+                nestedDtoName,
+                propertyAssignments,
+                chainedMethods,
+                indents
+            );
         }
     }
 

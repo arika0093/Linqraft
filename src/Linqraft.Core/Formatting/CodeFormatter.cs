@@ -89,4 +89,96 @@ public static class CodeFormatter
         // Replace \r\n with \n, then any remaining \r with \n
         return code.Replace("\r\n", DefaultNewLine).Replace("\r", DefaultNewLine);
     }
+
+    /// <summary>
+    /// Formats a Select expression with proper indentation for the lambda body
+    /// </summary>
+    /// <param name="baseExpression">The base expression (e.g., "s.Child2")</param>
+    /// <param name="paramName">The lambda parameter name</param>
+    /// <param name="dtoTypeName">The DTO type name (empty for anonymous types)</param>
+    /// <param name="propertyAssignments">List of "PropertyName = value" assignments</param>
+    /// <param name="chainedMethods">Chained methods after Select (e.g., ".ToList()")</param>
+    /// <param name="baseIndentSpaces">The base indentation level in spaces</param>
+    /// <returns>Formatted Select expression</returns>
+    public static string FormatSelectExpression(
+        string baseExpression,
+        string paramName,
+        string dtoTypeName,
+        System.Collections.Generic.List<string> propertyAssignments,
+        string chainedMethods,
+        int baseIndentSpaces
+    )
+    {
+        var baseIndent = IndentSpaces(baseIndentSpaces);
+        var newIndent = IndentSpaces(baseIndentSpaces + IndentSize);
+        
+        // Format the object creation type (with "new " prefix for non-anonymous)
+        var objectType = string.IsNullOrEmpty(dtoTypeName) ? "" : $" {dtoTypeName}";
+        
+        // Build the formatted Select expression
+        var lines = new System.Collections.Generic.List<string>
+        {
+            $"{baseExpression}",
+            $"{newIndent}.Select({paramName} => new{objectType}",
+            $"{newIndent}{{"
+        };
+        
+        // Add property assignments
+        foreach (var assignment in propertyAssignments)
+        {
+            lines.Add($"{newIndent}    {assignment}");
+        }
+        
+        lines.Add($"{newIndent}}}){chainedMethods}");
+        
+        return string.Join(DefaultNewLine, lines);
+    }
+
+    /// <summary>
+    /// Formats a conditional Select expression (with null check) with proper indentation
+    /// </summary>
+    /// <param name="baseExpression">The base expression (e.g., "s.Child")</param>
+    /// <param name="paramName">The lambda parameter name</param>
+    /// <param name="dtoTypeName">The DTO type name (empty for anonymous types)</param>
+    /// <param name="propertyAssignments">List of "PropertyName = value" assignments</param>
+    /// <param name="chainedMethods">Chained methods after Select (e.g., ".ToList()")</param>
+    /// <param name="defaultValue">The default value for null case</param>
+    /// <param name="baseIndentSpaces">The base indentation level in spaces</param>
+    /// <returns>Formatted conditional Select expression</returns>
+    public static string FormatConditionalSelectExpression(
+        string baseExpression,
+        string paramName,
+        string dtoTypeName,
+        System.Collections.Generic.List<string> propertyAssignments,
+        string chainedMethods,
+        string defaultValue,
+        int baseIndentSpaces
+    )
+    {
+        var baseIndent = IndentSpaces(baseIndentSpaces);
+        var newIndent = IndentSpaces(baseIndentSpaces + IndentSize);
+        
+        // Format the object creation type (with "new " prefix for non-anonymous)
+        var objectType = string.IsNullOrEmpty(dtoTypeName) ? "" : $" {dtoTypeName}";
+        
+        // Build the formatted conditional Select expression
+        var lines = new System.Collections.Generic.List<string>
+        {
+            $"{baseExpression} != null",
+            $"{newIndent}? {baseExpression}",
+            $"{newIndent}    .Select({paramName} => new{objectType}",
+            $"{newIndent}    {{"
+        };
+        
+        // Add property assignments
+        foreach (var assignment in propertyAssignments)
+        {
+            lines.Add($"{newIndent}        {assignment}");
+        }
+        
+        lines.Add($"{newIndent}    }}){chainedMethods}");
+        lines.Add($"{newIndent}: {defaultValue}");
+        
+        return string.Join(DefaultNewLine, lines);
+    }
 }

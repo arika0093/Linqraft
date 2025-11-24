@@ -100,7 +100,12 @@ internal class SelectExprGroups
 
         // Build the DTO classes section (with or without namespace)
         string dtoClassesSection;
-        if (string.IsNullOrEmpty(TargetNamespace))
+        if (dtoClasses.Count == 0)
+        {
+            // No DTO classes to generate - return empty string
+            dtoClassesSection = "";
+        }
+        else if (string.IsNullOrEmpty(TargetNamespace))
         {
             // Generate DTOs in global namespace (no namespace wrapper)
             dtoClassesSection = string.Join(CodeFormatter.DefaultNewLine, dtoClasses);
@@ -116,6 +121,22 @@ internal class SelectExprGroups
                 namespace {{TargetNamespace}}
                 {
                 {{indentedClasses}}
+                }
+                """;
+        }
+
+        // Build final source with or without DTO section
+        if (string.IsNullOrEmpty(dtoClassesSection))
+        {
+            return $$"""
+                {{GenerateFileHeaderPart()}}
+
+                namespace Linqraft
+                {
+                    file static partial class GeneratedExpression
+                    {
+                {{indentedExpr}}
+                    }
                 }
                 """;
         }

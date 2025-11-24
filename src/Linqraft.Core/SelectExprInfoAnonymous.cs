@@ -138,7 +138,6 @@ public record SelectExprInfoAnonymous : SelectExprInfo
         sb.AppendLine("    });");
         sb.AppendLine($"    return converted as object as {returnTypePrefix}<TResult>;");
         sb.AppendLine("}");
-        sb.AppendLine();
         return sb.ToString();
     }
 }
