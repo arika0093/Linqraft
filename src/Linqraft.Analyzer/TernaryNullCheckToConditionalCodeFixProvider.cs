@@ -111,16 +111,15 @@ public class TernaryNullCheckToConditionalCodeFixProvider : CodeFixProvider
         }
 
         // Convert the object creation to use null-conditional operators
-        // First convert without any trivia preservation
-        var objectWithoutTrivia = objectCreationExpr.WithoutTrivia();
+        // Preserve the structure and trivia of the object creation
         var converted = ConvertObjectCreationToNullConditional(
-            objectWithoutTrivia,
+            objectCreationExpr,
             effectiveNullChecks
         );
         if (converted == null)
             return document;
 
-        // Preserve overall trivia from conditional, formatter will handle internal structure
+        // Preserve overall trivia from the conditional expression
         converted = TriviaHelper.PreserveTrivia(conditional, converted);
 
         var newRoot = root.ReplaceNode(conditional, converted);
@@ -252,6 +251,94 @@ public class TernaryNullCheckToConditionalCodeFixProvider : CodeFixProvider
         public NullConditionalRewriter(List<ExpressionSyntax> nullChecks)
         {
             _nullCheckedPaths = new HashSet<string>(nullChecks.Select(nc => nc.ToString()));
+        }
+
+        public override SyntaxNode? VisitAnonymousObjectCreationExpression(
+            AnonymousObjectCreationExpressionSyntax node
+        )
+        {
+            // Transform each initializer while preserving the structure
+            var newInitializers = new List<AnonymousObjectMemberDeclaratorSyntax>();
+
+            foreach (var initializer in node.Initializers)
+            {
+                // Visit the expression to convert member accesses to null-conditional
+                var newExpression = (ExpressionSyntax)Visit(initializer.Expression);
+
+                // Create new initializer preserving the original trivia
+                AnonymousObjectMemberDeclaratorSyntax newInitializer;
+                if (initializer.NameEquals != null)
+                {
+                    // Explicit name: preserve it with trivia
+                    newInitializer = SyntaxFactory
+                        .AnonymousObjectMemberDeclarator(initializer.NameEquals, newExpression)
+                        .WithLeadingTrivia(initializer.GetLeadingTrivia())
+                        .WithTrailingTrivia(initializer.GetTrailingTrivia());
+                }
+                else
+                {
+                    // Implicit name: create a declarator preserving trivia
+                    newInitializer = SyntaxFactory
+                        .AnonymousObjectMemberDeclarator(newExpression)
+                        .WithLeadingTrivia(initializer.GetLeadingTrivia())
+                        .WithTrailingTrivia(initializer.GetTrailingTrivia());
+                }
+
+                newInitializers.Add(newInitializer);
+            }
+
+            // Preserve the original separators (commas with their trivia)
+            var originalSeparators = node.Initializers.GetSeparators().ToList();
+            var newSeparatedList = SyntaxFactory.SeparatedList(newInitializers, originalSeparators);
+
+            // Create new anonymous object creation preserving brace trivia
+            var result = SyntaxFactory.AnonymousObjectCreationExpression(
+                node.NewKeyword, // Preserve new keyword with its trivia
+                node.OpenBraceToken, // Preserve open brace with its trivia
+                newSeparatedList,
+                node.CloseBraceToken // Preserve close brace with its trivia
+            );
+
+            // Preserve overall trivia from the original node
+            return result
+                .WithLeadingTrivia(node.GetLeadingTrivia())
+                .WithTrailingTrivia(node.GetTrailingTrivia());
+        }
+
+        public override SyntaxNode? VisitObjectCreationExpression(
+            ObjectCreationExpressionSyntax node
+        )
+        {
+            // Handle named object creation similar to anonymous
+            if (node.Initializer == null)
+                return node;
+
+            // Transform each initializer expression while preserving structure
+            var newExpressions = new List<ExpressionSyntax>();
+
+            foreach (var expression in node.Initializer.Expressions)
+            {
+                // Visit to convert member accesses
+                var newExpression = (ExpressionSyntax)Visit(expression);
+                newExpressions.Add(newExpression);
+            }
+
+            // Preserve the original separators (commas with their trivia)
+            var originalSeparators = node.Initializer.Expressions.GetSeparators().ToList();
+            var newSeparatedList = SyntaxFactory.SeparatedList(newExpressions, originalSeparators);
+
+            // Create new initializer preserving brace trivia
+            var newInitializer = SyntaxFactory.InitializerExpression(
+                node.Initializer.Kind(),
+                node.Initializer.OpenBraceToken,
+                newSeparatedList,
+                node.Initializer.CloseBraceToken
+            );
+
+            // Create new object creation with the new initializer
+            var result = node.WithInitializer(newInitializer);
+
+            return result;
         }
 
         public override SyntaxNode? VisitMemberAccessExpression(MemberAccessExpressionSyntax node)
