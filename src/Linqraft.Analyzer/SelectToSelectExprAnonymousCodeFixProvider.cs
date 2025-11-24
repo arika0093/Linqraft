@@ -1,4 +1,3 @@
-using System;
 using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.Composition;
@@ -6,6 +5,8 @@ using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using Linqraft.Core;
+using Linqraft.Core.AnalyzerHelpers;
+using Linqraft.Core.SyntaxHelpers;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CodeActions;
 using Microsoft.CodeAnalysis.CodeFixes;
@@ -25,7 +26,7 @@ namespace Linqraft.Analyzer;
 public class SelectToSelectExprAnonymousCodeFixProvider : CodeFixProvider
 {
     public sealed override ImmutableArray<string> FixableDiagnosticIds =>
-        ImmutableArray.Create(SelectToSelectExprAnonymousAnalyzer.DiagnosticId);
+        [SelectToSelectExprAnonymousAnalyzer.AnalyzerId];
 
     public sealed override FixAllProvider GetFixAllProvider() =>
         WellKnownFixAllProviders.BatchFixer;
@@ -81,19 +82,38 @@ public class SelectToSelectExprAnonymousCodeFixProvider : CodeFixProvider
         if (root == null)
             return document;
 
+        var semanticModel = await document
+            .GetSemanticModelAsync(cancellationToken)
+            .ConfigureAwait(false);
+        if (semanticModel == null)
+            return document;
+
+        // Find variables that need to be captured BEFORE modifying the syntax tree
+        var variablesToCapture = FindVariablesToCapture(invocation, semanticModel);
+
         // Replace "Select" with "SelectExpr"
         var newExpression = ReplaceMethodName(invocation.Expression, "SelectExpr");
         if (newExpression == null)
             return document;
 
         // Simplify ternary null checks in the lambda body
-        var newInvocation = SimplifyTernaryNullChecksInInvocation(
+        var newInvocation = TernaryNullCheckSimplifier.SimplifyTernaryNullChecksInInvocation(
             invocation.WithExpression(newExpression)
         );
 
-        var newRoot = root.ReplaceNode(invocation, newInvocation);
+        // Add capture parameter if needed
+        if (variablesToCapture.Count > 0)
+        {
+            newInvocation = AddCaptureArgument(newInvocation, variablesToCapture);
+        }
 
-        return document.WithSyntaxRoot(newRoot);
+        var newRoot = root.ReplaceNode(invocation, newInvocation);
+        var documentWithNewRoot = document.WithSyntaxRoot(newRoot);
+
+        // Format and normalize line endings
+        return await CodeFixFormattingHelper
+            .FormatAndNormalizeLineEndingsAsync(documentWithNewRoot, cancellationToken)
+            .ConfigureAwait(false);
     }
 
     private static async Task<Document> ConvertToSelectExprExplicitDtoAsync(
@@ -111,6 +131,9 @@ public class SelectToSelectExprAnonymousCodeFixProvider : CodeFixProvider
         var root = await document.GetSyntaxRootAsync(cancellationToken).ConfigureAwait(false);
         if (root == null)
             return document;
+
+        // Find variables that need to be captured BEFORE modifying the syntax tree
+        var variablesToCapture = FindVariablesToCapture(invocation, semanticModel);
 
         // Get the source type
         var sourceType = GetSourceType(invocation.Expression, semanticModel, cancellationToken);
@@ -135,16 +158,27 @@ public class SelectToSelectExprAnonymousCodeFixProvider : CodeFixProvider
             return document;
 
         // Replace the expression and simplify ternary null checks
-        var newInvocation = SimplifyTernaryNullChecksInInvocation(
+        var newInvocation = TernaryNullCheckSimplifier.SimplifyTernaryNullChecksInInvocation(
             invocation.WithExpression(newExpression)
         );
+
+        // Add capture parameter if needed
+        if (variablesToCapture.Count > 0)
+        {
+            newInvocation = AddCaptureArgument(newInvocation, variablesToCapture);
+        }
 
         var newRoot = root.ReplaceNode(invocation, newInvocation);
 
         // Add using directive for source type if needed
-        newRoot = AddUsingDirectiveForType(newRoot, sourceType);
+        newRoot = UsingDirectiveHelper.AddUsingDirectiveForType(newRoot, sourceType);
 
-        return document.WithSyntaxRoot(newRoot);
+        var documentWithNewRoot = document.WithSyntaxRoot(newRoot);
+
+        // Format and normalize line endings
+        return await CodeFixFormattingHelper
+            .FormatAndNormalizeLineEndingsAsync(documentWithNewRoot, cancellationToken)
+            .ConfigureAwait(false);
     }
 
     private static ExpressionSyntax? ReplaceMethodName(
@@ -252,45 +286,6 @@ public class SelectToSelectExprAnonymousCodeFixProvider : CodeFixProvider
         return null;
     }
 
-    private static InvocationExpressionSyntax SimplifyTernaryNullChecksInInvocation(
-        InvocationExpressionSyntax invocation
-    )
-    {
-        // Find and simplify ternary null checks in lambda body
-        var newArguments = new List<ArgumentSyntax>();
-        foreach (var argument in invocation.ArgumentList.Arguments)
-        {
-            if (
-                argument.Expression is SimpleLambdaExpressionSyntax simpleLambda
-                && simpleLambda.Body is ExpressionSyntax bodyExpr
-            )
-            {
-                var simplifiedBody = TernaryNullCheckSimplifier.SimplifyTernaryNullChecks(bodyExpr);
-                var newLambda = simpleLambda.WithBody(simplifiedBody);
-                newArguments.Add(argument.WithExpression(newLambda));
-            }
-            else if (
-                argument.Expression is ParenthesizedLambdaExpressionSyntax parenLambda
-                && parenLambda.Body is ExpressionSyntax parenBodyExpr
-            )
-            {
-                var simplifiedBody = TernaryNullCheckSimplifier.SimplifyTernaryNullChecks(
-                    parenBodyExpr
-                );
-                var newLambda = parenLambda.WithBody(simplifiedBody);
-                newArguments.Add(argument.WithExpression(newLambda));
-            }
-            else
-            {
-                newArguments.Add(argument);
-            }
-        }
-
-        return invocation.WithArgumentList(
-            SyntaxFactory.ArgumentList(SyntaxFactory.SeparatedList(newArguments))
-        );
-    }
-
     private static string GenerateDtoName(
         InvocationExpressionSyntax invocation,
         AnonymousObjectCreationExpressionSyntax anonymousType
@@ -299,37 +294,97 @@ public class SelectToSelectExprAnonymousCodeFixProvider : CodeFixProvider
         return DtoNamingHelper.GenerateDtoName(invocation, anonymousType);
     }
 
-    private static SyntaxNode AddUsingDirectiveForType(SyntaxNode root, ITypeSymbol typeSymbol)
+    /// <summary>
+    /// Finds variables that need to be captured in the invocation's lambda expression.
+    /// </summary>
+    private static HashSet<string> FindVariablesToCapture(
+        InvocationExpressionSyntax invocation,
+        SemanticModel semanticModel
+    )
     {
-        if (root is not CompilationUnitSyntax compilationUnit)
-            return root;
+        // Find the lambda expression
+        var lambda = FindLambdaExpression(invocation.ArgumentList);
+        if (lambda == null)
+            return new HashSet<string>();
 
-        // Get the namespace of the type
-        var namespaceName = typeSymbol.ContainingNamespace?.ToDisplayString();
-        if (string.IsNullOrEmpty(namespaceName) || namespaceName == "<global namespace>")
-            return root;
+        // Get lambda parameter names
+        var lambdaParameters = LambdaHelper.GetLambdaParameterNames(lambda);
 
-        // Check if using directive already exists
-        var hasUsing = compilationUnit.Usings.Any(u => u.Name?.ToString() == namespaceName);
-        if (hasUsing)
-            return root;
+        // Find variables that need to be captured
+        var variablesToCapture = CaptureHelper.FindSimpleVariablesToCapture(
+            lambda,
+            lambdaParameters,
+            semanticModel
+        );
 
-        // Detect the line ending used in the file by looking at existing using directives
-        var endOfLineTrivia = compilationUnit.Usings.Any()
-            ? compilationUnit.Usings.Last().GetTrailingTrivia().LastOrDefault()
-            : SyntaxFactory.EndOfLine("\n");
+        // Get already captured variables (if any)
+        var capturedVariables = CaptureHelper.GetCapturedVariables(invocation, semanticModel);
 
-        // If the detected trivia is not an end of line, use a default
-        if (!endOfLineTrivia.IsKind(SyntaxKind.EndOfLineTrivia))
+        // Add any new variables to the set
+        capturedVariables.UnionWith(variablesToCapture);
+
+        return capturedVariables;
+    }
+
+    /// <summary>
+    /// Adds a capture argument to the invocation with the specified variables.
+    /// </summary>
+    private static InvocationExpressionSyntax AddCaptureArgument(
+        InvocationExpressionSyntax invocation,
+        HashSet<string> variablesToCapture
+    )
+    {
+        // Create capture argument
+        var captureArgument = CaptureHelper.CreateCaptureArgument(variablesToCapture);
+
+        // Update or add capture argument
+        var existingCaptureArgIndex = FindCaptureArgumentIndex(invocation);
+        if (existingCaptureArgIndex >= 0)
         {
-            endOfLineTrivia = SyntaxFactory.EndOfLine("\n");
+            // Replace existing capture argument
+            var arguments = invocation.ArgumentList.Arguments.ToList();
+            arguments[existingCaptureArgIndex] = captureArgument;
+            var newArgumentList = SyntaxFactory.ArgumentList(
+                SyntaxFactory.SeparatedList(arguments)
+            );
+            return invocation.WithArgumentList(newArgumentList);
+        }
+        else
+        {
+            // Add new capture argument
+            var arguments = invocation.ArgumentList.Arguments.ToList();
+            arguments.Add(captureArgument);
+            var newArgumentList = SyntaxFactory.ArgumentList(
+                SyntaxFactory.SeparatedList(arguments)
+            );
+            return invocation.WithArgumentList(newArgumentList);
+        }
+    }
+
+    private static int FindCaptureArgumentIndex(InvocationExpressionSyntax invocation)
+    {
+        for (int i = 0; i < invocation.ArgumentList.Arguments.Count; i++)
+        {
+            var argument = invocation.ArgumentList.Arguments[i];
+            if (argument.NameColon?.Name.Identifier.Text == "capture")
+            {
+                return i;
+            }
         }
 
-        // Add using directive (namespaceName is guaranteed non-null here due to the check above)
-        var usingDirective = SyntaxFactory
-            .UsingDirective(SyntaxFactory.ParseName(namespaceName!))
-            .WithTrailingTrivia(endOfLineTrivia);
+        return -1;
+    }
 
-        return compilationUnit.AddUsings(usingDirective);
+    private static LambdaExpressionSyntax? FindLambdaExpression(ArgumentListSyntax argumentList)
+    {
+        foreach (var argument in argumentList.Arguments)
+        {
+            if (argument.Expression is LambdaExpressionSyntax lambda)
+            {
+                return lambda;
+            }
+        }
+
+        return null;
     }
 }

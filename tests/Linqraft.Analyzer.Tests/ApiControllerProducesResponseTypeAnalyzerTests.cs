@@ -2,11 +2,6 @@ using System.Threading.Tasks;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp.Testing;
 using Microsoft.CodeAnalysis.Testing;
-using Xunit;
-using VerifyCS = Microsoft.CodeAnalysis.CSharp.Testing.CSharpAnalyzerVerifier<
-    Linqraft.Analyzer.ApiControllerProducesResponseTypeAnalyzer,
-    Microsoft.CodeAnalysis.Testing.DefaultVerifier
->;
 
 namespace Linqraft.Analyzer.Tests;
 
@@ -63,7 +58,7 @@ public class SampleController : ControllerBase
 " + TestSourceCodes.SelectExprWithExpressionObject;
 
         var expected = new DiagnosticResult(
-            ApiControllerProducesResponseTypeAnalyzer.DiagnosticId,
+            ApiControllerProducesResponseTypeAnalyzer.AnalyzerId,
             DiagnosticSeverity.Info
         ).WithLocation(0);
 
@@ -265,7 +260,7 @@ public class SampleController : ControllerBase
 " + TestSourceCodes.SelectExprWithExpressionObject;
 
         var expected = new DiagnosticResult(
-            ApiControllerProducesResponseTypeAnalyzer.DiagnosticId,
+            ApiControllerProducesResponseTypeAnalyzer.AnalyzerId,
             DiagnosticSeverity.Info
         ).WithLocation(0);
 
@@ -313,7 +308,7 @@ public class SampleController : ControllerBase
 " + TestSourceCodes.SelectExprWithExpressionObject;
 
         var expected = new DiagnosticResult(
-            ApiControllerProducesResponseTypeAnalyzer.DiagnosticId,
+            ApiControllerProducesResponseTypeAnalyzer.AnalyzerId,
             DiagnosticSeverity.Info
         ).WithLocation(0);
 
@@ -354,7 +349,7 @@ public class SampleController : ControllerBase
 " + TestSourceCodes.SelectExprWithExpressionObject;
 
         var expected = new DiagnosticResult(
-            ApiControllerProducesResponseTypeAnalyzer.DiagnosticId,
+            ApiControllerProducesResponseTypeAnalyzer.AnalyzerId,
             DiagnosticSeverity.Info
         ).WithLocation(0);
 

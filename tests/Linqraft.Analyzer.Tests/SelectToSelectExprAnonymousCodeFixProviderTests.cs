@@ -2,7 +2,6 @@ using System.Threading.Tasks;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp.Testing;
 using Microsoft.CodeAnalysis.Testing;
-using Xunit;
 
 namespace Linqraft.Analyzer.Tests;
 
@@ -52,7 +51,7 @@ class Test
 }";
 
         var expected = new DiagnosticResult(
-            SelectToSelectExprAnonymousAnalyzer.DiagnosticId,
+            SelectToSelectExprAnonymousAnalyzer.AnalyzerId,
             DiagnosticSeverity.Info
         ).WithLocation(0);
 
@@ -103,7 +102,7 @@ class Test
 }";
 
         var expected = new DiagnosticResult(
-            SelectToSelectExprAnonymousAnalyzer.DiagnosticId,
+            SelectToSelectExprAnonymousAnalyzer.AnalyzerId,
             DiagnosticSeverity.Info
         ).WithLocation(0);
 
@@ -152,7 +151,7 @@ class Test
 }";
 
         var expected = new DiagnosticResult(
-            SelectToSelectExprAnonymousAnalyzer.DiagnosticId,
+            SelectToSelectExprAnonymousAnalyzer.AnalyzerId,
             DiagnosticSeverity.Info
         ).WithLocation(0);
 
@@ -213,7 +212,7 @@ class Test
 }";
 
         var expected = new DiagnosticResult(
-            SelectToSelectExprAnonymousAnalyzer.DiagnosticId,
+            SelectToSelectExprAnonymousAnalyzer.AnalyzerId,
             DiagnosticSeverity.Info
         ).WithLocation(0);
 
@@ -274,7 +273,7 @@ class Test
 }";
 
         var expected = new DiagnosticResult(
-            SelectToSelectExprAnonymousAnalyzer.DiagnosticId,
+            SelectToSelectExprAnonymousAnalyzer.AnalyzerId,
             DiagnosticSeverity.Info
         ).WithLocation(0);
 
@@ -335,7 +334,7 @@ class Test
 }";
 
         var expected = new DiagnosticResult(
-            SelectToSelectExprAnonymousAnalyzer.DiagnosticId,
+            SelectToSelectExprAnonymousAnalyzer.AnalyzerId,
             DiagnosticSeverity.Info
         ).WithLocation(0);
 
@@ -398,7 +397,7 @@ class Test
 }";
 
         var expected = new DiagnosticResult(
-            SelectToSelectExprAnonymousAnalyzer.DiagnosticId,
+            SelectToSelectExprAnonymousAnalyzer.AnalyzerId,
             DiagnosticSeverity.Info
         ).WithLocation(0);
 
@@ -461,7 +460,194 @@ class Test
 }";
 
         var expected = new DiagnosticResult(
-            SelectToSelectExprAnonymousAnalyzer.DiagnosticId,
+            SelectToSelectExprAnonymousAnalyzer.AnalyzerId,
+            DiagnosticSeverity.Info
+        ).WithLocation(0);
+
+        await RunCodeFixTestAsync(test, expected, fixedCode, 0);
+    }
+
+    [Fact]
+    public async Task CodeFix_DoesNotSimplifyTernaryNullCheck_WhenReturningObject()
+    {
+        var test =
+            @"
+using System.Linq;
+using System.Collections.Generic;
+
+class Sample
+{
+    public int Id { get; set; }
+    public Nest? Nest { get; set; }
+}
+
+class Nest
+{
+    public int Id { get; set; }
+    public string Name { get; set; }
+}
+
+class Test
+{
+    void Method()
+    {
+        var list = new List<Sample>();
+        var result = list.AsQueryable().{|#0:Select|}(s => new {
+            NestField = s.Nest != null
+                ? new {
+                    Id = s.Nest.Id,
+                    Name = s.Nest.Name
+                }
+                : null,
+        });
+    }
+}";
+
+        var fixedCode =
+            @"
+using System.Linq;
+using System.Collections.Generic;
+
+class Sample
+{
+    public int Id { get; set; }
+    public Nest? Nest { get; set; }
+}
+
+class Nest
+{
+    public int Id { get; set; }
+    public string Name { get; set; }
+}
+
+class Test
+{
+    void Method()
+    {
+        var list = new List<Sample>();
+        var result = list.AsQueryable().SelectExpr(s => new
+        {
+            NestField = s.Nest != null
+                ? new
+                {
+                    Id = s.Nest.Id,
+                    Name = s.Nest.Name
+                }
+                : null,
+        });
+    }
+}";
+
+        var expected = new DiagnosticResult(
+            SelectToSelectExprAnonymousAnalyzer.AnalyzerId,
+            DiagnosticSeverity.Info
+        ).WithLocation(0);
+
+        await RunCodeFixTestAsync(test, expected, fixedCode, 0);
+    }
+
+    [Fact]
+    public async Task CodeFix_AddsCapture_WhenLocalVariableIsUsed()
+    {
+        var test =
+            @"
+using System.Linq;
+using System.Collections.Generic;
+
+class Sample
+{
+    public int Id { get; set; }
+    public string Name { get; set; }
+}
+
+class Test
+{
+    void Method()
+    {
+        var list = new List<Sample>();
+        var test = 10;
+        var result = list.AsQueryable().{|#0:Select|}(x => new { x.Id, test });
+    }
+}";
+
+        var fixedCode =
+            @"
+using System.Linq;
+using System.Collections.Generic;
+
+class Sample
+{
+    public int Id { get; set; }
+    public string Name { get; set; }
+}
+
+class Test
+{
+    void Method()
+    {
+        var list = new List<Sample>();
+        var test = 10;
+        var result = list.AsQueryable().SelectExpr(x => new { x.Id, test }, capture: new { test });
+    }
+}";
+
+        var expected = new DiagnosticResult(
+            SelectToSelectExprAnonymousAnalyzer.AnalyzerId,
+            DiagnosticSeverity.Info
+        ).WithLocation(0);
+
+        await RunCodeFixTestAsync(test, expected, fixedCode, 0);
+    }
+
+    [Fact]
+    public async Task CodeFix_AddsCapture_WhenMultipleLocalVariablesAreUsed()
+    {
+        var test =
+            @"
+using System.Linq;
+using System.Collections.Generic;
+
+class Sample
+{
+    public int Id { get; set; }
+    public string Name { get; set; }
+}
+
+class Test
+{
+    void Method()
+    {
+        var list = new List<Sample>();
+        var test1 = 10;
+        var test2 = ""hello"";
+        var result = list.AsQueryable().{|#0:Select|}(x => new { x.Id, test1, test2 });
+    }
+}";
+
+        var fixedCode =
+            @"
+using System.Linq;
+using System.Collections.Generic;
+
+class Sample
+{
+    public int Id { get; set; }
+    public string Name { get; set; }
+}
+
+class Test
+{
+    void Method()
+    {
+        var list = new List<Sample>();
+        var test1 = 10;
+        var test2 = ""hello"";
+        var result = list.AsQueryable().SelectExpr(x => new { x.Id, test1, test2 }, capture: new { test1, test2 });
+    }
+}";
+
+        var expected = new DiagnosticResult(
+            SelectToSelectExprAnonymousAnalyzer.AnalyzerId,
             DiagnosticSeverity.Info
         ).WithLocation(0);
 

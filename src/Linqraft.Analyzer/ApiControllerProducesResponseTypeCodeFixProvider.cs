@@ -5,6 +5,7 @@ using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using Linqraft.Core;
+using Linqraft.Core.SyntaxHelpers;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CodeActions;
 using Microsoft.CodeAnalysis.CodeFixes;
@@ -24,7 +25,7 @@ namespace Linqraft.Analyzer;
 public class ApiControllerProducesResponseTypeCodeFixProvider : CodeFixProvider
 {
     public sealed override ImmutableArray<string> FixableDiagnosticIds =>
-        ImmutableArray.Create(ApiControllerProducesResponseTypeAnalyzer.DiagnosticId);
+        [ApiControllerProducesResponseTypeAnalyzer.AnalyzerId];
 
     public sealed override FixAllProvider GetFixAllProvider() =>
         WellKnownFixAllProviders.BatchFixer;
@@ -86,10 +87,12 @@ public class ApiControllerProducesResponseTypeCodeFixProvider : CodeFixProvider
         // Create the attribute list with proper formatting
         var attributeList = SyntaxFactory
             .AttributeList(SyntaxFactory.SingletonSeparatedList(attribute))
-            .WithTrailingTrivia(SyntaxFactory.ElasticCarriageReturnLineFeed);
+            .WithTrailingTrivia(TriviaHelper.EndOfLine(root));
 
-        // Get existing attributes or create new array
-        var attributeLists = methodDeclaration.AttributeLists.Add(attributeList);
+        // Build a new attribute list: keep all existing attributes, then add the new one at the end
+        var newAttributeLists = new List<AttributeListSyntax>(methodDeclaration.AttributeLists);
+        newAttributeLists.Add(attributeList);
+        var attributeLists = SyntaxFactory.List(newAttributeLists);
 
         // Create new method with the updated attributes
         var newMethod = methodDeclaration.WithAttributeLists(attributeLists);
@@ -100,7 +103,12 @@ public class ApiControllerProducesResponseTypeCodeFixProvider : CodeFixProvider
         // Add using directive if necessary
         newRoot = AddUsingDirectiveIfNeeded(newRoot, "Microsoft.AspNetCore.Mvc");
 
-        return document.WithSyntaxRoot(newRoot);
+        var documentWithNewRoot = document.WithSyntaxRoot(newRoot);
+
+        // Format and normalize line endings
+        return await CodeFixFormattingHelper
+            .FormatAndNormalizeLineEndingsAsync(documentWithNewRoot, cancellationToken)
+            .ConfigureAwait(false);
     }
 
     private static SelectExprInfo? FindSelectExprInfo(
@@ -308,7 +316,7 @@ public class ApiControllerProducesResponseTypeCodeFixProvider : CodeFixProvider
         // Add using directive
         var usingDirective = SyntaxFactory
             .UsingDirective(SyntaxFactory.ParseName(namespaceName))
-            .WithTrailingTrivia(SyntaxFactory.CarriageReturnLineFeed);
+            .WithTrailingTrivia(TriviaHelper.EndOfLine(root));
 
         return compilationUnit.AddUsings(usingDirective);
     }

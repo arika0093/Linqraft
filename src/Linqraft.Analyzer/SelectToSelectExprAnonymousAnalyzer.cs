@@ -1,6 +1,4 @@
-using System.Collections.Immutable;
-using System.Linq;
-using Linqraft.Core;
+using Linqraft.Core.AnalyzerHelpers;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
@@ -11,41 +9,31 @@ namespace Linqraft.Analyzer;
 /// <summary>
 /// Analyzer that detects IQueryable.Select calls with anonymous types that can be converted to SelectExpr.
 /// </summary>
-/// <remarks>
-/// See documentation: https://github.com/arika0093/Linqraft/blob/main/docs/Analyzers.md#lqrs002-selecttoselectexpranonymousanalyzer
-/// </remarks>
 [DiagnosticAnalyzer(LanguageNames.CSharp)]
-public class SelectToSelectExprAnonymousAnalyzer : DiagnosticAnalyzer
+public class SelectToSelectExprAnonymousAnalyzer : BaseLinqraftAnalyzer
 {
-    public const string DiagnosticId = "LQRS002";
+    public const string AnalyzerId = "LQRS002";
 
-    private static readonly LocalizableString Title =
-        "IQueryable.Select can be converted to SelectExpr";
-    private static readonly LocalizableString MessageFormat =
-        "IQueryable.Select with anonymous type can be converted to SelectExpr";
-    private static readonly LocalizableString Description =
-        "This Select call on IQueryable can be converted to use SelectExpr for better performance and type safety.";
-    private const string Category = "Design";
-
-    private static readonly DiagnosticDescriptor Rule = new(
-        DiagnosticId,
-        Title,
-        MessageFormat,
-        Category,
+    private static readonly DiagnosticDescriptor RuleInstance = new(
+        AnalyzerId,
+        "IQueryable.Select can be converted to SelectExpr",
+        "IQueryable.Select with anonymous type can be converted to SelectExpr",
+        "Design",
         DiagnosticSeverity.Info,
         isEnabledByDefault: true,
-        description: Description,
-        helpLinkUri: "https://github.com/arika0093/Linqraft/blob/main/docs/Analyzers.md#lqrs002-selecttoselectexpranonymousanalyzer"
+        description: "This Select call on IQueryable can be converted to use SelectExpr for better performance and type safety.",
+        helpLinkUri: $"https://github.com/arika0093/Linqraft/blob/main/docs/analyzer/{AnalyzerId}.md"
     );
 
-    public override ImmutableArray<DiagnosticDescriptor> SupportedDiagnostics =>
-        ImmutableArray.Create(Rule);
+    protected override string DiagnosticId => AnalyzerId;
+    protected override LocalizableString Title => RuleInstance.Title;
+    protected override LocalizableString MessageFormat => RuleInstance.MessageFormat;
+    protected override LocalizableString Description => RuleInstance.Description;
+    protected override DiagnosticSeverity Severity => DiagnosticSeverity.Info;
+    protected override DiagnosticDescriptor Rule => RuleInstance;
 
-    public override void Initialize(AnalysisContext context)
+    protected override void RegisterActions(AnalysisContext context)
     {
-        context.ConfigureGeneratedCodeAnalysis(GeneratedCodeAnalysisFlags.None);
-        context.EnableConcurrentExecution();
-
         context.RegisterSyntaxNodeAction(AnalyzeInvocation, SyntaxKind.InvocationExpression);
     }
 
@@ -94,7 +82,7 @@ public class SelectToSelectExprAnonymousAnalyzer : DiagnosticAnalyzer
         var location = GetMethodNameLocation(invocation.Expression);
 
         // Report diagnostic
-        var diagnostic = Diagnostic.Create(Rule, location);
+        var diagnostic = Diagnostic.Create(RuleInstance, location);
         context.ReportDiagnostic(diagnostic);
     }
 

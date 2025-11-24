@@ -1,6 +1,4 @@
 using System.Threading.Tasks;
-using Microsoft.CodeAnalysis.Testing;
-using Xunit;
 using VerifyCS = Microsoft.CodeAnalysis.CSharp.Testing.CSharpCodeFixVerifier<
     Linqraft.Analyzer.LocalVariableCaptureAnalyzer,
     Linqraft.Analyzer.LocalVariableCaptureCodeFixProvider,
@@ -49,7 +47,7 @@ class Test
 " + TestSourceCodes.SelectExprWithFuncAndBothOverloads;
 
         var expected = VerifyCS
-            .Diagnostic(LocalVariableCaptureAnalyzer.DiagnosticId)
+            .Diagnostic(LocalVariableCaptureAnalyzer.AnalyzerId)
             .WithLocation(0)
             .WithArguments("localVar");
 
@@ -102,12 +100,12 @@ class Test
 " + TestSourceCodes.SelectExprWithFuncAndBothOverloads;
 
         var expected1 = VerifyCS
-            .Diagnostic(LocalVariableCaptureAnalyzer.DiagnosticId)
+            .Diagnostic(LocalVariableCaptureAnalyzer.AnalyzerId)
             .WithLocation(0)
             .WithArguments("localVar1");
 
         var expected2 = VerifyCS
-            .Diagnostic(LocalVariableCaptureAnalyzer.DiagnosticId)
+            .Diagnostic(LocalVariableCaptureAnalyzer.AnalyzerId)
             .WithLocation(1)
             .WithArguments("localVar2");
 
@@ -150,7 +148,7 @@ class Test
 " + TestSourceCodes.SelectExprWithFuncAndBothOverloads;
 
         var expected = VerifyCS
-            .Diagnostic(LocalVariableCaptureAnalyzer.DiagnosticId)
+            .Diagnostic(LocalVariableCaptureAnalyzer.AnalyzerId)
             .WithLocation(0)
             .WithArguments("outerParam");
 
@@ -211,12 +209,82 @@ class Test
 " + TestSourceCodes.SelectExprWithFuncAndBothOverloads;
 
         var expected1 = VerifyCS
-            .Diagnostic(LocalVariableCaptureAnalyzer.DiagnosticId)
+            .Diagnostic(LocalVariableCaptureAnalyzer.AnalyzerId)
             .WithLocation(0)
             .WithArguments("multiplier");
 
         var expected2 = VerifyCS
-            .Diagnostic(LocalVariableCaptureAnalyzer.DiagnosticId)
+            .Diagnostic(LocalVariableCaptureAnalyzer.AnalyzerId)
+            .WithLocation(1)
+            .WithArguments("offset");
+
+        await VerifyCS.VerifyCodeFixAsync(test, new[] { expected1, expected2 }, fixedCode);
+    }
+
+    [Fact]
+    public async Task LocalVariable_InComplexExpression_AddsCapture_Format2()
+    {
+        var test =
+            @"
+using System.Linq;
+using System.Collections.Generic;
+
+class Entity
+{
+    public int Value { get; set; }
+}
+
+class Test
+{
+    void Method()
+    {
+        var multiplier = 10;
+        var offset = 5;
+        var list = new List<Entity>();
+        var result = list.AsQueryable().SelectExpr(
+            s => new { 
+                Result = (s.Value * {|#0:multiplier|}) + {|#1:offset|}
+            }
+        ).ToList();
+    }
+}
+
+" + TestSourceCodes.SelectExprWithFuncAndBothOverloads;
+
+        var fixedCode =
+            @"
+using System.Linq;
+using System.Collections.Generic;
+
+class Entity
+{
+    public int Value { get; set; }
+}
+
+class Test
+{
+    void Method()
+    {
+        var multiplier = 10;
+        var offset = 5;
+        var list = new List<Entity>();
+        var result = list.AsQueryable().SelectExpr(
+            s => new { 
+                Result = (s.Value * multiplier) + offset
+            }, capture: new { multiplier, offset }
+        ).ToList();
+    }
+}
+
+" + TestSourceCodes.SelectExprWithFuncAndBothOverloads;
+
+        var expected1 = VerifyCS
+            .Diagnostic(LocalVariableCaptureAnalyzer.AnalyzerId)
+            .WithLocation(0)
+            .WithArguments("multiplier");
+
+        var expected2 = VerifyCS
+            .Diagnostic(LocalVariableCaptureAnalyzer.AnalyzerId)
             .WithLocation(1)
             .WithArguments("offset");
 
@@ -285,7 +353,7 @@ class Test
 " + TestSourceCodes.SelectExprWithFuncObjectAndBothOverloads;
 
         var expected = VerifyCS
-            .Diagnostic(LocalVariableCaptureAnalyzer.DiagnosticId)
+            .Diagnostic(LocalVariableCaptureAnalyzer.AnalyzerId)
             .WithLocation(0)
             .WithArguments("multiplier");
 
@@ -348,12 +416,12 @@ class Test
 " + TestSourceCodes.SelectExprWithFuncAndBothOverloads;
 
         var expected1 = VerifyCS
-            .Diagnostic(LocalVariableCaptureAnalyzer.DiagnosticId)
+            .Diagnostic(LocalVariableCaptureAnalyzer.AnalyzerId)
             .WithLocation(0)
             .WithArguments("multiplier");
 
         var expected2 = VerifyCS
-            .Diagnostic(LocalVariableCaptureAnalyzer.DiagnosticId)
+            .Diagnostic(LocalVariableCaptureAnalyzer.AnalyzerId)
             .WithLocation(1)
             .WithArguments("multiplier");
 
@@ -412,7 +480,7 @@ class Test
 " + TestSourceCodes.SelectExprWithFuncAndBothOverloads;
 
         var expected = VerifyCS
-            .Diagnostic(LocalVariableCaptureAnalyzer.DiagnosticId)
+            .Diagnostic(LocalVariableCaptureAnalyzer.AnalyzerId)
             .WithLocation(0)
             .WithArguments("multiplier");
 
@@ -469,7 +537,7 @@ class Test
 " + TestSourceCodes.SelectExprWithFuncAndBothOverloads;
 
         var expected = VerifyCS
-            .Diagnostic(LocalVariableCaptureAnalyzer.DiagnosticId)
+            .Diagnostic(LocalVariableCaptureAnalyzer.AnalyzerId)
             .WithLocation(0)
             .WithArguments("SampleValue");
 
@@ -540,12 +608,12 @@ class Test
 " + TestSourceCodes.SelectExprWithFuncAndBothOverloads;
 
         var expected1 = VerifyCS
-            .Diagnostic(LocalVariableCaptureAnalyzer.DiagnosticId)
+            .Diagnostic(LocalVariableCaptureAnalyzer.AnalyzerId)
             .WithLocation(0)
             .WithArguments("SampleValue");
 
         var expected2 = VerifyCS
-            .Diagnostic(LocalVariableCaptureAnalyzer.DiagnosticId)
+            .Diagnostic(LocalVariableCaptureAnalyzer.AnalyzerId)
             .WithLocation(1)
             .WithArguments("SampleText");
 
@@ -613,7 +681,7 @@ class Test
 " + TestSourceCodes.SelectExprWithFuncAndCaptureOnly;
 
         var expected = VerifyCS
-            .Diagnostic(LocalVariableCaptureAnalyzer.DiagnosticId)
+            .Diagnostic(LocalVariableCaptureAnalyzer.AnalyzerId)
             .WithLocation(0)
             .WithArguments("local2");
 
@@ -679,7 +747,7 @@ class Test
 " + TestSourceCodes.SelectExprWithFuncAndBothOverloads;
 
         var expected = VerifyCS
-            .Diagnostic(LocalVariableCaptureAnalyzer.DiagnosticId)
+            .Diagnostic(LocalVariableCaptureAnalyzer.AnalyzerId)
             .WithLocation(0)
             .WithArguments("Status");
 
@@ -751,7 +819,7 @@ class Test
 " + TestSourceCodes.SelectExprWithFuncAndBothOverloads;
 
         var expected = VerifyCS
-            .Diagnostic(LocalVariableCaptureAnalyzer.DiagnosticId)
+            .Diagnostic(LocalVariableCaptureAnalyzer.AnalyzerId)
             .WithLocation(0)
             .WithArguments("DefaultValue");
 
@@ -825,7 +893,7 @@ class Test
 " + TestSourceCodes.SelectExprWithFuncAndBothOverloads;
 
         var expected = VerifyCS
-            .Diagnostic(LocalVariableCaptureAnalyzer.DiagnosticId)
+            .Diagnostic(LocalVariableCaptureAnalyzer.AnalyzerId)
             .WithLocation(0)
             .WithArguments("Property");
 
@@ -919,17 +987,17 @@ class Test
 " + TestSourceCodes.SelectExprWithFuncAndBothOverloads;
 
         var expected1 = VerifyCS
-            .Diagnostic(LocalVariableCaptureAnalyzer.DiagnosticId)
+            .Diagnostic(LocalVariableCaptureAnalyzer.AnalyzerId)
             .WithLocation(0)
             .WithArguments("Status");
 
         var expected2 = VerifyCS
-            .Diagnostic(LocalVariableCaptureAnalyzer.DiagnosticId)
+            .Diagnostic(LocalVariableCaptureAnalyzer.AnalyzerId)
             .WithLocation(1)
             .WithArguments("DefaultValue");
 
         var expected3 = VerifyCS
-            .Diagnostic(LocalVariableCaptureAnalyzer.DiagnosticId)
+            .Diagnostic(LocalVariableCaptureAnalyzer.AnalyzerId)
             .WithLocation(2)
             .WithArguments("Property");
 

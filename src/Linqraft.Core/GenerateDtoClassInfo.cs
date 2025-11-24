@@ -2,6 +2,8 @@ using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.Linq;
 using System.Text;
+using Linqraft.Core.Formatting;
+using Linqraft.Core.RoslynHelpers;
 
 namespace Linqraft.Core;
 
@@ -97,7 +99,7 @@ public class GenerateDtoClassInfo
         {
             for (int i = 0; i < ParentClasses.Count; i++)
             {
-                var indent = new string(' ', i * 4);
+                var indent = CodeFormatter.Indent(i);
                 // Use the parent class accessibility if available, otherwise default to public
                 var parentAccessibility =
                     i < ParentAccessibilities.Count ? ParentAccessibilities[i] : "public";
@@ -107,7 +109,7 @@ public class GenerateDtoClassInfo
         }
 
         // Build the actual DTO class/record
-        var classIndent = new string(' ', ParentClasses.Count * 4);
+        var classIndent = CodeFormatter.Indent(ParentClasses.Count);
         sb.AppendLine($"{classIndent}{Accessibility} partial {typeKeyword} {ClassName}");
         sb.AppendLine($"{classIndent}{{");
 
@@ -149,8 +151,10 @@ public class GenerateDtoClassInfo
                 // Handle nullable types: temporarily remove the ? suffix if present
                 // This is needed for ternary operators like: p.Child != null ? new { ... } : null
                 // which produce types like: global::<anonymous type: ...>?
-                var isTypeNullable = propertyType.EndsWith("?");
-                var typeWithoutNullable = isTypeNullable ? propertyType[..^1] : propertyType;
+                var isTypeNullable = RoslynTypeHelper.IsNullableTypeByString(propertyType);
+                var typeWithoutNullable = isTypeNullable
+                    ? RoslynTypeHelper.RemoveNullableSuffixFromString(propertyType)
+                    : propertyType;
 
                 // Check if this is a direct anonymous type (not wrapped in a collection)
                 // Anonymous types from Roslyn look like: global::<anonymous type: ...>
@@ -166,7 +170,7 @@ public class GenerateDtoClassInfo
                         propertyType = $"{propertyType}?";
                     }
                 }
-                else if (typeWithoutNullable.Contains("<"))
+                else if (RoslynTypeHelper.IsGenericTypeByString(typeWithoutNullable))
                 {
                     // Collection type (e.g., List<...>, IEnumerable<...>)
                     // Extract the base collection type and replace the element type
@@ -191,7 +195,7 @@ public class GenerateDtoClassInfo
             }
 
             // Add nullable annotation if the property is nullable and not already marked
-            if (prop.IsNullable && !propertyType.EndsWith("?"))
+            if (prop.IsNullable && !RoslynTypeHelper.IsNullableTypeByString(propertyType))
             {
                 propertyType = $"{propertyType}?";
             }
@@ -220,7 +224,7 @@ public class GenerateDtoClassInfo
         {
             for (int i = ParentClasses.Count - 1; i >= 0; i--)
             {
-                var indent = new string(' ', i * 4);
+                var indent = CodeFormatter.Indent(i);
                 sb.AppendLine($"{indent}}}");
             }
         }

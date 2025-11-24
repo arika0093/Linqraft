@@ -2,9 +2,9 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using Linqraft.Core;
+using Linqraft.Core.Formatting;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
-using Microsoft.CodeAnalysis.CSharp.Syntax;
 
 namespace Linqraft;
 
@@ -31,6 +31,8 @@ internal class SelectExprGroups
     public required string TargetFileName { get; set; }
 
     // Determine if the target namespace is global (empty or compiler-generated)
+    // Note: Compiler-generated namespaces contain '<' (e.g., for top-level statements)
+    // TODO: In the future, use INamespaceSymbol.IsGlobalNamespace for more accurate detection
     private bool IsGlobalNamespace =>
         string.IsNullOrEmpty(targetNamespace) || targetNamespace.Contains("<");
 
@@ -91,19 +93,25 @@ internal class SelectExprGroups
 
     private string BuildSourceCode(List<string> dtoClasses, List<string> selectExprMethods)
     {
-        var indentedExpr = IndentUtility(string.Join("\n", selectExprMethods), 8);
+        var indentedExpr = CodeFormatter.IndentCode(
+            string.Join(CodeFormatter.DefaultNewLine, selectExprMethods),
+            CodeFormatter.IndentSize * 2
+        );
 
         // Build the DTO classes section (with or without namespace)
         string dtoClassesSection;
         if (string.IsNullOrEmpty(TargetNamespace))
         {
             // Generate DTOs in global namespace (no namespace wrapper)
-            dtoClassesSection = string.Join("\n", dtoClasses);
+            dtoClassesSection = string.Join(CodeFormatter.DefaultNewLine, dtoClasses);
         }
         else
         {
             // Generate DTOs in the specified namespace
-            var indentedClasses = IndentUtility(string.Join("\n", dtoClasses), 4);
+            var indentedClasses = CodeFormatter.IndentCode(
+                string.Join(CodeFormatter.DefaultNewLine, dtoClasses),
+                CodeFormatter.IndentSize
+            );
             dtoClassesSection = $$"""
                 namespace {{TargetNamespace}}
                 {
@@ -152,14 +160,6 @@ internal class SelectExprGroups
             using System.Linq;
             using System.Collections.Generic;
             """;
-    }
-
-    private string IndentUtility(string code, int indentSpaces)
-    {
-        var indent = new string(' ', indentSpaces);
-        var indentedLines = code.Split('\n')
-            .Select(line => string.IsNullOrWhiteSpace(line) ? line : indent + line);
-        return string.Join("\n", indentedLines);
     }
 }
 

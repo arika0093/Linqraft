@@ -1,12 +1,11 @@
 using System.Collections.Generic;
 using System.Linq;
-using Linqraft;
 
 namespace Tutorial;
 
 public class TutorialCaseTest
 {
-    private List<Order> Orders = [];
+    private readonly List<Order> Orders = [];
 
     [Fact]
     public void TryTutorialCaseExplicit()
@@ -15,19 +14,22 @@ public class TutorialCaseTest
             .AsQueryable()
             // Order: input entity type
             // OrderDto: output DTO type (auto-generated)
-            .SelectExpr<Order, OrderDto>(s => new
+            .SelectExpr<Order, OrderDto>(o => new
             {
-                Id = s.Id,
-                CustomerName = s.Customer?.Name,
-                CustomerCountry = s.Customer?.Address?.Country?.Name,
-                CustomerCity = s.Customer?.Address?.City?.Name,
-                Items = s
-                    .OrderItems.Select(oi => new
-                    {
-                        ProductName = oi.Product?.Name,
-                        Quantity = oi.Quantity,
-                    })
-                    .ToList(),
+                o.Id,
+                CustomerName = o.Customer?.Name,
+                CustomerCountry = o.Customer?.Address?.Country?.Name,
+                CustomerCity = o.Customer?.Address?.City?.Name,
+                CustomerInfo = new
+                {
+                    Email = o.Customer?.EmailAddress,
+                    Phone = o.Customer?.PhoneNumber,
+                },
+                Items = o.OrderItems.Select(oi => new
+                {
+                    ProductName = oi.Product?.Name,
+                    oi.Quantity,
+                }),
             })
             .ToList();
     }
@@ -44,6 +46,8 @@ public class Customer
 {
     public string Name { get; set; } = "";
     public Address? Address { get; set; }
+    public string? EmailAddress { get; set; }
+    public string? PhoneNumber { get; set; }
 }
 
 public class Address

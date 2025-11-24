@@ -1,6 +1,6 @@
-using System;
 using System.Collections.Generic;
 using System.Linq;
+using Linqraft.Core.SyntaxHelpers;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
 
@@ -187,29 +187,6 @@ public record DtoStructure(ITypeSymbol SourceType, List<DtoProperty> Properties)
 
     private static string? GetImplicitPropertyName(ExpressionSyntax expression)
     {
-        // Get property name from member access (e.g., s.Id)
-        if (expression is MemberAccessExpressionSyntax memberAccess)
-        {
-            return memberAccess.Name.Identifier.Text;
-        }
-
-        // Get property name from identifier (e.g., id)
-        if (expression is IdentifierNameSyntax identifier)
-        {
-            return identifier.Identifier.Text;
-        }
-
-        // Handle conditional access (e.g., s.Child?.Property)
-        if (expression is ConditionalAccessExpressionSyntax conditionalAccess)
-        {
-            // Get the property name from the WhenNotNull part
-            if (conditionalAccess.WhenNotNull is MemberBindingExpressionSyntax memberBinding)
-            {
-                return memberBinding.Name.Identifier.Text;
-            }
-        }
-
-        // Do not process other complex expressions
-        return null;
+        return ExpressionHelper.GetPropertyName(expression);
     }
 }

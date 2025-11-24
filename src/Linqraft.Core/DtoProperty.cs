@@ -1,4 +1,5 @@
 using System.Linq;
+using Linqraft.Core.SyntaxHelpers;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
@@ -25,9 +26,18 @@ public record DtoProperty(
     {
         get
         {
+            // Check if the type symbol is an error type or invalid
+            if (
+                TypeSymbol is IErrorTypeSymbol
+                || TypeSymbol.SpecialType == SpecialType.System_Object
+            )
+            {
+                return "object";
+            }
+
             var typeName = TypeSymbol.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat);
             // Fallback to a safe type if the type name is empty or invalid
-            if (string.IsNullOrWhiteSpace(typeName) || typeName == "?")
+            if (string.IsNullOrWhiteSpace(typeName))
             {
                 return "object";
             }
@@ -368,144 +378,21 @@ public record DtoProperty(
     /// </summary>
     private static bool ShouldGenerateNullCheckFromSyntax(ExpressionSyntax expression)
     {
-        // 1. If ?. is used, definitely needs null check
-        if (expression.DescendantNodesAndSelf().OfType<ConditionalAccessExpressionSyntax>().Any())
-        {
-            return true;
-        }
-
-        // 2. Check for nested member access (e.g., x.Child.Name)
-        // Count member access depth (excluding lambda parameters)
-        var memberAccesses = expression
-            .DescendantNodesAndSelf()
-            .OfType<MemberAccessExpressionSyntax>()
-            .Where(ma =>
-            {
-                // Exclude nested Select lambdas
-                var parentLambda = ma.Ancestors().OfType<LambdaExpressionSyntax>().FirstOrDefault();
-                var topLambda = expression
-                    .Ancestors()
-                    .OfType<LambdaExpressionSyntax>()
-                    .FirstOrDefault();
-                return parentLambda == topLambda;
-            })
-            .ToList();
-
-        // If there are multiple levels of member access (e.g., s.Child.Name has 2 levels)
-        // generate null check for safety
-        if (memberAccesses.Count >= 2)
-        {
-            // Check if the chain starts from a lambda parameter
-            var firstAccess = memberAccesses.FirstOrDefault();
-            if (firstAccess?.Expression is IdentifierNameSyntax)
-            {
-                // s.Child.Name - has intermediate navigation, needs null check
-                return true;
-            }
-        }
-
-        return false;
+        return NullConditionalHelper.ShouldGenerateNullCheckFromSyntax(expression);
     }
 
     private static bool HasNullableAccess(ExpressionSyntax expression)
     {
-        // Check if ?. operator is used at the top level (excluding nested lambdas)
-        // We need to exclude ConditionalAccessExpressionSyntax that are inside lambda expressions
-        // because those apply to the nested properties, not the outer property
-        var conditionalAccesses = expression
-            .DescendantNodesAndSelf()
-            .OfType<ConditionalAccessExpressionSyntax>();
-
-        foreach (var conditionalAccess in conditionalAccesses)
-        {
-            // Check if this conditional access is inside a lambda expression
-            var ancestors = conditionalAccess.Ancestors();
-            var isInsideLambda = ancestors
-                .TakeWhile(n => n != expression) // Only check ancestors up to the root expression
-                .OfType<LambdaExpressionSyntax>()
-                .Any();
-
-            // If not inside a lambda, this is a top-level nullable access
-            if (!isInsideLambda)
-            {
-                return true;
-            }
-        }
-
-        return false;
-    }
-
-    /// <summary>
-    /// Finds a LINQ method invocation (Select or SelectMany) in an expression
-    /// </summary>
-    private static InvocationExpressionSyntax? FindLinqInvocation(
-        ExpressionSyntax expression,
-        params string[] methodNames
-    )
-    {
-        // Handle binary expressions (e.g., ?? operator): s.OrderItems?.Select(...) ?? []
-        if (expression is BinaryExpressionSyntax binaryExpr)
-        {
-            // Check left side for invocation
-            var leftResult = FindLinqInvocation(binaryExpr.Left, methodNames);
-            if (leftResult is not null)
-                return leftResult;
-        }
-
-        // Handle conditional access (?.): s.OrderItems?.Select(...)
-        if (expression is ConditionalAccessExpressionSyntax conditionalAccess)
-        {
-            // The WhenNotNull part contains the actual method call
-            return FindLinqInvocation(conditionalAccess.WhenNotNull, methodNames);
-        }
-
-        // Handle member binding expression (part of ?. expression): .Select(...)
-        if (expression is MemberBindingExpressionSyntax)
-        {
-            // This is the .Select part of ?.Select - we need to look at the parent
-            return null;
-        }
-
-        // Handle invocation binding expression (part of ?. expression): Select(...)
-        if (
-            expression is InvocationExpressionSyntax invocationBinding
-            && invocationBinding.Expression is MemberBindingExpressionSyntax memberBinding
-            && methodNames.Contains(memberBinding.Name.Identifier.Text)
-        )
-        {
-            return invocationBinding;
-        }
-
-        // Direct invocation: s.Childs.Select(...)
-        if (expression is InvocationExpressionSyntax invocation)
-        {
-            if (
-                invocation.Expression is MemberAccessExpressionSyntax memberAccess
-                && methodNames.Contains(memberAccess.Name.Identifier.Text)
-            )
-            {
-                return invocation;
-            }
-
-            // Chained method call (e.g., ToList, ToArray, etc.): s.Childs.Select(...).ToList()
-            // The invocation is for ToList, but we need to find the LINQ method in its expression
-            if (invocation.Expression is MemberAccessExpressionSyntax chainedMemberAccess)
-            {
-                // Recursively search in the expression part (before the chained method)
-                return FindLinqInvocation(chainedMemberAccess.Expression, methodNames);
-            }
-        }
-
-        return null;
+        return NullConditionalHelper.HasNullConditionalAccess(expression);
     }
 
     private static InvocationExpressionSyntax? FindSelectInvocation(ExpressionSyntax expression)
     {
-        return FindLinqInvocation(expression, "Select");
+        return LinqMethodHelper.FindLinqMethodInvocation(expression, "Select");
     }
 
     private static InvocationExpressionSyntax? FindSelectManyInvocation(ExpressionSyntax expression)
     {
-        return FindLinqInvocation(expression, "SelectMany");
+        return LinqMethodHelper.FindLinqMethodInvocation(expression, "SelectMany");
     }
 }

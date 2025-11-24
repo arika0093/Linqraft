@@ -1,11 +1,10 @@
-using System;
 using System.Collections.Immutable;
 using System.Composition;
 using System.Linq;
-using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 using Linqraft.Core;
+using Linqraft.Core.AnalyzerHelpers;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CodeActions;
 using Microsoft.CodeAnalysis.CodeFixes;
@@ -22,7 +21,7 @@ namespace Linqraft.Analyzer;
 public class SelectExprToTypedCodeFixProvider : CodeFixProvider
 {
     public sealed override ImmutableArray<string> FixableDiagnosticIds =>
-        ImmutableArray.Create(SelectExprToTypedAnalyzer.DiagnosticId);
+        [SelectExprToTypedAnalyzer.AnalyzerId];
 
     public sealed override FixAllProvider GetFixAllProvider() =>
         WellKnownFixAllProviders.BatchFixer;
@@ -100,9 +99,14 @@ public class SelectExprToTypedCodeFixProvider : CodeFixProvider
         var newRoot = root.ReplaceNode(invocation, newInvocation);
 
         // Add using directive for source type if needed
-        newRoot = AddUsingDirectiveForType(newRoot, sourceType);
+        newRoot = UsingDirectiveHelper.AddUsingDirectiveForType(newRoot, sourceType);
 
-        return document.WithSyntaxRoot(newRoot);
+        var documentWithNewRoot = document.WithSyntaxRoot(newRoot);
+
+        // Format and normalize line endings
+        return await CodeFixFormattingHelper
+            .FormatAndNormalizeLineEndingsAsync(documentWithNewRoot, cancellationToken)
+            .ConfigureAwait(false);
     }
 
     private static SyntaxNode AddUsingDirectiveForType(SyntaxNode root, ITypeSymbol typeSymbol)

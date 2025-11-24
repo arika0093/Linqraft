@@ -5,7 +5,7 @@
     <LangVersion>latest</LangVersion>
     <Nullable>enable</Nullable>
     <RestorePackagesWithLockFile>true</RestorePackagesWithLockFile>
-    <PackageDescription>Simplifies the writing of Select queries in EFCore by providing automatic DTO class generation and support for nullable expressions.</PackageDescription>
+    <PackageDescription>Write Select queries easily with on-demand DTO generation and null-coalescing operators.</PackageDescription>
     <PackageProjectUrl>https://github.com/arika0093/Linqraft</PackageProjectUrl>
     <RepositoryUrl>https://github.com/arika0093/Linqraft</RepositoryUrl>
     <PackageLicenseExpression>Apache-2.0</PackageLicenseExpression>

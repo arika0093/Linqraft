@@ -1,8 +1,7 @@
-using System;
 using System.Collections.Generic;
-using System.Collections.Immutable;
 using System.Linq;
 using System.Text;
+using Linqraft.Core.Formatting;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
@@ -341,11 +340,11 @@ public record SelectExprInfoExplicitDto : SelectExprInfo
         var propertyAssignments = structure
             .Properties.Select(prop =>
             {
-                var assignment = GeneratePropertyAssignment(prop, 8);
-                return $"        {prop.Name} = {assignment}";
+                var assignment = GeneratePropertyAssignment(prop, CodeFormatter.IndentSize * 2);
+                return $"{CodeFormatter.Indent(2)}{prop.Name} = {assignment}";
             })
             .ToList();
-        sb.AppendLine(string.Join($",\n", propertyAssignments));
+        sb.AppendLine(string.Join($",{CodeFormatter.DefaultNewLine}", propertyAssignments));
 
         sb.AppendLine($"    }});");
         sb.AppendLine($"    return converted as object as {returnTypePrefix}<TResult>;");

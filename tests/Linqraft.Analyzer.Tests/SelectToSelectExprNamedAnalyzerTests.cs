@@ -1,8 +1,5 @@
 using System.Threading.Tasks;
 using Microsoft.CodeAnalysis;
-using Microsoft.CodeAnalysis.CSharp.Testing;
-using Microsoft.CodeAnalysis.Testing;
-using Xunit;
 using VerifyCS = Microsoft.CodeAnalysis.CSharp.Testing.CSharpAnalyzerVerifier<
     Linqraft.Analyzer.SelectToSelectExprNamedAnalyzer,
     Microsoft.CodeAnalysis.Testing.DefaultVerifier
@@ -42,7 +39,7 @@ class Test
 }";
 
         var expected = VerifyCS
-            .Diagnostic(SelectToSelectExprNamedAnalyzer.DiagnosticId)
+            .Diagnostic(SelectToSelectExprNamedAnalyzer.AnalyzerId)
             .WithLocation(0)
             .WithSeverity(DiagnosticSeverity.Info);
 
@@ -77,7 +74,7 @@ class Test
 }";
 
         var expected = VerifyCS
-            .Diagnostic(SelectToSelectExprNamedAnalyzer.DiagnosticId)
+            .Diagnostic(SelectToSelectExprNamedAnalyzer.AnalyzerId)
             .WithLocation(0)
             .WithSeverity(DiagnosticSeverity.Info);
 
@@ -203,7 +200,7 @@ class Test
 }";
 
         var expected = VerifyCS
-            .Diagnostic(SelectToSelectExprNamedAnalyzer.DiagnosticId)
+            .Diagnostic(SelectToSelectExprNamedAnalyzer.AnalyzerId)
             .WithLocation(0)
             .WithSeverity(DiagnosticSeverity.Info);
 

@@ -1,4 +1,3 @@
-using System;
 using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.Composition;
@@ -6,6 +5,8 @@ using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using Linqraft.Core;
+using Linqraft.Core.AnalyzerHelpers;
+using Linqraft.Core.SyntaxHelpers;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CodeActions;
 using Microsoft.CodeAnalysis.CodeFixes;
@@ -22,7 +23,7 @@ namespace Linqraft.Analyzer;
 public class SelectToSelectExprNamedCodeFixProvider : CodeFixProvider
 {
     public sealed override ImmutableArray<string> FixableDiagnosticIds =>
-        ImmutableArray.Create(SelectToSelectExprNamedAnalyzer.DiagnosticId);
+        [SelectToSelectExprNamedAnalyzer.AnalyzerId];
 
     public sealed override FixAllProvider GetFixAllProvider() =>
         WellKnownFixAllProviders.BatchFixer;
@@ -94,6 +95,9 @@ public class SelectToSelectExprNamedCodeFixProvider : CodeFixProvider
         if (root == null)
             return document;
 
+        // Find variables that need to be captured BEFORE modifying the syntax tree
+        var variablesToCapture = FindVariablesToCapture(invocation, semanticModel);
+
         // Get the source type
         var sourceType = GetSourceType(invocation.Expression, semanticModel, cancellationToken);
         if (sourceType == null)
@@ -132,10 +136,31 @@ public class SelectToSelectExprNamedCodeFixProvider : CodeFixProvider
 
         var newRoot = root.ReplaceNodes(replacements.Keys, (oldNode, _) => replacements[oldNode]);
 
-        // Add using directive for source type if needed
-        newRoot = AddUsingDirectiveForType(newRoot, sourceType);
+        // Find the updated invocation in the new tree
+        var newInvocation = newRoot
+            .DescendantNodes()
+            .OfType<InvocationExpressionSyntax>()
+            .FirstOrDefault(inv =>
+                inv.Expression.ToString().Contains("SelectExpr")
+                && inv.Span.Start == invocation.Span.Start
+            );
 
-        return document.WithSyntaxRoot(newRoot);
+        // Add capture parameter if needed
+        if (newInvocation != null && variablesToCapture.Count > 0)
+        {
+            var updatedInvocation = AddCaptureArgument(newInvocation, variablesToCapture);
+            newRoot = newRoot.ReplaceNode(newInvocation, updatedInvocation);
+        }
+
+        // Add using directive for source type if needed
+        newRoot = UsingDirectiveHelper.AddUsingDirectiveForType(newRoot, sourceType);
+
+        var documentWithNewRoot = document.WithSyntaxRoot(newRoot);
+
+        // Format and normalize line endings
+        return await CodeFixFormattingHelper
+            .FormatAndNormalizeLineEndingsAsync(documentWithNewRoot, cancellationToken)
+            .ConfigureAwait(false);
     }
 
     private static async Task<Document> ConvertToSelectExprExplicitDtoRootOnlyAsync(
@@ -153,6 +178,9 @@ public class SelectToSelectExprNamedCodeFixProvider : CodeFixProvider
         var root = await document.GetSyntaxRootAsync(cancellationToken).ConfigureAwait(false);
         if (root == null)
             return document;
+
+        // Find variables that need to be captured BEFORE modifying the syntax tree
+        var variablesToCapture = FindVariablesToCapture(invocation, semanticModel);
 
         // Get the source type
         var sourceType = GetSourceType(invocation.Expression, semanticModel, cancellationToken);
@@ -192,10 +220,31 @@ public class SelectToSelectExprNamedCodeFixProvider : CodeFixProvider
 
         var newRoot = root.ReplaceNodes(replacements.Keys, (oldNode, _) => replacements[oldNode]);
 
-        // Add using directive for source type if needed
-        newRoot = AddUsingDirectiveForType(newRoot, sourceType);
+        // Find the updated invocation in the new tree
+        var newInvocation = newRoot
+            .DescendantNodes()
+            .OfType<InvocationExpressionSyntax>()
+            .FirstOrDefault(inv =>
+                inv.Expression.ToString().Contains("SelectExpr")
+                && inv.Span.Start == invocation.Span.Start
+            );
 
-        return document.WithSyntaxRoot(newRoot);
+        // Add capture parameter if needed
+        if (newInvocation != null && variablesToCapture.Count > 0)
+        {
+            var updatedInvocation = AddCaptureArgument(newInvocation, variablesToCapture);
+            newRoot = newRoot.ReplaceNode(newInvocation, updatedInvocation);
+        }
+
+        // Add using directive for source type if needed
+        newRoot = UsingDirectiveHelper.AddUsingDirectiveForType(newRoot, sourceType);
+
+        var documentWithNewRoot = document.WithSyntaxRoot(newRoot);
+
+        // Format and normalize line endings
+        return await CodeFixFormattingHelper
+            .FormatAndNormalizeLineEndingsAsync(documentWithNewRoot, cancellationToken)
+            .ConfigureAwait(false);
     }
 
     private static async Task<Document> ConvertToSelectExprPredefinedDtoAsync(
@@ -208,19 +257,38 @@ public class SelectToSelectExprNamedCodeFixProvider : CodeFixProvider
         if (root == null)
             return document;
 
+        var semanticModel = await document
+            .GetSemanticModelAsync(cancellationToken)
+            .ConfigureAwait(false);
+        if (semanticModel == null)
+            return document;
+
+        // Find variables that need to be captured BEFORE modifying the syntax tree
+        var variablesToCapture = FindVariablesToCapture(invocation, semanticModel);
+
         // Replace "Select" with "SelectExpr"
         var newExpression = ReplaceMethodName(invocation.Expression, "SelectExpr");
         if (newExpression == null)
             return document;
 
         // Simplify ternary null checks in the lambda body
-        var newInvocation = SimplifyTernaryNullChecksInInvocation(
+        var newInvocation = TernaryNullCheckSimplifier.SimplifyTernaryNullChecksInInvocation(
             invocation.WithExpression(newExpression)
         );
 
-        var newRoot = root.ReplaceNode(invocation, newInvocation);
+        // Add capture parameter if needed
+        if (variablesToCapture.Count > 0)
+        {
+            newInvocation = AddCaptureArgument(newInvocation, variablesToCapture);
+        }
 
-        return document.WithSyntaxRoot(newRoot);
+        var newRoot = root.ReplaceNode(invocation, newInvocation);
+        var documentWithNewRoot = document.WithSyntaxRoot(newRoot);
+
+        // Format and normalize line endings
+        return await CodeFixFormattingHelper
+            .FormatAndNormalizeLineEndingsAsync(documentWithNewRoot, cancellationToken)
+            .ConfigureAwait(false);
     }
 
     private static ExpressionSyntax? ReplaceMethodName(
@@ -310,7 +378,7 @@ public class SelectToSelectExprNamedCodeFixProvider : CodeFixProvider
         ObjectCreationExpressionSyntax objectCreation
     )
     {
-        return ConvertToAnonymousType(objectCreation, null);
+        return ObjectCreationHelper.ConvertToAnonymousType(objectCreation);
     }
 
     private static AnonymousObjectCreationExpressionSyntax ConvertToAnonymousType(
@@ -318,150 +386,15 @@ public class SelectToSelectExprNamedCodeFixProvider : CodeFixProvider
         SemanticModel? semanticModel
     )
     {
-        // Convert object initializer to anonymous object creation
-        if (objectCreation.Initializer == null)
-        {
-            return SyntaxFactory.AnonymousObjectCreationExpression();
-        }
-
-        var members = new List<AnonymousObjectMemberDeclaratorSyntax>();
-
-        foreach (var expression in objectCreation.Initializer.Expressions)
-        {
-            if (expression is AssignmentExpressionSyntax assignment)
-            {
-                // Convert assignment like "Id = x.Id" to anonymous member
-                if (assignment.Left is IdentifierNameSyntax identifier)
-                {
-                    // Use the right side expression as-is (no FullName conversion needed)
-                    var processedRight = assignment.Right;
-
-                    // Create the name equals with preserved identifier trivia
-                    var nameEquals = SyntaxFactory
-                        .NameEquals(SyntaxFactory.IdentifierName(identifier.Identifier))
-                        .WithLeadingTrivia(assignment.GetLeadingTrivia());
-
-                    // Create the member with preserved trivia from the right side
-                    var member = SyntaxFactory
-                        .AnonymousObjectMemberDeclarator(nameEquals, processedRight)
-                        .WithTrailingTrivia(assignment.GetTrailingTrivia());
-
-                    members.Add(member);
-                }
-            }
-        }
-
-        // Create the separated list preserving separators from the original initializer
-        var separatedMembers = SyntaxFactory.SeparatedList(
-            members,
-            objectCreation.Initializer.Expressions.GetSeparators()
-        );
-
-        // Collect all trivia between "new" and the opening brace
-        // This includes trivia from the type node (both leading and trailing)
-        var triviaBeforeOpenBrace = SyntaxTriviaList.Empty;
-        if (objectCreation.Type != null)
-        {
-            triviaBeforeOpenBrace = triviaBeforeOpenBrace
-                .AddRange(objectCreation.Type.GetLeadingTrivia())
-                .AddRange(objectCreation.Type.GetTrailingTrivia());
-        }
-
-        // Create anonymous object creation preserving trivia
-        var result = SyntaxFactory
-            .AnonymousObjectCreationExpression(
-                SyntaxFactory
-                    .Token(SyntaxKind.NewKeyword)
-                    .WithLeadingTrivia(objectCreation.GetLeadingTrivia())
-                    .WithTrailingTrivia(triviaBeforeOpenBrace),
-                SyntaxFactory
-                    .Token(SyntaxKind.OpenBraceToken)
-                    .WithTrailingTrivia(objectCreation.Initializer.OpenBraceToken.TrailingTrivia),
-                separatedMembers,
-                SyntaxFactory
-                    .Token(SyntaxKind.CloseBraceToken)
-                    .WithLeadingTrivia(objectCreation.Initializer.CloseBraceToken.LeadingTrivia)
-                    .WithTrailingTrivia(objectCreation.Initializer.CloseBraceToken.TrailingTrivia)
-            )
-            .WithTrailingTrivia(objectCreation.GetTrailingTrivia());
-
-        return result;
+        // Use the helper method - semantic model not needed for basic conversion
+        return ObjectCreationHelper.ConvertToAnonymousType(objectCreation);
     }
 
     private static AnonymousObjectCreationExpressionSyntax ConvertToAnonymousTypeRecursive(
         ObjectCreationExpressionSyntax objectCreation
     )
     {
-        // Convert object initializer to anonymous object creation, recursively converting nested object creations
-        if (objectCreation.Initializer == null)
-        {
-            return SyntaxFactory.AnonymousObjectCreationExpression();
-        }
-
-        var members = new List<AnonymousObjectMemberDeclaratorSyntax>();
-
-        foreach (var expression in objectCreation.Initializer.Expressions)
-        {
-            if (expression is AssignmentExpressionSyntax assignment)
-            {
-                // Convert assignment like "Id = x.Id" to anonymous member
-                if (assignment.Left is IdentifierNameSyntax identifier)
-                {
-                    // Recursively process the right side to convert nested object creations
-                    var processedRight = ProcessExpressionForNestedConversions(assignment.Right);
-
-                    members.Add(
-                        SyntaxFactory.AnonymousObjectMemberDeclarator(
-                            SyntaxFactory.NameEquals(identifier.Identifier.Text),
-                            processedRight
-                        )
-                    );
-                }
-            }
-        }
-
-        return SyntaxFactory.AnonymousObjectCreationExpression(
-            SyntaxFactory.SeparatedList(members)
-        );
-    }
-
-    private static ExpressionSyntax ProcessExpressionForNestedConversions(
-        ExpressionSyntax expression
-    )
-    {
-        // Use a recursive rewriter to find and convert all nested object creations
-        var rewriter = new NestedObjectCreationRewriter();
-        return (ExpressionSyntax)rewriter.Visit(expression);
-    }
-
-    /// <summary>
-    /// Syntax rewriter that converts ObjectCreationExpressionSyntax to AnonymousObjectCreationExpressionSyntax
-    /// </summary>
-    private class NestedObjectCreationRewriter : CSharpSyntaxRewriter
-    {
-        public override SyntaxNode? VisitObjectCreationExpression(
-            ObjectCreationExpressionSyntax node
-        )
-        {
-            // Only convert if it has an initializer with assignment expressions
-            // Don't convert things like "new List()" or "new List<T>()"
-            if (node.Initializer != null && HasAssignmentExpressions(node.Initializer))
-            {
-                // Convert this object creation to anonymous type (non-recursively to avoid infinite loop)
-                var anonymousType = ConvertToAnonymousType(node);
-
-                // Continue visiting children to convert nested object creations
-                return base.Visit(anonymousType) ?? anonymousType;
-            }
-
-            // For object creations without proper initializers, don't convert but still visit children
-            return base.VisitObjectCreationExpression(node);
-        }
-
-        private static bool HasAssignmentExpressions(InitializerExpressionSyntax initializer)
-        {
-            return initializer.Expressions.Any(e => e is AssignmentExpressionSyntax);
-        }
+        return ObjectCreationHelper.ConvertToAnonymousTypeRecursive(objectCreation);
     }
 
     private static ObjectCreationExpressionSyntax? FindNamedObjectCreationInArguments(
@@ -521,43 +454,98 @@ public class SelectToSelectExprNamedCodeFixProvider : CodeFixProvider
         return "ResultDto";
     }
 
-    private static InvocationExpressionSyntax SimplifyTernaryNullChecksInInvocation(
-        InvocationExpressionSyntax invocation
+    /// <summary>
+    /// Finds variables that need to be captured in the invocation's lambda expression.
+    /// </summary>
+    private static HashSet<string> FindVariablesToCapture(
+        InvocationExpressionSyntax invocation,
+        SemanticModel semanticModel
     )
     {
-        // Find and simplify ternary null checks in lambda body
-        var newArguments = new List<ArgumentSyntax>();
-        foreach (var argument in invocation.ArgumentList.Arguments)
+        // Find the lambda expression
+        var lambda = FindLambdaExpression(invocation.ArgumentList);
+        if (lambda == null)
+            return new HashSet<string>();
+
+        // Get lambda parameter names
+        var lambdaParameters = LambdaHelper.GetLambdaParameterNames(lambda);
+
+        // Find variables that need to be captured
+        var variablesToCapture = CaptureHelper.FindSimpleVariablesToCapture(
+            lambda,
+            lambdaParameters,
+            semanticModel
+        );
+
+        // Get already captured variables (if any)
+        var capturedVariables = CaptureHelper.GetCapturedVariables(invocation, semanticModel);
+
+        // Add any new variables to the set
+        capturedVariables.UnionWith(variablesToCapture);
+
+        return capturedVariables;
+    }
+
+    /// <summary>
+    /// Adds a capture argument to the invocation with the specified variables.
+    /// </summary>
+    private static InvocationExpressionSyntax AddCaptureArgument(
+        InvocationExpressionSyntax invocation,
+        HashSet<string> variablesToCapture
+    )
+    {
+        // Create capture argument
+        var captureArgument = CaptureHelper.CreateCaptureArgument(variablesToCapture);
+
+        // Update or add capture argument
+        var existingCaptureArgIndex = FindCaptureArgumentIndex(invocation);
+        if (existingCaptureArgIndex >= 0)
         {
-            if (
-                argument.Expression is SimpleLambdaExpressionSyntax simpleLambda
-                && simpleLambda.Body is ExpressionSyntax bodyExpr
-            )
+            // Replace existing capture argument
+            var arguments = invocation.ArgumentList.Arguments.ToList();
+            arguments[existingCaptureArgIndex] = captureArgument;
+            var newArgumentList = SyntaxFactory.ArgumentList(
+                SyntaxFactory.SeparatedList(arguments)
+            );
+            return invocation.WithArgumentList(newArgumentList);
+        }
+        else
+        {
+            // Add new capture argument
+            var arguments = invocation.ArgumentList.Arguments.ToList();
+            arguments.Add(captureArgument);
+            var newArgumentList = SyntaxFactory.ArgumentList(
+                SyntaxFactory.SeparatedList(arguments)
+            );
+            return invocation.WithArgumentList(newArgumentList);
+        }
+    }
+
+    private static int FindCaptureArgumentIndex(InvocationExpressionSyntax invocation)
+    {
+        for (int i = 0; i < invocation.ArgumentList.Arguments.Count; i++)
+        {
+            var argument = invocation.ArgumentList.Arguments[i];
+            if (argument.NameColon?.Name.Identifier.Text == "capture")
             {
-                var simplifiedBody = TernaryNullCheckSimplifier.SimplifyTernaryNullChecks(bodyExpr);
-                var newLambda = simpleLambda.WithBody(simplifiedBody);
-                newArguments.Add(argument.WithExpression(newLambda));
-            }
-            else if (
-                argument.Expression is ParenthesizedLambdaExpressionSyntax parenLambda
-                && parenLambda.Body is ExpressionSyntax parenBodyExpr
-            )
-            {
-                var simplifiedBody = TernaryNullCheckSimplifier.SimplifyTernaryNullChecks(
-                    parenBodyExpr
-                );
-                var newLambda = parenLambda.WithBody(simplifiedBody);
-                newArguments.Add(argument.WithExpression(newLambda));
-            }
-            else
-            {
-                newArguments.Add(argument);
+                return i;
             }
         }
 
-        return invocation.WithArgumentList(
-            SyntaxFactory.ArgumentList(SyntaxFactory.SeparatedList(newArguments))
-        );
+        return -1;
+    }
+
+    private static LambdaExpressionSyntax? FindLambdaExpression(ArgumentListSyntax argumentList)
+    {
+        foreach (var argument in argumentList.Arguments)
+        {
+            if (argument.Expression is LambdaExpressionSyntax lambda)
+            {
+                return lambda;
+            }
+        }
+
+        return null;
     }
 
     private static SyntaxNode AddUsingDirectiveForType(SyntaxNode root, ITypeSymbol typeSymbol)

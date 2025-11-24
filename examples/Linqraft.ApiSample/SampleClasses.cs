@@ -1,4 +1,4 @@
-﻿namespace Linqraft.ApiSample;
+namespace Linqraft.ApiSample;
 
 public class Order
 {

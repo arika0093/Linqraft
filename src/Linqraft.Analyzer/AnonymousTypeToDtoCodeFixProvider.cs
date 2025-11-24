@@ -6,11 +6,14 @@ using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 using Linqraft.Core;
+using Linqraft.Core.SyntaxHelpers;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CodeActions;
 using Microsoft.CodeAnalysis.CodeFixes;
 using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
+using Microsoft.CodeAnalysis.Formatting;
+using Microsoft.CodeAnalysis.Text;
 
 namespace Linqraft.Analyzer;
 
@@ -22,7 +25,7 @@ namespace Linqraft.Analyzer;
 public class AnonymousTypeToDtoCodeFixProvider : CodeFixProvider
 {
     public sealed override ImmutableArray<string> FixableDiagnosticIds =>
-        ImmutableArray.Create(AnonymousTypeToDtoAnalyzer.DiagnosticId);
+        [AnonymousTypeToDtoAnalyzer.AnalyzerId];
 
     public sealed override FixAllProvider GetFixAllProvider() =>
         WellKnownFixAllProviders.BatchFixer;
@@ -49,7 +52,7 @@ public class AnonymousTypeToDtoCodeFixProvider : CodeFixProvider
         // Option 1: Add DTO to end of current file (appears first/on top)
         context.RegisterCodeFix(
             CodeAction.Create(
-                title: "Convert to Class (add to current file)",
+                title: "Anonymous Type to Class (same file)",
                 createChangedDocument: c =>
                     ConvertToDtoInSameFileAsync(context.Document, anonymousObject, c),
                 equivalenceKey: "ConvertToDtoSameFile"
@@ -60,7 +63,7 @@ public class AnonymousTypeToDtoCodeFixProvider : CodeFixProvider
         // Option 2: Create new file for DTO
         context.RegisterCodeFix(
             CodeAction.Create(
-                title: "Convert to Class (new file)",
+                title: "Anonymous Type to Class (new file)",
                 createChangedSolution: c =>
                     ConvertToDtoNewFileAsync(context.Document, anonymousObject, c),
                 equivalenceKey: "ConvertToDtoNewFile"
@@ -148,6 +151,9 @@ public class AnonymousTypeToDtoCodeFixProvider : CodeFixProvider
                 var dtoMember = SyntaxFactory.ParseMemberDeclaration(dtoClassCode);
                 if (dtoMember != null)
                 {
+                    // Add leading trivia (empty line before DTO class)
+                    dtoMember = dtoMember.WithLeadingTrivia(SyntaxFactory.LineFeed);
+
                     var updatedNamespaceDecl = newRoot
                         .DescendantNodes()
                         .OfType<BaseNamespaceDeclarationSyntax>()
@@ -162,15 +168,70 @@ public class AnonymousTypeToDtoCodeFixProvider : CodeFixProvider
                 var dtoMember = SyntaxFactory.ParseMemberDeclaration(dtoClassCode);
                 if (dtoMember != null && newRoot is CompilationUnitSyntax compilationUnit)
                 {
+                    // Add leading trivia (empty line before DTO class)
+                    // For global namespace, we need two linefeeds (one for empty line, one for line break)
+                    dtoMember = dtoMember.WithLeadingTrivia(
+                        SyntaxFactory.LineFeed,
+                        SyntaxFactory.LineFeed
+                    );
+
                     newRoot = compilationUnit.AddMembers(dtoMember);
                 }
             }
         }
 
-        // Normalize whitespace at the end
-        newRoot = newRoot.NormalizeWhitespace(eol: "\n");
+        var documentWithNewRoot = document.WithSyntaxRoot(newRoot);
 
-        return document.WithSyntaxRoot(newRoot);
+        // Format the document to ensure proper indentation for DTO classes
+        var formattedDocument = await Formatter
+            .FormatAsync(documentWithNewRoot, cancellationToken: cancellationToken)
+            .ConfigureAwait(false);
+
+        // Normalize line endings
+        formattedDocument = await CodeFixFormattingHelper
+            .NormalizeLineEndingsOnlyAsync(formattedDocument, cancellationToken)
+            .ConfigureAwait(false);
+
+        // Remove leading and trailing empty lines from the document text
+        var formattedText = await formattedDocument
+            .GetTextAsync(cancellationToken)
+            .ConfigureAwait(false);
+        var textContent = formattedText.ToString();
+
+        // Remove leading empty lines
+        var lines = textContent.Split('\n');
+        var firstNonEmptyIndex = 0;
+        while (
+            firstNonEmptyIndex < lines.Length
+            && string.IsNullOrWhiteSpace(lines[firstNonEmptyIndex])
+        )
+        {
+            firstNonEmptyIndex++;
+        }
+
+        // Remove trailing empty lines
+        var lastNonEmptyIndex = lines.Length - 1;
+        while (lastNonEmptyIndex >= 0 && string.IsNullOrWhiteSpace(lines[lastNonEmptyIndex]))
+        {
+            lastNonEmptyIndex--;
+        }
+
+        if (firstNonEmptyIndex > 0 || lastNonEmptyIndex < lines.Length - 1)
+        {
+            var trimmedLines = lines
+                .Skip(firstNonEmptyIndex)
+                .Take(lastNonEmptyIndex - firstNonEmptyIndex + 1);
+            var trimmedText = string.Join("\n", trimmedLines);
+
+            var encoding = formattedText.Encoding;
+            formattedDocument = formattedDocument.WithText(
+                encoding != null
+                    ? SourceText.From(trimmedText, encoding)
+                    : SourceText.From(trimmedText)
+            );
+        }
+
+        return formattedDocument;
     }
 
     private async Task<Solution> ConvertToDtoNewFileAsync(
@@ -275,49 +336,32 @@ public class AnonymousTypeToDtoCodeFixProvider : CodeFixProvider
         SemanticModel semanticModel
     )
     {
-        // Build the new object creation expression
-        var initializers = new List<ExpressionSyntax>();
-        foreach (var init in anonymousObject.Initializers)
-        {
-            string propertyName;
-            ExpressionSyntax valueExpression;
-
-            if (init.NameEquals != null)
+        // Use ObjectCreationHelper to convert with trivia preservation
+        // and handle nested anonymous object replacement
+        var newObjectCreation = ObjectCreationHelper.ConvertToNamedType(
+            anonymousObject,
+            dtoClassName,
+            convertMemberCallback: initializer =>
             {
-                propertyName = init.NameEquals.Name.Identifier.Text;
-                valueExpression = init.Expression;
+                // For each member, handle nested anonymous object replacement
+                if (initializer.NameEquals != null)
+                {
+                    return CreateAssignmentFromNameEquals(
+                        initializer,
+                        namespaceName,
+                        semanticModel
+                    );
+                }
+                else
+                {
+                    return CreateAssignmentFromImplicitProperty(
+                        initializer,
+                        namespaceName,
+                        semanticModel
+                    );
+                }
             }
-            else
-            {
-                propertyName = GetPropertyNameFromExpression(init.Expression);
-                valueExpression = init.Expression;
-            }
-
-            // Check if this property has a nested anonymous object
-            var replacedExpression = ReplaceNestedAnonymousObjects(
-                valueExpression,
-                namespaceName,
-                semanticModel
-            );
-
-            var assignment = SyntaxFactory.AssignmentExpression(
-                SyntaxKind.SimpleAssignmentExpression,
-                SyntaxFactory.IdentifierName(propertyName),
-                replacedExpression
-            );
-            initializers.Add(assignment);
-        }
-
-        var newObjectCreation = SyntaxFactory
-            .ObjectCreationExpression(SyntaxFactory.IdentifierName(dtoClassName))
-            .WithInitializer(
-                SyntaxFactory.InitializerExpression(
-                    SyntaxKind.ObjectInitializerExpression,
-                    SyntaxFactory.SeparatedList(initializers)
-                )
-            )
-            .WithLeadingTrivia(anonymousObject.GetLeadingTrivia())
-            .WithTrailingTrivia(anonymousObject.GetTrailingTrivia());
+        );
 
         return root.ReplaceNode(anonymousObject, newObjectCreation);
     }
@@ -365,49 +409,32 @@ public class AnonymousTypeToDtoCodeFixProvider : CodeFixProvider
                     var nestedClassName =
                         $"{structure.SourceTypeName}Dto_{structure.GetUniqueId()}";
 
-                    // Build nested object creation
-                    var nestedInitializers = new List<ExpressionSyntax>();
-                    foreach (var init in nestedAnonymous.Initializers)
-                    {
-                        string propertyName;
-                        ExpressionSyntax valueExpression;
-
-                        if (init.NameEquals != null)
+                    // Use ObjectCreationHelper to convert with trivia preservation
+                    var nestedObjectCreation = ObjectCreationHelper.ConvertToNamedType(
+                        nestedAnonymous,
+                        nestedClassName,
+                        convertMemberCallback: initializer =>
                         {
-                            propertyName = init.NameEquals.Name.Identifier.Text;
-                            valueExpression = init.Expression;
+                            if (initializer.NameEquals != null)
+                            {
+                                return CreateAssignmentFromNameEquals(
+                                    initializer,
+                                    namespaceName,
+                                    semanticModel
+                                );
+                            }
+                            else
+                            {
+                                return CreateAssignmentFromImplicitProperty(
+                                    initializer,
+                                    namespaceName,
+                                    semanticModel
+                                );
+                            }
                         }
-                        else
-                        {
-                            propertyName = GetPropertyNameFromExpression(init.Expression);
-                            valueExpression = init.Expression;
-                        }
+                    );
 
-                        // Recursively process nested expressions
-                        var replacedExpression = ReplaceNestedAnonymousObjects(
-                            valueExpression,
-                            namespaceName,
-                            semanticModel
-                        );
-
-                        var assignment = SyntaxFactory.AssignmentExpression(
-                            SyntaxKind.SimpleAssignmentExpression,
-                            SyntaxFactory.IdentifierName(propertyName),
-                            replacedExpression
-                        );
-                        nestedInitializers.Add(assignment);
-                    }
-
-                    return SyntaxFactory
-                        .ObjectCreationExpression(SyntaxFactory.IdentifierName(nestedClassName))
-                        .WithInitializer(
-                            SyntaxFactory.InitializerExpression(
-                                SyntaxKind.ObjectInitializerExpression,
-                                SyntaxFactory.SeparatedList(nestedInitializers)
-                            )
-                        )
-                        .WithLeadingTrivia(nestedAnonymous.GetLeadingTrivia())
-                        .WithTrailingTrivia(nestedAnonymous.GetTrailingTrivia());
+                    return nestedObjectCreation;
                 }
             }
         }
@@ -566,16 +593,70 @@ public class AnonymousTypeToDtoCodeFixProvider : CodeFixProvider
         );
     }
 
+    /// <summary>
+    /// Creates an assignment expression from an anonymous object initializer with explicit name.
+    /// Handles nested anonymous object replacement.
+    /// </summary>
+    private static ExpressionSyntax CreateAssignmentFromNameEquals(
+        AnonymousObjectMemberDeclaratorSyntax initializer,
+        string namespaceName,
+        SemanticModel semanticModel
+    )
+    {
+        var propertyName = initializer.NameEquals!.Name.Identifier.Text;
+        var replacedValue = ReplaceNestedAnonymousObjects(
+            initializer.Expression,
+            namespaceName,
+            semanticModel
+        );
+
+        // Create assignment expression without trivia first
+        var assignment = SyntaxFactory.AssignmentExpression(
+            SyntaxKind.SimpleAssignmentExpression,
+            SyntaxFactory.IdentifierName(propertyName).WithTrailingTrivia(SyntaxFactory.Space),
+            SyntaxFactory.Token(SyntaxKind.EqualsToken).WithTrailingTrivia(SyntaxFactory.Space),
+            replacedValue
+        );
+
+        // Apply trivia from the original initializer
+        return assignment
+            .WithLeadingTrivia(initializer.GetLeadingTrivia())
+            .WithTrailingTrivia(initializer.GetTrailingTrivia());
+    }
+
+    /// <summary>
+    /// Creates an assignment expression from an anonymous object initializer with implicit name.
+    /// Handles nested anonymous object replacement.
+    /// </summary>
+    private static ExpressionSyntax CreateAssignmentFromImplicitProperty(
+        AnonymousObjectMemberDeclaratorSyntax initializer,
+        string namespaceName,
+        SemanticModel semanticModel
+    )
+    {
+        var propertyName = GetPropertyNameFromExpression(initializer.Expression);
+        var replacedValue = ReplaceNestedAnonymousObjects(
+            initializer.Expression,
+            namespaceName,
+            semanticModel
+        );
+
+        // Create assignment expression without trivia first
+        var assignment = SyntaxFactory.AssignmentExpression(
+            SyntaxKind.SimpleAssignmentExpression,
+            SyntaxFactory.IdentifierName(propertyName).WithTrailingTrivia(SyntaxFactory.Space),
+            SyntaxFactory.Token(SyntaxKind.EqualsToken).WithTrailingTrivia(SyntaxFactory.Space),
+            replacedValue
+        );
+
+        // Apply trivia from the original initializer
+        return assignment
+            .WithLeadingTrivia(initializer.GetLeadingTrivia())
+            .WithTrailingTrivia(initializer.GetTrailingTrivia());
+    }
+
     private static string GetPropertyNameFromExpression(ExpressionSyntax expression)
     {
-        return expression switch
-        {
-            MemberAccessExpressionSyntax memberAccess => memberAccess.Name.Identifier.Text,
-            IdentifierNameSyntax identifier => identifier.Identifier.Text,
-            ConditionalAccessExpressionSyntax conditionalAccess
-                when conditionalAccess.WhenNotNull is MemberBindingExpressionSyntax memberBinding =>
-                memberBinding.Name.Identifier.Text,
-            _ => "Property",
-        };
+        return ExpressionHelper.GetPropertyNameOrDefault(expression, "Property");
     }
 }

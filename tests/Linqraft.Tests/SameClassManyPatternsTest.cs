@@ -5,7 +5,7 @@ namespace Linqraft.Tests;
 
 public class SameClassManyPatternsTest
 {
-    private List<SimpleClass> Datas =
+    private readonly List<SimpleClass> Datas =
     [
         new SimpleClass
         {

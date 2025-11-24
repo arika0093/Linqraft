@@ -24,7 +24,6 @@ body:
       label: Error Details
       description: |
         Please provide the error details you actually got.
-      render: markdown
     validations:
       required: true
   - type: textarea
@@ -33,7 +32,6 @@ body:
       label: Expected Result
       description: Please provide the result you expected to see.
       placeholder: e.g., No diagnostics reported.
-      render: markdown
     validations:
       required: true
   - type: textarea
@@ -41,6 +39,5 @@ body:
     attributes:
       label: Additional Information
       description: Please provide any additional information that might be relevant to the issue.
-      render: markdown
     validations:
       required: false
