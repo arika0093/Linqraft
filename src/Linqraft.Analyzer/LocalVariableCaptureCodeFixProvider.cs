@@ -162,35 +162,47 @@ public class LocalVariableCaptureCodeFixProvider : CodeFixProvider
         // Update or add capture argument
         InvocationExpressionSyntax newInvocation;
         var existingCaptureArgIndex = FindCaptureArgumentIndex(invocation);
+        
+        // First, update the lambda if it changed
+        var tempInvocation = invocation;
+        if (newLambda != lambda)
+        {
+            var lambdaArgIndex = 0;
+            for (int i = 0; i < invocation.ArgumentList.Arguments.Count; i++)
+            {
+                if (invocation.ArgumentList.Arguments[i].Expression is LambdaExpressionSyntax)
+                {
+                    lambdaArgIndex = i;
+                    break;
+                }
+            }
+            
+            var updatedLambdaArg = invocation.ArgumentList.Arguments[lambdaArgIndex].WithExpression(newLambda);
+            var newArgumentList = ArgumentListHelper.ReplaceArgument(
+                invocation.ArgumentList,
+                lambdaArgIndex,
+                updatedLambdaArg
+            );
+            tempInvocation = invocation.WithArgumentList(newArgumentList);
+        }
+        
+        // Then, add or update the capture argument
         if (existingCaptureArgIndex >= 0)
         {
-            var arguments = invocation.ArgumentList.Arguments.ToList();
-            // Replace lambda argument if it changed
-            var lambdaArgIndex = arguments.FindIndex(a => a.Expression is LambdaExpressionSyntax);
-            if (lambdaArgIndex >= 0 && newLambda != lambda)
-            {
-                arguments[lambdaArgIndex] = arguments[lambdaArgIndex].WithExpression(newLambda);
-            }
-            arguments[existingCaptureArgIndex] = captureArgument;
-            var newArgumentList = SyntaxFactory.ArgumentList(
-                SyntaxFactory.SeparatedList(arguments)
+            var newArgumentList = ArgumentListHelper.ReplaceArgument(
+                tempInvocation.ArgumentList,
+                existingCaptureArgIndex,
+                captureArgument
             );
-            newInvocation = invocation.WithArgumentList(newArgumentList);
+            newInvocation = tempInvocation.WithArgumentList(newArgumentList);
         }
         else
         {
-            var arguments = invocation.ArgumentList.Arguments.ToList();
-            // Replace lambda argument if it changed
-            var lambdaArgIndex = arguments.FindIndex(a => a.Expression is LambdaExpressionSyntax);
-            if (lambdaArgIndex >= 0 && newLambda != lambda)
-            {
-                arguments[lambdaArgIndex] = arguments[lambdaArgIndex].WithExpression(newLambda);
-            }
-            arguments.Add(captureArgument);
-            var newArgumentList = SyntaxFactory.ArgumentList(
-                SyntaxFactory.SeparatedList(arguments)
+            var newArgumentList = ArgumentListHelper.AddArgument(
+                tempInvocation.ArgumentList,
+                captureArgument
             );
-            newInvocation = invocation.WithArgumentList(newArgumentList);
+            newInvocation = tempInvocation.WithArgumentList(newArgumentList);
         }
 
         // Insert capture declarations before the invocation statement
