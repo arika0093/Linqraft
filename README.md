@@ -3,119 +3,45 @@
 
 [![NuGet Version](https://img.shields.io/nuget/v/Linqraft?style=flat-square&logo=NuGet&color=0080CC)](https://www.nuget.org/packages/Linqraft/) ![GitHub Actions Workflow Status](https://img.shields.io/github/actions/workflow/status/arika0093/Linqraft/test.yaml?branch=main&label=Test&style=flat-square) [![DeepWiki](https://img.shields.io/badge/DeepWiki-arika0093%2FLinqraft-blue.svg?logo=data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACwAAAAyCAYAAAAnWDnqAAAAAXNSR0IArs4c6QAAA05JREFUaEPtmUtyEzEQhtWTQyQLHNak2AB7ZnyXZMEjXMGeK/AIi+QuHrMnbChYY7MIh8g01fJoopFb0uhhEqqcbWTp06/uv1saEDv4O3n3dV60RfP947Mm9/SQc0ICFQgzfc4CYZoTPAswgSJCCUJUnAAoRHOAUOcATwbmVLWdGoH//PB8mnKqScAhsD0kYP3j/Yt5LPQe2KvcXmGvRHcDnpxfL2zOYJ1mFwrryWTz0advv1Ut4CJgf5uhDuDj5eUcAUoahrdY/56ebRWeraTjMt/00Sh3UDtjgHtQNHwcRGOC98BJEAEymycmYcWwOprTgcB6VZ5JK5TAJ+fXGLBm3FDAmn6oPPjR4rKCAoJCal2eAiQp2x0vxTPB3ALO2CRkwmDy5WohzBDwSEFKRwPbknEggCPB/imwrycgxX2NzoMCHhPkDwqYMr9tRcP5qNrMZHkVnOjRMWwLCcr8ohBVb1OMjxLwGCvjTikrsBOiA6fNyCrm8V1rP93iVPpwaE+gO0SsWmPiXB+jikdf6SizrT5qKasx5j8ABbHpFTx+vFXp9EnYQmLx02h1QTTrl6eDqxLnGjporxl3NL3agEvXdT0WmEost648sQOYAeJS9Q7bfUVoMGnjo4AZdUMQku50McDcMWcBPvr0SzbTAFDfvJqwLzgxwATnCgnp4wDl6Aa+Ax283gghmj+vj7feE2KBBRMW3FzOpLOADl0Isb5587h/U4gGvkt5v60Z1VLG8BhYjbzRwyQZemwAd6cCR5/XFWLYZRIMpX39AR0tjaGGiGzLVyhse5C9RKC6ai42ppWPKiBagOvaYk8lO7DajerabOZP46Lby5wKjw1HCRx7p9sVMOWGzb/vA1hwiWc6jm3MvQDTogQkiqIhJV0nBQBTU+3okKCFDy9WwferkHjtxib7t3xIUQtHxnIwtx4mpg26/HfwVNVDb4oI9RHmx5WGelRVlrtiw43zboCLaxv46AZeB3IlTkwouebTr1y2NjSpHz68WNFjHvupy3q8TFn3Hos2IAk4Ju5dCo8B3wP7VPr/FGaKiG+T+v+TQqIrOqMTL1VdWV1DdmcbO8KXBz6esmYWYKPwDL5b5FA1a0hwapHiom0r/cKaoqr+27/XcrS5UwSMbQAAAABJRU5ErkJggg==)](https://deepwiki.com/arika0093/Linqraft)
 
-Simplifies Select query expressions for EntityFrameworkCore (EF Core) by providing automatic DTO generation and support for null-propagating expressions.
+Write Select queries easily with on-demand DTO generation and null-coalescing operators.
 
-## Problem
-
-When querying a table that has many related tables, using `Include` / `ThenInclude` quickly makes code hard to read and maintain.
-
-- The Include-based style becomes verbose and hard to follow.
-- Forgetting an `Include` can lead to runtime `NullReferenceException`s that are hard to detect at compile time.
-- Fetching entire object graphs is often wasteful and hurts performance.
-
-```csharp
-// ⚠️ unreadable, inefficient, and error-prone
-var orders = await dbContext.Orders
-    .Include(o => o.Customer)
-        .ThenInclude(c => c.Address)
-            .ThenInclude(a => a.Country)
-    .Include(o => o.Customer)
-        .ThenInclude(c => c.Address)
-            .ThenInclude(a => a.City)
-    .Include(o => o.OrderItems)
-        .ThenInclude(oi => oi.Product)
-    .ToListAsync();
-```
-
-A better approach is to project into DTOs and select only the fields you need:
-
-```csharp
-// ✅️ readable and efficient
-var orders = await dbContext.Orders
-    .Select(o => new OrderDto
-    {
-        Id = o.Id,
-        CustomerName = o.Customer.Name,
-        CustomerCountry = o.Customer.Address.Country.Name,
-        CustomerCity = o.Customer.Address.City.Name,
-        Items = o.OrderItems.Select(oi => new OrderItemDto
-        {
-            ProductName = oi.Product.Name,
-            Quantity = oi.Quantity
-        }).ToList()
-    })
-    .ToListAsync();
-```
-
-This yields better performance because only the required data is fetched. But this style has drawbacks:
-
-- If you want to pass the result to other methods or return it from APIs, you usually must define DTO classes manually.
-- When child objects can be null, the expression APIs don't support the `?.` operator directly, forcing verbose null checks using ternary operators.
-
-Because null-propagation isn't supported inside expression trees, code often becomes verbose:
-
-```csharp
-// 🤔 too ugly code with lots of null checks
-var orders = await dbContext.Orders
-    .Select(o => new OrderDto
-    {
-        Id = o.Id,
-        CustomerName = o.Customer != null ? o.Customer.Name : null,
-        CustomerCountry = o.Customer != null && o.Customer.Address != null && o.Customer.Address.Country != null
-            ? o.Customer.Address.Country.Name
-            : null,
-        CustomerCity = o.Customer != null && o.Customer.Address != null && o.Customer.Address.City != null
-            ? o.Customer.Address.City.Name
-            : null,
-        Items = o.OrderItems.Select(oi => new OrderItemDto
-        {
-            ProductName = oi.Product != null ? oi.Product.Name : null,
-            Quantity = oi.Quantity
-        }).ToList()
-    })
-    .ToListAsync();
-
-// 🤔 you must define DTO classes manually
-public class OrderDto
-{
-    public int Id { get; set; }
-    public string? CustomerName { get; set; }
-    public string? CustomerCountry { get; set; }
-    public string? CustomerCity { get; set; }
-    public List<OrderItemDto> Items { get; set; } = [];
-}
-public class OrderItemDto
-{
-    public string? ProductName { get; set; }
-    public int Quantity { get; set; }
-}
-```
+(sample animation)
 
 ## Features
 
 Linqraft is a Roslyn Source Generator that addresses the problems above. Using this library you can write concise selectors with null-propagation and optionally generate DTO classes automatically.
 
 ```csharp
-// ✨️ auto-generated DTOs, with null-propagation support
 var orders = await dbContext.Orders
     // Order: input entity type
     // OrderDto: output DTO type (auto-generated)
     .SelectExpr<Order, OrderDto>(o => new
     {
-        Id = o.Id,
+        // can use inferred member names
+        o.Id,
+        // null-propagation supported
         CustomerName = o.Customer?.Name,
+        // also works for nested objects
         CustomerCountry = o.Customer?.Address?.Country?.Name,
         CustomerCity = o.Customer?.Address?.City?.Name,
+        // you can use anonymous types inside
+        CustomerInfo = new
+        {
+            Email = o.Customer?.EmailAddress,
+            Phone = o.Customer?.PhoneNumber,
+        },
+        // collections available
         Items = o.OrderItems.Select(oi => new
         {
+            // of course, features work here too
             ProductName = oi.Product?.Name,
-            Quantity = oi.Quantity
-        }).ToList(),
+            oi.Quantity
+        }),
     })
     .ToListAsync();
 ```
 
-By specifying `OrderDto` as the generic parameter for `SelectExpr`, DTO types are generated automatically from the anonymous-type selector. That means you don't need to manually declare `OrderDto` or `OrderItemDto`.
+By specifying `OrderDto` as the generic parameter for `SelectExpr`, DTO types are generated **automatically** from the anonymous-type selector. That means **you don't need to manually declare** `OrderDto` or `OrderItemDto`.
 for example, the generated code looks like this:
 
 <details>
@@ -136,7 +62,6 @@ The source code that generates this code is [here](./tests/Linqraft.Tests/Tutori
 using System;
 using System.Linq;
 using System.Collections.Generic;
-using Tutorial;
 
 namespace Linqraft
 {
@@ -144,32 +69,43 @@ namespace Linqraft
     {
         /// <summary>
         /// generated select expression method OrderDto (explicit) <br/>
-        /// at TutorialCaseTest.cs(40,14)
+        /// at TutorialCaseTest.cs(17,14)
         /// </summary>
-        [global::System.Runtime.CompilerServices.InterceptsLocationAttribute(1, "9IBuY2cLVnfIVhZ8DH1V8UkEAABUdXRvcmlhbENhc2VUZXN0LmNz")]
-        public static IQueryable<TResult> SelectExpr_E6B721AD_FA0FABCE<TIn, TResult>(
+        [global::System.Runtime.CompilerServices.InterceptsLocationAttribute(1, "1rTP47TjaPKlTizGJTAHaXsBAABUdXRvcmlhbENhc2VUZXN0LmNz")]
+        public static IQueryable<TResult> SelectExpr_54EA5DDB_8D42F5FB<TIn, TResult>(
             this IQueryable<TIn> query, Func<TIn, object> selector)
         {
             var matchedQuery = query as object as IQueryable<global::Tutorial.Order>;
-            var converted = matchedQuery.Select(s => new global::Tutorial.OrderDto
+            var converted = matchedQuery.Select(o => new global::Tutorial.OrderDto
             {
-                Id = s.Id,
-                CustomerName = s.Customer != null ? (string?)s.Customer.Name : null,
-                CustomerCountry = s.Customer != null && s.Customer.Address != null && s.Customer.Address.Country != null ? (string?)s.Customer.Address.Country.Name : null,
-                CustomerCity = s.Customer != null && s.Customer.Address != null && s.Customer.Address.City != null ? (string?)s.Customer.Address.City.Name : null,
-                Items = s.OrderItems.Select(oi => new global::Tutorial.OrderItemDto_DE33EA40 {
+                Id = o.Id,
+                CustomerName = o.Customer != null ? (string?)o.Customer.Name : null,
+                CustomerCountry = o.Customer != null && o.Customer.Address != null && o.Customer.Address.Country != null ? (string?)o.Customer.Address.Country.Name : null,
+                CustomerCity = o.Customer != null && o.Customer.Address != null && o.Customer.Address.City != null ? (string?)o.Customer.Address.City.Name : null,
+                CustomerInfo = new global::Tutorial.Dto_F1A64BF4
+                {
+                    Email = o.Customer != null ? (string?)o.Customer.EmailAddress : null,
+                    Phone = o.Customer != null ? (string?)o.Customer.PhoneNumber : null
+                },
+                Items = o.OrderItems.Select(oi => new global::Tutorial.OrderItemDto_DE33EA40
+                {
                     ProductName = oi.Product != null ? (string?)oi.Product.Name : null,
-                    Quantity = oi.Quantity,
-                }).ToList()
+                    Quantity = oi.Quantity
+                })
             });
             return converted as object as IQueryable<TResult>;
         }
-
     }
 }
 
 namespace Tutorial
 {
+    public partial class Dto_F1A64BF4
+    {
+        public required string? Email { get; set; }
+        public required string? Phone { get; set; }
+    }
+
     public partial class OrderItemDto_DE33EA40
     {
         public required string? ProductName { get; set; }
@@ -182,22 +118,21 @@ namespace Tutorial
         public required string? CustomerName { get; set; }
         public required string? CustomerCountry { get; set; }
         public required string? CustomerCity { get; set; }
+        public required global::Tutorial.Dto_F1A64BF4? CustomerInfo { get; set; }
         public required global::System.Collections.Generic.List<Tutorial.OrderItemDto_DE33EA40> Items { get; set; }
     }
-
 }
 ```
 
 </details>
 
-> [!TIP]
-> If you find [Prisma](https://www.prisma.io/) (TypeScript ORM) useful, this library delivers that same level of convenience with a writing experience tailored for C#.  
-> In other words, you can use it like a scripting language where the result is generated as you write it, and with automatic generation of DTO classes, you can use it safely in other places as well.
+Since [analyzers](./docs/analyzers/README.md) are provided to replace existing code with Linqraft, the replacement is completed in an instant.
+
+(sample animation)
 
 ## Usage
 ### Prerequisites
 This library requirements **C# 12.0 or later** because it uses the [interceptor](https://learn.microsoft.com/en-us/dotnet/csharp/whats-new/csharp-12#interceptors) feature.  
-.NET 8 or later is used C# 12.0 natively.
 
 <details>
 <summary>.NET 7 or below setup</summary>
@@ -215,18 +150,21 @@ Set the `LangVersion` property to `12.0` or later and use [Polysharp](https://gi
 </Project>
 ```
 
+> [!NOTE]
+> .NET 8 or later projects do not require those settings because C# 12.0 is supported natively.
+
 </details>
 
 ### Installation
 
-Install `Linqraft` from NuGet:
+Install `Linqraft` from NuGet.
 
 ```bash
 dotnet add package Linqraft
 ```
 
-> [!NOTE]
-> If you want to use Linqraft in multiple projects, you need to install the package in each project separately.
+> [!TIP]
+> Linqraft is added as a development-only library and is not included in production builds.
 
 ## Examples
 ### Anonymous pattern
@@ -314,9 +252,12 @@ var converted = dbContext.Entities
         },
         // you need to pass local variables as an object.
         new { val, multiplier, suffix }
-    ).ToList();
-
+    );
 ```
+
+An analyzer is also provided to automatically detect and apply this transformation. It is detected as an error, so just apply the code fix.
+
+(sample animation)
 
 ### Partial Classes
 You can extend the generated DTO classes as needed since they are output as `partial` classes.
@@ -389,13 +330,13 @@ Intel Core i7-14700F 2.10GHz, 1 CPU, 28 logical and 20 physical cores
   DefaultJob : .NET 10.0.0 (10.0.0, 10.0.25.52411), X64 RyuJIT x86-64-v3
 
 
-| Method                        | Mean       | Error    | StdDev   | Median     | Ratio | RatioSD | Rank | Gen0    | Gen1   | Allocated | Alloc Ratio |
-|------------------------------ |-----------:|---------:|---------:|-----------:|------:|--------:|-----:|--------:|-------:|----------:|------------:|
-| 'Linqraft Auto-Generated DTO' |   927.3 us | 18.45 us | 32.80 us |   920.6 us |  0.91 |    0.05 |    1 | 13.6719 | 1.9531 | 245.75 KB |        1.00 |
-| 'Traditional Manual DTO'      |   930.8 us | 18.58 us | 45.57 us |   912.2 us |  0.92 |    0.06 |    1 | 13.6719 | 1.9531 | 245.45 KB |        0.99 |
-| 'Linqraft Manual DTO'         |   944.1 us | 18.77 us | 29.77 us |   934.3 us |  0.93 |    0.05 |    1 | 13.6719 | 1.9531 | 245.63 KB |        1.00 |
-| 'Linqraft Anonymous'          |   999.4 us | 19.41 us | 30.22 us |   996.7 us |  0.98 |    0.05 |    1 | 13.6719 | 1.9531 | 245.61 KB |        1.00 |
-| 'Traditional Anonymous'       | 1,018.5 us | 20.37 us | 45.13 us | 1,010.8 us |  1.00 |    0.06 |    1 | 13.6719 | 1.9531 | 246.78 KB |        1.00 |
+| Method                        | Mean     | Error    | StdDev   | Ratio | RatioSD | Rank | Gen0    | Gen1   | Allocated | Alloc Ratio |
+|------------------------------ |---------:|---------:|---------:|------:|--------:|-----:|--------:|-------:|----------:|------------:|
+| 'Linqraft Auto-Generated DTO' | 885.4 us | 14.05 us | 13.14 us |  0.91 |    0.01 |    1 | 13.6719 | 1.9531 | 245.61 KB |        1.00 |
+| 'Linqraft Manual DTO'         | 890.9 us | 16.45 us | 15.38 us |  0.92 |    0.02 |    1 | 13.6719 | 1.9531 | 245.75 KB |        1.00 |
+| 'Traditional Manual DTO'      | 893.1 us | 13.55 us | 12.68 us |  0.92 |    0.01 |    1 | 13.6719 | 1.9531 | 245.53 KB |        1.00 |
+| 'Linqraft Anonymous'          | 954.5 us | 12.21 us | 11.42 us |  0.98 |    0.01 |    2 | 13.6719 | 1.9531 | 245.36 KB |        0.99 |
+| 'Traditional Anonymous'       | 971.2 us |  8.55 us |  7.99 us |  1.00 |    0.01 |    2 | 13.6719 | 1.9531 |  246.7 KB |        1.00 |
 ```
 
 </details>
