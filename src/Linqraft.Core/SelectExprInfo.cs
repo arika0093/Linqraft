@@ -298,6 +298,23 @@ public abstract record SelectExprInfo
                     indents
                 );
             }
+
+            // Check for named type object creation that needs conversion
+            var namedObjectCreation = syntax
+                .DescendantNodesAndSelf()
+                .OfType<ObjectCreationExpressionSyntax>()
+                .FirstOrDefault();
+
+            if (namedObjectCreation != null)
+            {
+                // Convert the expression by replacing the named type with fully qualified DTO
+                return ConvertExpressionWithNamedTypeToDto(
+                    syntax,
+                    namedObjectCreation,
+                    property.NestedStructure,
+                    indents
+                );
+            }
         }
         // If nullable operator is used, convert to explicit null check
         if (
@@ -465,6 +482,49 @@ public abstract record SelectExprInfo
 
         // Simple string replacement approach
         var convertedText = originalText.Replace(anonymousText, dtoCreation);
+
+        return convertedText;
+    }
+
+    /// <summary>
+    /// Converts any expression containing a named type object creation that needs to be processed.
+    /// This handles cases like Select expressions with named DTOs.
+    /// </summary>
+    protected string ConvertExpressionWithNamedTypeToDto(
+        ExpressionSyntax syntax,
+        ObjectCreationExpressionSyntax objectCreation,
+        DtoStructure nestedStructure,
+        int indents
+    )
+    {
+        var nestedClassName = GetClassName(nestedStructure);
+        var nestedDtoName = string.IsNullOrEmpty(nestedClassName)
+            ? ""
+            : GetNestedDtoFullName(nestedClassName);
+
+        // Generate the DTO object creation to replace the named type
+        var propertyAssignments = new List<string>();
+        foreach (var prop in nestedStructure.Properties)
+        {
+            var assignment = GeneratePropertyAssignment(prop, 0);
+            propertyAssignments.Add($"    {prop.Name} = {assignment}");
+        }
+        var propertiesCode = string.Join($",{CodeFormatter.DefaultNewLine}", propertyAssignments);
+
+        // Build the DTO creation with fully qualified name
+        var dtoCreation =
+            $"new {nestedDtoName}{CodeFormatter.DefaultNewLine}{{{CodeFormatter.DefaultNewLine}{propertiesCode}{CodeFormatter.DefaultNewLine}}}";
+
+        // Remove comments from syntax before processing
+        var cleanSyntax = RemoveComments(syntax);
+        var cleanObjectCreation = RemoveComments(objectCreation);
+
+        // Replace the object creation with the fully qualified version
+        var originalText = cleanSyntax.ToString();
+        var objectText = cleanObjectCreation.ToString();
+
+        // Simple string replacement approach
+        var convertedText = originalText.Replace(objectText, dtoCreation);
 
         return convertedText;
     }
