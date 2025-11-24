@@ -67,9 +67,40 @@ public record DtoProperty(
         if (propertyType is null)
             return null;
 
-        // If targetProperty is provided (for predefined DTOs), use its type information
+        // Determine nullability: prefer the expression's type over the targetProperty's type
+        // This is important for lambda expressions where the anonymous type may lose nullability info
         NullableAnnotation nullableAnnotation;
-        if (targetProperty is not null)
+        
+        // For direct member access (e.g., s.Name), get nullability from the source member
+        if (expression is MemberAccessExpressionSyntax memberAccess)
+        {
+            var memberSymbol = semanticModel.GetSymbolInfo(memberAccess).Symbol;
+            if (memberSymbol is IPropertySymbol sourceProp)
+            {
+                // Use the source property's nullability
+                nullableAnnotation = sourceProp.Type.NullableAnnotation;
+                propertyType = sourceProp.Type;
+            }
+            else if (memberSymbol is IFieldSymbol sourceField)
+            {
+                // Use the source field's nullability
+                nullableAnnotation = sourceField.Type.NullableAnnotation;
+                propertyType = sourceField.Type;
+            }
+            else if (targetProperty is not null)
+            {
+                // Fallback to targetProperty
+                nullableAnnotation = targetProperty.Type.NullableAnnotation;
+                propertyType = targetProperty.Type;
+            }
+            else
+            {
+                // Fallback to expression's type
+                nullableAnnotation = propertyType.NullableAnnotation;
+            }
+        }
+        // For other expressions (method calls, operators, etc.), use targetProperty if available
+        else if (targetProperty is not null)
         {
             nullableAnnotation = targetProperty.Type.NullableAnnotation;
             propertyType = targetProperty.Type;
@@ -296,10 +327,10 @@ public record DtoProperty(
             foreach (var initializer in directAnonymous.Initializers)
             {
                 var initExpr = initializer.Expression;
-                if (initExpr is MemberAccessExpressionSyntax memberAccess)
+                if (initExpr is MemberAccessExpressionSyntax initMemberAccess)
                 {
                     // Get the type of the expression being accessed (e.g., q.Channel)
-                    var baseTypeInfo = semanticModel.GetTypeInfo(memberAccess.Expression);
+                    var baseTypeInfo = semanticModel.GetTypeInfo(initMemberAccess.Expression);
                     if (baseTypeInfo.Type is not null)
                     {
                         sourceTypeForNested = baseTypeInfo.Type;
