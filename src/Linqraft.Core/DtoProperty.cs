@@ -1,3 +1,4 @@
+using System;
 using System.Linq;
 using Linqraft.Core.SyntaxHelpers;
 using Microsoft.CodeAnalysis;
@@ -77,33 +78,25 @@ public record DtoProperty(
             var memberSymbol = semanticModel.GetSymbolInfo(memberAccess).Symbol;
             if (memberSymbol is IPropertySymbol sourceProp)
             {
-                // Use the source property's nullability
-                nullableAnnotation = sourceProp.Type.NullableAnnotation;
-                propertyType = sourceProp.Type;
+                (propertyType, nullableAnnotation) = GetTypeInfoFromSymbol(sourceProp);
             }
             else if (memberSymbol is IFieldSymbol sourceField)
             {
-                // Use the source field's nullability
-                nullableAnnotation = sourceField.Type.NullableAnnotation;
-                propertyType = sourceField.Type;
+                (propertyType, nullableAnnotation) = GetTypeInfoFromSymbol(sourceField);
             }
             else if (targetProperty is not null)
             {
-                // Fallback to targetProperty
-                nullableAnnotation = targetProperty.Type.NullableAnnotation;
-                propertyType = targetProperty.Type;
+                (propertyType, nullableAnnotation) = GetTypeInfoFromSymbol(targetProperty);
             }
             else
             {
-                // Fallback to expression's type
                 nullableAnnotation = propertyType.NullableAnnotation;
             }
         }
         // For other expressions (method calls, operators, etc.), use targetProperty if available
         else if (targetProperty is not null)
         {
-            nullableAnnotation = targetProperty.Type.NullableAnnotation;
-            propertyType = targetProperty.Type;
+            (propertyType, nullableAnnotation) = GetTypeInfoFromSymbol(targetProperty);
         }
         else
         {
@@ -400,6 +393,22 @@ public record DtoProperty(
             NestedStructure: nestedStructure,
             Accessibility: accessibility
         );
+    }
+
+    /// <summary>
+    /// Helper method to extract type and nullability annotation from a symbol
+    /// </summary>
+    private static (ITypeSymbol Type, NullableAnnotation NullableAnnotation) GetTypeInfoFromSymbol(
+        ISymbol symbol
+    )
+    {
+        var type = symbol switch
+        {
+            IPropertySymbol prop => prop.Type,
+            IFieldSymbol field => field.Type,
+            _ => throw new ArgumentException($"Unsupported symbol type: {symbol.GetType().Name}")
+        };
+        return (type, type.NullableAnnotation);
     }
 
     /// <summary>
