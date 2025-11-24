@@ -8,10 +8,10 @@ namespace Linqraft.Core.SyntaxHelpers;
 
 /// <summary>
 /// Helper methods for converting between object creation expressions while preserving trivia and structure.
-/// 
+///
 /// <para>This helper centralizes the trivia-preserving replacement logic that was originally implemented
 /// in AnonymousTypeToDtoCodeFixProvider. All conversions maintain:</para>
-/// 
+///
 /// <list type="bullet">
 /// <item><description>Original separators (commas with their trivia) using GetSeparators()</description></item>
 /// <item><description>Brace tokens and their trivia (OpenBraceToken, CloseBraceToken)</description></item>
@@ -19,7 +19,7 @@ namespace Linqraft.Core.SyntaxHelpers;
 /// <item><description>Trivia on the 'new' keyword</description></item>
 /// <item><description>Trivia from the type node that appears between 'new' and the opening brace</description></item>
 /// </list>
-/// 
+///
 /// <para>This ensures that code formatting, indentation, comments, and whitespace are preserved
 /// when performing syntax transformations in code fix providers.</para>
 /// </summary>
@@ -32,10 +32,10 @@ namespace Linqraft.Core.SyntaxHelpers;
 ///     "MyDto",
 ///     convertMemberCallback: member => /* custom transformation */
 /// );
-/// 
+///
 /// // Convert named to anonymous type
 /// var anonymousObject = ObjectCreationHelper.ConvertToAnonymousType(objectCreation);
-/// 
+///
 /// // Recursively convert nested objects
 /// var anonymousObject = ObjectCreationHelper.ConvertToAnonymousTypeRecursive(objectCreation);
 /// </code>
@@ -53,7 +53,10 @@ public static class ObjectCreationHelper
     public static ObjectCreationExpressionSyntax ConvertToNamedType(
         AnonymousObjectCreationExpressionSyntax anonymousObject,
         string typeName,
-        System.Func<AnonymousObjectMemberDeclaratorSyntax, ExpressionSyntax>? convertMemberCallback = null
+        System.Func<
+            AnonymousObjectMemberDeclaratorSyntax,
+            ExpressionSyntax
+        >? convertMemberCallback = null
     )
     {
         // Convert anonymous object initializers to regular object initializers
@@ -61,7 +64,10 @@ public static class ObjectCreationHelper
 
         foreach (var initializer in anonymousObject.Initializers)
         {
-            var newInitializer = ConvertAnonymousMemberToAssignment(initializer, convertMemberCallback);
+            var newInitializer = ConvertAnonymousMemberToAssignment(
+                initializer,
+                convertMemberCallback
+            );
             newInitializers.Add(newInitializer);
         }
 
@@ -120,7 +126,8 @@ public static class ObjectCreationHelper
                 // Convert assignment like "Id = x.Id" to anonymous member
                 if (assignment.Left is IdentifierNameSyntax identifier)
                 {
-                    var processedRight = convertExpressionCallback?.Invoke(assignment.Right) ?? assignment.Right;
+                    var processedRight =
+                        convertExpressionCallback?.Invoke(assignment.Right) ?? assignment.Right;
 
                     // Create the name equals with preserved assignment leading trivia
                     var nameEquals = SyntaxFactory
@@ -246,7 +253,10 @@ public static class ObjectCreationHelper
         AnonymousObjectMemberDeclaratorSyntax initializer
     )
     {
-        var propertyName = ExpressionHelper.GetPropertyNameOrDefault(initializer.Expression, "Property");
+        var propertyName = ExpressionHelper.GetPropertyNameOrDefault(
+            initializer.Expression,
+            "Property"
+        );
 
         // Create assignment expression without trivia first
         var assignment = SyntaxFactory.AssignmentExpression(
@@ -265,7 +275,9 @@ public static class ObjectCreationHelper
     /// <summary>
     /// Processes an expression to recursively convert nested object creations to anonymous objects
     /// </summary>
-    private static ExpressionSyntax ProcessExpressionForNestedConversions(ExpressionSyntax expression)
+    private static ExpressionSyntax ProcessExpressionForNestedConversions(
+        ExpressionSyntax expression
+    )
     {
         // Use a recursive rewriter to find and convert all nested object creations
         var rewriter = new NestedObjectCreationRewriter();

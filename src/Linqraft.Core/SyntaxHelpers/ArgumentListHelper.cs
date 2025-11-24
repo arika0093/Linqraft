@@ -30,15 +30,19 @@ public static class ArgumentListHelper
             // Get the trailing trivia from the last argument
             var lastArg = arguments[arguments.Count - 1];
             var lastArgTrailingTrivia = lastArg.GetTrailingTrivia();
-            
+
             // Remove trailing trivia from the last argument
             arguments[arguments.Count - 1] = lastArg.WithoutTrailingTrivia();
 
             // Add comma separator with just a space (no other trivia)
-            separators.Add(SyntaxFactory.Token(SyntaxKind.CommaToken).WithTrailingTrivia(SyntaxFactory.Space));
+            separators.Add(
+                SyntaxFactory.Token(SyntaxKind.CommaToken).WithTrailingTrivia(SyntaxFactory.Space)
+            );
 
             // Add the new argument, removing any leading trivia and using the original trailing trivia
-            arguments.Add(newArgument.WithoutLeadingTrivia().WithTrailingTrivia(lastArgTrailingTrivia));
+            arguments.Add(
+                newArgument.WithoutLeadingTrivia().WithTrailingTrivia(lastArgTrailingTrivia)
+            );
         }
         else
         {
@@ -80,12 +84,17 @@ public static class ArgumentListHelper
         var originalArg = arguments[index];
         var leadingTrivia = originalArg.GetLeadingTrivia();
         var trailingTrivia = originalArg.GetTrailingTrivia();
-        
+
         // If the original argument has leading trivia with newlines/whitespace,
         // it means it was on a new line. We need to consolidate it onto the same line.
         // We check for both EndOfLineTrivia and WhitespaceTrivia because when an argument
         // is on a new line, it typically has both newline and indentation whitespace.
-        if (index > 0 && leadingTrivia.Any(t => t.IsKind(SyntaxKind.EndOfLineTrivia) || t.IsKind(SyntaxKind.WhitespaceTrivia)))
+        if (
+            index > 0
+            && leadingTrivia.Any(t =>
+                t.IsKind(SyntaxKind.EndOfLineTrivia) || t.IsKind(SyntaxKind.WhitespaceTrivia)
+            )
+        )
         {
             // Check if the separator before this argument has trailing newline trivia
             var separatorIndex = index - 1;
@@ -93,20 +102,27 @@ public static class ArgumentListHelper
             {
                 var separator = separators[separatorIndex];
                 var separatorTrailingTrivia = separator.TrailingTrivia;
-                
+
                 // If the separator has newline or whitespace trivia, replace it with just a space
                 // to consolidate the argument onto the same line as the previous argument
-                if (separatorTrailingTrivia.Any(t => t.IsKind(SyntaxKind.EndOfLineTrivia) || t.IsKind(SyntaxKind.WhitespaceTrivia)))
+                if (
+                    separatorTrailingTrivia.Any(t =>
+                        t.IsKind(SyntaxKind.EndOfLineTrivia)
+                        || t.IsKind(SyntaxKind.WhitespaceTrivia)
+                    )
+                )
                 {
-                    separators[separatorIndex] = SyntaxFactory.Token(SyntaxKind.CommaToken).WithTrailingTrivia(SyntaxFactory.Space);
+                    separators[separatorIndex] = SyntaxFactory
+                        .Token(SyntaxKind.CommaToken)
+                        .WithTrailingTrivia(SyntaxFactory.Space);
                 }
             }
-            
+
             // Remove all leading trivia (newlines, indentation whitespace)
             // This is intentional - we're consolidating the argument onto the same line
             leadingTrivia = SyntaxTriviaList.Empty;
         }
-        
+
         arguments[index] = newArgument
             .WithLeadingTrivia(leadingTrivia)
             .WithTrailingTrivia(trailingTrivia);
@@ -126,10 +142,7 @@ public static class ArgumentListHelper
     /// <param name="argumentList">The original argument list</param>
     /// <param name="index">The index of the argument to remove</param>
     /// <returns>A new ArgumentListSyntax with the argument removed and trivia preserved</returns>
-    public static ArgumentListSyntax RemoveArgument(
-        ArgumentListSyntax argumentList,
-        int index
-    )
+    public static ArgumentListSyntax RemoveArgument(ArgumentListSyntax argumentList, int index)
     {
         if (index < 0 || index >= argumentList.Arguments.Count)
         {
@@ -146,7 +159,8 @@ public static class ArgumentListHelper
             var removedArgTrailingTrivia = arguments[index].GetTrailingTrivia();
             if (index > 0)
             {
-                arguments[index - 1] = arguments[index - 1].WithTrailingTrivia(removedArgTrailingTrivia);
+                arguments[index - 1] = arguments[index - 1]
+                    .WithTrailingTrivia(removedArgTrailingTrivia);
             }
 
             arguments.RemoveAt(index);
@@ -194,8 +208,8 @@ public static class ArgumentListHelper
             if (kvp.Key >= 0 && kvp.Key < arguments.Count)
             {
                 var originalArg = arguments[kvp.Key];
-                arguments[kvp.Key] = kvp.Value
-                    .WithLeadingTrivia(originalArg.GetLeadingTrivia())
+                arguments[kvp.Key] = kvp
+                    .Value.WithLeadingTrivia(originalArg.GetLeadingTrivia())
                     .WithTrailingTrivia(originalArg.GetTrailingTrivia());
             }
         }

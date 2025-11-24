@@ -162,7 +162,7 @@ public class LocalVariableCaptureCodeFixProvider : CodeFixProvider
         // Update or add capture argument
         InvocationExpressionSyntax newInvocation;
         var existingCaptureArgIndex = FindCaptureArgumentIndex(invocation);
-        
+
         // First, update the lambda if it changed
         var tempInvocation = invocation;
         if (newLambda != lambda)
@@ -176,8 +176,10 @@ public class LocalVariableCaptureCodeFixProvider : CodeFixProvider
                     break;
                 }
             }
-            
-            var updatedLambdaArg = invocation.ArgumentList.Arguments[lambdaArgIndex].WithExpression(newLambda);
+
+            var updatedLambdaArg = invocation
+                .ArgumentList.Arguments[lambdaArgIndex]
+                .WithExpression(newLambda);
             var newArgumentList = ArgumentListHelper.ReplaceArgument(
                 invocation.ArgumentList,
                 lambdaArgIndex,
@@ -185,7 +187,7 @@ public class LocalVariableCaptureCodeFixProvider : CodeFixProvider
             );
             tempInvocation = invocation.WithArgumentList(newArgumentList);
         }
-        
+
         // Then, add or update the capture argument
         if (existingCaptureArgIndex >= 0)
         {

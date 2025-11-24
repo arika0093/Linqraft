@@ -320,12 +320,12 @@ public class TernaryNullCheckToConditionalCodeFixProvider : CodeFixProvider
             {
                 // Visit to convert member accesses, preserving trivia
                 var visitedExpression = (ExpressionSyntax)Visit(expression);
-                
+
                 // Preserve the trivia from the original expression
                 var newExpression = visitedExpression
                     .WithLeadingTrivia(expression.GetLeadingTrivia())
                     .WithTrailingTrivia(expression.GetTrailingTrivia());
-                
+
                 newExpressions.Add(newExpression);
             }
 

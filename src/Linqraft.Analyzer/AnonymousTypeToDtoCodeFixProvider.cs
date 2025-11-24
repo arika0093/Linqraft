@@ -346,7 +346,11 @@ public class AnonymousTypeToDtoCodeFixProvider : CodeFixProvider
                 // For each member, handle nested anonymous object replacement
                 if (initializer.NameEquals != null)
                 {
-                    return CreateAssignmentFromNameEquals(initializer, namespaceName, semanticModel);
+                    return CreateAssignmentFromNameEquals(
+                        initializer,
+                        namespaceName,
+                        semanticModel
+                    );
                 }
                 else
                 {
