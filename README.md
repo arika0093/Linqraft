@@ -5,11 +5,12 @@
 
 Write Select queries easily with on-demand DTO generation and null-coalescing operators.
 
-(sample animation)
+![](./assets/linqraft-intro.gif)
 
 ## Features
 
-Linqraft is a Roslyn Source Generator that addresses the problems above. Using this library you can write concise selectors with null-propagation and optionally generate DTO classes automatically.
+Linqraft is a Roslyn Source Generator easily enabling `IQueryable` projections with null-propagation and automatic DTO generation.
+Using this library you can write concise selectors with null-propagation and optionally generate DTO classes automatically.
 
 ```csharp
 var orders = await dbContext.Orders
@@ -254,7 +255,8 @@ var converted = dbContext.Entities
 ```
 
 An analyzer is also provided to automatically detect and apply this transformation.
-It is detected as an error, so just apply the code fix.
+It is detected as an error, so just apply the code fix.  
+
 ![](./assets/local-variable-capture-err.png)
 
 ### Partial Classes
