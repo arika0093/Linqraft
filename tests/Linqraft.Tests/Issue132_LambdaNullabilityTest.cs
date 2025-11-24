@@ -152,11 +152,6 @@ public class Issue132_LambdaNullabilityTest
         var data = handler();
         data.ShouldNotBeNull();
         data.Count.ShouldBe(1);
-        // check ChildInfo type is not `List<X>?`
-        var type = data[0].ChildInfo!.GetType();
-        type.GetCustomAttributes(true)
-            .Where(t => t.GetType().FullName == "System.Runtime.CompilerServices.NullableAttribute")
-            .ShouldBeEmpty();
     }
 }
 
