@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.Linq;
 
 namespace Linqraft.Tests;
@@ -7,7 +8,7 @@ public class Issue132_LambdaNullabilityTest
 {
     /// <summary>
     /// Test for issue #132: Nullability not correctly generated from usage in minimal API lambdas
-    /// When SelectExpr is called inside a lambda expression (like in minimal API), 
+    /// When SelectExpr is called inside a lambda expression (like in minimal API),
     /// the following phenomena occur:
     /// - A type that should be string? is converted to string
     /// - A type that should be List<string> (s.Children.Select(...).ToList()) is incorrectly made nullable
@@ -19,12 +20,11 @@ public class Issue132_LambdaNullabilityTest
         Func<object> handler = () =>
         {
             Person[] people = [];
-            var result = people.AsQueryable().SelectExpr<Person, PersonDto>(s => new
-            {
-                Id = s.Id,
-                Name = s.Name,
-            }).ToList();
-            
+            var result = people
+                .AsQueryable()
+                .SelectExpr<Person, PersonDto>(s => new { Id = s.Id, Name = s.Name })
+                .ToList();
+
             return result;
         };
 
@@ -38,19 +38,29 @@ public class Issue132_LambdaNullabilityTest
         // Simulate minimal API lambda pattern
         Func<object> handler = () =>
         {
-            PersonWithChildren[] people = [
-                new PersonWithChildren { Id = 1, Name = "John", Children = [
-                    new Child { Id = 1, Name = "Alice" },
-                    new Child { Id = 2, Name = "Bob" }
-                ]},
+            PersonWithChildren[] people =
+            [
+                new PersonWithChildren
+                {
+                    Id = 1,
+                    Name = "John",
+                    Children =
+                    [
+                        new Child { Id = 1, Name = "Alice" },
+                        new Child { Id = 2, Name = "Bob" },
+                    ],
+                },
             ];
-            var result = people.AsQueryable().SelectExpr<PersonWithChildren, PersonWithChildrenDto>(s => new
-            {
-                Id = s.Id,
-                Name = s.Name,
-                ChildNames = s.Children.Select(c => c.Name).ToList(),
-            }).ToList();
-            
+            var result = people
+                .AsQueryable()
+                .SelectExpr<PersonWithChildren, PersonWithChildrenDto>(s => new
+                {
+                    Id = s.Id,
+                    Name = s.Name,
+                    ChildNames = s.Children.Select(c => new { c?.Name }).ToList(),
+                })
+                .ToList();
+
             return result;
         };
 
@@ -64,12 +74,11 @@ public class Issue132_LambdaNullabilityTest
     {
         // Direct call (not in lambda) - this works correctly
         Person[] people = [];
-        var result = people.AsQueryable().SelectExpr<Person, PersonDtoDirectCall>(s => new
-        {
-            Id = s.Id,
-            Name = s.Name,
-        }).ToList();
-        
+        var result = people
+            .AsQueryable()
+            .SelectExpr<Person, PersonDtoDirectCall>(s => new { Id = s.Id, Name = s.Name })
+            .ToList();
+
         result.ShouldNotBeNull();
     }
 
@@ -77,19 +86,29 @@ public class Issue132_LambdaNullabilityTest
     public void DirectCall_CollectionSelect_ShouldNotBeNullable()
     {
         // Direct call (not in lambda) - this works correctly
-        PersonWithChildren[] people = [
-            new PersonWithChildren { Id = 1, Name = "John", Children = [
-                new Child { Id = 1, Name = "Alice" },
-                new Child { Id = 2, Name = "Bob" }
-            ]},
+        PersonWithChildren[] people =
+        [
+            new PersonWithChildren
+            {
+                Id = 1,
+                Name = "John",
+                Children =
+                [
+                    new Child { Id = 1, Name = "Alice" },
+                    new Child { Id = 2, Name = "Bob" },
+                ],
+            },
         ];
-        var result = people.AsQueryable().SelectExpr<PersonWithChildren, PersonWithChildrenDtoDirectCall>(s => new
-        {
-            Id = s.Id,
-            Name = s.Name,
-            ChildNames = s.Children.Select(c => c.Name).ToList(),
-        }).ToList();
-        
+        var result = people
+            .AsQueryable()
+            .SelectExpr<PersonWithChildren, PersonWithChildrenDtoDirectCall>(s => new
+            {
+                Id = s.Id,
+                Name = s.Name,
+                ChildNames = s.Children.Select(c => c.Name).ToList(),
+            })
+            .ToList();
+
         result.ShouldNotBeNull();
         result.Count.ShouldBe(1);
         var first = result[0];
@@ -102,27 +121,42 @@ public class Issue132_LambdaNullabilityTest
     {
         // Issue: When using c?.Id inside Select, the entire List becomes nullable
         // The List itself should NOT be nullable even though the property inside is
-        Func<object> handler = () =>
+        Func<List<PersonWithNullableChildrenDto>> handler = () =>
         {
-            PersonWithNullableChildren[] people = [
-                new PersonWithNullableChildren { Id = 1, Name = "John", Children = [
-                    new ChildWithNullableId { Id = 1, Name = "Alice" },
-                    new ChildWithNullableId { Id = null, Name = "Bob" }
-                ]},
+            PersonWithNullableChildren[] people =
+            [
+                new PersonWithNullableChildren
+                {
+                    Id = 1,
+                    Name = "John",
+                    Children =
+                    [
+                        new ChildWithNullableId { Id = 1, Name = "Alice" },
+                        new ChildWithNullableId { Id = null, Name = "Bob" },
+                    ],
+                },
             ];
-            var result = people.AsQueryable().SelectExpr<PersonWithNullableChildren, PersonWithNullableChildrenDto>(s => new
-            {
-                Id = s.Id,
-                Name = s.Name,
-                ChildInfo = s.Children.Select(c => new { c.Name, c.Id }).ToList(),
-            }).ToList();
-            
+            var result = people
+                .AsQueryable()
+                .SelectExpr<PersonWithNullableChildren, PersonWithNullableChildrenDto>(s => new
+                {
+                    Id = s.Id,
+                    Name = s.Name,
+                    ChildInfo = s.Children.Select(c => new { c?.Name, c?.Id }).ToList(),
+                })
+                .ToList();
+
             return result;
         };
 
-        var data = handler() as System.Collections.IList;
+        var data = handler();
         data.ShouldNotBeNull();
         data.Count.ShouldBe(1);
+        // check ChildInfo type is not `List<X>?`
+        var type = data[0].ChildInfo!.GetType();
+        type.GetCustomAttributes(true)
+            .Where(t => t.GetType().FullName == "System.Runtime.CompilerServices.NullableAttribute")
+            .ShouldBeEmpty();
     }
 }
 
