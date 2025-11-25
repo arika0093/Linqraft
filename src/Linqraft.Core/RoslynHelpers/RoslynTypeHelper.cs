@@ -193,7 +193,7 @@ public static class RoslynTypeHelper
             return false;
 
         return expression
-            .DescendantNodes()
+            .DescendantNodesAndSelf()
             .OfType<InvocationExpressionSyntax>()
             .Any(inv =>
                 inv.Expression is MemberAccessExpressionSyntax ma
@@ -212,7 +212,7 @@ public static class RoslynTypeHelper
             return false;
 
         return expression
-            .DescendantNodes()
+            .DescendantNodesAndSelf()
             .OfType<InvocationExpressionSyntax>()
             .Any(inv =>
                 inv.Expression is MemberAccessExpressionSyntax ma
