@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using Linqraft.Core.RoslynHelpers;
 using Linqraft.Core.SyntaxHelpers;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
@@ -150,7 +151,52 @@ public record DtoProperty(
 
                 if (selectInvocation.Expression is MemberAccessExpressionSyntax selectMemberAccess)
                 {
-                    collectionType = semanticModel.GetTypeInfo(selectMemberAccess.Expression).Type;
+                    // Check if the base expression is a MemberBindingExpressionSyntax (part of conditional access)
+                    // e.g., d.InnerData?.Childs.Select(...) - here .Childs is a MemberBindingExpressionSyntax
+                    if (selectMemberAccess.Expression is MemberBindingExpressionSyntax)
+                    {
+                        // For conditional access chains (e.g., d.InnerData?.Childs.Select),
+                        // we need to find the conditional access expression and get the type from there
+                        var conditionalAccess = expression
+                            .DescendantNodesAndSelf()
+                            .OfType<ConditionalAccessExpressionSyntax>()
+                            .FirstOrDefault();
+                        if (conditionalAccess is not null)
+                        {
+                            // Get the type of the WhenNotNull part up to the collection
+                            // For d.InnerData?.Childs.Select, we need to get the type of d.InnerData.Childs
+                            // The semantic model can resolve the type of the conditional access expression result
+                            // which includes the null-conditional path
+                            var memberBinding = (MemberBindingExpressionSyntax)selectMemberAccess.Expression;
+                            var memberName = memberBinding.Name.Identifier.Text;
+
+                            // Get the type of the expression before the ?. operator
+                            var baseType = semanticModel.GetTypeInfo(conditionalAccess.Expression).Type;
+                            if (baseType is not null)
+                            {
+                                // Find the member with the specified name on the base type
+                                var memberSymbol = baseType.GetMembers(memberName)
+                                    .OfType<IPropertySymbol>()
+                                    .FirstOrDefault()
+                                    ?? (ISymbol?)baseType.GetMembers(memberName)
+                                        .OfType<IFieldSymbol>()
+                                        .FirstOrDefault();
+                                if (memberSymbol is IPropertySymbol propSymbol)
+                                {
+                                    collectionType = propSymbol.Type;
+                                }
+                                else if (memberSymbol is IFieldSymbol fieldSymbol)
+                                {
+                                    collectionType = fieldSymbol.Type;
+                                }
+                            }
+                        }
+                    }
+                    else
+                    {
+                        // Normal case: direct member access
+                        collectionType = semanticModel.GetTypeInfo(selectMemberAccess.Expression).Type;
+                    }
                 }
                 else if (selectInvocation.Expression is MemberBindingExpressionSyntax)
                 {
@@ -431,12 +477,35 @@ public record DtoProperty(
             }
         }
 
+        // Determine final nullability
+        // Special case: When we have a nested structure with nullable access AND the type is a collection,
+        // the property should NOT be nullable because the generated code will use Enumerable.Empty<T>()
+        // as the fallback value instead of null.
+        // This addresses the issue where IEnumerable<T>? was generated instead of IEnumerable<T>
+        // when the expression uses null-conditional before Select (e.g., d.InnerData?.Childs.Select(...))
+        var shouldBeNullable = isNullable || hasNullableAccess;
+        var finalPropertyType = propertyType;
+        if (
+            shouldBeNullable
+            && hasNullableAccess
+            && nestedStructure is not null
+            && RoslynTypeHelper.IsCollectionType(propertyType)
+        )
+        {
+            // Collection with nested structure and nullable access will get Enumerable.Empty<T>() as fallback
+            // So the collection itself should not be nullable
+            shouldBeNullable = false;
+            // Also remove the nullable annotation from the type symbol if present
+            finalPropertyType =
+                RoslynTypeHelper.GetNonNullableType(propertyType) ?? propertyType;
+        }
+
         return new DtoProperty(
             Name: propertyName,
-            IsNullable: isNullable || hasNullableAccess,
+            IsNullable: shouldBeNullable,
             OriginalExpression: expression.ToString(),
             OriginalSyntax: expression,
-            TypeSymbol: propertyType,
+            TypeSymbol: finalPropertyType,
             NestedStructure: nestedStructure,
             Accessibility: accessibility
         );
