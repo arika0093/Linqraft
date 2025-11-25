@@ -537,7 +537,7 @@ public abstract record SelectExprInfo
             return syntax.ToString();
         }
 
-        var (baseExpression, paramName, chainedMethods, hasNullableAccess, coalescingDefaultValue, nullCheckExpression) =
+        var (baseExpression, paramName, chainedMethods, hasNullableAccess, coalescingDefaultValue) =
             selectInfo.Value;
 
         // Normalize baseExpression: remove unnecessary whitespace and newlines
@@ -552,21 +552,6 @@ public abstract record SelectExprInfo
             @"\s*\.\s*",
             "."
         );
-
-        // Normalize nullCheckExpression if present
-        if (nullCheckExpression != null)
-        {
-            nullCheckExpression = System.Text.RegularExpressions.Regex.Replace(
-                nullCheckExpression.Trim(),
-                @"\s+",
-                " "
-            );
-            nullCheckExpression = System.Text.RegularExpressions.Regex.Replace(
-                nullCheckExpression,
-                @"\s*\.\s*",
-                "."
-            );
-        }
 
         // Generate property assignments for nested DTO with proper formatting
         // Properties should be indented two levels from the base (one for Select block, one for properties)
@@ -600,11 +585,8 @@ public abstract record SelectExprInfo
                         : $"System.Linq.Enumerable.Empty<{nestedDtoName}>()"
                 );
 
-            // Use nullCheckExpression for the null check if available, otherwise use baseExpression
-            var expressionToCheck = nullCheckExpression ?? baseExpression;
-
             var code = $$"""
-                {{expressionToCheck}} != null ? {{baseExpression}}
+                {{baseExpression}} != null ? {{baseExpression}}
                 {{innerSpaces}}.Select({{paramName}} => new {{nestedDtoName}}
                 {{innerSpaces}}{
                 {{propertiesCode}}
@@ -847,8 +829,7 @@ public abstract record SelectExprInfo
         string paramName,
         string chainedMethods,
         bool hasNullableAccess,
-        string? coalescingDefaultValue,
-        string? nullCheckExpression
+        string? coalescingDefaultValue
     )? ExtractSelectInfoFromSyntax(ExpressionSyntax syntax)
     {
         var info = LinqMethodHelper.ExtractLinqInvocationInfo(syntax, "Select");
@@ -861,23 +842,12 @@ public abstract record SelectExprInfo
             )
             .ToString();
 
-        // Apply comment removal to null check expression if present
-        string? cleanedNullCheckExpression = null;
-        if (info.NullCheckExpression is not null)
-        {
-            cleanedNullCheckExpression = RemoveComments(
-                    SyntaxFactory.ParseExpression(info.NullCheckExpression)
-                )
-                .ToString();
-        }
-
         return (
             cleanedBaseExpression,
             info.ParameterName,
             info.ChainedMethods,
             info.HasNullableAccess,
-            info.CoalescingDefaultValue,
-            cleanedNullCheckExpression
+            info.CoalescingDefaultValue
         );
     }
 
