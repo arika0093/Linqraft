@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using System.Linq;
 using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
@@ -105,7 +106,8 @@ public static class LinqMethodHelper
         string ParameterName,
         string ChainedMethods,
         bool HasNullableAccess,
-        string? CoalescingDefaultValue
+        string? CoalescingDefaultValue,
+        string? NullCheckExpression = null
     );
 
     /// <summary>
@@ -145,49 +147,46 @@ public static class LinqMethodHelper
             currentSyntax = condAccess.WhenNotNull;
         }
 
-        // Find the LINQ method invocation
+        // Find the LINQ method invocation and collect chained methods
         InvocationExpressionSyntax? linqInvocation = null;
-        string chainedMethods = "";
+        var chainedMethodsList = new List<string>();
 
-        if (currentSyntax is InvocationExpressionSyntax invocation)
+        // Walk the invocation chain to find the target LINQ method and collect chained methods
+        var processingExpr = currentSyntax;
+        while (processingExpr is InvocationExpressionSyntax invocation)
         {
-            // Check if this is the LINQ method or chained (e.g., .Select().ToList())
-            if (
-                invocation.Expression is MemberAccessExpressionSyntax memberAccess
-                && memberAccess.Name.Identifier.Text == methodName
-            )
+            string? currentMethodName = null;
+            ExpressionSyntax? nextExpr = null;
+
+            if (invocation.Expression is MemberAccessExpressionSyntax memberAccess)
             {
+                currentMethodName = memberAccess.Name.Identifier.Text;
+                nextExpr = memberAccess.Expression;
+            }
+            else if (invocation.Expression is MemberBindingExpressionSyntax memberBinding)
+            {
+                currentMethodName = memberBinding.Name.Identifier.Text;
+                // For member binding, there's no further expression to walk
+                nextExpr = null;
+            }
+
+            if (currentMethodName == methodName)
+            {
+                // Found the target LINQ method
                 linqInvocation = invocation;
+                break;
             }
-            else if (
-                invocation.Expression is MemberBindingExpressionSyntax memberBinding
-                && memberBinding.Name.Identifier.Text == methodName
-            )
+
+            if (currentMethodName is not null)
             {
-                linqInvocation = invocation;
+                // This is a chained method after the LINQ method (e.g., .ToList(), .FirstOrDefault())
+                chainedMethodsList.Insert(0, $".{currentMethodName}{invocation.ArgumentList}");
             }
-            else if (invocation.Expression is MemberAccessExpressionSyntax chainedMember)
-            {
-                // This is a chained method like .ToList()
-                chainedMethods = $".{chainedMember.Name}{invocation.ArgumentList}";
-                if (chainedMember.Expression is InvocationExpressionSyntax innerInvocation)
-                {
-                    if (
-                        innerInvocation.Expression is MemberAccessExpressionSyntax innerMember
-                        && innerMember.Name.Identifier.Text == methodName
-                    )
-                    {
-                        linqInvocation = innerInvocation;
-                    }
-                    else if (
-                        innerInvocation.Expression is MemberBindingExpressionSyntax innerBinding
-                        && innerBinding.Name.Identifier.Text == methodName
-                    )
-                    {
-                        linqInvocation = innerInvocation;
-                    }
-                }
-            }
+
+            if (nextExpr is null)
+                break;
+
+            processingExpr = nextExpr;
         }
 
         if (linqInvocation is null)
@@ -197,21 +196,48 @@ public static class LinqMethodHelper
         var lambda = LambdaHelper.FindLambdaInArguments(linqInvocation.ArgumentList);
         string paramName = lambda is not null ? LambdaHelper.GetLambdaParameterName(lambda) : "x"; // Default
 
+        // Combine chained methods into a single string
+        var chainedMethods = string.Concat(chainedMethodsList);
+
         // Extract base expression (the collection being operated on)
+        // and the null check expression (the part to check for null)
         string baseExpression;
-        if (hasNullableAccess && conditionalAccess is not null)
+        string? nullCheckExpression = null;
+
+        if (linqInvocation.Expression is MemberAccessExpressionSyntax linqMember)
         {
-            // For ?.Select, extract the base expression before the ?.
-            baseExpression = conditionalAccess.Expression.ToString();
-        }
-        else if (linqInvocation.Expression is MemberAccessExpressionSyntax linqMember)
-        {
-            baseExpression = linqMember.Expression.ToString();
+            // For direct invocation: base.Select(...)
+            if (hasNullableAccess && conditionalAccess is not null)
+            {
+                // For ?.XXX.Select, we need:
+                // 1. nullCheckExpression: The expression to check for null (part before ?.)
+                // 2. baseExpression: The full path to the collection that Select operates on
+                // e.g., c.Child2.Child3?.Child4s.OrderBy(...).Select(...)
+                // nullCheckExpression = c.Child2.Child3
+                // baseExpression = c.Child2.Child3.Child4s.OrderBy(...)
+                nullCheckExpression = conditionalAccess.Expression.ToString();
+
+                var beforeSelect = linqMember.Expression.ToString();
+                // Remove the leading dot if it's a member binding
+                if (beforeSelect.StartsWith("."))
+                {
+                    beforeSelect = beforeSelect[1..];
+                }
+                baseExpression = $"{conditionalAccess.Expression}.{beforeSelect}";
+            }
+            else
+            {
+                baseExpression = linqMember.Expression.ToString();
+            }
         }
         else if (linqInvocation.Expression is MemberBindingExpressionSyntax)
         {
-            // For ?.Select case, the base should be from conditional access
+            // For ?.Select case (directly after the ?.)
+            // e.g., c.Items?.Select(...)
+            // nullCheckExpression = c.Items
+            // baseExpression = c.Items
             baseExpression = conditionalAccess?.Expression.ToString() ?? "";
+            nullCheckExpression = baseExpression;
         }
         else
         {
@@ -224,7 +250,8 @@ public static class LinqMethodHelper
             paramName,
             chainedMethods,
             hasNullableAccess,
-            coalescingDefaultValue
+            coalescingDefaultValue,
+            nullCheckExpression
         );
     }
 }

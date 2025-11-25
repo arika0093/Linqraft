@@ -242,7 +242,7 @@ public abstract record SelectExprInfo
                 // For nested SelectMany (collection flattening) case
                 var convertedSelectMany = ConvertNestedSelectManyWithRoslyn(
                     syntax,
-                    property.NestedStructure,
+                    property,
                     indents
                 );
                 // Debug: Check if conversion was performed correctly
@@ -263,7 +263,7 @@ public abstract record SelectExprInfo
                 // For nested Select (collection) case - handles both anonymous and named types
                 var convertedSelect = ConvertNestedSelectWithRoslyn(
                     syntax,
-                    property.NestedStructure,
+                    property,
                     indents
                 );
                 // Debug: Check if conversion was performed correctly
@@ -515,10 +515,11 @@ public abstract record SelectExprInfo
     /// </summary>
     protected string ConvertNestedSelectWithRoslyn(
         ExpressionSyntax syntax,
-        DtoStructure nestedStructure,
+        DtoProperty property,
         int indents
     )
     {
+        var nestedStructure = property.NestedStructure!;
         var spaces = CodeFormatter.IndentSpaces(indents);
         var innerSpaces = CodeFormatter.IndentSpaces(indents + CodeFormatter.IndentSize);
         var nestedClassName = GetClassName(nestedStructure);
@@ -535,8 +536,14 @@ public abstract record SelectExprInfo
             return syntax.ToString();
         }
 
-        var (baseExpression, paramName, chainedMethods, hasNullableAccess, coalescingDefaultValue) =
-            selectInfo.Value;
+        var (
+            baseExpression,
+            paramName,
+            chainedMethods,
+            hasNullableAccess,
+            coalescingDefaultValue,
+            nullCheckExpression
+        ) = selectInfo.Value;
 
         // Normalize baseExpression: remove unnecessary whitespace and newlines
         baseExpression = System.Text.RegularExpressions.Regex.Replace(
@@ -550,6 +557,21 @@ public abstract record SelectExprInfo
             @"\s*\.\s*",
             "."
         );
+
+        // Normalize nullCheckExpression if present
+        if (nullCheckExpression is not null)
+        {
+            nullCheckExpression = System.Text.RegularExpressions.Regex.Replace(
+                nullCheckExpression.Trim(),
+                @"\s+",
+                " "
+            );
+            nullCheckExpression = System.Text.RegularExpressions.Regex.Replace(
+                nullCheckExpression,
+                @"\s*\.\s*",
+                "."
+            );
+        }
 
         // Generate property assignments for nested DTO with proper formatting
         // Properties should be indented two levels from the base (one for Select block, one for properties)
@@ -574,17 +596,32 @@ public abstract record SelectExprInfo
         // The .Select, {, }, and chained methods should all be indented one level from the property assignment
         if (hasNullableAccess)
         {
-            // Determine default value
-            var defaultValue =
-                coalescingDefaultValue
-                ?? (
-                    string.IsNullOrEmpty(nestedDtoName)
-                        ? "null"
-                        : $"System.Linq.Enumerable.Empty<{nestedDtoName}>()"
-                );
+            // Use nullCheckExpression for the null check (defaults to baseExpression if not provided)
+            var checkExpr = nullCheckExpression ?? baseExpression;
+
+            // Determine default value based on the expression's type
+            // If it's a collection type, use empty enumerable; otherwise use null
+            string defaultValue;
+            if (coalescingDefaultValue is not null)
+            {
+                defaultValue = coalescingDefaultValue;
+            }
+            else if (
+                string.IsNullOrEmpty(nestedDtoName)
+                || !RoslynTypeHelper.IsCollectionType(property.TypeSymbol)
+            )
+            {
+                // For single element results or anonymous types, default is null
+                defaultValue = "null";
+            }
+            else
+            {
+                // For collections, default is an empty enumerable
+                defaultValue = $"System.Linq.Enumerable.Empty<{nestedDtoName}>()";
+            }
 
             var code = $$"""
-                {{baseExpression}} != null ? {{baseExpression}}
+                {{checkExpr}} != null ? {{baseExpression}}
                 {{innerSpaces}}.Select({{paramName}} => new {{nestedDtoName}}
                 {{innerSpaces}}{
                 {{propertiesCode}}
@@ -661,10 +698,11 @@ public abstract record SelectExprInfo
     /// </summary>
     protected string ConvertNestedSelectManyWithRoslyn(
         ExpressionSyntax syntax,
-        DtoStructure? nestedStructure,
+        DtoProperty? property,
         int indents
     )
     {
+        var nestedStructure = property?.NestedStructure;
         var spaces = CodeFormatter.IndentSpaces(indents);
         var innerSpaces = CodeFormatter.IndentSpaces(indents + CodeFormatter.IndentSize);
 
@@ -676,8 +714,14 @@ public abstract record SelectExprInfo
             return syntax.ToString();
         }
 
-        var (baseExpression, paramName, chainedMethods, hasNullableAccess, coalescingDefaultValue) =
-            selectManyInfo.Value;
+        var (
+            baseExpression,
+            paramName,
+            chainedMethods,
+            hasNullableAccess,
+            coalescingDefaultValue,
+            nullCheckExpression
+        ) = selectManyInfo.Value;
 
         // Normalize baseExpression: remove unnecessary whitespace and newlines
         baseExpression = System.Text.RegularExpressions.Regex.Replace(
@@ -691,6 +735,21 @@ public abstract record SelectExprInfo
             @"\s*\.\s*",
             "."
         );
+
+        // Normalize nullCheckExpression if present
+        if (nullCheckExpression is not null)
+        {
+            nullCheckExpression = System.Text.RegularExpressions.Regex.Replace(
+                nullCheckExpression.Trim(),
+                @"\s+",
+                " "
+            );
+            nullCheckExpression = System.Text.RegularExpressions.Regex.Replace(
+                nullCheckExpression,
+                @"\s*\.\s*",
+                "."
+            );
+        }
 
         // If there's a nested structure, generate the Select with projection
         if (nestedStructure is not null)
@@ -726,16 +785,32 @@ public abstract record SelectExprInfo
             // The .SelectMany, {, }, and chained methods should all be indented one level from the property assignment
             if (hasNullableAccess)
             {
-                var defaultValue =
-                    coalescingDefaultValue
-                    ?? (
-                        string.IsNullOrEmpty(nestedDtoName)
-                            ? "null"
-                            : $"System.Linq.Enumerable.Empty<{nestedDtoName}>()"
-                    );
+                // Use nullCheckExpression for the null check (defaults to baseExpression if not provided)
+                var checkExpr = nullCheckExpression ?? baseExpression;
+
+                // Determine default value based on the expression's type
+                // If it's a collection type, use empty enumerable; otherwise use null
+                string defaultValue;
+                if (coalescingDefaultValue is not null)
+                {
+                    defaultValue = coalescingDefaultValue;
+                }
+                else if (
+                    string.IsNullOrEmpty(nestedDtoName)
+                    || (property is not null && !RoslynTypeHelper.IsCollectionType(property.TypeSymbol))
+                )
+                {
+                    // For single element results or anonymous types, default is null
+                    defaultValue = "null";
+                }
+                else
+                {
+                    // For collections, default is an empty enumerable
+                    defaultValue = $"System.Linq.Enumerable.Empty<{nestedDtoName}>()";
+                }
 
                 var code = $$"""
-                    {{baseExpression}} != null ? {{baseExpression}}
+                    {{checkExpr}} != null ? {{baseExpression}}
                     {{innerSpaces}}.SelectMany({{paramName}} => new {{nestedDtoName}}
                     {{innerSpaces}}{
                     {{propertiesCode}}
@@ -800,7 +875,8 @@ public abstract record SelectExprInfo
         string paramName,
         string chainedMethods,
         bool hasNullableAccess,
-        string? coalescingDefaultValue
+        string? coalescingDefaultValue,
+        string? nullCheckExpression
     )? ExtractSelectManyInfoFromSyntax(ExpressionSyntax syntax)
     {
         var info = LinqMethodHelper.ExtractLinqInvocationInfo(syntax, "SelectMany");
@@ -813,12 +889,23 @@ public abstract record SelectExprInfo
             )
             .ToString();
 
+        // Apply comment removal to null check expression if present
+        string? cleanedNullCheckExpression = null;
+        if (info.NullCheckExpression is not null)
+        {
+            cleanedNullCheckExpression = RemoveComments(
+                    SyntaxFactory.ParseExpression(info.NullCheckExpression)
+                )
+                .ToString();
+        }
+
         return (
             cleanedBaseExpression,
             info.ParameterName,
             info.ChainedMethods,
             info.HasNullableAccess,
-            info.CoalescingDefaultValue
+            info.CoalescingDefaultValue,
+            cleanedNullCheckExpression
         );
     }
 
@@ -827,7 +914,8 @@ public abstract record SelectExprInfo
         string paramName,
         string chainedMethods,
         bool hasNullableAccess,
-        string? coalescingDefaultValue
+        string? coalescingDefaultValue,
+        string? nullCheckExpression
     )? ExtractSelectInfoFromSyntax(ExpressionSyntax syntax)
     {
         var info = LinqMethodHelper.ExtractLinqInvocationInfo(syntax, "Select");
@@ -840,12 +928,23 @@ public abstract record SelectExprInfo
             )
             .ToString();
 
+        // Apply comment removal to null check expression if present
+        string? cleanedNullCheckExpression = null;
+        if (info.NullCheckExpression is not null)
+        {
+            cleanedNullCheckExpression = RemoveComments(
+                    SyntaxFactory.ParseExpression(info.NullCheckExpression)
+                )
+                .ToString();
+        }
+
         return (
             cleanedBaseExpression,
             info.ParameterName,
             info.ChainedMethods,
             info.HasNullableAccess,
-            info.CoalescingDefaultValue
+            info.CoalescingDefaultValue,
+            cleanedNullCheckExpression
         );
     }
 

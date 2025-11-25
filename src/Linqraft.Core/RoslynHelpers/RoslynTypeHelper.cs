@@ -143,6 +143,56 @@ public static class RoslynTypeHelper
     }
 
     /// <summary>
+    /// Determines whether a type is a collection type (IEnumerable, List, Array, etc.)
+    /// without requiring a Compilation object.
+    /// Uses interface checking for robustness.
+    /// </summary>
+    /// <param name="typeSymbol">The type symbol to check</param>
+    /// <returns>True if the type is a collection type</returns>
+    public static bool IsCollectionType(ITypeSymbol? typeSymbol)
+    {
+        if (typeSymbol == null)
+            return false;
+
+        // Get the underlying type if it's nullable
+        var nonNullableType = GetNonNullableType(typeSymbol) ?? typeSymbol;
+
+        // Check if it's an array type
+        if (nonNullableType is IArrayTypeSymbol)
+            return true;
+
+        // Check if it's a named type that is a collection
+        if (nonNullableType is INamedTypeSymbol namedType)
+        {
+            // Check if the type directly is IEnumerable<T> or IQueryable<T>
+            if (
+                namedType.TypeArguments.Length == 1
+                && namedType.ContainingNamespace?.ToDisplayString() is "System.Collections.Generic" or "System.Linq"
+                && namedType.Name is "IEnumerable" or "IQueryable"
+            )
+            {
+                return true;
+            }
+
+            // Check interfaces for IEnumerable<T> pattern
+            foreach (var iface in namedType.AllInterfaces)
+            {
+                if (
+                    iface.Name == "IEnumerable"
+                    && iface.TypeArguments.Length == 1
+                    && iface.ContainingNamespace?.ToDisplayString()
+                        == "System.Collections.Generic"
+                )
+                {
+                    return true;
+                }
+            }
+        }
+
+        return false;
+    }
+
+    /// <summary>
     /// Safely gets a type argument from a generic type.
     /// </summary>
     /// <param name="typeSymbol">The type symbol</param>
