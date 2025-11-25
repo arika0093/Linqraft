@@ -236,7 +236,25 @@ public abstract record SelectExprInfo
         // For nested structure cases
         if (property.NestedStructure is not null)
         {
-            // Check if this contains SelectMany first (it's more specific)
+            // General approach: Replace any anonymous type creation in the expression with the DTO
+            // This works for direct anonymous types, ternary operators, and any other expression structure
+            var anonymousCreation = syntax
+                .DescendantNodesAndSelf()
+                .OfType<AnonymousObjectCreationExpressionSyntax>()
+                .FirstOrDefault();
+
+            if (anonymousCreation != null)
+            {
+                // Convert the expression by replacing the anonymous type with the DTO
+                return ConvertExpressionWithAnonymousTypeToDto(
+                    syntax,
+                    anonymousCreation,
+                    property.NestedStructure,
+                    indents
+                );
+            }
+
+            // Check if this contains SelectMany
             if (RoslynTypeHelper.ContainsSelectManyInvocation(syntax))
             {
                 // For nested SelectMany (collection flattening) case
@@ -257,44 +275,19 @@ public abstract record SelectExprInfo
                 return convertedSelectMany;
             }
 
-            // Check if this contains Select (includes anonymous types in Select lambdas)
-            if (RoslynTypeHelper.ContainsSelectInvocation(syntax))
+            // For nested Select (collection) case
+            var convertedSelect = ConvertNestedSelectWithRoslyn(
+                syntax,
+                property.NestedStructure,
+                indents
+            );
+            // Debug: Check if conversion was performed correctly
+            if (convertedSelect == expression && RoslynTypeHelper.ContainsSelectInvocation(syntax))
             {
-                // For nested Select (collection) case
-                var convertedSelect = ConvertNestedSelectWithRoslyn(
-                    syntax,
-                    property.NestedStructure,
-                    indents
-                );
-                // Debug: Check if conversion was performed correctly
-                if (convertedSelect == expression)
-                {
-                    // If conversion was not performed, leave the original expression as a comment
-                    return $"{convertedSelect} /* CONVERSION FAILED: {property.Name} */";
-                }
-                return convertedSelect;
+                // If conversion was not performed, leave the original expression as a comment
+                return $"{convertedSelect} /* CONVERSION FAILED: {property.Name} */";
             }
-
-            // For other cases with anonymous types (e.g., ternary operators, direct anonymous types)
-            // Replace any anonymous type creation in the expression with the DTO
-            var anonymousCreation = syntax
-                .DescendantNodesAndSelf()
-                .OfType<AnonymousObjectCreationExpressionSyntax>()
-                .FirstOrDefault();
-
-            if (anonymousCreation != null)
-            {
-                // Convert the expression by replacing the anonymous type with the DTO
-                return ConvertExpressionWithAnonymousTypeToDto(
-                    syntax,
-                    anonymousCreation,
-                    property.NestedStructure,
-                    indents
-                );
-            }
-
-            // Fallback: return the original expression
-            return expression;
+            return convertedSelect;
         }
         // If nullable operator is used, convert to explicit null check
         if (
@@ -440,8 +433,7 @@ public abstract record SelectExprInfo
             ? ""
             : GetNestedDtoFullName(nestedClassName);
 
-        // Generate the DTO object creation to replace the anonymous type
-        // We need to preserve indentation based on where the anonymous type appears
+        // Generate the DTO object creation to replace the anonymous type with proper formatting
         var propertyAssignments = new List<string>();
         foreach (var prop in nestedStructure.Properties)
         {
@@ -489,7 +481,7 @@ public abstract record SelectExprInfo
             ? ""
             : GetNestedDtoFullName(nestedClassName);
 
-        // Generate property assignments for nested DTO
+        // Generate property assignments for nested DTO with proper formatting
         var propertyAssignments = new List<string>();
         foreach (var prop in nestedStructure.Properties)
         {
@@ -552,7 +544,7 @@ public abstract record SelectExprInfo
             "."
         );
 
-        // Generate property assignments for nested DTO
+        // Generate property assignments for nested DTO with proper formatting
         var propertyAssignments = new List<string>();
         foreach (var prop in nestedStructure.Properties)
         {
@@ -564,7 +556,7 @@ public abstract record SelectExprInfo
         }
         var propertiesCode = string.Join($",{CodeFormatter.DefaultNewLine}", propertyAssignments);
 
-        // Format chained methods with proper indentation (each on a new line)
+        // Format chained methods with proper indentation
         var formattedChainedMethods = FormatChainedMethods(chainedMethods, spaces);
 
         // Build the Select expression with proper formatting
@@ -609,7 +601,7 @@ public abstract record SelectExprInfo
         if (string.IsNullOrEmpty(chainedMethods))
             return "";
 
-        // Normalize whitespace and split chained method calls
+        // Normalize whitespace from chained method calls
         var normalized = System.Text.RegularExpressions.Regex.Replace(
             chainedMethods.Trim(),
             @"\s+",
@@ -632,7 +624,7 @@ public abstract record SelectExprInfo
                 parenDepth--;
                 if (parenDepth == 0)
                 {
-                    // Complete method call
+                    // Complete method call with parentheses
                     result.Append(CodeFormatter.DefaultNewLine);
                     result.Append(spaces);
                     result.Append(currentMethod);
@@ -641,7 +633,7 @@ public abstract record SelectExprInfo
             }
         }
 
-        // Handle any remaining content
+        // Handle any remaining content (e.g., property access without parentheses like .Count)
         if (currentMethod.Length > 0)
         {
             result.Append(CodeFormatter.DefaultNewLine);
@@ -696,7 +688,7 @@ public abstract record SelectExprInfo
                 ? ""
                 : GetNestedDtoFullName(nestedClassName);
 
-            // Generate property assignments for nested DTO
+            // Generate property assignments for nested DTO with proper formatting
             var propertyAssignments = new List<string>();
             foreach (var prop in nestedStructure.Properties)
             {
