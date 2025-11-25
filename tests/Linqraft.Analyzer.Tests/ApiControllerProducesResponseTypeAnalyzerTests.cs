@@ -15,9 +15,9 @@ public class ApiControllerProducesResponseTypeAnalyzerTests
         >
         {
             TestCode = source,
-            ReferenceAssemblies = ReferenceAssemblies.Net.Net90.AddPackages(
-                [new PackageIdentity("Microsoft.AspNetCore.Mvc.Core", "2.2.5")]
-            ),
+            ReferenceAssemblies = ReferenceAssemblies.Net.Net90.AddPackages([
+                new PackageIdentity("Microsoft.AspNetCore.Mvc.Core", "2.2.5"),
+            ]),
         };
 
         test.ExpectedDiagnostics.AddRange(expected);
