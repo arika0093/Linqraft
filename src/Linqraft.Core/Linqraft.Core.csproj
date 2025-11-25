@@ -9,4 +9,9 @@
       <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
     </PackageReference>
   </ItemGroup>
+  <ItemGroup>
+    <AssemblyAttribute Include="Linqraft.Core.BuildDateTime">
+      <_Parameter1>$([System.DateTime]::UtcNow.Ticks)</_Parameter1>
+    </AssemblyAttribute>
+  </ItemGroup>
 </Project>
