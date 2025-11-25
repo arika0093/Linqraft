@@ -266,13 +266,15 @@ public abstract record SelectExprInfo
                     property.NestedStructure,
                     indents
                 );
-                // Debug: Check if conversion was performed correctly
-                if (convertedSelect == expression)
+                // If conversion was successful, return the result
+                if (convertedSelect != expression)
                 {
-                    // If conversion was not performed, leave the original expression as a comment
-                    return $"{convertedSelect} /* CONVERSION FAILED: {property.Name} */";
+                    return convertedSelect;
                 }
-                return convertedSelect;
+                // If conversion failed (returned original expression), fall through to
+                // anonymous type handling below. This handles cases like ternary operators
+                // containing Select calls where ConvertNestedSelectWithRoslyn can't process
+                // the outer structure.
             }
 
             // For other cases with anonymous types (e.g., ternary operators, direct anonymous types)

@@ -201,8 +201,37 @@ public static class LinqMethodHelper
         string baseExpression;
         if (hasNullableAccess && conditionalAccess is not null)
         {
-            // For ?.Select, extract the base expression before the ?.
-            baseExpression = conditionalAccess.Expression.ToString();
+            // For ?.Select or ?.SomeProperty.Select, extract the full base expression
+            // The base before ?. is conditionalAccess.Expression
+            // There might be additional member access between ?. and .Select
+            var beforeNullConditional = conditionalAccess.Expression.ToString();
+
+            // Check if there's member access between ?. and .Select
+            // For example: x?.Child4s.Select(...) - we need "x.Child4s" as base
+            if (linqInvocation.Expression is MemberAccessExpressionSyntax linqMemberAccess)
+            {
+                // The expression before .Select might have more member access
+                var beforeSelect = linqMemberAccess.Expression;
+                if (beforeSelect is MemberBindingExpressionSyntax memberBindingBeforeSelect)
+                {
+                    // This is like ".Child4s" - combine with the base before ?.
+                    baseExpression = beforeNullConditional + memberBindingBeforeSelect.ToString();
+                }
+                else
+                {
+                    // Normal member access
+                    baseExpression = beforeNullConditional;
+                }
+            }
+            else if (linqInvocation.Expression is MemberBindingExpressionSyntax)
+            {
+                // Direct ?.Select case (no additional member access)
+                baseExpression = beforeNullConditional;
+            }
+            else
+            {
+                baseExpression = beforeNullConditional;
+            }
         }
         else if (linqInvocation.Expression is MemberAccessExpressionSyntax linqMember)
         {
