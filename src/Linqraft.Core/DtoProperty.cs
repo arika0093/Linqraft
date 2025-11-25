@@ -382,6 +382,7 @@ public record DtoProperty(
                 underlyingType = namedType.WithNullableAnnotation(NullableAnnotation.NotAnnotated);
             }
 
+            // Check for direct anonymous type
             if (underlyingType != null && underlyingType.IsAnonymousType)
             {
                 // Step 3: Find the anonymous type creation expression within this expression
@@ -399,6 +400,33 @@ public record DtoProperty(
                         semanticModel,
                         underlyingType
                     );
+                }
+            }
+            // Also check for collections containing anonymous types (e.g., IEnumerable<anonymous>)
+            // This handles cases like: c.X != null ? c.X.Items.Select(i => new { i.Id }) : null
+            else if (
+                underlyingType is INamedTypeSymbol collectionType
+                && collectionType.TypeArguments.Length > 0
+            )
+            {
+                var elementType = collectionType.TypeArguments[0];
+                if (elementType.IsAnonymousType)
+                {
+                    // Find the anonymous type creation expression within this expression
+                    var anonymousCreation = expression
+                        .DescendantNodesAndSelf()
+                        .OfType<AnonymousObjectCreationExpressionSyntax>()
+                        .FirstOrDefault();
+
+                    if (anonymousCreation != null)
+                    {
+                        // Analyze the anonymous type using the element type as the source
+                        nestedStructure = DtoStructure.AnalyzeAnonymousType(
+                            anonymousCreation,
+                            semanticModel,
+                            elementType
+                        );
+                    }
                 }
             }
         }

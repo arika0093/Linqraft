@@ -1,4 +1,3 @@
-using System.Collections.Generic;
 using System.Linq;
 using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
@@ -149,7 +148,7 @@ public static class LinqMethodHelper
 
         // Find the LINQ method invocation and collect chained methods
         InvocationExpressionSyntax? linqInvocation = null;
-        var chainedMethodsList = new List<string>();
+        var chainedMethodsList = new System.Collections.Generic.List<string>();
 
         // Walk the invocation chain to find the target LINQ method and collect chained methods
         var processingExpr = currentSyntax;
@@ -200,7 +199,7 @@ public static class LinqMethodHelper
         var chainedMethods = string.Concat(chainedMethodsList);
 
         // Extract base expression (the collection being operated on)
-        // and the null check expression (the part to check for null)
+        // and null check expression (the part before ?. that needs null check)
         string baseExpression;
         string? nullCheckExpression = null;
 
@@ -209,7 +208,7 @@ public static class LinqMethodHelper
             // For direct invocation: base.Select(...)
             if (hasNullableAccess && conditionalAccess is not null)
             {
-                // For ?.XXX.Select, we need:
+                // For ?.XXX.Select or ?.XXX.OrderBy(...).Select, we need:
                 // 1. nullCheckExpression: The expression to check for null (part before ?.)
                 // 2. baseExpression: The full path to the collection that Select operates on
                 // e.g., c.Child2.Child3?.Child4s.OrderBy(...).Select(...)
