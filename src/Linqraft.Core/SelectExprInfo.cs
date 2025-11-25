@@ -553,7 +553,9 @@ public abstract record SelectExprInfo
 
         // Generate property assignments for nested DTO with proper formatting
         // Properties should be indented two levels from the base (one for Select block, one for properties)
-        var propertyIndentSpaces = CodeFormatter.IndentSpaces(indents + CodeFormatter.IndentSize * 2);
+        var propertyIndentSpaces = CodeFormatter.IndentSpaces(
+            indents + CodeFormatter.IndentSize * 2
+        );
         var propertyAssignments = new List<string>();
         foreach (var prop in nestedStructure.Properties)
         {
@@ -700,7 +702,9 @@ public abstract record SelectExprInfo
 
             // Generate property assignments for nested DTO with proper formatting
             // Properties should be indented two levels from the base (one for SelectMany block, one for properties)
-            var propertyIndentSpaces = CodeFormatter.IndentSpaces(indents + CodeFormatter.IndentSize * 2);
+            var propertyIndentSpaces = CodeFormatter.IndentSpaces(
+                indents + CodeFormatter.IndentSize * 2
+            );
             var propertyAssignments = new List<string>();
             foreach (var prop in nestedStructure.Properties)
             {
@@ -710,7 +714,10 @@ public abstract record SelectExprInfo
                 );
                 propertyAssignments.Add($"{propertyIndentSpaces}{prop.Name} = {assignment}");
             }
-            var propertiesCode = string.Join($",{CodeFormatter.DefaultNewLine}", propertyAssignments);
+            var propertiesCode = string.Join(
+                $",{CodeFormatter.DefaultNewLine}",
+                propertyAssignments
+            );
 
             // Format chained methods with proper indentation (one level from base)
             var formattedChainedMethods = FormatChainedMethods(chainedMethods, innerSpaces);
