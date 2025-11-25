@@ -156,6 +156,12 @@ public class GenerateDtoClassInfo
                     ? RoslynTypeHelper.RemoveNullableSuffixFromString(propertyType)
                     : propertyType;
 
+                // Determine whether to re-apply nullable marker
+                // Only re-apply if both the original type was nullable AND prop.IsNullable is true
+                // This handles the case where a collection with nullable access uses Enumerable.Empty as fallback
+                // and should not be nullable (prop.IsNullable is set to false in DtoProperty.AnalyzeExpression)
+                var shouldReapplyNullable = isTypeNullable && prop.IsNullable;
+
                 // Check if this is a direct anonymous type (not wrapped in a collection)
                 // Anonymous types from Roslyn look like: global::<anonymous type: ...>
                 // Collection of anonymous types look like: List<anonymous type> or IEnumerable<anonymous type>
@@ -164,8 +170,8 @@ public class GenerateDtoClassInfo
                     // Direct anonymous type (e.g., from .Select(...).FirstOrDefault())
                     // Replace the entire anonymous type with the generated DTO class name
                     propertyType = $"global::{nestedDtoFullName}";
-                    // Re-apply nullable marker if it was present in the original type
-                    if (isTypeNullable)
+                    // Re-apply nullable marker if it was present in the original type and should remain nullable
+                    if (shouldReapplyNullable)
                     {
                         propertyType = $"{propertyType}?";
                     }
@@ -176,8 +182,8 @@ public class GenerateDtoClassInfo
                     // Extract the base collection type and replace the element type
                     var baseType = typeWithoutNullable[..typeWithoutNullable.IndexOf("<")];
                     propertyType = $"{baseType}<{nestedDtoFullName}>";
-                    // Re-apply nullable marker if it was present in the original type
-                    if (isTypeNullable)
+                    // Re-apply nullable marker if it was present in the original type and should remain nullable
+                    if (shouldReapplyNullable)
                     {
                         propertyType = $"{propertyType}?";
                     }
@@ -186,8 +192,8 @@ public class GenerateDtoClassInfo
                 {
                     // Single item, non-anonymous type (shouldn't happen often, but handle it)
                     propertyType = $"global::{nestedDtoFullName}";
-                    // Re-apply nullable marker if it was present in the original type
-                    if (isTypeNullable)
+                    // Re-apply nullable marker if it was present in the original type and should remain nullable
+                    if (shouldReapplyNullable)
                     {
                         propertyType = $"{propertyType}?";
                     }

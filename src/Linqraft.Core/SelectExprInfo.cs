@@ -598,7 +598,7 @@ public abstract record SelectExprInfo
             var checkExpr = nullCheckExpression ?? baseExpression;
 
             // Determine default value based on the expression's type
-            // If it's a collection type, use empty enumerable; otherwise use null
+            // If it's a collection type, use empty enumerable/list; otherwise use null
             string defaultValue;
             if (coalescingDefaultValue is not null)
             {
@@ -614,8 +614,13 @@ public abstract record SelectExprInfo
             }
             else
             {
-                // For collections, default is an empty enumerable
-                defaultValue = $"System.Linq.Enumerable.Empty<{nestedDtoName}>()";
+                // For collections, determine the appropriate empty collection type
+                // Check if the result type is a List<T> (chained with ToList())
+                defaultValue = GetEmptyCollectionExpression(
+                    property.TypeSymbol,
+                    nestedDtoName,
+                    chainedMethods
+                );
             }
 
             var code = $$"""
@@ -638,6 +643,54 @@ public abstract record SelectExprInfo
                 """;
             return code;
         }
+    }
+
+    /// <summary>
+    /// Gets the appropriate empty collection expression based on the target type.
+    /// For List types, returns "new List&lt;T&gt;()" to match the expected type.
+    /// For IEnumerable types, returns "System.Linq.Enumerable.Empty&lt;T&gt;()".
+    /// </summary>
+    private static string GetEmptyCollectionExpression(
+        ITypeSymbol? typeSymbol,
+        string elementTypeName,
+        string chainedMethods
+    )
+    {
+        // Check if the target type is a List<T> (either explicitly or via ToList())
+        var isListType = IsListType(typeSymbol) || chainedMethods.Contains(".ToList()");
+        if (isListType)
+        {
+            return $"new System.Collections.Generic.List<{elementTypeName}>()";
+        }
+
+        // Check if the target type is an array (via ToArray())
+        if (chainedMethods.Contains(".ToArray()"))
+        {
+            return $"System.Array.Empty<{elementTypeName}>()";
+        }
+
+        // Default to Enumerable.Empty for IEnumerable<T> types
+        return $"System.Linq.Enumerable.Empty<{elementTypeName}>()";
+    }
+
+    /// <summary>
+    /// Checks if a type symbol represents a List type
+    /// </summary>
+    private static bool IsListType(ITypeSymbol? typeSymbol)
+    {
+        if (typeSymbol is not INamedTypeSymbol namedType)
+            return false;
+
+        // Get the underlying type if it's nullable
+        var nonNullableType = RoslynTypeHelper.GetNonNullableType(namedType) ?? namedType;
+        if (nonNullableType is not INamedTypeSymbol nonNullableNamedType)
+            return false;
+
+        // Check if the type is List<T>
+        var typeName = nonNullableNamedType.Name;
+        var containingNamespace = nonNullableNamedType.ContainingNamespace?.ToDisplayString();
+        return typeName == "List"
+            && containingNamespace == "System.Collections.Generic";
     }
 
     /// <summary>
@@ -787,7 +840,7 @@ public abstract record SelectExprInfo
                 var checkExpr = nullCheckExpression ?? baseExpression;
 
                 // Determine default value based on the expression's type
-                // If it's a collection type, use empty enumerable; otherwise use null
+                // If it's a collection type, use empty enumerable/list; otherwise use null
                 string defaultValue;
                 if (coalescingDefaultValue is not null)
                 {
@@ -806,8 +859,12 @@ public abstract record SelectExprInfo
                 }
                 else
                 {
-                    // For collections, default is an empty enumerable
-                    defaultValue = $"System.Linq.Enumerable.Empty<{nestedDtoName}>()";
+                    // For collections, determine the appropriate empty collection type
+                    defaultValue = GetEmptyCollectionExpression(
+                        property?.TypeSymbol,
+                        nestedDtoName,
+                        chainedMethods
+                    );
                 }
 
                 var code = $$"""
