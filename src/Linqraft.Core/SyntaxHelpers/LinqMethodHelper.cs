@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using System.Linq;
 using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
@@ -148,7 +149,7 @@ public static class LinqMethodHelper
 
         // Find the LINQ method invocation and collect chained methods
         InvocationExpressionSyntax? linqInvocation = null;
-        var chainedMethodsList = new System.Collections.Generic.List<string>();
+        var chainedMethodsList = new List<string>();
 
         // Walk the invocation chain to find the target LINQ method and collect chained methods
         var processingExpr = currentSyntax;
