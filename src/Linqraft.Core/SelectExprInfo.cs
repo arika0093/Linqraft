@@ -689,8 +689,7 @@ public abstract record SelectExprInfo
         // Check if the type is List<T>
         var typeName = nonNullableNamedType.Name;
         var containingNamespace = nonNullableNamedType.ContainingNamespace?.ToDisplayString();
-        return typeName == "List"
-            && containingNamespace == "System.Collections.Generic";
+        return typeName == "List" && containingNamespace == "System.Collections.Generic";
     }
 
     /// <summary>
