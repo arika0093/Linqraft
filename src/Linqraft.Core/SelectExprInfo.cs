@@ -236,25 +236,7 @@ public abstract record SelectExprInfo
         // For nested structure cases
         if (property.NestedStructure is not null)
         {
-            // General approach: Replace any anonymous type creation in the expression with the DTO
-            // This works for direct anonymous types, ternary operators, and any other expression structure
-            var anonymousCreation = syntax
-                .DescendantNodesAndSelf()
-                .OfType<AnonymousObjectCreationExpressionSyntax>()
-                .FirstOrDefault();
-
-            if (anonymousCreation != null)
-            {
-                // Convert the expression by replacing the anonymous type with the DTO
-                return ConvertExpressionWithAnonymousTypeToDto(
-                    syntax,
-                    anonymousCreation,
-                    property.NestedStructure,
-                    indents
-                );
-            }
-
-            // Check if this contains SelectMany
+            // Check if this contains SelectMany first (it's more specific)
             if (RoslynTypeHelper.ContainsSelectManyInvocation(syntax))
             {
                 // For nested SelectMany (collection flattening) case
@@ -275,19 +257,44 @@ public abstract record SelectExprInfo
                 return convertedSelectMany;
             }
 
-            // For nested Select (collection) case
-            var convertedSelect = ConvertNestedSelectWithRoslyn(
-                syntax,
-                property.NestedStructure,
-                indents
-            );
-            // Debug: Check if conversion was performed correctly
-            if (convertedSelect == expression && RoslynTypeHelper.ContainsSelectInvocation(syntax))
+            // Check if this contains Select (includes anonymous types in Select lambdas)
+            if (RoslynTypeHelper.ContainsSelectInvocation(syntax))
             {
-                // If conversion was not performed, leave the original expression as a comment
-                return $"{convertedSelect} /* CONVERSION FAILED: {property.Name} */";
+                // For nested Select (collection) case
+                var convertedSelect = ConvertNestedSelectWithRoslyn(
+                    syntax,
+                    property.NestedStructure,
+                    indents
+                );
+                // Debug: Check if conversion was performed correctly
+                if (convertedSelect == expression)
+                {
+                    // If conversion was not performed, leave the original expression as a comment
+                    return $"{convertedSelect} /* CONVERSION FAILED: {property.Name} */";
+                }
+                return convertedSelect;
             }
-            return convertedSelect;
+
+            // For other cases with anonymous types (e.g., ternary operators, direct anonymous types)
+            // Replace any anonymous type creation in the expression with the DTO
+            var anonymousCreation = syntax
+                .DescendantNodesAndSelf()
+                .OfType<AnonymousObjectCreationExpressionSyntax>()
+                .FirstOrDefault();
+
+            if (anonymousCreation != null)
+            {
+                // Convert the expression by replacing the anonymous type with the DTO
+                return ConvertExpressionWithAnonymousTypeToDto(
+                    syntax,
+                    anonymousCreation,
+                    property.NestedStructure,
+                    indents
+                );
+            }
+
+            // Fallback: return the original expression
+            return expression;
         }
         // If nullable operator is used, convert to explicit null check
         if (
@@ -426,6 +433,8 @@ public abstract record SelectExprInfo
         int indents
     )
     {
+        var spaces = CodeFormatter.IndentSpaces(indents);
+        var innerSpaces = CodeFormatter.IndentSpaces(indents + CodeFormatter.IndentSize);
         var nestedClassName = GetClassName(nestedStructure);
         var nestedDtoName = string.IsNullOrEmpty(nestedClassName)
             ? ""
@@ -436,14 +445,18 @@ public abstract record SelectExprInfo
         var propertyAssignments = new List<string>();
         foreach (var prop in nestedStructure.Properties)
         {
-            var assignment = GeneratePropertyAssignment(prop, 0);
-            propertyAssignments.Add($"    {prop.Name} = {assignment}");
+            var assignment = GeneratePropertyAssignment(prop, indents + CodeFormatter.IndentSize);
+            propertyAssignments.Add($"{innerSpaces}{prop.Name} = {assignment}");
         }
         var propertiesCode = string.Join($",{CodeFormatter.DefaultNewLine}", propertyAssignments);
 
-        // Build the DTO creation as a compact single-line or multi-line depending on complexity
-        var dtoCreation =
-            $"new {nestedDtoName}{CodeFormatter.DefaultNewLine}{{{CodeFormatter.DefaultNewLine}{propertiesCode}{CodeFormatter.DefaultNewLine}}}";
+        // Build the DTO creation with proper formatting
+        var dtoCreation = $$"""
+            new {{nestedDtoName}}
+            {{spaces}}{
+            {{propertiesCode}}
+            {{spaces}}}
+            """;
 
         // Remove comments from syntax before processing
         var cleanSyntax = RemoveComments(syntax);
@@ -469,6 +482,7 @@ public abstract record SelectExprInfo
     )
     {
         var spaces = CodeFormatter.IndentSpaces(indents);
+        var innerSpaces = CodeFormatter.IndentSpaces(indents + CodeFormatter.IndentSize);
         var nestedClassName = GetClassName(nestedStructure);
         // For anonymous types (empty class name), don't use namespace qualification
         var nestedDtoName = string.IsNullOrEmpty(nestedClassName)
@@ -479,16 +493,18 @@ public abstract record SelectExprInfo
         var propertyAssignments = new List<string>();
         foreach (var prop in nestedStructure.Properties)
         {
-            var assignment = GeneratePropertyAssignment(prop, indents + CodeFormatter.IndentSize);
-            propertyAssignments.Add(
-                $"{spaces}{CodeFormatter.Indent(1)}{prop.Name} = {assignment},"
+            var assignment = GeneratePropertyAssignment(
+                prop,
+                indents + CodeFormatter.IndentSize * 2
             );
+            propertyAssignments.Add($"{innerSpaces}{prop.Name} = {assignment}");
         }
-        var propertiesCode = string.Join(CodeFormatter.DefaultNewLine, propertyAssignments);
+        var propertiesCode = string.Join($",{CodeFormatter.DefaultNewLine}", propertyAssignments);
 
-        // Build the new DTO object creation expression
+        // Build the new DTO object creation expression with proper formatting
         var code = $$"""
-            new {{nestedDtoName}} {
+            new {{nestedDtoName}}
+            {{spaces}}{
             {{propertiesCode}}
             {{spaces}}}
             """;
@@ -505,6 +521,7 @@ public abstract record SelectExprInfo
     )
     {
         var spaces = CodeFormatter.IndentSpaces(indents);
+        var innerSpaces = CodeFormatter.IndentSpaces(indents + CodeFormatter.IndentSize);
         var nestedClassName = GetClassName(nestedStructure);
         // For anonymous types (empty class name), don't use namespace qualification
         var nestedDtoName = string.IsNullOrEmpty(nestedClassName)
@@ -539,14 +556,18 @@ public abstract record SelectExprInfo
         var propertyAssignments = new List<string>();
         foreach (var prop in nestedStructure.Properties)
         {
-            var assignment = GeneratePropertyAssignment(prop, indents + CodeFormatter.IndentSize);
-            propertyAssignments.Add(
-                $"{spaces}{CodeFormatter.Indent(1)}{prop.Name} = {assignment},"
+            var assignment = GeneratePropertyAssignment(
+                prop,
+                indents + CodeFormatter.IndentSize * 2
             );
+            propertyAssignments.Add($"{innerSpaces}{prop.Name} = {assignment}");
         }
-        var propertiesCode = string.Join(CodeFormatter.DefaultNewLine, propertyAssignments);
+        var propertiesCode = string.Join($",{CodeFormatter.DefaultNewLine}", propertyAssignments);
 
-        // Build the Select expression
+        // Format chained methods with proper indentation (each on a new line)
+        var formattedChainedMethods = FormatChainedMethods(chainedMethods, spaces);
+
+        // Build the Select expression with proper formatting
         if (hasNullableAccess)
         {
             // Determine default value
@@ -559,21 +580,76 @@ public abstract record SelectExprInfo
                 );
 
             var code = $$"""
-                {{baseExpression}} != null ? {{baseExpression}}.Select({{paramName}} => new {{nestedDtoName}} {
+                {{baseExpression}} != null ? {{baseExpression}}
+                {{spaces}}.Select({{paramName}} => new {{nestedDtoName}}
+                {{spaces}}{
                 {{propertiesCode}}
-                {{spaces}}}){{chainedMethods}} : {{defaultValue}}
+                {{spaces}}}){{formattedChainedMethods}} : {{defaultValue}}
                 """;
             return code;
         }
         else
         {
             var code = $$"""
-                {{baseExpression}}.Select({{paramName}} => new {{nestedDtoName}} {
+                {{baseExpression}}
+                {{spaces}}.Select({{paramName}} => new {{nestedDtoName}}
+                {{spaces}}{
                 {{propertiesCode}}
-                {{spaces}}}){{chainedMethods}}
+                {{spaces}}}){{formattedChainedMethods}}
                 """;
             return code;
         }
+    }
+
+    /// <summary>
+    /// Formats chained method calls (like .ToList()) with proper indentation
+    /// </summary>
+    private static string FormatChainedMethods(string chainedMethods, string spaces)
+    {
+        if (string.IsNullOrEmpty(chainedMethods))
+            return "";
+
+        // Normalize whitespace and split chained method calls
+        var normalized = System.Text.RegularExpressions.Regex.Replace(
+            chainedMethods.Trim(),
+            @"\s+",
+            ""
+        );
+
+        // Each method call should be on a new line with proper indentation
+        var result = new StringBuilder();
+        var currentMethod = new StringBuilder();
+        var parenDepth = 0;
+
+        foreach (var c in normalized)
+        {
+            currentMethod.Append(c);
+
+            if (c == '(')
+                parenDepth++;
+            else if (c == ')')
+            {
+                parenDepth--;
+                if (parenDepth == 0)
+                {
+                    // Complete method call
+                    result.Append(CodeFormatter.DefaultNewLine);
+                    result.Append(spaces);
+                    result.Append(currentMethod);
+                    currentMethod.Clear();
+                }
+            }
+        }
+
+        // Handle any remaining content
+        if (currentMethod.Length > 0)
+        {
+            result.Append(CodeFormatter.DefaultNewLine);
+            result.Append(spaces);
+            result.Append(currentMethod);
+        }
+
+        return result.ToString();
     }
 
     /// <summary>
@@ -586,6 +662,7 @@ public abstract record SelectExprInfo
     )
     {
         var spaces = CodeFormatter.IndentSpaces(indents);
+        var innerSpaces = CodeFormatter.IndentSpaces(indents + CodeFormatter.IndentSize);
 
         // Use Roslyn to extract SelectMany information
         var selectManyInfo = ExtractSelectManyInfoFromSyntax(syntax);
@@ -625,15 +702,16 @@ public abstract record SelectExprInfo
             {
                 var assignment = GeneratePropertyAssignment(
                     prop,
-                    indents + CodeFormatter.IndentSize
+                    indents + CodeFormatter.IndentSize * 2
                 );
-                propertyAssignments.Add(
-                    $"{spaces}{CodeFormatter.Indent(1)}{prop.Name} = {assignment},"
-                );
+                propertyAssignments.Add($"{innerSpaces}{prop.Name} = {assignment}");
             }
-            var propertiesCode = string.Join(CodeFormatter.DefaultNewLine, propertyAssignments);
+            var propertiesCode = string.Join($",{CodeFormatter.DefaultNewLine}", propertyAssignments);
 
-            // Build the SelectMany expression with projection
+            // Format chained methods with proper indentation
+            var formattedChainedMethods = FormatChainedMethods(chainedMethods, spaces);
+
+            // Build the SelectMany expression with projection and proper formatting
             if (hasNullableAccess)
             {
                 var defaultValue =
@@ -645,18 +723,22 @@ public abstract record SelectExprInfo
                     );
 
                 var code = $$"""
-                    {{baseExpression}} != null ? {{baseExpression}}.SelectMany({{paramName}} => new {{nestedDtoName}} {
+                    {{baseExpression}} != null ? {{baseExpression}}
+                    {{spaces}}.SelectMany({{paramName}} => new {{nestedDtoName}}
+                    {{spaces}}{
                     {{propertiesCode}}
-                    {{spaces}}}){{chainedMethods}} : {{defaultValue}}
+                    {{spaces}}}){{formattedChainedMethods}} : {{defaultValue}}
                     """;
                 return code;
             }
             else
             {
                 var code = $$"""
-                    {{baseExpression}}.SelectMany({{paramName}} => new {{nestedDtoName}} {
+                    {{baseExpression}}
+                    {{spaces}}.SelectMany({{paramName}} => new {{nestedDtoName}}
+                    {{spaces}}{
                     {{propertiesCode}}
-                    {{spaces}}}){{chainedMethods}}
+                    {{spaces}}}){{formattedChainedMethods}}
                     """;
                 return code;
             }
