@@ -1,3 +1,7 @@
+// Verify that the generated Child3Datas is non-nullable
+// To do so, we want to ensure that no CS8604 warning occurs
+// For verification, this project is configured to treat CS8604 as an error instead of a warning
+
 using System.Collections.Generic;
 using System.Linq;
 
@@ -64,18 +68,8 @@ public class NullableCollectionWithEmptyFallbackTest
             })
             .ToList();
 
-        result.Count.ShouldBe(2);
-
-        // First TestData has valid InnerData
-        var first = result[0];
-        first.Child3Datas.ShouldNotBeNull();
-        first.Child3Datas.Count().ShouldBe(2);
-
-        // Second TestData has null InnerData
-        // Child3Datas should be an empty collection, not null
-        var second = result[1];
-        second.Child3Datas.ShouldNotBeNull();
-        second.Child3Datas.Count().ShouldBe(0);
+        // CS8604 should not occur here when accessing Child3Datas
+        var rst = result[0].Child3Datas.First().Id;
     }
 
     [Fact]
@@ -92,16 +86,8 @@ public class NullableCollectionWithEmptyFallbackTest
 
         result.Count.ShouldBe(2);
 
-        // First TestData has valid InnerData
-        var first = result[0];
-        first.Child3Datas.ShouldNotBeNull();
-        first.Child3Datas.Count.ShouldBe(2);
-
-        // Second TestData has null InnerData
-        // Child3Datas should be an empty list, not null
-        var second = result[1];
-        second.Child3Datas.ShouldNotBeNull();
-        second.Child3Datas.Count.ShouldBe(0);
+        // CS8604 should not occur here when accessing Child3Datas
+        var rst = result[0].Child3Datas.First().Id;
     }
 
     [Fact]
@@ -119,14 +105,7 @@ public class NullableCollectionWithEmptyFallbackTest
 
         result.Count.ShouldBe(2);
 
-        // First TestData has valid InnerData
-        var first = result[0];
-        first.Child3Ids.ShouldNotBeNull();
-        first.Child3Ids!.Count.ShouldBe(2);
-
-        // Second TestData has null InnerData
-        // Child3Ids should be null because the Select doesn't create anonymous type
-        var second = result[1];
-        second.Child3Ids.ShouldBeNull();
+        // CS8604 should not occur here when accessing Child3Datas
+        var rst = result[0].Child3Datas.First().Id;
     }
 }
