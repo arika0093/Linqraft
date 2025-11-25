@@ -167,24 +167,32 @@ public record DtoProperty(
                             // For d.InnerData?.Childs.Select, we need to get the type of d.InnerData.Childs
                             // The semantic model can resolve the type of the conditional access expression result
                             // which includes the null-conditional path
-                            var memberBinding = (MemberBindingExpressionSyntax)selectMemberAccess.Expression;
+                            var memberBinding = (MemberBindingExpressionSyntax)
+                                selectMemberAccess.Expression;
                             var memberName = memberBinding.Name.Identifier.Text;
 
                             // Get the type of the expression before the ?. operator
-                            var baseType = semanticModel.GetTypeInfo(conditionalAccess.Expression).Type;
+                            var baseType = semanticModel
+                                .GetTypeInfo(conditionalAccess.Expression)
+                                .Type;
                             if (baseType is not null)
                             {
                                 // Get the non-nullable underlying type if it's a nullable type
                                 // e.g., ChildData? -> ChildData
-                                var nonNullableBaseType = RoslynTypeHelper.GetNonNullableType(baseType) ?? baseType;
+                                var nonNullableBaseType =
+                                    RoslynTypeHelper.GetNonNullableType(baseType) ?? baseType;
 
                                 // Find the member with the specified name on the base type
-                                var memberSymbol = nonNullableBaseType.GetMembers(memberName)
-                                    .OfType<IPropertySymbol>()
-                                    .FirstOrDefault()
-                                    ?? (ISymbol?)nonNullableBaseType.GetMembers(memberName)
-                                        .OfType<IFieldSymbol>()
-                                        .FirstOrDefault();
+                                var memberSymbol =
+                                    nonNullableBaseType
+                                        .GetMembers(memberName)
+                                        .OfType<IPropertySymbol>()
+                                        .FirstOrDefault()
+                                    ?? (ISymbol?)
+                                        nonNullableBaseType
+                                            .GetMembers(memberName)
+                                            .OfType<IFieldSymbol>()
+                                            .FirstOrDefault();
                                 if (memberSymbol is IPropertySymbol propSymbol)
                                 {
                                     collectionType = propSymbol.Type;
@@ -199,7 +207,9 @@ public record DtoProperty(
                     else
                     {
                         // Normal case: direct member access
-                        collectionType = semanticModel.GetTypeInfo(selectMemberAccess.Expression).Type;
+                        collectionType = semanticModel
+                            .GetTypeInfo(selectMemberAccess.Expression)
+                            .Type;
                     }
                 }
                 else if (selectInvocation.Expression is MemberBindingExpressionSyntax)
@@ -490,28 +500,30 @@ public record DtoProperty(
         // 3. If nested structure exists (anonymous type in Select), remove nullable
         var shouldBeNullable = isNullable || hasNullableAccess;
         var finalPropertyType = propertyType;
-        
+
         // Check if this expression contains a ternary operator - if so, keep nullable
-        var hasTernaryOperator = expression.DescendantNodesAndSelf()
+        var hasTernaryOperator = expression
+            .DescendantNodesAndSelf()
             .OfType<ConditionalExpressionSyntax>()
             .Any();
-        
+
         // Apply non-nullable only when:
         // - Currently marked as nullable
         // - No ternary operator present
         // - Type is a collection type (IEnumerable, List, Array, etc.)
         // - Has nested structure (anonymous type in Select/SelectMany)
-        if (shouldBeNullable 
-            && !hasTernaryOperator 
+        if (
+            shouldBeNullable
+            && !hasTernaryOperator
             && nestedStructure is not null
-            && RoslynTypeHelper.IsCollectionType(propertyType))
+            && RoslynTypeHelper.IsCollectionType(propertyType)
+        )
         {
             // Collection with nested structure and no ternary will use Enumerable.Empty<T>() as fallback
             // So the collection itself should not be nullable
             shouldBeNullable = false;
             // Also remove the nullable annotation from the type symbol if present
-            finalPropertyType =
-                RoslynTypeHelper.GetNonNullableType(propertyType) ?? propertyType;
+            finalPropertyType = RoslynTypeHelper.GetNonNullableType(propertyType) ?? propertyType;
         }
 
         return new DtoProperty(
