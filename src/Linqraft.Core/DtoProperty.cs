@@ -482,21 +482,20 @@ public record DtoProperty(
         }
 
         // Determine final nullability
-        // Special case: When we have a nested structure with nullable access AND the type is a collection,
-        // the property should NOT be nullable because the generated code will use Enumerable.Empty<T>()
-        // as the fallback value instead of null.
-        // This addresses the issue where IEnumerable<T>? was generated instead of IEnumerable<T>
-        // when the expression uses null-conditional before Select (e.g., d.InnerData?.Childs.Select(...))
+        // Special case: When we have a collection with nullable access that will use Enumerable.Empty<T>()
+        // as the fallback value, the property should NOT be nullable.
+        // This is determined by:
+        // 1. The expression has nullable access (?.)
+        // 2. The expression contains a nested structure (anonymous type in Select)
         var shouldBeNullable = isNullable || hasNullableAccess;
         var finalPropertyType = propertyType;
-        if (
-            shouldBeNullable
-            && hasNullableAccess
-            && nestedStructure is not null
-            && RoslynTypeHelper.IsCollectionType(propertyType)
-        )
+        
+        // Check if this is a collection with anonymous type projection that uses Enumerable.Empty as fallback
+        // The nestedStructure being non-null means there's an anonymous type in a Select/SelectMany
+        // Combined with nullable access, the generated code will use Enumerable.Empty as fallback
+        if (shouldBeNullable && hasNullableAccess && nestedStructure is not null)
         {
-            // Collection with nested structure and nullable access will get Enumerable.Empty<T>() as fallback
+            // Collection with nullable access and anonymous type in Select will get Enumerable.Empty<T>() as fallback
             // So the collection itself should not be nullable
             shouldBeNullable = false;
             // Also remove the nullable annotation from the type symbol if present
@@ -513,6 +512,23 @@ public record DtoProperty(
             NestedStructure: nestedStructure,
             Accessibility: accessibility
         );
+    }
+
+    /// <summary>
+    /// Checks if an expression contains a Select method call with an anonymous type creation in its lambda body
+    /// </summary>
+    private static bool ContainsSelectWithAnonymousType(ExpressionSyntax expression)
+    {
+        var selectInvocation = FindSelectInvocation(expression);
+        if (selectInvocation is null || selectInvocation.ArgumentList.Arguments.Count == 0)
+            return false;
+
+        var lambdaArg = selectInvocation.ArgumentList.Arguments[0].Expression;
+        if (lambdaArg is not LambdaExpressionSyntax lambda)
+            return false;
+
+        // Check if the lambda body is an anonymous object creation
+        return lambda.Body is AnonymousObjectCreationExpressionSyntax;
     }
 
     /// <summary>
