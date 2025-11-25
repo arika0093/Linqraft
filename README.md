@@ -235,9 +235,6 @@ Set the `LangVersion` property to `12.0` or later and use [Polysharp](https://gi
 </Project>
 ```
 
-> [!NOTE]
-> .NET 8 or later projects do not require those settings because C# 12.0 is supported natively.
-
 </details>
 
 ### Installation
