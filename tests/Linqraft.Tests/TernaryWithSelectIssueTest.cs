@@ -59,8 +59,30 @@ public class TernaryWithSelectIssueTest
                         {
                             Child4s =
                             [
-                                new Child4 { CreatedAt = new DateTimeOffset(2024, 1, 1, 0, 0, 0, TimeSpan.Zero) },
-                                new Child4 { CreatedAt = new DateTimeOffset(2024, 2, 1, 0, 0, 0, TimeSpan.Zero) },
+                                new Child4
+                                {
+                                    CreatedAt = new DateTimeOffset(
+                                        2024,
+                                        1,
+                                        1,
+                                        0,
+                                        0,
+                                        0,
+                                        TimeSpan.Zero
+                                    ),
+                                },
+                                new Child4
+                                {
+                                    CreatedAt = new DateTimeOffset(
+                                        2024,
+                                        2,
+                                        1,
+                                        0,
+                                        0,
+                                        0,
+                                        TimeSpan.Zero
+                                    ),
+                                },
                             ],
                         },
                     },
