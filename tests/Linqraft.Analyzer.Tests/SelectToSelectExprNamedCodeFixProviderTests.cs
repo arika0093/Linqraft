@@ -969,6 +969,184 @@ class Test
         await RunCodeFixTestAsync(test, expected, fixedCode, 2);
     }
 
+    [Fact]
+    public async Task CodeFix_Explicit_AddsCapture_WhenLocalVariableIsUsed_WithChainedMethod_AllConvert()
+    {
+        // This test case reproduces the bug for Index=0 (all-convert):
+        // When converting .Select(...).FirstOrDefault() to SelectExpr<T, TDto>,
+        // the capture parameter should be added to SelectExpr, not to FirstOrDefault.
+        var test =
+            @"
+using System.Linq;
+using System.Collections.Generic;
+
+class TestData
+{
+    public int Id { get; set; }
+    public string Name { get; set; }
+}
+
+class TestDataDto
+{
+    public int Id { get; set; }
+    public string Name { get; set; }
+    public string LocalValue { get; set; }
+}
+
+class Test
+{
+    private List<TestData> Datas = new List<TestData>();
+
+    void Query()
+    {
+        var localValue = ""test"";
+        var _ = Datas
+            .AsQueryable()
+            .{|#0:Select|}(d => new TestDataDto
+            {
+                Id = d.Id,
+                Name = d.Name,
+                LocalValue = localValue,
+            })
+            .FirstOrDefault();
+    }
+}";
+
+        var fixedCode =
+            @"
+using System.Linq;
+using System.Collections.Generic;
+
+class TestData
+{
+    public int Id { get; set; }
+    public string Name { get; set; }
+}
+
+class TestDataDto
+{
+    public int Id { get; set; }
+    public string Name { get; set; }
+    public string LocalValue { get; set; }
+}
+
+class Test
+{
+    private List<TestData> Datas = new List<TestData>();
+
+    void Query()
+    {
+        var localValue = ""test"";
+        var _ = Datas
+            .AsQueryable()
+            .SelectExpr<TestData, _Dto_YKB3NZAA>(d => new
+            {
+                Id = d.Id,
+                Name = d.Name,
+                LocalValue = localValue,
+            }, capture: new { localValue })
+            .FirstOrDefault();
+    }
+}";
+
+        var expected = new DiagnosticResult(
+            SelectToSelectExprNamedAnalyzer.AnalyzerId,
+            DiagnosticSeverity.Info
+        ).WithLocation(0);
+
+        // Index 0 = convert all (including nested)
+        await RunCodeFixTestAsync(test, expected, fixedCode, 0);
+    }
+
+    [Fact]
+    public async Task CodeFix_Explicit_AddsCapture_WhenLocalVariableIsUsed_WithChainedMethod_RootOnly()
+    {
+        // This test case reproduces the bug for Index=1 (root-only):
+        // When converting .Select(...).FirstOrDefault() to SelectExpr<T, TDto>,
+        // the capture parameter should be added to SelectExpr, not to FirstOrDefault.
+        var test =
+            @"
+using System.Linq;
+using System.Collections.Generic;
+
+class TestData
+{
+    public int Id { get; set; }
+    public string Name { get; set; }
+}
+
+class TestDataDto
+{
+    public int Id { get; set; }
+    public string Name { get; set; }
+    public string LocalValue { get; set; }
+}
+
+class Test
+{
+    private List<TestData> Datas = new List<TestData>();
+
+    void Query()
+    {
+        var localValue = ""test"";
+        var _ = Datas
+            .AsQueryable()
+            .{|#0:Select|}(d => new TestDataDto
+            {
+                Id = d.Id,
+                Name = d.Name,
+                LocalValue = localValue,
+            })
+            .FirstOrDefault();
+    }
+}";
+
+        var fixedCode =
+            @"
+using System.Linq;
+using System.Collections.Generic;
+
+class TestData
+{
+    public int Id { get; set; }
+    public string Name { get; set; }
+}
+
+class TestDataDto
+{
+    public int Id { get; set; }
+    public string Name { get; set; }
+    public string LocalValue { get; set; }
+}
+
+class Test
+{
+    private List<TestData> Datas = new List<TestData>();
+
+    void Query()
+    {
+        var localValue = ""test"";
+        var _ = Datas
+            .AsQueryable()
+            .SelectExpr<TestData, _Dto_YKB3NZAA>(d => new
+            {
+                Id = d.Id,
+                Name = d.Name,
+                LocalValue = localValue,
+            }, capture: new { localValue })
+            .FirstOrDefault();
+    }
+}";
+
+        var expected = new DiagnosticResult(
+            SelectToSelectExprNamedAnalyzer.AnalyzerId,
+            DiagnosticSeverity.Info
+        ).WithLocation(0);
+
+        // Index 1 = convert root only
+        await RunCodeFixTestAsync(test, expected, fixedCode, 1);
+    }
+
     private static async Task RunCodeFixTestAsync(
         string source,
         DiagnosticResult expected,
