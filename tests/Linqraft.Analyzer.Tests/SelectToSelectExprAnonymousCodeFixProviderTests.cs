@@ -654,6 +654,80 @@ class Test
         await RunCodeFixTestAsync(test, expected, fixedCode, 0);
     }
 
+    [Fact]
+    public async Task CodeFix_AddsCapture_WhenLocalVariableIsUsed_WithChainedMethod()
+    {
+        // This test verifies that when converting .Select(...).FirstOrDefault() to SelectExpr,
+        // the capture parameter is correctly added to SelectExpr and the formatting is preserved.
+        var test =
+            @"
+using System.Linq;
+using System.Collections.Generic;
+
+class Sample
+{
+    public int Id { get; set; }
+    public string Name { get; set; }
+}
+
+class Test
+{
+    private List<Sample> Datas = new List<Sample>();
+
+    void Query()
+    {
+        var localValue = ""test"";
+        var _ = Datas
+            .AsQueryable()
+            .{|#0:Select|}(d => new
+            {
+                d.Id,
+                d.Name,
+                LocalValue = localValue,
+            })
+            .FirstOrDefault();
+    }
+}";
+
+        var fixedCode =
+            @"
+using System.Linq;
+using System.Collections.Generic;
+
+class Sample
+{
+    public int Id { get; set; }
+    public string Name { get; set; }
+}
+
+class Test
+{
+    private List<Sample> Datas = new List<Sample>();
+
+    void Query()
+    {
+        var localValue = ""test"";
+        var _ = Datas
+            .AsQueryable()
+            .SelectExpr(d => new
+            {
+                d.Id,
+                d.Name,
+                LocalValue = localValue,
+            }, capture: new { localValue })
+            .FirstOrDefault();
+    }
+}";
+
+        var expected = new DiagnosticResult(
+            SelectToSelectExprAnonymousAnalyzer.AnalyzerId,
+            DiagnosticSeverity.Info
+        ).WithLocation(0);
+
+        // Index 0 = anonymous pattern
+        await RunCodeFixTestAsync(test, expected, fixedCode, 0);
+    }
+
     private static async Task RunCodeFixTestAsync(
         string source,
         DiagnosticResult expected,

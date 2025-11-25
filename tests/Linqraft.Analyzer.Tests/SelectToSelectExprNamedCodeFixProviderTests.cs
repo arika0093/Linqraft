@@ -791,6 +791,95 @@ class Test
         await RunCodeFixTestAsync(test, expected, fixedCode, 2);
     }
 
+    [Fact]
+    public async Task CodeFix_AddsCapture_WhenLocalVariableIsUsed_WithChainedMethod()
+    {
+        // This test case reproduces the bug described in the issue:
+        // When converting .Select(...).FirstOrDefault() to SelectExpr,
+        // the capture parameter should be added to SelectExpr, not to FirstOrDefault.
+        var test =
+            @"
+using System.Linq;
+using System.Collections.Generic;
+
+class TestData
+{
+    public int Id { get; set; }
+    public string Name { get; set; }
+}
+
+class TestDataDto
+{
+    public int Id { get; set; }
+    public string Name { get; set; }
+    public string LocalValue { get; set; }
+}
+
+class Test
+{
+    private List<TestData> Datas = new List<TestData>();
+
+    void Query()
+    {
+        var localValue = ""test"";
+        var _ = Datas
+            .AsQueryable()
+            .{|#0:Select|}(d => new TestDataDto
+            {
+                Id = d.Id,
+                Name = d.Name,
+                LocalValue = localValue,
+            })
+            .FirstOrDefault();
+    }
+}";
+
+        var fixedCode =
+            @"
+using System.Linq;
+using System.Collections.Generic;
+
+class TestData
+{
+    public int Id { get; set; }
+    public string Name { get; set; }
+}
+
+class TestDataDto
+{
+    public int Id { get; set; }
+    public string Name { get; set; }
+    public string LocalValue { get; set; }
+}
+
+class Test
+{
+    private List<TestData> Datas = new List<TestData>();
+
+    void Query()
+    {
+        var localValue = ""test"";
+        var _ = Datas
+            .AsQueryable()
+            .SelectExpr(d => new TestDataDto
+            {
+                Id = d.Id,
+                Name = d.Name,
+                LocalValue = localValue,
+            }, capture: new { localValue })
+            .FirstOrDefault();
+    }
+}";
+
+        var expected = new DiagnosticResult(
+            SelectToSelectExprNamedAnalyzer.AnalyzerId,
+            DiagnosticSeverity.Info
+        ).WithLocation(0);
+
+        // Index 2 = use predefined classes
+        await RunCodeFixTestAsync(test, expected, fixedCode, 2);
+    }
+
     private static async Task RunCodeFixTestAsync(
         string source,
         DiagnosticResult expected,
