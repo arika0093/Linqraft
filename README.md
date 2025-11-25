@@ -334,7 +334,7 @@ var converted = dbContext.Entities
             Description = x.Name + suffix,
         },
         // you need to pass local variables as an object.
-        new { val, multiplier, suffix }
+        capture: new { val, multiplier, suffix }
     );
 ```
 
