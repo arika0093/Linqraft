@@ -261,11 +261,7 @@ public abstract record SelectExprInfo
             if (RoslynTypeHelper.ContainsSelectInvocation(syntax))
             {
                 // For nested Select (collection) case - handles both anonymous and named types
-                var convertedSelect = ConvertNestedSelectWithRoslyn(
-                    syntax,
-                    property,
-                    indents
-                );
+                var convertedSelect = ConvertNestedSelectWithRoslyn(syntax, property, indents);
                 // If conversion was successful, return the result
                 if (convertedSelect != expression)
                 {
@@ -799,7 +795,10 @@ public abstract record SelectExprInfo
                 }
                 else if (
                     string.IsNullOrEmpty(nestedDtoName)
-                    || (property is not null && !RoslynTypeHelper.IsCollectionType(property.TypeSymbol))
+                    || (
+                        property is not null
+                        && !RoslynTypeHelper.IsCollectionType(property.TypeSymbol)
+                    )
                 )
                 {
                     // For single element results or anonymous types, default is null
