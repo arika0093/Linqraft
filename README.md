@@ -3,10 +3,10 @@
 
 [![NuGet Version](https://img.shields.io/nuget/v/Linqraft?style=flat-square&logo=NuGet&color=0080CC)](https://www.nuget.org/packages/Linqraft/) ![GitHub Actions Workflow Status](https://img.shields.io/github/actions/workflow/status/arika0093/Linqraft/test.yaml?branch=main&label=Test&style=flat-square) [![DeepWiki](https://img.shields.io/badge/DeepWiki-arika0093%2FLinqraft-blue.svg?logo=data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACwAAAAyCAYAAAAnWDnqAAAAAXNSR0IArs4c6QAAA05JREFUaEPtmUtyEzEQhtWTQyQLHNak2AB7ZnyXZMEjXMGeK/AIi+QuHrMnbChYY7MIh8g01fJoopFb0uhhEqqcbWTp06/uv1saEDv4O3n3dV60RfP947Mm9/SQc0ICFQgzfc4CYZoTPAswgSJCCUJUnAAoRHOAUOcATwbmVLWdGoH//PB8mnKqScAhsD0kYP3j/Yt5LPQe2KvcXmGvRHcDnpxfL2zOYJ1mFwrryWTz0advv1Ut4CJgf5uhDuDj5eUcAUoahrdY/56ebRWeraTjMt/00Sh3UDtjgHtQNHwcRGOC98BJEAEymycmYcWwOprTgcB6VZ5JK5TAJ+fXGLBm3FDAmn6oPPjR4rKCAoJCal2eAiQp2x0vxTPB3ALO2CRkwmDy5WohzBDwSEFKRwPbknEggCPB/imwrycgxX2NzoMCHhPkDwqYMr9tRcP5qNrMZHkVnOjRMWwLCcr8ohBVb1OMjxLwGCvjTikrsBOiA6fNyCrm8V1rP93iVPpwaE+gO0SsWmPiXB+jikdf6SizrT5qKasx5j8ABbHpFTx+vFXp9EnYQmLx02h1QTTrl6eDqxLnGjporxl3NL3agEvXdT0WmEost648sQOYAeJS9Q7bfUVoMGnjo4AZdUMQku50McDcMWcBPvr0SzbTAFDfvJqwLzgxwATnCgnp4wDl6Aa+Ax283gghmj+vj7feE2KBBRMW3FzOpLOADl0Isb5587h/U4gGvkt5v60Z1VLG8BhYjbzRwyQZemwAd6cCR5/XFWLYZRIMpX39AR0tjaGGiGzLVyhse5C9RKC6ai42ppWPKiBagOvaYk8lO7DajerabOZP46Lby5wKjw1HCRx7p9sVMOWGzb/vA1hwiWc6jm3MvQDTogQkiqIhJV0nBQBTU+3okKCFDy9WwferkHjtxib7t3xIUQtHxnIwtx4mpg26/HfwVNVDb4oI9RHmx5WGelRVlrtiw43zboCLaxv46AZeB3IlTkwouebTr1y2NjSpHz68WNFjHvupy3q8TFn3Hos2IAk4Ju5dCo8B3wP7VPr/FGaKiG+T+v+TQqIrOqMTL1VdWV1DdmcbO8KXBz6esmYWYKPwDL5b5FA1a0hwapHiom0r/cKaoqr+27/XcrS5UwSMbQAAAABJRU5ErkJggg==)](https://deepwiki.com/arika0093/Linqraft)
 
-Write Select queries easily with on-demand DTO generation and null-coalescing operators.
+Write Select queries easily with on-demand DTO generation and null-coalescing operators. No depedendencies.
 
 ## Features
-
+### Overview
 Linqraft is a Roslyn Source Generator for easily writing `IQueryable` projections with null-propagation and automatic DTO generation.
 With Linqraft, you can write queries like this:
 
@@ -41,7 +41,9 @@ var orders = await dbContext.Orders
 ```
 
 By specifying `OrderDto` as the generic parameter for `SelectExpr`, DTO types are generated **automatically** from the anonymous-type selector.
-That means **you don't need to manually declare** `OrderDto` or `OrderItemDto`.
+That means **you don't need to manually declare** `OrderDto` or `OrderItemDto`.  
+Better yet, since these features are provided as a source generator, no additional dependencies are introduced.
+
 for example, the generated code looks like this:
 
 <details>
@@ -124,7 +126,9 @@ namespace Tutorial
 
 </details>
 
-Since [analyzers](./docs/analyzers/README.md) are provided to replace existing `Select` code with Linqraft, the replacement is completed in an instant.
+### Drop-in Replacement Analyzers
+
+[Analyzers](./docs/analyzers/README.md) are provided to replace existing Select code with Linqraft. The replacement is completed in an instant.
 
 ![](./assets/replace-codefix-sample.gif)
 
@@ -246,19 +250,6 @@ Install `Linqraft` from NuGet.
 
 ```bash
 dotnet add package Linqraft
-```
-
-Or add the following to your csproj.
-
-```xml
-<Project>
-  <ItemGroup>
-    <PackageReference Include="Linqraft" Version="0.*">
-      <PrivateAssets>all</PrivateAssets>
-      <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
-    </PackageReference>
-  </ItemGroup>
-</Project>
 ```
 
 ## Examples
