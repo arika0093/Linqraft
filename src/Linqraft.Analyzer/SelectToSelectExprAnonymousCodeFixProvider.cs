@@ -342,20 +342,19 @@ public class SelectToSelectExprAnonymousCodeFixProvider : CodeFixProvider
         if (existingCaptureArgIndex >= 0)
         {
             // Replace existing capture argument
-            var arguments = invocation.ArgumentList.Arguments.ToList();
-            arguments[existingCaptureArgIndex] = captureArgument;
-            var newArgumentList = SyntaxFactory.ArgumentList(
-                SyntaxFactory.SeparatedList(arguments)
+            var newArgumentList = ArgumentListHelper.ReplaceArgument(
+                invocation.ArgumentList,
+                existingCaptureArgIndex,
+                captureArgument
             );
             return invocation.WithArgumentList(newArgumentList);
         }
         else
         {
-            // Add new capture argument
-            var arguments = invocation.ArgumentList.Arguments.ToList();
-            arguments.Add(captureArgument);
-            var newArgumentList = SyntaxFactory.ArgumentList(
-                SyntaxFactory.SeparatedList(arguments)
+            // Add new capture argument using the helper that preserves trivia
+            var newArgumentList = ArgumentListHelper.AddArgument(
+                invocation.ArgumentList,
+                captureArgument
             );
             return invocation.WithArgumentList(newArgumentList);
         }

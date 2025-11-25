@@ -136,12 +136,14 @@ public class SelectToSelectExprNamedCodeFixProvider : CodeFixProvider
 
         var newRoot = root.ReplaceNodes(replacements.Keys, (oldNode, _) => replacements[oldNode]);
 
-        // Find the updated invocation in the new tree
+        // Find the updated SelectExpr invocation in the new tree
+        // We need to find the invocation where the Expression directly contains SelectExpr,
+        // not a chained invocation that contains SelectExpr somewhere in its expression chain
         var newInvocation = newRoot
             .DescendantNodes()
             .OfType<InvocationExpressionSyntax>()
             .FirstOrDefault(inv =>
-                inv.Expression.ToString().Contains("SelectExpr")
+                IsSelectExprInvocation(inv)
                 && inv.Span.Start == invocation.Span.Start
             );
 
@@ -220,12 +222,14 @@ public class SelectToSelectExprNamedCodeFixProvider : CodeFixProvider
 
         var newRoot = root.ReplaceNodes(replacements.Keys, (oldNode, _) => replacements[oldNode]);
 
-        // Find the updated invocation in the new tree
+        // Find the updated SelectExpr invocation in the new tree
+        // We need to find the invocation where the Expression directly contains SelectExpr,
+        // not a chained invocation that contains SelectExpr somewhere in its expression chain
         var newInvocation = newRoot
             .DescendantNodes()
             .OfType<InvocationExpressionSyntax>()
             .FirstOrDefault(inv =>
-                inv.Expression.ToString().Contains("SelectExpr")
+                IsSelectExprInvocation(inv)
                 && inv.Span.Start == invocation.Span.Start
             );
 
@@ -502,20 +506,19 @@ public class SelectToSelectExprNamedCodeFixProvider : CodeFixProvider
         if (existingCaptureArgIndex >= 0)
         {
             // Replace existing capture argument
-            var arguments = invocation.ArgumentList.Arguments.ToList();
-            arguments[existingCaptureArgIndex] = captureArgument;
-            var newArgumentList = SyntaxFactory.ArgumentList(
-                SyntaxFactory.SeparatedList(arguments)
+            var newArgumentList = ArgumentListHelper.ReplaceArgument(
+                invocation.ArgumentList,
+                existingCaptureArgIndex,
+                captureArgument
             );
             return invocation.WithArgumentList(newArgumentList);
         }
         else
         {
-            // Add new capture argument
-            var arguments = invocation.ArgumentList.Arguments.ToList();
-            arguments.Add(captureArgument);
-            var newArgumentList = SyntaxFactory.ArgumentList(
-                SyntaxFactory.SeparatedList(arguments)
+            // Add new capture argument using the helper that preserves trivia
+            var newArgumentList = ArgumentListHelper.AddArgument(
+                invocation.ArgumentList,
+                captureArgument
             );
             return invocation.WithArgumentList(newArgumentList);
         }
@@ -533,6 +536,30 @@ public class SelectToSelectExprNamedCodeFixProvider : CodeFixProvider
         }
 
         return -1;
+    }
+
+    /// <summary>
+    /// Checks if an invocation is directly a SelectExpr call (not a chained call that contains SelectExpr).
+    /// For example, in .SelectExpr(...).FirstOrDefault(), only the SelectExpr invocation returns true.
+    /// </summary>
+    private static bool IsSelectExprInvocation(InvocationExpressionSyntax invocation)
+    {
+        // For an invocation like .SelectExpr<T, TDto>(...), the Expression is a MemberAccessExpressionSyntax
+        // where the Name is a GenericNameSyntax with Identifier "SelectExpr"
+        if (invocation.Expression is MemberAccessExpressionSyntax memberAccess)
+        {
+            // Check for generic SelectExpr<T, TDto>
+            if (memberAccess.Name is GenericNameSyntax genericName)
+            {
+                return genericName.Identifier.Text == SelectExprHelper.MethodName;
+            }
+            // Check for non-generic SelectExpr
+            if (memberAccess.Name is IdentifierNameSyntax identifierName)
+            {
+                return identifierName.Identifier.Text == SelectExprHelper.MethodName;
+            }
+        }
+        return false;
     }
 
     private static LambdaExpressionSyntax? FindLambdaExpression(ArgumentListSyntax argumentList)
