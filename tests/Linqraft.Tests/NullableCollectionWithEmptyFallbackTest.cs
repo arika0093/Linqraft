@@ -105,7 +105,12 @@ public class NullableCollectionWithEmptyFallbackTest
 
         result.Count.ShouldBe(2);
 
-        // CS8604 may occur here when accessing Child3Ids because there's no nested structure (it's List<int>)
-        var rst = result[0].Child3Ids.First();
+        // Child3Ids should be nullable (List<int>?) because there's no nested structure
+        // The first item has InnerData so it should have values
+        result[0].Child3Ids.ShouldNotBeNull();
+        result[0].Child3Ids!.First().ShouldBe(1);
+        
+        // The second item has null InnerData so Child3Ids should be null
+        result[1].Child3Ids.ShouldBeNull();
     }
 }
