@@ -143,8 +143,7 @@ public class SelectToSelectExprNamedCodeFixProvider : CodeFixProvider
             .DescendantNodes()
             .OfType<InvocationExpressionSyntax>()
             .FirstOrDefault(inv =>
-                IsSelectExprInvocation(inv)
-                && inv.Span.Start == invocation.Span.Start
+                IsSelectExprInvocation(inv) && inv.Span.Start == invocation.Span.Start
             );
 
         // Add capture parameter if needed
@@ -229,8 +228,7 @@ public class SelectToSelectExprNamedCodeFixProvider : CodeFixProvider
             .DescendantNodes()
             .OfType<InvocationExpressionSyntax>()
             .FirstOrDefault(inv =>
-                IsSelectExprInvocation(inv)
-                && inv.Span.Start == invocation.Span.Start
+                IsSelectExprInvocation(inv) && inv.Span.Start == invocation.Span.Start
             );
 
         // Add capture parameter if needed
