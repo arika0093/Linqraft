@@ -484,18 +484,29 @@ public record DtoProperty(
         // Determine final nullability
         // Special case: When we have a collection with nullable access that will use Enumerable.Empty<T>()
         // as the fallback value, the property should NOT be nullable.
-        // This is determined by:
-        // 1. The expression has nullable access (?.)
-        // 2. The expression contains a nested structure (anonymous type in Select)
+        // Simplified approach (per maintainer feedback):
+        // 1. Expression should NOT contain a ternary operator (if it does, keep nullable)
+        // 2. The type must be IEnumerable<T> or derived (List, Array, etc.)
+        // 3. If nested structure exists (anonymous type in Select), remove nullable
         var shouldBeNullable = isNullable || hasNullableAccess;
         var finalPropertyType = propertyType;
         
-        // Check if this is a collection with anonymous type projection that uses Enumerable.Empty as fallback
-        // The nestedStructure being non-null means there's an anonymous type in a Select/SelectMany
-        // Combined with nullable access, the generated code will use Enumerable.Empty as fallback
-        if (shouldBeNullable && hasNullableAccess && nestedStructure is not null)
+        // Check if this expression contains a ternary operator - if so, keep nullable
+        var hasTernaryOperator = expression.DescendantNodesAndSelf()
+            .OfType<ConditionalExpressionSyntax>()
+            .Any();
+        
+        // Apply non-nullable only when:
+        // - Currently marked as nullable
+        // - No ternary operator present
+        // - Type is a collection type (IEnumerable, List, Array, etc.)
+        // - Has nested structure (anonymous type in Select/SelectMany)
+        if (shouldBeNullable 
+            && !hasTernaryOperator 
+            && nestedStructure is not null
+            && RoslynTypeHelper.IsCollectionType(propertyType))
         {
-            // Collection with nullable access and anonymous type in Select will get Enumerable.Empty<T>() as fallback
+            // Collection with nested structure and no ternary will use Enumerable.Empty<T>() as fallback
             // So the collection itself should not be nullable
             shouldBeNullable = false;
             // Also remove the nullable annotation from the type symbol if present
