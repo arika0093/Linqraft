@@ -29,6 +29,21 @@ public static class LinqMethodHelper
                 return leftResult;
         }
 
+        // Handle ternary expressions (condition ? trueExpr : falseExpr)
+        // e.g., x != null ? x.Items.Select(...) : null
+        if (expression is ConditionalExpressionSyntax conditionalExpr)
+        {
+            // Check the WhenTrue branch first (more common case)
+            var whenTrueResult = FindLinqMethodInvocation(conditionalExpr.WhenTrue, methodNames);
+            if (whenTrueResult is not null)
+                return whenTrueResult;
+
+            // Also check the WhenFalse branch (for reversed conditions)
+            var whenFalseResult = FindLinqMethodInvocation(conditionalExpr.WhenFalse, methodNames);
+            if (whenFalseResult is not null)
+                return whenFalseResult;
+        }
+
         // Handle conditional access (?.): s.OrderItems?.Select(...)
         if (expression is ConditionalAccessExpressionSyntax conditionalAccess)
         {
@@ -105,7 +120,8 @@ public static class LinqMethodHelper
         string ParameterName,
         string ChainedMethods,
         bool HasNullableAccess,
-        string? CoalescingDefaultValue
+        string? CoalescingDefaultValue,
+        string? NullCheckExpression = null  // The expression to check for null (only used when HasNullableAccess is true)
     );
 
     /// <summary>
@@ -198,11 +214,43 @@ public static class LinqMethodHelper
         string paramName = lambda is not null ? LambdaHelper.GetLambdaParameterName(lambda) : "x"; // Default
 
         // Extract base expression (the collection being operated on)
+        // And null check expression (the part before ?. that needs to be checked for null)
         string baseExpression;
+        string? nullCheckExpression = null;
         if (hasNullableAccess && conditionalAccess is not null)
         {
-            // For ?.Select, extract the base expression before the ?.
-            baseExpression = conditionalAccess.Expression.ToString();
+            // For ?.Select or ?.SomeProperty.Select, extract the full base expression
+            // The base before ?. is conditionalAccess.Expression
+            // There might be additional member access between ?. and .Select
+            var beforeNullConditional = conditionalAccess.Expression.ToString();
+            nullCheckExpression = beforeNullConditional; // This is what we check for null
+
+            // Check if there's member access between ?. and .Select
+            // For example: x?.Child4s.Select(...) - we need "x.Child4s" as base
+            if (linqInvocation.Expression is MemberAccessExpressionSyntax linqMemberAccess)
+            {
+                // The expression before .Select might have more member access
+                var beforeSelect = linqMemberAccess.Expression;
+                if (beforeSelect is MemberBindingExpressionSyntax memberBindingBeforeSelect)
+                {
+                    // This is like ".Child4s" - combine with the base before ?.
+                    baseExpression = beforeNullConditional + memberBindingBeforeSelect.ToString();
+                }
+                else
+                {
+                    // Normal member access
+                    baseExpression = beforeNullConditional;
+                }
+            }
+            else if (linqInvocation.Expression is MemberBindingExpressionSyntax)
+            {
+                // Direct ?.Select case (no additional member access)
+                baseExpression = beforeNullConditional;
+            }
+            else
+            {
+                baseExpression = beforeNullConditional;
+            }
         }
         else if (linqInvocation.Expression is MemberAccessExpressionSyntax linqMember)
         {
@@ -224,7 +272,8 @@ public static class LinqMethodHelper
             paramName,
             chainedMethods,
             hasNullableAccess,
-            coalescingDefaultValue
+            coalescingDefaultValue,
+            nullCheckExpression
         );
     }
 }
