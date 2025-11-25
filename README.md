@@ -173,7 +173,9 @@ var orders = await dbContext.Orders
 This yields better performance because only the required data is fetched. But this style has drawbacks:
 
 - If you want to pass the result to other methods or return it from APIs, you usually must define DTO classes manually.
-- When child objects can be null, the expression APIs don't support the `?.` operator directly, forcing verbose null checks using ternary operators.
+  - When there are multiple child classes of a DTO, things get even more complicated.
+- The expression APIs don't support the `?.` operator directly, forcing verbose null checks using ternary operators.
+  - The deeper the child elements become, the more complex null checks are required.
 
 ```csharp
 // 🤔 too ugly code with lots of null checks
@@ -217,7 +219,29 @@ public class OrderItemDto
 ```
 
 Linqraft solves these problems by providing `SelectExpr`, which supports null-propagation operators and automatic DTO generation.
-This allows you to write clean, efficient queries without boilerplate code.
+
+```csharp
+// ✨️ usable null-propagation operators
+var orders = await dbContext.Orders
+    .SelectExpr<Order, OrderDto>(o => new
+    {
+        o.Id,
+        CustomerName = o.Customer?.Name,
+        CustomerCountry = o.Customer?.Address?.Country?.Name,
+        CustomerCity = o.Customer?.Address?.City?.Name,
+        Items = o.OrderItems.Select(oi => new OrderItemDto
+        {
+            ProductName = oi.Product?.Name,
+            oi.Quantity
+        })
+    })
+    .ToListAsync();
+
+// ✨️ The definition of the DTO class is no longer necessary
+```
+
+This feature helps keep your codebase clean and significantly reduces cognitive overhead.
+
 
 ## Usage
 ### Prerequisites
