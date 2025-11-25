@@ -1,0 +1,5 @@
+[*.cs]
+
+# CS8604: null literal or possible null value assigned to a non-nullable parameter.
+# cannot edit this rule severity for test projects
+dotnet_diagnostic.CS8604.severity = error

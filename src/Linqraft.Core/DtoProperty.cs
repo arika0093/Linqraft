@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using Linqraft.Core.RoslynHelpers;
 using Linqraft.Core.SyntaxHelpers;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
@@ -150,7 +151,56 @@ public record DtoProperty(
 
                 if (selectInvocation.Expression is MemberAccessExpressionSyntax selectMemberAccess)
                 {
-                    collectionType = semanticModel.GetTypeInfo(selectMemberAccess.Expression).Type;
+                    // Check if the base expression is a MemberBindingExpressionSyntax (part of conditional access)
+                    // e.g., d.InnerData?.Childs.Select(...) - here .Childs is a MemberBindingExpressionSyntax
+                    if (selectMemberAccess.Expression is MemberBindingExpressionSyntax)
+                    {
+                        // For conditional access chains (e.g., d.InnerData?.Childs.Select),
+                        // we need to find the conditional access expression and get the type from there
+                        var conditionalAccess = expression
+                            .DescendantNodesAndSelf()
+                            .OfType<ConditionalAccessExpressionSyntax>()
+                            .FirstOrDefault();
+                        if (conditionalAccess is not null)
+                        {
+                            // Get the type of the WhenNotNull part up to the collection
+                            // For d.InnerData?.Childs.Select, we need to get the type of d.InnerData.Childs
+                            // The semantic model can resolve the type of the conditional access expression result
+                            // which includes the null-conditional path
+                            var memberBinding = (MemberBindingExpressionSyntax)selectMemberAccess.Expression;
+                            var memberName = memberBinding.Name.Identifier.Text;
+
+                            // Get the type of the expression before the ?. operator
+                            var baseType = semanticModel.GetTypeInfo(conditionalAccess.Expression).Type;
+                            if (baseType is not null)
+                            {
+                                // Get the non-nullable underlying type if it's a nullable type
+                                // e.g., ChildData? -> ChildData
+                                var nonNullableBaseType = RoslynTypeHelper.GetNonNullableType(baseType) ?? baseType;
+
+                                // Find the member with the specified name on the base type
+                                var memberSymbol = nonNullableBaseType.GetMembers(memberName)
+                                    .OfType<IPropertySymbol>()
+                                    .FirstOrDefault()
+                                    ?? (ISymbol?)nonNullableBaseType.GetMembers(memberName)
+                                        .OfType<IFieldSymbol>()
+                                        .FirstOrDefault();
+                                if (memberSymbol is IPropertySymbol propSymbol)
+                                {
+                                    collectionType = propSymbol.Type;
+                                }
+                                else if (memberSymbol is IFieldSymbol fieldSymbol)
+                                {
+                                    collectionType = fieldSymbol.Type;
+                                }
+                            }
+                        }
+                    }
+                    else
+                    {
+                        // Normal case: direct member access
+                        collectionType = semanticModel.GetTypeInfo(selectMemberAccess.Expression).Type;
+                    }
                 }
                 else if (selectInvocation.Expression is MemberBindingExpressionSyntax)
                 {
@@ -431,15 +481,65 @@ public record DtoProperty(
             }
         }
 
+        // Determine final nullability
+        // Special case: When we have a collection with nullable access that will use Enumerable.Empty<T>()
+        // as the fallback value, the property should NOT be nullable.
+        // Simplified approach (per maintainer feedback):
+        // 1. Expression should NOT contain a ternary operator (if it does, keep nullable)
+        // 2. The type must be IEnumerable<T> or derived (List, Array, etc.)
+        // 3. If nested structure exists (anonymous type in Select), remove nullable
+        var shouldBeNullable = isNullable || hasNullableAccess;
+        var finalPropertyType = propertyType;
+        
+        // Check if this expression contains a ternary operator - if so, keep nullable
+        var hasTernaryOperator = expression.DescendantNodesAndSelf()
+            .OfType<ConditionalExpressionSyntax>()
+            .Any();
+        
+        // Apply non-nullable only when:
+        // - Currently marked as nullable
+        // - No ternary operator present
+        // - Type is a collection type (IEnumerable, List, Array, etc.)
+        // - Has nested structure (anonymous type in Select/SelectMany)
+        if (shouldBeNullable 
+            && !hasTernaryOperator 
+            && nestedStructure is not null
+            && RoslynTypeHelper.IsCollectionType(propertyType))
+        {
+            // Collection with nested structure and no ternary will use Enumerable.Empty<T>() as fallback
+            // So the collection itself should not be nullable
+            shouldBeNullable = false;
+            // Also remove the nullable annotation from the type symbol if present
+            finalPropertyType =
+                RoslynTypeHelper.GetNonNullableType(propertyType) ?? propertyType;
+        }
+
         return new DtoProperty(
             Name: propertyName,
-            IsNullable: isNullable || hasNullableAccess,
+            IsNullable: shouldBeNullable,
             OriginalExpression: expression.ToString(),
             OriginalSyntax: expression,
-            TypeSymbol: propertyType,
+            TypeSymbol: finalPropertyType,
             NestedStructure: nestedStructure,
             Accessibility: accessibility
         );
+    }
+
+    /// <summary>
+    /// Checks if an expression contains a Select method call with an anonymous type creation in its lambda body
+    /// </summary>
+    private static bool ContainsSelectWithAnonymousType(ExpressionSyntax expression)
+    {
+        var selectInvocation = FindSelectInvocation(expression);
+        if (selectInvocation is null || selectInvocation.ArgumentList.Arguments.Count == 0)
+            return false;
+
+        var lambdaArg = selectInvocation.ArgumentList.Arguments[0].Expression;
+        if (lambdaArg is not LambdaExpressionSyntax lambda)
+            return false;
+
+        // Check if the lambda body is an anonymous object creation
+        return lambda.Body is AnonymousObjectCreationExpressionSyntax;
     }
 
     /// <summary>
