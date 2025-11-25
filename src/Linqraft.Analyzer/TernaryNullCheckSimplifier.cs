@@ -30,6 +30,7 @@ internal static class TernaryNullCheckSimplifier
     {
         // Find and simplify ternary null checks in lambda body
         var newArguments = new List<ArgumentSyntax>();
+        var hasChanges = false;
         foreach (var argument in invocation.ArgumentList.Arguments)
         {
             if (
@@ -38,6 +39,10 @@ internal static class TernaryNullCheckSimplifier
             )
             {
                 var simplifiedBody = SimplifyTernaryNullChecks(bodyExpr);
+                if (simplifiedBody != bodyExpr)
+                {
+                    hasChanges = true;
+                }
                 var newLambda = simpleLambda.WithBody(simplifiedBody);
                 newArguments.Add(argument.WithExpression(newLambda));
             }
@@ -47,6 +52,10 @@ internal static class TernaryNullCheckSimplifier
             )
             {
                 var simplifiedBody = SimplifyTernaryNullChecks(parenBodyExpr);
+                if (simplifiedBody != parenBodyExpr)
+                {
+                    hasChanges = true;
+                }
                 var newLambda = parenLambda.WithBody(simplifiedBody);
                 newArguments.Add(argument.WithExpression(newLambda));
             }
@@ -56,9 +65,24 @@ internal static class TernaryNullCheckSimplifier
             }
         }
 
-        return invocation.WithArgumentList(
-            SyntaxFactory.ArgumentList(SyntaxFactory.SeparatedList(newArguments))
+        // If no changes were made, return the original invocation to preserve trivia
+        if (!hasChanges)
+        {
+            return invocation;
+        }
+
+        // Create a new argument list preserving the original tokens' trivia
+        var originalArgumentList = invocation.ArgumentList;
+        var newArgumentList = SyntaxFactory.ArgumentList(
+            originalArgumentList.OpenParenToken,
+            SyntaxFactory.SeparatedList(
+                newArguments,
+                originalArgumentList.Arguments.GetSeparators()
+            ),
+            originalArgumentList.CloseParenToken
         );
+
+        return invocation.WithArgumentList(newArgumentList);
     }
 
     private class TernaryNullCheckRewriter : CSharpSyntaxRewriter
