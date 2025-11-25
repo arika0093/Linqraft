@@ -174,11 +174,15 @@ public record DtoProperty(
                             var baseType = semanticModel.GetTypeInfo(conditionalAccess.Expression).Type;
                             if (baseType is not null)
                             {
+                                // Get the non-nullable underlying type if it's a nullable type
+                                // e.g., ChildData? -> ChildData
+                                var nonNullableBaseType = RoslynTypeHelper.GetNonNullableType(baseType) ?? baseType;
+
                                 // Find the member with the specified name on the base type
-                                var memberSymbol = baseType.GetMembers(memberName)
+                                var memberSymbol = nonNullableBaseType.GetMembers(memberName)
                                     .OfType<IPropertySymbol>()
                                     .FirstOrDefault()
-                                    ?? (ISymbol?)baseType.GetMembers(memberName)
+                                    ?? (ISymbol?)nonNullableBaseType.GetMembers(memberName)
                                         .OfType<IFieldSymbol>()
                                         .FirstOrDefault();
                                 if (memberSymbol is IPropertySymbol propSymbol)
