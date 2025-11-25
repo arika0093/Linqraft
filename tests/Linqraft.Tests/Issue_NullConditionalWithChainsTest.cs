@@ -27,9 +27,42 @@ public class Issue_NullConditionalWithChainsTest
                             {
                                 Child4s =
                                 [
-                                    new Child4 { CreatedAt = new DateTimeOffset(2024, 1, 3, 0, 0, 0, TimeSpan.Zero) },
-                                    new Child4 { CreatedAt = new DateTimeOffset(2024, 1, 1, 0, 0, 0, TimeSpan.Zero) },
-                                    new Child4 { CreatedAt = new DateTimeOffset(2024, 1, 2, 0, 0, 0, TimeSpan.Zero) },
+                                    new Child4
+                                    {
+                                        CreatedAt = new DateTimeOffset(
+                                            2024,
+                                            1,
+                                            3,
+                                            0,
+                                            0,
+                                            0,
+                                            TimeSpan.Zero
+                                        ),
+                                    },
+                                    new Child4
+                                    {
+                                        CreatedAt = new DateTimeOffset(
+                                            2024,
+                                            1,
+                                            1,
+                                            0,
+                                            0,
+                                            0,
+                                            TimeSpan.Zero
+                                        ),
+                                    },
+                                    new Child4
+                                    {
+                                        CreatedAt = new DateTimeOffset(
+                                            2024,
+                                            1,
+                                            2,
+                                            0,
+                                            0,
+                                            0,
+                                            TimeSpan.Zero
+                                        ),
+                                    },
                                 ],
                             },
                         },
@@ -80,7 +113,9 @@ public class Issue_NullConditionalWithChainsTest
         firstChild.result1[0].ShouldBe(new DateTimeOffset(2024, 1, 3, 0, 0, 0, TimeSpan.Zero));
 
         firstChild.result2.ShouldNotBeNull();
-        firstChild.result2!.CreatedAt.ShouldBe(new DateTimeOffset(2024, 1, 3, 0, 0, 0, TimeSpan.Zero));
+        firstChild.result2!.CreatedAt.ShouldBe(
+            new DateTimeOffset(2024, 1, 3, 0, 0, 0, TimeSpan.Zero)
+        );
 
         // Second TestData has null Child3
         var second = result[1];

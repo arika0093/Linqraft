@@ -167,7 +167,9 @@ public static class RoslynTypeHelper
             // Check if the type directly is IEnumerable<T> or IQueryable<T>
             if (
                 namedType.TypeArguments.Length == 1
-                && namedType.ContainingNamespace?.ToDisplayString() is "System.Collections.Generic" or "System.Linq"
+                && namedType.ContainingNamespace?.ToDisplayString()
+                    is "System.Collections.Generic"
+                        or "System.Linq"
                 && namedType.Name is "IEnumerable" or "IQueryable"
             )
             {
@@ -180,8 +182,7 @@ public static class RoslynTypeHelper
                 if (
                     iface.Name == "IEnumerable"
                     && iface.TypeArguments.Length == 1
-                    && iface.ContainingNamespace?.ToDisplayString()
-                        == "System.Collections.Generic"
+                    && iface.ContainingNamespace?.ToDisplayString() == "System.Collections.Generic"
                 )
                 {
                     return true;
