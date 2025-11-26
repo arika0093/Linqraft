@@ -99,7 +99,7 @@ public class TernaryNullCheckToConditionalAnalyzer : BaseLinqraftAnalyzer
             }
 
             // Continue walking up to check parent invocations
-            ancestor = ancestor.Parent?.Ancestors().OfType<InvocationExpressionSyntax>().FirstOrDefault();
+            ancestor = ancestor.Ancestors().OfType<InvocationExpressionSyntax>().FirstOrDefault();
         }
 
         return false;

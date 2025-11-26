@@ -417,6 +417,12 @@ public abstract record SelectExprInfo
 
         // For any other expression (including invocations like FirstOrDefault, Where, etc.),
         // ensure all static/enum/const references are fully qualified (issue #157)
+        // Quick check: if there are no member accesses or identifiers, skip the expensive semantic analysis
+        if (!syntax.DescendantNodesAndSelf().Any(n => n is MemberAccessExpressionSyntax || n is IdentifierNameSyntax))
+        {
+            return syntax.ToString();
+        }
+
         return FullyQualifyAllStaticReferences(syntax);
     }
 
@@ -528,7 +534,7 @@ public abstract record SelectExprInfo
         }
 
         // Sort replacements by start position in descending order to avoid offset issues
-        replacements = replacements.OrderByDescending(r => r.Start).ToList();
+        replacements.Sort((a, b) => b.Start.CompareTo(a.Start));
 
         // Apply replacements
         var result = syntax.ToString();
