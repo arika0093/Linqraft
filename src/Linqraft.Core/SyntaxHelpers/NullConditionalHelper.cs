@@ -319,8 +319,11 @@ public static class NullConditionalHelper
                     );
                     if (whenNotNullExpr != null)
                     {
+                        // Normalize the base expression by removing internal whitespace/trivia
+                        // This ensures d.InnerData.ChildMaybeNull is on a single line
+                        var normalizedBase = NormalizeMemberAccessChain(matchingMemberAccess);
                         return SyntaxFactory.ConditionalAccessExpression(
-                            matchingMemberAccess,
+                            normalizedBase,
                             whenNotNullExpr
                         );
                     }
@@ -337,6 +340,45 @@ public static class NullConditionalHelper
     private static string NormalizeExpressionText(string text)
     {
         return System.Text.RegularExpressions.Regex.Replace(text, @"\s+", "");
+    }
+
+    /// <summary>
+    /// Normalizes a member access chain by removing internal whitespace/trivia
+    /// so that the entire chain is on a single line
+    /// </summary>
+    private static ExpressionSyntax NormalizeMemberAccessChain(MemberAccessExpressionSyntax memberAccess)
+    {
+        // Recursively normalize the expression to remove all internal whitespace
+        return NormalizeExpressionRecursive(memberAccess);
+    }
+
+    /// <summary>
+    /// Recursively normalizes an expression by removing internal whitespace
+    /// </summary>
+    private static ExpressionSyntax NormalizeExpressionRecursive(ExpressionSyntax expr)
+    {
+        if (expr is MemberAccessExpressionSyntax memberAccess)
+        {
+            var normalizedExpression = NormalizeExpressionRecursive(memberAccess.Expression);
+            // Create a clean member access without any trivia on the dot or name
+            return SyntaxFactory.MemberAccessExpression(
+                SyntaxKind.SimpleMemberAccessExpression,
+                normalizedExpression,
+                SyntaxFactory.Token(SyntaxKind.DotToken),
+                memberAccess.Name.WithoutTrivia()
+            );
+        }
+        else if (expr is IdentifierNameSyntax identifier)
+        {
+            return identifier.WithoutTrivia();
+        }
+        else if (expr is InvocationExpressionSyntax invocation)
+        {
+            var normalizedExpression = NormalizeExpressionRecursive(invocation.Expression);
+            return SyntaxFactory.InvocationExpression(normalizedExpression, invocation.ArgumentList);
+        }
+        // For other expressions, just remove leading/trailing trivia
+        return expr.WithoutTrivia();
     }
 
     /// <summary>
@@ -362,6 +404,39 @@ public static class NullConditionalHelper
         }
 
         return null;
+    }
+
+    /// <summary>
+    /// Adjusts the leading trivia of a dot token by reducing indentation
+    /// </summary>
+    private static SyntaxToken AdjustDotTokenTrivia(SyntaxToken dotToken, int spacesToRemove)
+    {
+        var leadingTrivia = dotToken.LeadingTrivia;
+        var adjustedTrivia = new List<SyntaxTrivia>();
+
+        foreach (var trivia in leadingTrivia)
+        {
+            if (trivia.IsKind(SyntaxKind.WhitespaceTrivia))
+            {
+                var whitespace = trivia.ToString();
+                if (whitespace.Length > spacesToRemove)
+                {
+                    // Remove the specified number of spaces
+                    adjustedTrivia.Add(SyntaxFactory.Whitespace(whitespace.Substring(spacesToRemove)));
+                }
+                else
+                {
+                    // If whitespace is too short, just keep it
+                    adjustedTrivia.Add(trivia);
+                }
+            }
+            else
+            {
+                adjustedTrivia.Add(trivia);
+            }
+        }
+
+        return dotToken.WithLeadingTrivia(adjustedTrivia);
     }
 
     /// <summary>
@@ -420,35 +495,49 @@ public static class NullConditionalHelper
             && firstMemberAccess.Expression == nullCheckedExpr)
         {
             // Start with a member binding for the first member after null check
-            // Preserve the operator token's trivia (which includes leading whitespace/newlines)
+            // Use a clean dot token without extra trivia (it goes right after ?.)
             var memberBinding = SyntaxFactory.MemberBindingExpression(
-                firstMemberAccess.OperatorToken,
-                firstMemberAccess.Name
+                SyntaxFactory.Token(SyntaxKind.DotToken),
+                firstMemberAccess.Name.WithoutTrivia()
             );
             ExpressionSyntax whenNotNull = memberBinding;
 
-            // Now rebuild the rest of the chain, preserving trivia from original nodes
+            // Track if we've had an invocation yet - after the first invocation,
+            // chained methods should preserve their leading trivia (newlines + indentation)
+            bool hadInvocation = false;
+
+            // Now rebuild the rest of the chain
             for (int i = 1; i < accessChain.Count; i++)
             {
                 var node = accessChain[i];
 
                 if (node is MemberAccessExpressionSyntax memberAccess)
                 {
-                    // Add another member access, preserving the operator token's trivia
+                    // For chained method calls after the first invocation,
+                    // preserve the leading trivia (newlines + indentation)
+                    // but adjust the indentation to remove extra spaces from the ternary
+                    var dotToken = hadInvocation
+                        ? AdjustDotTokenTrivia(memberAccess.OperatorToken, 4) // Remove 4 spaces of indentation
+                        : SyntaxFactory.Token(SyntaxKind.DotToken);
+                    var name = hadInvocation
+                        ? memberAccess.Name
+                        : memberAccess.Name.WithoutTrivia();
+
                     whenNotNull = SyntaxFactory.MemberAccessExpression(
                         SyntaxKind.SimpleMemberAccessExpression,
                         whenNotNull,
-                        memberAccess.OperatorToken,
-                        memberAccess.Name
+                        dotToken,
+                        name
                     );
                 }
                 else if (node is InvocationExpressionSyntax invocation)
                 {
-                    // Add an invocation, preserving the argument list with its trivia
+                    // Add an invocation with the argument list
                     whenNotNull = SyntaxFactory.InvocationExpression(
                         whenNotNull,
                         invocation.ArgumentList
                     );
+                    hadInvocation = true;
                 }
                 else if (node == fullExpr)
                 {
