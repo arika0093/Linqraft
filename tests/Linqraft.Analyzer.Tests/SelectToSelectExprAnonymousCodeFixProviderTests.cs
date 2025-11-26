@@ -818,11 +818,9 @@ class Test
             .AsQueryable()
             .SelectExpr(d => new
             {
-                TestData = d
-                        .InnerData.ChildMaybeNull?.AnotherChilds.Where(ac => ac.Id > 0)
-                        .Select(ac => ac.Id)
-                        .ToList()
-,
+                TestData = d.InnerData.ChildMaybeNull?.AnotherChilds.Where(ac => ac.Id > 0)
+                    .Select(ac => ac.Id)
+                    .ToList(),
             })
             .ToList();
     }
