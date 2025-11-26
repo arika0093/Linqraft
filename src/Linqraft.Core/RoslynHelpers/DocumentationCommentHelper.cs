@@ -432,17 +432,9 @@ public static class DocumentationCommentHelper
         if (string.IsNullOrEmpty(path))
             return false;
 
-        // Check for characters that indicate a complex expression
-        return !path.Contains("?")
-            && !path.Contains("(")
-            && !path.Contains(")")
-            && !path.Contains(".")
-            && !path.Contains("<")
-            && !path.Contains(">")
-            && !path.Contains("[")
-            && !path.Contains("]")
-            && !path.Contains(" ")
-            || Regex.IsMatch(path, @"^[a-zA-Z_][a-zA-Z0-9_]*(\.[a-zA-Z_][a-zA-Z0-9_]*)*$");
+        // A simple identifier path should match: ClassName or ClassName.PropertyName
+        // It should only contain letters, digits, underscores, and dots (as separators)
+        return Regex.IsMatch(path, @"^[a-zA-Z_][a-zA-Z0-9_]*(\.[a-zA-Z_][a-zA-Z0-9_]*)*$");
     }
 
     /// <summary>
