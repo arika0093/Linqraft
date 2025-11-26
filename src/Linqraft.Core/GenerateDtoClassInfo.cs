@@ -110,15 +110,45 @@ public class GenerateDtoClassInfo
 
         // Build the actual DTO class/record
         var classIndent = CodeFormatter.Indent(ParentClasses.Count);
+
+        // Add class-level XML documentation if configured
+        if (Structure.SourceTypeDocumentation != null)
+        {
+            var classDocumentation = DocumentationCommentHelper.BuildXmlDocumentation(
+                Structure.SourceTypeDocumentation,
+                classIndent,
+                configuration.CommentOutput
+            );
+            if (!string.IsNullOrEmpty(classDocumentation))
+            {
+                sb.Append(classDocumentation);
+            }
+        }
+
         sb.AppendLine($"{classIndent}{Accessibility} partial {typeKeyword} {ClassName}");
         sb.AppendLine($"{classIndent}{{");
 
+        var propIndent = $"{classIndent}    ";
         foreach (var prop in Structure.Properties)
         {
             // Skip properties that already exist in the predefined partial class
             if (ExistingProperties.Contains(prop.Name))
             {
                 continue;
+            }
+
+            // Add property-level XML documentation if configured
+            if (prop.Documentation != null)
+            {
+                var propDocumentation = DocumentationCommentHelper.BuildXmlDocumentation(
+                    prop.Documentation,
+                    propIndent,
+                    configuration.CommentOutput
+                );
+                if (!string.IsNullOrEmpty(propDocumentation))
+                {
+                    sb.Append(propDocumentation);
+                }
             }
 
             var propertyType = prop.TypeName;
@@ -221,7 +251,7 @@ public class GenerateDtoClassInfo
                 : "";
 
             sb.AppendLine(
-                $"{classIndent}    {propAccessibility} {propRequiredKeyword}{propertyType} {prop.Name} {{ {propertyAccessor} }}"
+                $"{propIndent}{propAccessibility} {propRequiredKeyword}{propertyType} {prop.Name} {{ {propertyAccessor} }}"
             );
         }
         sb.AppendLine($"{classIndent}}}");
