@@ -176,9 +176,10 @@ public record SelectExprInfoExplicitDto : SelectExprInfo
 
     /// <summary>
     /// Gets the DTO class name
+    /// Uses BestName (which prefers HintName if available) for better class naming (issue #155)
     /// </summary>
     protected override string GetClassName(DtoStructure structure) =>
-        $"{structure.SourceTypeName}Dto_{structure.GetUniqueId()}";
+        $"{structure.BestName}Dto_{structure.GetUniqueId()}";
 
     /// <summary>
     /// Gets the parent DTO class name

@@ -1,3 +1,5 @@
+using System.Linq;
+using Linqraft.Core;
 using Linqraft.Core.AnalyzerHelpers;
 using Linqraft.Core.SyntaxHelpers;
 using Microsoft.CodeAnalysis;
@@ -10,6 +12,7 @@ namespace Linqraft.Analyzer;
 /// <summary>
 /// Analyzer that detects ternary operators with null checks that return object creations
 /// and can be converted to use null-conditional operators.
+/// This analyzer only triggers inside SelectExpr calls.
 /// </summary>
 [DiagnosticAnalyzer(LanguageNames.CSharp)]
 public class TernaryNullCheckToConditionalAnalyzer : BaseLinqraftAnalyzer
@@ -43,6 +46,13 @@ public class TernaryNullCheckToConditionalAnalyzer : BaseLinqraftAnalyzer
     {
         var conditional = (ConditionalExpressionSyntax)context.Node;
 
+        // Check if this conditional is inside a SelectExpr call
+        // If not, don't report any diagnostic (issue #156)
+        if (!IsInsideSelectExpr(conditional, context.SemanticModel))
+        {
+            return;
+        }
+
         // Check if the condition is a null check (simple or complex with &&)
         if (!NullConditionalHelper.HasNullCheck(conditional.Condition))
         {
@@ -70,5 +80,28 @@ public class TernaryNullCheckToConditionalAnalyzer : BaseLinqraftAnalyzer
             var diagnostic = Diagnostic.Create(RuleInstance, conditional.GetLocation());
             context.ReportDiagnostic(diagnostic);
         }
+    }
+
+    /// <summary>
+    /// Checks if the given syntax node is inside a SelectExpr method call
+    /// </summary>
+    private static bool IsInsideSelectExpr(SyntaxNode node, SemanticModel semanticModel)
+    {
+        // Walk up the syntax tree to find an InvocationExpressionSyntax
+        var ancestor = node.Ancestors().OfType<InvocationExpressionSyntax>().FirstOrDefault();
+
+        while (ancestor != null)
+        {
+            // Check if this invocation is a SelectExpr call
+            if (SelectExprHelper.IsSelectExprInvocation(ancestor, semanticModel))
+            {
+                return true;
+            }
+
+            // Continue walking up to check parent invocations
+            ancestor = ancestor.Ancestors().OfType<InvocationExpressionSyntax>().FirstOrDefault();
+        }
+
+        return false;
     }
 }

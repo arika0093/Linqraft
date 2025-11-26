@@ -8,34 +8,43 @@ namespace Linqraft.Analyzer.Tests;
 public class TernaryNullCheckToConditionalAnalyzerTests
 {
     [Fact]
-    public async Task Analyzer_DetectsTernaryNullCheckWithObjectCreation()
+    public async Task Analyzer_DetectsTernaryNullCheckWithObjectCreation_InsideSelectExpr()
     {
-        var test =
-            @"
-class Sample
-{
-    public Nest? Nest { get; set; }
-}
+        var test = $$"""
+            using System.Collections.Generic;
+            using System.Linq;
+            using Linqraft;
 
-class Nest
-{
-    public int Id { get; set; }
-    public string Name { get; set; }
-}
+            {{TestSourceCodes.SelectExprWithFuncInLinqraftNamespace}}
 
-class Test
-{
-    void Method()
-    {
-        var s = new Sample();
-        var result = {|#0:s.Nest != null
-            ? new {
-                Id = s.Nest.Id,
-                Name = s.Nest.Name
+            class Sample
+            {
+                public Nest? Nest { get; set; }
             }
-            : null|};
-    }
-}";
+
+            class Nest
+            {
+                public int Id { get; set; }
+                public string Name { get; set; }
+            }
+
+            class Test
+            {
+                void Method()
+                {
+                    var data = new List<Sample>();
+                    var result = data.AsQueryable().SelectExpr(s => new
+                    {
+                        NestedData = {|#0:s.Nest != null
+                            ? new {
+                                Id = s.Nest.Id,
+                                Name = s.Nest.Name
+                            }
+                            : null|}
+                    });
+                }
+            }
+            """;
 
         var expected = new DiagnosticResult(
             TernaryNullCheckToConditionalAnalyzer.AnalyzerId,
@@ -46,28 +55,37 @@ class Test
     }
 
     [Fact]
-    public async Task Analyzer_DetectsTernaryNullCheckWithAnonymousObjectCreation()
+    public async Task Analyzer_DetectsTernaryNullCheckWithAnonymousObjectCreation_InsideSelectExpr()
     {
-        var test =
-            @"
-class Sample
-{
-    public Nest? Nest { get; set; }
-}
+        var test = $$"""
+            using System.Collections.Generic;
+            using System.Linq;
+            using Linqraft;
 
-class Nest
-{
-    public int Id { get; set; }
-}
+            {{TestSourceCodes.SelectExprWithFuncInLinqraftNamespace}}
 
-class Test
-{
-    void Method()
-    {
-        var s = new Sample();
-        var result = {|#0:s.Nest != null ? new { s.Nest.Id } : null|};
-    }
-}";
+            class Sample
+            {
+                public Nest? Nest { get; set; }
+            }
+
+            class Nest
+            {
+                public int Id { get; set; }
+            }
+
+            class Test
+            {
+                void Method()
+                {
+                    var data = new List<Sample>();
+                    var result = data.AsQueryable().SelectExpr(s => new
+                    {
+                        NestedData = {|#0:s.Nest != null ? new { s.Nest.Id } : null|}
+                    });
+                }
+            }
+            """;
 
         var expected = new DiagnosticResult(
             TernaryNullCheckToConditionalAnalyzer.AnalyzerId,
@@ -129,34 +147,43 @@ class Test
     }
 
     [Fact]
-    public async Task Analyzer_DetectsTernaryNullCheckWithInvertedCondition()
+    public async Task Analyzer_DetectsTernaryNullCheckWithInvertedCondition_InsideSelectExpr()
     {
         // Test inverted condition: x == null ? null : new{}
-        var test =
-            @"
-class Parent
-{
-    public Child? Child { get; set; }
-}
+        var test = $$"""
+            using System.Collections.Generic;
+            using System.Linq;
+            using Linqraft;
 
-class Child
-{
-    public string Name { get; set; }
-}
+            {{TestSourceCodes.SelectExprWithFuncInLinqraftNamespace}}
 
-class ChildDto
-{
-    public string Name { get; set; }
-}
+            class Parent
+            {
+                public Child? Child { get; set; }
+            }
 
-class Test
-{
-    void Method()
-    {
-        var p = new Parent();
-        var result = {|#0:p.Child == null ? null : new ChildDto { Name = p.Child.Name }|};
-    }
-}";
+            class Child
+            {
+                public string Name { get; set; }
+            }
+
+            class ChildDto
+            {
+                public string Name { get; set; }
+            }
+
+            class Test
+            {
+                void Method()
+                {
+                    var data = new List<Parent>();
+                    var result = data.AsQueryable().SelectExpr(p => new
+                    {
+                        ChildInfo = {|#0:p.Child == null ? null : new ChildDto { Name = p.Child.Name }|}
+                    });
+                }
+            }
+            """;
 
         var expected = new DiagnosticResult(
             TernaryNullCheckToConditionalAnalyzer.AnalyzerId,
@@ -164,6 +191,78 @@ class Test
         ).WithLocation(0);
 
         await RunAnalyzerTestAsync(test, expected);
+    }
+
+    [Fact]
+    public async Task Analyzer_DoesNotDetectTernaryNullCheck_OutsideSelectExpr()
+    {
+        // Issue #156: LQRS004 should NOT trigger outside SelectExpr
+        var test =
+            @"
+class Sample
+{
+    public Nest? Nest { get; set; }
+}
+
+class Nest
+{
+    public int Id { get; set; }
+    public string Name { get; set; }
+}
+
+class Test
+{
+    void Method()
+    {
+        var s = new Sample();
+        var result = s.Nest != null
+            ? new {
+                Id = s.Nest.Id,
+                Name = s.Nest.Name
+            }
+            : null;
+    }
+}";
+
+        // Expect no diagnostics because it's outside SelectExpr
+        await RunAnalyzerTestAsync(test);
+    }
+
+    [Fact]
+    public async Task Analyzer_DoesNotDetectTernaryNullCheck_InsideRegularSelect()
+    {
+        // Issue #156: LQRS004 should NOT trigger inside regular .Select() calls
+        var test = """
+            using System.Collections.Generic;
+            using System.Linq;
+
+            class Sample
+            {
+                public Nest? Nest { get; set; }
+            }
+
+            class Nest
+            {
+                public int Id { get; set; }
+            }
+
+            class Test
+            {
+                void Method()
+                {
+                    var data = new List<Sample>();
+                    var result = data.AsQueryable()
+                        .Select(s => new
+                        {
+                            NestedData = s.Nest != null ? new { s.Nest.Id } : null
+                        })
+                        .ToList();
+                }
+            }
+            """;
+
+        // Expect no diagnostics because it's inside regular Select, not SelectExpr
+        await RunAnalyzerTestAsync(test);
     }
 
     private static async Task RunAnalyzerTestAsync(

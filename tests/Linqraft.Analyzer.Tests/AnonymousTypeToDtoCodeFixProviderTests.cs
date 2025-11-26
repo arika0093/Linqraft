@@ -261,6 +261,8 @@ namespace TestNamespace
     }
 }";
 
+        // Note: Issue #155 changes the naming of nested DTOs to use the property name (Data)
+        // instead of the source type name (Channel). So the nested DTO is now named DataDto_*
         var fixedCode =
             @"namespace TestNamespace
 {
@@ -278,7 +280,7 @@ namespace TestNamespace
             var result = new ResultDto
             {
                 Id = 1,
-                Data = new ChannelDto_B0258595
+                Data = new DataDto_B0258595
                 {
                     Id = channel.Id,
                     Name = channel.Name
@@ -287,7 +289,7 @@ namespace TestNamespace
         }
     }
 
-    public partial class ChannelDto_B0258595
+    public partial class DataDto_B0258595
     {
         public required int Id { get; set; }
         public required string Name { get; set; }
@@ -296,7 +298,7 @@ namespace TestNamespace
     public partial class ResultDto
     {
         public required int Id { get; set; }
-        public required global::TestNamespace.ChannelDto_B0258595? Data { get; set; }
+        public required global::TestNamespace.DataDto_B0258595? Data { get; set; }
     }
 }";
 
@@ -377,6 +379,8 @@ class Test
     }
 }";
 
+        // Note: Issue #155 changes the naming of nested DTOs to use the property name (ItemData)
+        // instead of the source type name (Item). So the nested DTO is now named ItemDataDto_*
         var fixedCode =
             @"class Item
 {
@@ -392,7 +396,7 @@ class Test
         var result = new ResultDto
         {
             Id = 1,
-            ItemData = new ItemDto_B1D867F4
+            ItemData = new ItemDataDto_B1D867F4
             {
                 Name = item.Name,
                 Value = item.Value
@@ -401,7 +405,7 @@ class Test
     }
 }
 
-public partial class ItemDto_B1D867F4
+public partial class ItemDataDto_B1D867F4
 {
     public required string Name { get; set; }
     public required int Value { get; set; }
@@ -411,7 +415,7 @@ public partial class ItemDto_B1D867F4
 public partial class ResultDto
 {
     public required int Id { get; set; }
-    public required global::ItemDto_B1D867F4? ItemData { get; set; }
+    public required global::ItemDataDto_B1D867F4? ItemData { get; set; }
 }";
 
         var expected0 = new DiagnosticResult(
