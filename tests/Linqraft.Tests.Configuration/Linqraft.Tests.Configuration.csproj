@@ -4,6 +4,7 @@
     <LinqraftRecordGenerate>true</LinqraftRecordGenerate>
     <LinqraftPropertyAccessor>GetAndInternalSet</LinqraftPropertyAccessor>
     <LinqraftHasRequired>false</LinqraftHasRequired>
+    <LinqraftCommentOutput>None</LinqraftCommentOutput>
     <EmitCompilerGeneratedFiles>true</EmitCompilerGeneratedFiles>
     <CompilerGeneratedFilesOutputPath>.generated</CompilerGeneratedFilesOutputPath>
   </PropertyGroup>

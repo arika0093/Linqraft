@@ -1,5 +1,6 @@
 using System.Collections.Generic;
 using System.Linq;
+using Linqraft.Core.RoslynHelpers;
 using Linqraft.Core.SyntaxHelpers;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
@@ -18,6 +19,11 @@ public record DtoStructure(ITypeSymbol SourceType, List<DtoProperty> Properties)
     /// then HintName would be "SampleData".
     /// </summary>
     public string? HintName { get; init; }
+
+    /// <summary>
+    /// Documentation information for the source type (for class-level comments)
+    /// </summary>
+    public DocumentationCommentHelper.DocumentationInfo? SourceTypeDocumentation { get; init; }
 
     /// <summary>
     /// Gets the simple name of the source type
@@ -127,6 +133,7 @@ public record DtoStructure(ITypeSymbol SourceType, List<DtoProperty> Properties)
         return new DtoStructure(SourceType: targetType, Properties: properties)
         {
             HintName = hintName,
+            SourceTypeDocumentation = DocumentationCommentHelper.GetTypeDocumentation(sourceType),
         };
     }
 
@@ -206,6 +213,7 @@ public record DtoStructure(ITypeSymbol SourceType, List<DtoProperty> Properties)
         return new DtoStructure(SourceType: sourceType, Properties: properties)
         {
             HintName = hintName,
+            SourceTypeDocumentation = DocumentationCommentHelper.GetTypeDocumentation(sourceType),
         };
     }
 
