@@ -72,7 +72,7 @@ public static class DocumentationCommentHelper
     /// Extracts documentation information from a property symbol
     /// </summary>
     /// <param name="propertySymbol">The property symbol to extract documentation from</param>
-    /// <param name="containingTypeName">The name of the containing type for source reference</param>
+    /// <param name="containingTypeName">The name of the containing type for source reference (used in display path)</param>
     /// <returns>Documentation information</returns>
     public static DocumentationInfo GetPropertyDocumentation(
         IPropertySymbol? propertySymbol,
@@ -85,16 +85,23 @@ public static class DocumentationCommentHelper
         var summary = GetSummaryFromSymbol(propertySymbol);
         var attributes = GetDataAnnotationAttributes(propertySymbol);
 
-        var typeName = containingTypeName ?? propertySymbol.ContainingType?.Name ?? "";
-        var sourceRef = string.IsNullOrEmpty(typeName)
+        // For source reference (display path), use the provided containing type name
+        var displayTypeName = containingTypeName ?? propertySymbol.ContainingType?.Name ?? "";
+        var sourceRef = string.IsNullOrEmpty(displayTypeName)
             ? propertySymbol.Name
-            : $"{typeName}.{propertySymbol.Name}";
+            : $"{displayTypeName}.{propertySymbol.Name}";
+
+        // For cref, use the actual containing type from the symbol (proper class reference)
+        var actualContainingTypeName = propertySymbol.ContainingType?.Name ?? "";
+        var cref = string.IsNullOrEmpty(actualContainingTypeName)
+            ? propertySymbol.Name
+            : $"{actualContainingTypeName}.{propertySymbol.Name}";
 
         return new DocumentationInfo
         {
             Summary = summary,
             SourceReference = sourceRef,
-            SourceCref = sourceRef,
+            SourceCref = cref,
             Attributes = attributes,
         };
     }
@@ -103,7 +110,7 @@ public static class DocumentationCommentHelper
     /// Extracts documentation information from a field symbol
     /// </summary>
     /// <param name="fieldSymbol">The field symbol to extract documentation from</param>
-    /// <param name="containingTypeName">The name of the containing type for source reference</param>
+    /// <param name="containingTypeName">The name of the containing type for source reference (used in display path)</param>
     /// <returns>Documentation information</returns>
     public static DocumentationInfo GetFieldDocumentation(
         IFieldSymbol? fieldSymbol,
@@ -116,16 +123,23 @@ public static class DocumentationCommentHelper
         var summary = GetSummaryFromSymbol(fieldSymbol);
         var attributes = GetDataAnnotationAttributes(fieldSymbol);
 
-        var typeName = containingTypeName ?? fieldSymbol.ContainingType?.Name ?? "";
-        var sourceRef = string.IsNullOrEmpty(typeName)
+        // For source reference (display path), use the provided containing type name
+        var displayTypeName = containingTypeName ?? fieldSymbol.ContainingType?.Name ?? "";
+        var sourceRef = string.IsNullOrEmpty(displayTypeName)
             ? fieldSymbol.Name
-            : $"{typeName}.{fieldSymbol.Name}";
+            : $"{displayTypeName}.{fieldSymbol.Name}";
+
+        // For cref, use the actual containing type from the symbol (proper class reference)
+        var actualContainingTypeName = fieldSymbol.ContainingType?.Name ?? "";
+        var cref = string.IsNullOrEmpty(actualContainingTypeName)
+            ? fieldSymbol.Name
+            : $"{actualContainingTypeName}.{fieldSymbol.Name}";
 
         return new DocumentationInfo
         {
             Summary = summary,
             SourceReference = sourceRef,
-            SourceCref = sourceRef,
+            SourceCref = cref,
             Attributes = attributes,
         };
     }
