@@ -25,12 +25,11 @@ public static class DocumentationCommentHelper
         /// <summary>
         /// The source expression reference (e.g., "TestData.Id")
         /// </summary>
-        public string? SourceReference { get; init; }
-
-        /// <summary>
-        /// The source symbol reference for generating see cref (e.g., "TestData.Id")
-        /// </summary>
-        public string? SourceCref { get; init; }
+        public string? SourceReference
+        {
+            get => field;
+            set => field = value?.Replace(" ", "");
+        }
 
         /// <summary>
         /// List of attribute names (e.g., ["Key", "Required", "StringLength(100)"])
@@ -41,9 +40,9 @@ public static class DocumentationCommentHelper
         /// Returns true if there is any documentation to output
         /// </summary>
         public bool HasDocumentation =>
-            !string.IsNullOrEmpty(Summary) ||
-            !string.IsNullOrEmpty(SourceReference) ||
-            Attributes.Count > 0;
+            !string.IsNullOrEmpty(Summary)
+            || !string.IsNullOrEmpty(SourceReference)
+            || Attributes.Count > 0;
     }
 
     /// <summary>
@@ -63,7 +62,6 @@ public static class DocumentationCommentHelper
         {
             Summary = summary,
             SourceReference = typeSymbol.Name,
-            SourceCref = typeSymbol.ToDisplayString(SymbolDisplayFormat.MinimallyQualifiedFormat),
             Attributes = attributes,
         };
     }
@@ -91,17 +89,10 @@ public static class DocumentationCommentHelper
             ? propertySymbol.Name
             : $"{displayTypeName}.{propertySymbol.Name}";
 
-        // For cref, use the actual containing type from the symbol (proper class reference)
-        var actualContainingTypeName = propertySymbol.ContainingType?.Name ?? "";
-        var cref = string.IsNullOrEmpty(actualContainingTypeName)
-            ? propertySymbol.Name
-            : $"{actualContainingTypeName}.{propertySymbol.Name}";
-
         return new DocumentationInfo
         {
             Summary = summary,
             SourceReference = sourceRef,
-            SourceCref = cref,
             Attributes = attributes,
         };
     }
@@ -129,17 +120,10 @@ public static class DocumentationCommentHelper
             ? fieldSymbol.Name
             : $"{displayTypeName}.{fieldSymbol.Name}";
 
-        // For cref, use the actual containing type from the symbol (proper class reference)
-        var actualContainingTypeName = fieldSymbol.ContainingType?.Name ?? "";
-        var cref = string.IsNullOrEmpty(actualContainingTypeName)
-            ? fieldSymbol.Name
-            : $"{actualContainingTypeName}.{fieldSymbol.Name}";
-
         return new DocumentationInfo
         {
             Summary = summary,
             SourceReference = sourceRef,
-            SourceCref = cref,
             Attributes = attributes,
         };
     }
@@ -166,8 +150,7 @@ public static class DocumentationCommentHelper
         var commentAttr = symbol
             .GetAttributes()
             .FirstOrDefault(a =>
-                a.AttributeClass?.Name == "CommentAttribute" ||
-                a.AttributeClass?.Name == "Comment"
+                a.AttributeClass?.Name == "CommentAttribute" || a.AttributeClass?.Name == "Comment"
             );
         if (commentAttr?.ConstructorArguments.Length > 0)
         {
@@ -180,8 +163,7 @@ public static class DocumentationCommentHelper
         var displayAttr = symbol
             .GetAttributes()
             .FirstOrDefault(a =>
-                a.AttributeClass?.Name == "DisplayAttribute" ||
-                a.AttributeClass?.Name == "Display"
+                a.AttributeClass?.Name == "DisplayAttribute" || a.AttributeClass?.Name == "Display"
             );
         if (displayAttr != null)
         {
@@ -253,7 +235,8 @@ public static class DocumentationCommentHelper
         {
             var content = match.Groups[1].Value;
             // Clean up the content: remove leading whitespace and trim, join without extra spaces
-            var lines = content.Split('\n')
+            var lines = content
+                .Split('\n')
                 .Select(line => line.Trim())
                 .Where(line => !string.IsNullOrEmpty(line));
             return string.Join("", lines);
@@ -369,7 +352,8 @@ public static class DocumentationCommentHelper
                 // Try to get the enum member name
                 if (constant.Type is INamedTypeSymbol namedType)
                 {
-                    var member = namedType.GetMembers()
+                    var member = namedType
+                        .GetMembers()
                         .OfType<IFieldSymbol>()
                         .FirstOrDefault(f =>
                             f.HasConstantValue && f.ConstantValue?.Equals(constant.Value) == true
@@ -427,21 +411,7 @@ public static class DocumentationCommentHelper
             // Add source reference
             if (!string.IsNullOrEmpty(info.SourceReference))
             {
-                // Only use cref if the source reference is a simple identifier path
-                // (no special characters like ?, (, ), ..., etc.)
-                var canUseCref = !string.IsNullOrEmpty(info.SourceCref)
-                    && IsSimpleIdentifierPath(info.SourceCref!);
-
-                if (canUseCref)
-                {
-                    remarksParts.Add(
-                        $"From: <see cref=\"{EscapeXmlContent(info.SourceCref!)}\"><c>{EscapeXmlContent(info.SourceReference!)}</c></see>"
-                    );
-                }
-                else
-                {
-                    remarksParts.Add($"From: <c>{EscapeXmlContent(info.SourceReference!)}</c>");
-                }
+                remarksParts.Add($"From: <c>{EscapeXmlContent(info.SourceReference!)}</c>");
             }
 
             // Add attributes
@@ -471,27 +441,10 @@ public static class DocumentationCommentHelper
     }
 
     /// <summary>
-    /// Checks if a string is a simple identifier path (e.g., "ClassName.PropertyName")
-    /// Returns false if it contains special characters like ?, (, ), ..., etc.
-    /// </summary>
-    private static bool IsSimpleIdentifierPath(string path)
-    {
-        if (string.IsNullOrEmpty(path))
-            return false;
-
-        // A simple identifier path should match: ClassName or ClassName.PropertyName
-        // It should only contain letters, digits, underscores, and dots (as separators)
-        return Regex.IsMatch(path, @"^[a-zA-Z_][a-zA-Z0-9_]*(\.[a-zA-Z_][a-zA-Z0-9_]*)*$");
-    }
-
-    /// <summary>
     /// Escapes special characters for XML content
     /// </summary>
     private static string EscapeXmlContent(string content)
     {
-        return content
-            .Replace("&", "&amp;")
-            .Replace("<", "&lt;")
-            .Replace(">", "&gt;");
+        return content.Replace("&", "&amp;").Replace("<", "&lt;").Replace(">", "&gt;");
     }
 }

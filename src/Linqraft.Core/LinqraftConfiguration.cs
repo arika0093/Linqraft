@@ -158,7 +158,7 @@ public enum CommentOutputMode
     /// Include only comments from the source class/property (XML documentation, Comment attribute, Display attribute)
     /// Does not include source references (From:) or attribute information
     /// </summary>
-    CommentsOnly = 1,
+    SummaryOnly = 1,
 
     /// <summary>
     /// Do not include any comments in generated DTOs
