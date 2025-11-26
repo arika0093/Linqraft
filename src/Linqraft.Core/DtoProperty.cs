@@ -981,7 +981,8 @@ public record DtoProperty(
             }
 
             // Check if the method has arguments (not just empty parentheses)
-            var argsContent = input.Substring(parenStart + 1, endIndex - parenStart - 2).Trim();
+            var argsLength = Math.Max(0, endIndex - parenStart - 2);
+            var argsContent = argsLength > 0 ? input.Substring(parenStart + 1, argsLength).Trim() : "";
             if (string.IsNullOrEmpty(argsContent))
             {
                 // Empty parentheses, keep as is
