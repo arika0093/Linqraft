@@ -278,7 +278,10 @@ public static class LinqMethodHelper
     /// Collects all invocation expressions within an expression, ordered from innermost to outermost.
     /// This is used to find invocations like .Where(), .OrderBy() that appear before the target LINQ method.
     /// </summary>
-    private static void CollectBaseInvocations(ExpressionSyntax expression, List<InvocationExpressionSyntax> invocations)
+    private static void CollectBaseInvocations(
+        ExpressionSyntax expression,
+        List<InvocationExpressionSyntax> invocations
+    )
     {
         if (expression is InvocationExpressionSyntax invocation)
         {

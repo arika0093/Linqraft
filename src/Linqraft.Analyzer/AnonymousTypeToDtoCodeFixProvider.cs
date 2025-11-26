@@ -413,8 +413,7 @@ public class AnonymousTypeToDtoCodeFixProvider : CodeFixProvider
                 if (structure != null)
                 {
                     // Use BestName which prefers HintName if available (issue #155)
-                    var nestedClassName =
-                        $"{structure.BestName}Dto_{structure.GetUniqueId()}";
+                    var nestedClassName = $"{structure.BestName}Dto_{structure.GetUniqueId()}";
 
                     // Use ObjectCreationHelper to convert with trivia preservation
                     var nestedObjectCreation = ObjectCreationHelper.ConvertToNamedType(

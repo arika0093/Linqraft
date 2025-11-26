@@ -124,7 +124,10 @@ public record DtoStructure(ITypeSymbol SourceType, List<DtoProperty> Properties)
                 properties.Add(property);
             }
         }
-        return new DtoStructure(SourceType: targetType, Properties: properties) { HintName = hintName };
+        return new DtoStructure(SourceType: targetType, Properties: properties)
+        {
+            HintName = hintName,
+        };
     }
 
     /// <summary>
@@ -200,7 +203,10 @@ public record DtoStructure(ITypeSymbol SourceType, List<DtoProperty> Properties)
                 properties.Add(property);
             }
         }
-        return new DtoStructure(SourceType: sourceType, Properties: properties) { HintName = hintName };
+        return new DtoStructure(SourceType: sourceType, Properties: properties)
+        {
+            HintName = hintName,
+        };
     }
 
     private static string? GetImplicitPropertyName(ExpressionSyntax expression)

@@ -418,7 +418,11 @@ public abstract record SelectExprInfo
         // For any other expression (including invocations like FirstOrDefault, Where, etc.),
         // ensure all static/enum/const references are fully qualified (issue #157)
         // Quick check: if there are no member accesses or identifiers, skip the expensive semantic analysis
-        if (!syntax.DescendantNodesAndSelf().Any(n => n is MemberAccessExpressionSyntax || n is IdentifierNameSyntax))
+        if (
+            !syntax
+                .DescendantNodesAndSelf()
+                .Any(n => n is MemberAccessExpressionSyntax || n is IdentifierNameSyntax)
+        )
         {
             return syntax.ToString();
         }
@@ -439,10 +443,7 @@ public abstract record SelectExprInfo
             .ToList();
 
         // Also find all identifier names (for unqualified enum values)
-        var identifiers = syntax
-            .DescendantNodesAndSelf()
-            .OfType<IdentifierNameSyntax>()
-            .ToList();
+        var identifiers = syntax.DescendantNodesAndSelf().OfType<IdentifierNameSyntax>().ToList();
 
         // Build a list of replacements (from original text to fully qualified text)
         var replacements = new List<(string Original, string Replacement, int Start)>();
@@ -455,12 +456,17 @@ public abstract record SelectExprInfo
             var symbolInfo = SemanticModel.GetSymbolInfo(memberAccess);
 
             // Check if it's a static field, const field, or enum value
-            if (symbolInfo.Symbol is IFieldSymbol fieldSymbol && (fieldSymbol.IsStatic || fieldSymbol.IsConst))
+            if (
+                symbolInfo.Symbol is IFieldSymbol fieldSymbol
+                && (fieldSymbol.IsStatic || fieldSymbol.IsConst)
+            )
             {
                 var containingType = fieldSymbol.ContainingType;
                 if (containingType is not null)
                 {
-                    var fullTypeName = containingType.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat);
+                    var fullTypeName = containingType.ToDisplayString(
+                        SymbolDisplayFormat.FullyQualifiedFormat
+                    );
                     var memberName = fieldSymbol.Name;
                     var fullyQualified = $"{fullTypeName}.{memberName}";
                     var original = memberAccess.ToString();
@@ -477,7 +483,9 @@ public abstract record SelectExprInfo
                 var containingType = propertySymbol.ContainingType;
                 if (containingType is not null)
                 {
-                    var fullTypeName = containingType.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat);
+                    var fullTypeName = containingType.ToDisplayString(
+                        SymbolDisplayFormat.FullyQualifiedFormat
+                    );
                     var memberName = propertySymbol.Name;
                     var fullyQualified = $"{fullTypeName}.{memberName}";
                     var original = memberAccess.ToString();
@@ -506,7 +514,9 @@ public abstract record SelectExprInfo
                 if (fieldSymbol.ContainingType?.TypeKind == TypeKind.Enum)
                 {
                     var containingType = fieldSymbol.ContainingType;
-                    var fullTypeName = containingType.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat);
+                    var fullTypeName = containingType.ToDisplayString(
+                        SymbolDisplayFormat.FullyQualifiedFormat
+                    );
                     var memberName = fieldSymbol.Name;
                     var fullyQualified = $"{fullTypeName}.{memberName}";
                     var original = identifier.ToString();
@@ -514,10 +524,15 @@ public abstract record SelectExprInfo
                     replacements.Add((original, fullyQualified, identifier.SpanStart));
                 }
                 // Check if it's a static const field
-                else if ((fieldSymbol.IsStatic || fieldSymbol.IsConst) && fieldSymbol.ContainingType is not null)
+                else if (
+                    (fieldSymbol.IsStatic || fieldSymbol.IsConst)
+                    && fieldSymbol.ContainingType is not null
+                )
                 {
                     var containingType = fieldSymbol.ContainingType;
-                    var fullTypeName = containingType.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat);
+                    var fullTypeName = containingType.ToDisplayString(
+                        SymbolDisplayFormat.FullyQualifiedFormat
+                    );
                     var memberName = fieldSymbol.Name;
                     var fullyQualified = $"{fullTypeName}.{memberName}";
                     var original = identifier.ToString();
@@ -549,7 +564,10 @@ public abstract record SelectExprInfo
                 var substring = result.Substring(offset, original.Length);
                 if (substring == original)
                 {
-                    result = result.Substring(0, offset) + replacement + result.Substring(offset + original.Length);
+                    result =
+                        result.Substring(0, offset)
+                        + replacement
+                        + result.Substring(offset + original.Length);
                 }
             }
         }
@@ -1213,7 +1231,10 @@ public abstract record SelectExprInfo
                 var substring = result.Substring(start, original.Length);
                 if (substring == original)
                 {
-                    result = result.Substring(0, start) + replacement + result.Substring(start + original.Length);
+                    result =
+                        result.Substring(0, start)
+                        + replacement
+                        + result.Substring(start + original.Length);
                 }
             }
         }
