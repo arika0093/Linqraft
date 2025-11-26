@@ -12,9 +12,23 @@ namespace Linqraft.Core;
 public record DtoStructure(ITypeSymbol SourceType, List<DtoProperty> Properties)
 {
     /// <summary>
+    /// Optional hint name for generating better class names.
+    /// This is typically the property name that this structure is assigned to.
+    /// For example, if the anonymous type is used in: SampleData = new { Id = s.Id }
+    /// then HintName would be "SampleData".
+    /// </summary>
+    public string? HintName { get; init; }
+
+    /// <summary>
     /// Gets the simple name of the source type
     /// </summary>
     public string SourceTypeName => SourceType.Name;
+
+    /// <summary>
+    /// Gets the best name to use for generating class names.
+    /// Uses HintName if available, otherwise falls back to SourceTypeName.
+    /// </summary>
+    public string BestName => !string.IsNullOrEmpty(HintName) ? HintName! : SourceTypeName;
 
     /// <summary>
     /// Gets the fully qualified name of the source type
@@ -43,11 +57,13 @@ public record DtoStructure(ITypeSymbol SourceType, List<DtoProperty> Properties)
     /// <param name="namedObj">The object creation expression to analyze</param>
     /// <param name="semanticModel">The semantic model for type resolution</param>
     /// <param name="sourceType">The source type being selected from</param>
+    /// <param name="hintName">Optional hint name for better class naming</param>
     /// <returns>A DtoStructure representing the named type</returns>
     public static DtoStructure? AnalyzeNamedType(
         ObjectCreationExpressionSyntax namedObj,
         SemanticModel semanticModel,
-        ITypeSymbol sourceType
+        ITypeSymbol sourceType,
+        string? hintName = null
     )
     {
         // For named types, get the return type (the type being constructed) instead of the source type
@@ -108,7 +124,7 @@ public record DtoStructure(ITypeSymbol SourceType, List<DtoProperty> Properties)
                 properties.Add(property);
             }
         }
-        return new DtoStructure(SourceType: targetType, Properties: properties);
+        return new DtoStructure(SourceType: targetType, Properties: properties) { HintName = hintName };
     }
 
     /// <summary>
@@ -117,11 +133,13 @@ public record DtoStructure(ITypeSymbol SourceType, List<DtoProperty> Properties)
     /// <param name="anonymousObj">The anonymous object creation expression to analyze</param>
     /// <param name="semanticModel">The semantic model for type resolution</param>
     /// <param name="sourceType">The source type being selected from</param>
+    /// <param name="hintName">Optional hint name for better class naming</param>
     /// <returns>A DtoStructure representing the anonymous type</returns>
     public static DtoStructure? AnalyzeAnonymousType(
         AnonymousObjectCreationExpressionSyntax anonymousObj,
         SemanticModel semanticModel,
-        ITypeSymbol sourceType
+        ITypeSymbol sourceType,
+        string? hintName = null
     )
     {
         // Get the type info of the anonymous object itself
@@ -182,7 +200,7 @@ public record DtoStructure(ITypeSymbol SourceType, List<DtoProperty> Properties)
                 properties.Add(property);
             }
         }
-        return new DtoStructure(SourceType: sourceType, Properties: properties);
+        return new DtoStructure(SourceType: sourceType, Properties: properties) { HintName = hintName };
     }
 
     private static string? GetImplicitPropertyName(ExpressionSyntax expression)

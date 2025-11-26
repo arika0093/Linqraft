@@ -243,7 +243,8 @@ public record DtoProperty(
                         nestedStructure = DtoStructure.AnalyzeAnonymousType(
                             nestedAnonymous,
                             semanticModel,
-                            elementType
+                            elementType,
+                            propertyName
                         );
                     }
                     else if (nestedLambda.Body is ObjectCreationExpressionSyntax nestedNamed)
@@ -251,7 +252,8 @@ public record DtoProperty(
                         nestedStructure = DtoStructure.AnalyzeNamedType(
                             nestedNamed,
                             semanticModel,
-                            elementType
+                            elementType,
+                            propertyName
                         );
                     }
                 }
@@ -347,7 +349,8 @@ public record DtoProperty(
                                         nestedStructure = DtoStructure.AnalyzeAnonymousType(
                                             innerAnonymous,
                                             semanticModel,
-                                            innerElementType
+                                            innerElementType,
+                                            propertyName
                                         );
                                     }
                                     else if (
@@ -358,7 +361,8 @@ public record DtoProperty(
                                         nestedStructure = DtoStructure.AnalyzeNamedType(
                                             innerNamed,
                                             semanticModel,
-                                            innerElementType
+                                            innerElementType,
+                                            propertyName
                                         );
                                     }
                                 }
@@ -373,7 +377,8 @@ public record DtoProperty(
                             nestedStructure = DtoStructure.AnalyzeAnonymousType(
                                 anonymousBody,
                                 semanticModel,
-                                elementType
+                                elementType,
+                                propertyName
                             );
                         }
                         // Note: For simple member access like c => c.GrandChildren,
@@ -417,7 +422,8 @@ public record DtoProperty(
             nestedStructure = DtoStructure.AnalyzeAnonymousType(
                 directAnonymous,
                 semanticModel,
-                sourceTypeForNested
+                sourceTypeForNested,
+                propertyName
             );
         }
 
@@ -458,7 +464,8 @@ public record DtoProperty(
                     nestedStructure = DtoStructure.AnalyzeAnonymousType(
                         anonymousCreation,
                         semanticModel,
-                        underlyingType
+                        underlyingType,
+                        propertyName
                     );
                 }
             }
@@ -484,7 +491,8 @@ public record DtoProperty(
                         nestedStructure = DtoStructure.AnalyzeAnonymousType(
                             anonymousCreation,
                             semanticModel,
-                            elementType
+                            elementType,
+                            propertyName
                         );
                     }
                 }

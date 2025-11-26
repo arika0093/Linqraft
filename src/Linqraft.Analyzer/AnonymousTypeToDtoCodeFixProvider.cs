@@ -369,10 +369,15 @@ public class AnonymousTypeToDtoCodeFixProvider : CodeFixProvider
     /// <summary>
     /// Recursively replaces nested anonymous objects with DTO instantiations
     /// </summary>
+    /// <param name="expression">The expression to process</param>
+    /// <param name="namespaceName">The namespace for the generated DTOs</param>
+    /// <param name="semanticModel">The semantic model for type resolution</param>
+    /// <param name="propertyNameHint">Optional hint for the property name this expression is assigned to (for better class naming)</param>
     private static ExpressionSyntax ReplaceNestedAnonymousObjects(
         ExpressionSyntax expression,
         string namespaceName,
-        SemanticModel semanticModel
+        SemanticModel semanticModel,
+        string? propertyNameHint = null
     )
     {
         // Direct anonymous object creation
@@ -402,12 +407,14 @@ public class AnonymousTypeToDtoCodeFixProvider : CodeFixProvider
                 var structure = DtoStructure.AnalyzeAnonymousType(
                     nestedAnonymous,
                     semanticModel,
-                    sourceType
+                    sourceType,
+                    propertyNameHint
                 );
                 if (structure != null)
                 {
+                    // Use BestName which prefers HintName if available (issue #155)
                     var nestedClassName =
-                        $"{structure.SourceTypeName}Dto_{structure.GetUniqueId()}";
+                        $"{structure.BestName}Dto_{structure.GetUniqueId()}";
 
                     // Use ObjectCreationHelper to convert with trivia preservation
                     var nestedObjectCreation = ObjectCreationHelper.ConvertToNamedType(
@@ -514,8 +521,9 @@ public class AnonymousTypeToDtoCodeFixProvider : CodeFixProvider
                 result.AddRange(nestedClasses);
 
                 // Create DTO for this nested structure
+                // Use BestName which prefers HintName if available (issue #155)
                 var nestedClassName =
-                    $"{prop.NestedStructure.SourceTypeName}Dto_{prop.NestedStructure.GetUniqueId()}";
+                    $"{prop.NestedStructure.BestName}Dto_{prop.NestedStructure.GetUniqueId()}";
                 var nestedDtoInfo = new GenerateDtoClassInfo
                 {
                     Accessibility = "public",
@@ -604,10 +612,12 @@ public class AnonymousTypeToDtoCodeFixProvider : CodeFixProvider
     )
     {
         var propertyName = initializer.NameEquals!.Name.Identifier.Text;
+        // Pass property name as hint for better DTO class naming (issue #155)
         var replacedValue = ReplaceNestedAnonymousObjects(
             initializer.Expression,
             namespaceName,
-            semanticModel
+            semanticModel,
+            propertyName
         );
 
         // Create assignment expression without trivia first
@@ -635,10 +645,12 @@ public class AnonymousTypeToDtoCodeFixProvider : CodeFixProvider
     )
     {
         var propertyName = GetPropertyNameFromExpression(initializer.Expression);
+        // Pass property name as hint for better DTO class naming (issue #155)
         var replacedValue = ReplaceNestedAnonymousObjects(
             initializer.Expression,
             namespaceName,
-            semanticModel
+            semanticModel,
+            propertyName
         );
 
         // Create assignment expression without trivia first

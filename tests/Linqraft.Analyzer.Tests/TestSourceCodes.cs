@@ -19,6 +19,22 @@ internal static class TestSourceCodes
         """;
 
     /// <summary>
+    /// SelectExpr extension method in the Linqraft namespace (for tests that need to detect SelectExpr calls)
+    /// </summary>
+    public const string SelectExprWithFuncInLinqraftNamespace = """
+        namespace Linqraft
+        {
+            static class Extensions
+            {
+                public static IQueryable<TResult> SelectExpr<TSource, TResult>(
+                    this IQueryable<TSource> source,
+                    System.Func<TSource, TResult> selector)
+                    => source.Select(x => selector(x));
+            }
+        }
+        """;
+
+    /// <summary>
     /// SelectExpr extension method that accepts Func with TResult and capture parameter
     /// </summary>
     public const string SelectExprWithFuncAndCapture = """
