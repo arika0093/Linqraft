@@ -19,7 +19,8 @@ public record DtoProperty(
     ExpressionSyntax OriginalSyntax,
     ITypeSymbol TypeSymbol,
     DtoStructure? NestedStructure,
-    string? Accessibility = null
+    string? Accessibility = null,
+    bool IsNestedFromNamedType = false
 )
 {
     /// <summary>
@@ -139,6 +140,7 @@ public record DtoProperty(
 
         // Detect nested Select (e.g., s.Childs.Select(...) or s.Childs.Select(...).ToList())
         DtoStructure? nestedStructure = null;
+        bool isNestedFromNamedType = false;
         // First, try to find Select invocation (handles both direct Select and chained methods like ToList)
         var selectInvocation = FindSelectInvocation(expression);
         if (selectInvocation is not null && selectInvocation.ArgumentList.Arguments.Count > 0)
@@ -255,6 +257,7 @@ public record DtoProperty(
                             elementType,
                             propertyName
                         );
+                        isNestedFromNamedType = true;
                     }
                 }
             }
@@ -364,6 +367,7 @@ public record DtoProperty(
                                             innerElementType,
                                             propertyName
                                         );
+                                        isNestedFromNamedType = true;
                                     }
                                 }
                             }
@@ -541,7 +545,8 @@ public record DtoProperty(
             OriginalSyntax: expression,
             TypeSymbol: finalPropertyType,
             NestedStructure: nestedStructure,
-            Accessibility: accessibility
+            Accessibility: accessibility,
+            IsNestedFromNamedType: isNestedFromNamedType
         );
     }
 
