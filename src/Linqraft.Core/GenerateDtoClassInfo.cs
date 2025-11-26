@@ -124,7 +124,8 @@ public class GenerateDtoClassInfo
             var propertyType = prop.TypeName;
 
             // For nested structures, recursively generate DTOs (add first)
-            if (prop.NestedStructure is not null)
+            // But skip if IsNestedFromNamedType is true - in that case, keep the original named type
+            if (prop.NestedStructure is not null && !prop.IsNestedFromNamedType)
             {
                 var nestStructure = prop.NestedStructure;
 
