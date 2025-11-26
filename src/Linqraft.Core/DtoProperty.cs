@@ -946,7 +946,10 @@ public record DtoProperty(
 
             // Find the end of the method name
             var methodNameEnd = dotIndex + 1;
-            while (methodNameEnd < input.Length && (char.IsLetterOrDigit(input[methodNameEnd]) || input[methodNameEnd] == '_'))
+            while (
+                methodNameEnd < input.Length
+                && (char.IsLetterOrDigit(input[methodNameEnd]) || input[methodNameEnd] == '_')
+            )
             {
                 methodNameEnd++;
             }
@@ -982,7 +985,8 @@ public record DtoProperty(
 
             // Check if the method has arguments (not just empty parentheses)
             var argsLength = Math.Max(0, endIndex - parenStart - 2);
-            var argsContent = argsLength > 0 ? input.Substring(parenStart + 1, argsLength).Trim() : "";
+            var argsContent =
+                argsLength > 0 ? input.Substring(parenStart + 1, argsLength).Trim() : "";
             if (string.IsNullOrEmpty(argsContent))
             {
                 // Empty parentheses, keep as is
