@@ -26,11 +26,11 @@ public class Issue159_NestedObjectCreationTest
                         [
                             new Issue159_Child3 { Id = 1 },
                             new Issue159_Child3 { Id = 2 },
-                        ]
-                    }
-                ]
-            }
-        }
+                        ],
+                    },
+                ],
+            },
+        },
     ];
 
     /// <summary>
@@ -72,6 +72,66 @@ public class Issue159_NestedObjectCreationTest
         var result = _datas
             .AsQueryable()
             .SelectExpr(d => new
+            {
+                TestData = d.InnerData?.Childs.Select(c => new
+                {
+                    TestData2 = c.AnotherChilds.Select(a => new
+                    {
+                        // Direct named type - should be fully qualified
+                        Inner1 = new Issue159_TestInnerData { Id = d.TestInnerId },
+                        // Named type with nested object creation - both should be fully qualified
+                        Inner2 = new Issue159_TestInnerData2
+                        {
+                            Child = new Issue159_TestInnerData2Child { Id = d.TestInnerId },
+                        },
+                    }),
+                }),
+            })
+            .ToList();
+
+        result.ShouldNotBeNull();
+        result.Count.ShouldBe(1);
+    }
+
+    /// <summary>
+    /// Test that nested object creations in Select use fully qualified type names
+    /// and named types are preserved without DTO conversion
+    /// </summary>
+    [Fact]
+    public void SelectExpr_NestedNamedType_ShouldPreserveOriginalType_WithExplicit()
+    {
+        var result = _datas
+            .AsQueryable()
+            .SelectExpr<Issue159_TestData, Issue159TestDtoShouldPreserveOriginal>(d => new
+            {
+                TestData = d.InnerData?.Childs.Select(c => new
+                {
+                    // Named type in nested Select should be preserved
+                    InnerNestSelect = d
+                        .InnerData?.Childs.Select(c2 => new Issue159_TestInnerData
+                        {
+                            Id = d.TestInnerId,
+                        })
+                        .ToList(),
+                }),
+            })
+            .ToList();
+
+        result.ShouldNotBeNull();
+        result.Count.ShouldBe(1);
+        var first = result[0];
+        first.TestData.ShouldNotBeNull();
+    }
+
+    /// <summary>
+    /// Test that nested object creations use fully qualified type names in initializers
+    /// </summary>
+    [Fact]
+    public void SelectExpr_NestedObjectInInitializer_ShouldUseFullyQualifiedNames_WithExplicit()
+    {
+        var result = _datas
+            .AsQueryable()
+            .SelectExpr<Issue159_TestData, Issue159TestDtoShouldUseFullyQualifiedNames>(d => new
             {
                 TestData = d.InnerData?.Childs.Select(c => new
                 {
