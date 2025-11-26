@@ -367,6 +367,32 @@ It is detected as an error, so just apply the code fix.
 
 ![](./assets/local-variable-capture-err.png)
 
+### Removing nullability from arrays
+Basically, the types of the DTO class are generated as written. However, nullability is automatically removed at generation time for array types.
+Because in array types, there is little need to distinguish between `null` and `[]`.
+For example, the following transformation is performed.
+
+```csharp
+query.SelectExpr<Entity, EntityDto>(e => new
+{
+    // in general, this property is generated as List<string>?
+    // but Linqraft removes nullability for array types.
+    // so the generated type is List<string>.
+    ChildNames = e.Child?.Select(c => c.Name).ToList(),
+
+    // This also applies to auto-generated child classes.
+    // so the generated type is IEnumerable<ChildDto_HASH1234>.
+    ChildDtos = e.Child?.Select(c => new { c.Name, c.Description }),
+
+    // When explicitly comparing with a ternary operator, it is generated as a nullable type as usual.
+    // therefore, in this case, it is generated as List<string>?.
+    ExplicitNullableNames = e.Child != null ? e.Child.Select(c => c.Name).ToList() : null,
+});
+```
+
+This change helps avoid unnecessary null checks like `foreach(var name in dto.ChildNames ?? [])`, keeping the code simple.
+
+
 ### Partial Classes
 You can extend the generated DTO classes as needed since they are output as `partial` classes.
 
@@ -422,7 +448,7 @@ Linqraft supports several MSBuild properties to customize the generated code:
     <!-- has required keyword on properties -->
     <LinqraftHasRequired>true</LinqraftHasRequired>
     <!-- generate xml documentation comments on properties -->
-    <!-- All(summary+reference), SummaryOnly(summary only), None(no comments) -->
+    <!-- All(summary+reference), SummaryOnly(summary), None(no comments) -->
     <LinqraftCommentOutput>All</LinqraftCommentOutput>
   </PropertyGroup>
 </Project>
