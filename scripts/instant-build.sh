@@ -1,3 +1,3 @@
 # build only linqraft source files for instant feedback
-dotnet clean
+sh scripts/cleanup.sh
 dotnet build ./src/Linqraft/ --no-incremental
