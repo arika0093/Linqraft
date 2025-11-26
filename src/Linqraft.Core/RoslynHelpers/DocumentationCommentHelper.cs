@@ -135,6 +135,7 @@ public static class DocumentationCommentHelper
     /// 1. XML documentation (/// <summary>)
     /// 2. [Comment("...")] attribute
     /// 3. [Display(Name="...")] attribute
+    /// 4. Regular comments (// comment) from leading trivia
     /// </summary>
     private static string? GetSummaryFromSymbol(ISymbol symbol)
     {
@@ -176,7 +177,50 @@ public static class DocumentationCommentHelper
                 return displayName;
         }
 
+        // 4. Try to get from regular comments (// comment) in leading trivia
+        var regularComment = ExtractRegularComment(symbol);
+        if (!string.IsNullOrEmpty(regularComment))
+            return regularComment;
+
         return null;
+    }
+
+    /// <summary>
+    /// Extracts regular single-line comments (// comment) from the symbol's syntax
+    /// </summary>
+    private static string? ExtractRegularComment(ISymbol symbol)
+    {
+        // Get the declaring syntax reference
+        var syntaxRef = symbol.DeclaringSyntaxReferences.FirstOrDefault();
+        if (syntaxRef == null)
+            return null;
+
+        var syntax = syntaxRef.GetSyntax();
+        if (syntax == null)
+            return null;
+
+        // Get leading trivia (comments before the declaration)
+        var leadingTrivia = syntax.GetLeadingTrivia();
+        var comments = new List<string>();
+
+        foreach (var trivia in leadingTrivia)
+        {
+            // Check for single-line comments
+            if (trivia.IsKind(Microsoft.CodeAnalysis.CSharp.SyntaxKind.SingleLineCommentTrivia))
+            {
+                var commentText = trivia.ToString();
+                // Remove the // prefix and trim
+                if (commentText.StartsWith("//"))
+                {
+                    var text = commentText.Substring(2).Trim();
+                    if (!string.IsNullOrEmpty(text))
+                        comments.Add(text);
+                }
+            }
+        }
+
+        // Return concatenated comments if any found
+        return comments.Count > 0 ? string.Join(" ", comments) : null;
     }
 
     /// <summary>
@@ -194,11 +238,11 @@ public static class DocumentationCommentHelper
         if (match.Success)
         {
             var content = match.Groups[1].Value;
-            // Clean up the content: remove leading whitespace and trim
+            // Clean up the content: remove leading whitespace and trim, join without extra spaces
             var lines = content.Split('\n')
                 .Select(line => line.Trim())
                 .Where(line => !string.IsNullOrEmpty(line));
-            return string.Join(" ", lines);
+            return string.Join("", lines);
         }
 
         return null;
@@ -212,47 +256,36 @@ public static class DocumentationCommentHelper
         var result = new List<string>();
         var attributes = symbol.GetAttributes();
 
-        // Attributes to include (commonly used data annotations)
-        var includedAttributes = new HashSet<string>
+        // Namespaces to include attributes from
+        var includedNamespaces = new[]
         {
-            // Validation attributes
-            "Key", "KeyAttribute",
-            "Required", "RequiredAttribute",
-            "StringLength", "StringLengthAttribute",
-            "MaxLength", "MaxLengthAttribute",
-            "MinLength", "MinLengthAttribute",
-            "Range", "RangeAttribute",
-            "RegularExpression", "RegularExpressionAttribute",
-            "EmailAddress", "EmailAddressAttribute",
-            "Phone", "PhoneAttribute",
-            "Url", "UrlAttribute",
-            "CreditCard", "CreditCardAttribute",
-            "Compare", "CompareAttribute",
-            // Database attributes
-            "Column", "ColumnAttribute",
-            "Table", "TableAttribute",
-            "ForeignKey", "ForeignKeyAttribute",
-            "NotMapped", "NotMappedAttribute",
-            "DatabaseGenerated", "DatabaseGeneratedAttribute",
-            "Timestamp", "TimestampAttribute",
-            "ConcurrencyCheck", "ConcurrencyCheckAttribute",
-            // JSON serialization attributes
-            "JsonPropertyName", "JsonPropertyNameAttribute",
-            "JsonIgnore", "JsonIgnoreAttribute",
+            "Microsoft.EntityFrameworkCore",
+            "System.ComponentModel.DataAnnotations",
+            "System.Text.Json.Serialization",
         };
 
         foreach (var attr in attributes)
         {
-            var attrName = attr.AttributeClass?.Name;
-            if (attrName == null)
+            var attrClass = attr.AttributeClass;
+            if (attrClass == null)
                 continue;
+
+            var attrName = attrClass.Name;
 
             // Skip Comment and Display attributes (they're used for summary)
             if (attrName is "Comment" or "CommentAttribute" or "Display" or "DisplayAttribute")
                 continue;
 
-            // Check if this is an included attribute
-            if (!includedAttributes.Contains(attrName))
+            // Check if the attribute is from one of the included namespaces
+            var attrNamespace = attrClass.ContainingNamespace?.ToDisplayString();
+            if (attrNamespace == null)
+                continue;
+
+            var isIncluded = includedNamespaces.Any(ns =>
+                attrNamespace == ns || attrNamespace.StartsWith(ns + ".")
+            );
+
+            if (!isIncluded)
                 continue;
 
             // Build attribute string with arguments

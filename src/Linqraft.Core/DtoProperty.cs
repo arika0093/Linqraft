@@ -906,58 +906,68 @@ public record DtoProperty(
     }
 
     /// <summary>
-    /// Simplifies a source reference by abbreviating Linq operations
+    /// Simplifies a source reference by abbreviating any method calls with arguments
     /// </summary>
     private static string SimplifySourceReference(string expressionStr)
     {
-        // Abbreviate Linq operations with "..."
-        var methodsToAbbreviate = new[]
-        {
-            "Select",
-            "SelectMany",
-            "Where",
-            "OrderBy",
-            "OrderByDescending",
-            "ThenBy",
-            "ThenByDescending",
-            "GroupBy",
-            "Join",
-            "GroupJoin",
-        };
-
-        var result = expressionStr;
-        foreach (var method in methodsToAbbreviate)
-        {
-            // Match method(...) with balanced parentheses
-            result = AbbreviateMethodCall(result, method);
-        }
-
+        // Abbreviate any method call with arguments using regex pattern: .MethodName(args) -> .MethodName(...)
+        // This matches any method call pattern like .Select(x => ...), .Where(...), .CustomMethod(arg1, arg2), etc.
+        var result = AbbreviateAllMethodCalls(expressionStr);
         return result;
     }
 
     /// <summary>
-    /// Abbreviates a method call with balanced parentheses
+    /// Abbreviates all method calls with arguments (any method pattern like .MethodName(args))
     /// </summary>
-    private static string AbbreviateMethodCall(string input, string methodName)
+    private static string AbbreviateAllMethodCalls(string input)
     {
         var result = new System.Text.StringBuilder();
-        var searchPattern = $".{methodName}(";
         int pos = 0;
 
         while (pos < input.Length)
         {
-            var startIndex = input.IndexOf(searchPattern, pos, StringComparison.Ordinal);
-            if (startIndex < 0)
+            // Find the next method call pattern: .MethodName(
+            // Method name must start with a letter and contain only letters/digits
+            var dotIndex = input.IndexOf('.', pos);
+            if (dotIndex < 0 || dotIndex >= input.Length - 2)
             {
                 result.Append(input.Substring(pos));
                 break;
             }
 
+            // Check if this is a method call (letter follows the dot)
+            var nextChar = input[dotIndex + 1];
+            if (!char.IsLetter(nextChar))
+            {
+                result.Append(input.Substring(pos, dotIndex - pos + 1));
+                pos = dotIndex + 1;
+                continue;
+            }
+
+            // Find the end of the method name
+            var methodNameEnd = dotIndex + 1;
+            while (methodNameEnd < input.Length && (char.IsLetterOrDigit(input[methodNameEnd]) || input[methodNameEnd] == '_'))
+            {
+                methodNameEnd++;
+            }
+
+            // Check if there's an opening parenthesis after the method name
+            if (methodNameEnd >= input.Length || input[methodNameEnd] != '(')
+            {
+                // Not a method call, just a property access
+                result.Append(input.Substring(pos, methodNameEnd - pos));
+                pos = methodNameEnd;
+                continue;
+            }
+
+            // This is a method call with arguments
+            var methodName = input.Substring(dotIndex + 1, methodNameEnd - dotIndex - 1);
+
             // Append everything before the method call
-            result.Append(input.Substring(pos, startIndex - pos));
+            result.Append(input.Substring(pos, dotIndex - pos));
 
             // Find the matching closing parenthesis
-            var parenStart = startIndex + searchPattern.Length - 1; // Position of '('
+            var parenStart = methodNameEnd;
             var depth = 1;
             var endIndex = parenStart + 1;
 
@@ -970,8 +980,18 @@ public record DtoProperty(
                 endIndex++;
             }
 
-            // Replace with abbreviated form
-            result.Append($".{methodName}(...)");
+            // Check if the method has arguments (not just empty parentheses)
+            var argsContent = input.Substring(parenStart + 1, endIndex - parenStart - 2).Trim();
+            if (string.IsNullOrEmpty(argsContent))
+            {
+                // Empty parentheses, keep as is
+                result.Append($".{methodName}()");
+            }
+            else
+            {
+                // Has arguments, abbreviate
+                result.Append($".{methodName}(...)");
+            }
             pos = endIndex;
         }
 
