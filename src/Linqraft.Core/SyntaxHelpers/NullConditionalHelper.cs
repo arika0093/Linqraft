@@ -420,27 +420,31 @@ public static class NullConditionalHelper
             && firstMemberAccess.Expression == nullCheckedExpr)
         {
             // Start with a member binding for the first member after null check
-            ExpressionSyntax whenNotNull = SyntaxFactory.MemberBindingExpression(
+            // Preserve the operator token's trivia (which includes leading whitespace/newlines)
+            var memberBinding = SyntaxFactory.MemberBindingExpression(
+                firstMemberAccess.OperatorToken,
                 firstMemberAccess.Name
             );
+            ExpressionSyntax whenNotNull = memberBinding;
 
-            // Now rebuild the rest of the chain
+            // Now rebuild the rest of the chain, preserving trivia from original nodes
             for (int i = 1; i < accessChain.Count; i++)
             {
                 var node = accessChain[i];
 
                 if (node is MemberAccessExpressionSyntax memberAccess)
                 {
-                    // Add another member access
+                    // Add another member access, preserving the operator token's trivia
                     whenNotNull = SyntaxFactory.MemberAccessExpression(
                         SyntaxKind.SimpleMemberAccessExpression,
                         whenNotNull,
+                        memberAccess.OperatorToken,
                         memberAccess.Name
                     );
                 }
                 else if (node is InvocationExpressionSyntax invocation)
                 {
-                    // Add an invocation
+                    // Add an invocation, preserving the argument list with its trivia
                     whenNotNull = SyntaxFactory.InvocationExpression(
                         whenNotNull,
                         invocation.ArgumentList

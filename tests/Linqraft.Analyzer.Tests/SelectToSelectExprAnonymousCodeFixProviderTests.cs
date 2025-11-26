@@ -820,8 +820,8 @@ class Test
             {
                 TestData = d
                         .InnerData.ChildMaybeNull?.AnotherChilds.Where(ac => ac.Id > 0)
-.Select(ac => ac.Id)
-.ToList()
+                        .Select(ac => ac.Id)
+                        .ToList()
 ,
             })
             .ToList();
