@@ -307,8 +307,10 @@ public static class NullConditionalHelper
 
                 // Handle case where the null-checked expression is the base of a member access
                 // e.g., d.InnerData.ChildMaybeNull.AnotherChilds
-                if (parentNode is MemberAccessExpressionSyntax parentMemberAccess
-                    && parentMemberAccess.Expression == matchingMemberAccess)
+                if (
+                    parentNode is MemberAccessExpressionSyntax parentMemberAccess
+                    && parentMemberAccess.Expression == matchingMemberAccess
+                )
                 {
                     // Build the conditional access expression:
                     // d.InnerData.ChildMaybeNull?.AnotherChilds...
@@ -346,7 +348,9 @@ public static class NullConditionalHelper
     /// Normalizes a member access chain by removing internal whitespace/trivia
     /// so that the entire chain is on a single line
     /// </summary>
-    private static ExpressionSyntax NormalizeMemberAccessChain(MemberAccessExpressionSyntax memberAccess)
+    private static ExpressionSyntax NormalizeMemberAccessChain(
+        MemberAccessExpressionSyntax memberAccess
+    )
     {
         // Recursively normalize the expression to remove all internal whitespace
         return NormalizeExpressionRecursive(memberAccess);
@@ -375,7 +379,10 @@ public static class NullConditionalHelper
         else if (expr is InvocationExpressionSyntax invocation)
         {
             var normalizedExpression = NormalizeExpressionRecursive(invocation.Expression);
-            return SyntaxFactory.InvocationExpression(normalizedExpression, invocation.ArgumentList);
+            return SyntaxFactory.InvocationExpression(
+                normalizedExpression,
+                invocation.ArgumentList
+            );
         }
         // For other expressions, just remove leading/trailing trivia
         return expr.WithoutTrivia();
@@ -422,7 +429,9 @@ public static class NullConditionalHelper
                 if (whitespace.Length > spacesToRemove)
                 {
                     // Remove the specified number of spaces
-                    adjustedTrivia.Add(SyntaxFactory.Whitespace(whitespace.Substring(spacesToRemove)));
+                    adjustedTrivia.Add(
+                        SyntaxFactory.Whitespace(whitespace.Substring(spacesToRemove))
+                    );
                 }
                 else
                 {
@@ -491,8 +500,10 @@ public static class NullConditionalHelper
         // The first item after nullCheckedExpr should become a MemberBindingExpression
         var firstNode = accessChain[0];
 
-        if (firstNode is MemberAccessExpressionSyntax firstMemberAccess
-            && firstMemberAccess.Expression == nullCheckedExpr)
+        if (
+            firstNode is MemberAccessExpressionSyntax firstMemberAccess
+            && firstMemberAccess.Expression == nullCheckedExpr
+        )
         {
             // Start with a member binding for the first member after null check
             // Use a clean dot token without extra trivia (it goes right after ?.)
