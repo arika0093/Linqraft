@@ -728,6 +728,112 @@ class Test
         await RunCodeFixTestAsync(test, expected, fixedCode, 0);
     }
 
+    /// <summary>
+    /// Test for issue #160: When converting complex nested objects with ternary null checks,
+    /// the null-conditional operator should be inserted correctly.
+    /// </summary>
+    [Fact]
+    public async Task CodeFix_Issue160_TernaryNullCheckWithLinqChain_ShouldInsertNullConditional()
+    {
+        var test =
+            @"
+using System.Linq;
+using System.Collections.Generic;
+
+class TestData
+{
+    public required ChildData InnerData { get; set; }
+}
+
+class ChildData
+{
+    public required Child2? ChildMaybeNull { get; set; }
+}
+
+class Child2
+{
+    public required List<Child3> AnotherChilds { get; set; }
+}
+
+class Child3
+{
+    public required int Id { get; set; }
+}
+
+class Test
+{
+    private List<TestData> _datas = [];
+
+    void Query()
+    {
+        var result = _datas
+            .AsQueryable()
+            .{|#0:Select|}(d => new
+            {
+                TestData = d.InnerData.ChildMaybeNull != null
+                    ? d
+                        .InnerData.ChildMaybeNull.AnotherChilds.Where(ac => ac.Id > 0)
+                        .Select(ac => ac.Id)
+                        .ToList()
+                    : null,
+            })
+            .ToList();
+    }
+}";
+
+        // The key fix is that the null-conditional operator (?.) is inserted after ChildMaybeNull
+        // The formatting may differ slightly but the semantic behavior is correct
+        var fixedCode =
+            @"
+using System.Linq;
+using System.Collections.Generic;
+
+class TestData
+{
+    public required ChildData InnerData { get; set; }
+}
+
+class ChildData
+{
+    public required Child2? ChildMaybeNull { get; set; }
+}
+
+class Child2
+{
+    public required List<Child3> AnotherChilds { get; set; }
+}
+
+class Child3
+{
+    public required int Id { get; set; }
+}
+
+class Test
+{
+    private List<TestData> _datas = [];
+
+    void Query()
+    {
+        var result = _datas
+            .AsQueryable()
+            .SelectExpr(d => new
+            {
+                TestData = d.InnerData.ChildMaybeNull?.AnotherChilds.Where(ac => ac.Id > 0)
+                    .Select(ac => ac.Id)
+                    .ToList(),
+            })
+            .ToList();
+    }
+}";
+
+        var expected = new DiagnosticResult(
+            SelectToSelectExprAnonymousAnalyzer.AnalyzerId,
+            DiagnosticSeverity.Info
+        ).WithLocation(0);
+
+        await RunCodeFixTestAsync(test, expected, fixedCode, 0);
+    }
+
     private static async Task RunCodeFixTestAsync(
         string source,
         DiagnosticResult expected,

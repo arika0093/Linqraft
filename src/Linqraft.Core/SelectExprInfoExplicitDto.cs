@@ -81,7 +81,9 @@ public record SelectExprInfoExplicitDto : SelectExprInfo
         // So they share the same parent classes
         foreach (var prop in structure.Properties)
         {
-            if (prop.NestedStructure is not null)
+            // Only generate nested DTO classes for anonymous types, not for named types
+            // Named types should preserve the original type, not create DTOs
+            if (prop.NestedStructure is not null && !prop.IsNestedFromNamedType)
             {
                 // Recursively generate nested DTO classes with the same parent info
                 result.AddRange(
