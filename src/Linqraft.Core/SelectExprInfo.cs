@@ -236,6 +236,15 @@ public abstract record SelectExprInfo
         // For nested structure cases
         if (property.NestedStructure is not null)
         {
+            // If the nested structure is from a named type (not anonymous),
+            // preserve the original type name with full qualification
+            if (property.IsNestedFromNamedType)
+            {
+                // For named types in Select, preserve the original object creation
+                // but convert type names to fully qualified names
+                return ConvertNestedSelectWithNamedType(syntax, property, indents);
+            }
+
             // Check if this contains SelectMany first (it's more specific)
             if (RoslynTypeHelper.ContainsSelectManyInvocation(syntax))
             {
@@ -793,6 +802,132 @@ public abstract record SelectExprInfo
             var code = $$"""
                 {{baseExpression}}
                 {{innerSpaces}}.Select({{paramName}} => new {{nestedDtoName}}
+                {{innerSpaces}}{
+                {{propertiesCode}}
+                {{innerSpaces}}}){{formattedChainedMethods}}
+                """;
+            return code;
+        }
+    }
+
+    /// <summary>
+    /// Converts nested Select expressions with named types (not anonymous).
+    /// Preserves the original named type with fully qualified type names.
+    /// </summary>
+    protected string ConvertNestedSelectWithNamedType(
+        ExpressionSyntax syntax,
+        DtoProperty property,
+        int indents
+    )
+    {
+        var nestedStructure = property.NestedStructure!;
+        var spaces = CodeFormatter.IndentSpaces(indents);
+        var innerSpaces = CodeFormatter.IndentSpaces(indents + CodeFormatter.IndentSize);
+
+        // Get the fully qualified type name of the named type
+        var namedTypeName = nestedStructure.SourceTypeFullName;
+
+        // Use Roslyn to extract Select information
+        var selectInfo = ExtractSelectInfoFromSyntax(syntax);
+        if (selectInfo is null)
+        {
+            // Fallback to string representation
+            return syntax.ToString();
+        }
+
+        var (
+            baseExpression,
+            paramName,
+            chainedMethods,
+            hasNullableAccess,
+            coalescingDefaultValue,
+            nullCheckExpression
+        ) = selectInfo.Value;
+
+        // Normalize baseExpression: remove unnecessary whitespace and newlines
+        baseExpression = System.Text.RegularExpressions.Regex.Replace(
+            baseExpression.Trim(),
+            @"\s+",
+            " "
+        );
+        // Remove spaces around dots (property access)
+        baseExpression = System.Text.RegularExpressions.Regex.Replace(
+            baseExpression,
+            @"\s*\.\s*",
+            "."
+        );
+
+        // Normalize nullCheckExpression if present
+        if (nullCheckExpression is not null)
+        {
+            nullCheckExpression = System.Text.RegularExpressions.Regex.Replace(
+                nullCheckExpression.Trim(),
+                @"\s+",
+                " "
+            );
+            nullCheckExpression = System.Text.RegularExpressions.Regex.Replace(
+                nullCheckExpression,
+                @"\s*\.\s*",
+                "."
+            );
+        }
+
+        // Generate property assignments using the named type's structure
+        var propertyIndentSpaces = CodeFormatter.IndentSpaces(
+            indents + CodeFormatter.IndentSize * 2
+        );
+        var propertyAssignments = new List<string>();
+        foreach (var prop in nestedStructure.Properties)
+        {
+            var assignment = GeneratePropertyAssignment(
+                prop,
+                indents + CodeFormatter.IndentSize * 2
+            );
+            propertyAssignments.Add($"{propertyIndentSpaces}{prop.Name} = {assignment}");
+        }
+        var propertiesCode = string.Join($",{CodeFormatter.DefaultNewLine}", propertyAssignments);
+
+        // Format chained methods with proper indentation
+        var formattedChainedMethods = FormatChainedMethods(chainedMethods, innerSpaces);
+
+        // Build the Select expression using the named type (not DTO)
+        if (hasNullableAccess)
+        {
+            var checkExpr = nullCheckExpression ?? baseExpression;
+
+            // For named types, use the same default value logic
+            string defaultValue;
+            if (coalescingDefaultValue is not null)
+            {
+                defaultValue = coalescingDefaultValue;
+            }
+            else if (!RoslynTypeHelper.IsCollectionType(property.TypeSymbol))
+            {
+                defaultValue = "null";
+            }
+            else
+            {
+                defaultValue = GetEmptyCollectionExpression(
+                    property.TypeSymbol,
+                    namedTypeName,
+                    chainedMethods
+                );
+            }
+
+            var code = $$"""
+                {{checkExpr}} != null ? {{baseExpression}}
+                {{innerSpaces}}.Select({{paramName}} => new {{namedTypeName}}
+                {{innerSpaces}}{
+                {{propertiesCode}}
+                {{innerSpaces}}}){{formattedChainedMethods}} : {{defaultValue}}
+                """;
+            return code;
+        }
+        else
+        {
+            var code = $$"""
+                {{baseExpression}}
+                {{innerSpaces}}.Select({{paramName}} => new {{namedTypeName}}
                 {{innerSpaces}}{
                 {{propertiesCode}}
                 {{innerSpaces}}}){{formattedChainedMethods}}
@@ -1438,13 +1573,62 @@ public abstract record SelectExprInfo
             result.Append(objectCreation.ArgumentList.ToString());
         }
 
-        // Preserve initializer if present
+        // Preserve initializer if present, but recursively convert nested object creations
         if (objectCreation.Initializer != null)
         {
             result.Append(' ');
-            result.Append(objectCreation.Initializer.ToString());
+            result.Append(ConvertInitializerToFullyQualified(objectCreation.Initializer));
         }
 
         return result.ToString();
+    }
+
+    /// <summary>
+    /// Converts an initializer expression to use fully qualified type names for nested object creations
+    /// </summary>
+    protected string ConvertInitializerToFullyQualified(InitializerExpressionSyntax initializer)
+    {
+        var result = new StringBuilder();
+        result.Append('{');
+
+        var expressions = new List<string>();
+        foreach (var expr in initializer.Expressions)
+        {
+            if (expr is AssignmentExpressionSyntax assignment)
+            {
+                // Property = value assignment
+                var propertyName = assignment.Left.ToString();
+                var valueExpr = ConvertExpressionToFullyQualified(assignment.Right);
+                expressions.Add($" {propertyName} = {valueExpr}");
+            }
+            else
+            {
+                // Other expression types (collection initializer elements, etc.)
+                expressions.Add($" {ConvertExpressionToFullyQualified(expr)}");
+            }
+        }
+
+        result.Append(string.Join(",", expressions));
+        if (expressions.Count > 0)
+            result.Append(' ');
+        result.Append('}');
+
+        return result.ToString();
+    }
+
+    /// <summary>
+    /// Converts an expression to use fully qualified type names for any object creations
+    /// </summary>
+    protected string ConvertExpressionToFullyQualified(ExpressionSyntax expression)
+    {
+        // Check if the expression is an object creation
+        if (expression is ObjectCreationExpressionSyntax nestedObjectCreation)
+        {
+            return ConvertObjectCreationToFullyQualified(nestedObjectCreation);
+        }
+
+        // For other expression types, return as-is
+        // This could be extended to handle nested expressions like method calls, etc.
+        return expression.ToString();
     }
 }

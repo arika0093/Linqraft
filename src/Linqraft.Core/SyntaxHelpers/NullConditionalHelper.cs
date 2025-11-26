@@ -216,7 +216,14 @@ public static class NullConditionalHelper
         if (nullChecks.Count == 0)
             return null;
 
-        // Parse the full member access chain
+        // First, try to handle complex expressions with method invocations
+        // For expressions like: d.InnerData.ChildMaybeNull.AnotherChilds.Where(...).Select(...).ToList()
+        // We need to find where the null-checked expression appears and insert ?. there
+        var result = TryBuildNullConditionalForComplexExpression(whenTrueExpr, nullChecks);
+        if (result != null)
+            return result;
+
+        // Fallback to original member access chain parsing for simple expressions
         var parts = ParseMemberAccessChain(whenTrueExpr);
         if (parts.Count == 0)
             return whenTrueExpr;
@@ -264,6 +271,192 @@ public static class NullConditionalHelper
         );
 
         return SyntaxFactory.ConditionalAccessExpression(baseExpr, whenNotNull);
+    }
+
+    /// <summary>
+    /// Tries to build a null-conditional expression for complex expressions that contain
+    /// method invocations (like .Where(), .Select(), .ToList(), etc.)
+    /// </summary>
+    private static ExpressionSyntax? TryBuildNullConditionalForComplexExpression(
+        ExpressionSyntax whenTrueExpr,
+        List<ExpressionSyntax> nullChecks
+    )
+    {
+        // Check if expression contains method invocations
+        var hasInvocations = whenTrueExpr
+            .DescendantNodesAndSelf()
+            .OfType<InvocationExpressionSyntax>()
+            .Any();
+
+        if (!hasInvocations)
+            return null;
+
+        // For each null check, try to find where it appears in the expression and insert ?.
+        foreach (var nullCheck in nullChecks)
+        {
+            var nullCheckText = NormalizeExpressionText(nullCheck.ToString());
+
+            // Find the member access in the expression that matches the null check
+            // For example, if nullCheck is "d.InnerData.ChildMaybeNull", we need to find
+            // where this appears in the expression and make it the base of a conditional access
+            var matchingMemberAccess = FindMatchingMemberAccess(whenTrueExpr, nullCheckText);
+            if (matchingMemberAccess != null)
+            {
+                // Find what comes after this member access (the "whenNotNull" part)
+                var parentNode = matchingMemberAccess.Parent;
+
+                // Handle case where the null-checked expression is the base of a member access
+                // e.g., d.InnerData.ChildMaybeNull.AnotherChilds
+                if (parentNode is MemberAccessExpressionSyntax parentMemberAccess
+                    && parentMemberAccess.Expression == matchingMemberAccess)
+                {
+                    // Build the conditional access expression:
+                    // d.InnerData.ChildMaybeNull?.AnotherChilds...
+                    var whenNotNullExpr = BuildWhenNotNullFromParent(
+                        whenTrueExpr,
+                        matchingMemberAccess,
+                        parentMemberAccess.Name
+                    );
+                    if (whenNotNullExpr != null)
+                    {
+                        return SyntaxFactory.ConditionalAccessExpression(
+                            matchingMemberAccess,
+                            whenNotNullExpr
+                        );
+                    }
+                }
+            }
+        }
+
+        return null;
+    }
+
+    /// <summary>
+    /// Normalizes expression text by removing whitespace for comparison
+    /// </summary>
+    private static string NormalizeExpressionText(string text)
+    {
+        return System.Text.RegularExpressions.Regex.Replace(text, @"\s+", "");
+    }
+
+    /// <summary>
+    /// Finds a member access expression that matches the given text pattern
+    /// </summary>
+    private static MemberAccessExpressionSyntax? FindMatchingMemberAccess(
+        ExpressionSyntax expression,
+        string targetText
+    )
+    {
+        var memberAccesses = expression
+            .DescendantNodesAndSelf()
+            .OfType<MemberAccessExpressionSyntax>()
+            .OrderByDescending(ma => ma.Span.Length); // Start with longer matches
+
+        foreach (var memberAccess in memberAccesses)
+        {
+            var normalizedText = NormalizeExpressionText(memberAccess.ToString());
+            if (normalizedText == targetText)
+            {
+                return memberAccess;
+            }
+        }
+
+        return null;
+    }
+
+    /// <summary>
+    /// Builds the "whenNotNull" expression for a conditional access, starting from the member name
+    /// after the null-checked expression
+    /// </summary>
+    private static ExpressionSyntax? BuildWhenNotNullFromParent(
+        ExpressionSyntax fullExpr,
+        MemberAccessExpressionSyntax nullCheckedExpr,
+        SimpleNameSyntax firstMemberAfterNullCheck
+    )
+    {
+        // We need to reconstruct the expression after the null-checked part
+        // For: d.InnerData.ChildMaybeNull.AnotherChilds.Where(...).Select(...).ToList()
+        // If nullCheckedExpr is d.InnerData.ChildMaybeNull,
+        // We want to build: .AnotherChilds.Where(...).Select(...).ToList()
+        // As a MemberBindingExpression followed by invocations
+
+        // Find the position in the tree where nullCheckedExpr ends
+        // and build everything after it as member bindings and invocations
+        var result = RebuildExpressionAsConditionalAccess(fullExpr, nullCheckedExpr);
+        return result;
+    }
+
+    /// <summary>
+    /// Rebuilds an expression tree replacing a member access point with a conditional access
+    /// </summary>
+    private static ExpressionSyntax? RebuildExpressionAsConditionalAccess(
+        ExpressionSyntax fullExpr,
+        MemberAccessExpressionSyntax nullCheckedExpr
+    )
+    {
+        // Find where nullCheckedExpr is in the tree and what comes after it
+        // Walk up from nullCheckedExpr to understand the structure
+
+        var current = nullCheckedExpr.Parent;
+        var accessChain = new List<SyntaxNode>();
+
+        // Collect all nodes from the null-checked expression up to the full expression
+        while (current != null && current != fullExpr.Parent)
+        {
+            accessChain.Add(current);
+            if (current == fullExpr)
+                break;
+            current = current.Parent;
+        }
+
+        if (accessChain.Count == 0)
+            return null;
+
+        // Now build the whenNotNull expression from the collected chain
+        // The first item after nullCheckedExpr should become a MemberBindingExpression
+        var firstNode = accessChain[0];
+
+        if (firstNode is MemberAccessExpressionSyntax firstMemberAccess
+            && firstMemberAccess.Expression == nullCheckedExpr)
+        {
+            // Start with a member binding for the first member after null check
+            ExpressionSyntax whenNotNull = SyntaxFactory.MemberBindingExpression(
+                firstMemberAccess.Name
+            );
+
+            // Now rebuild the rest of the chain
+            for (int i = 1; i < accessChain.Count; i++)
+            {
+                var node = accessChain[i];
+
+                if (node is MemberAccessExpressionSyntax memberAccess)
+                {
+                    // Add another member access
+                    whenNotNull = SyntaxFactory.MemberAccessExpression(
+                        SyntaxKind.SimpleMemberAccessExpression,
+                        whenNotNull,
+                        memberAccess.Name
+                    );
+                }
+                else if (node is InvocationExpressionSyntax invocation)
+                {
+                    // Add an invocation
+                    whenNotNull = SyntaxFactory.InvocationExpression(
+                        whenNotNull,
+                        invocation.ArgumentList
+                    );
+                }
+                else if (node == fullExpr)
+                {
+                    // We've reached the full expression
+                    break;
+                }
+            }
+
+            return whenNotNull;
+        }
+
+        return null;
     }
 
     // Private helper methods
