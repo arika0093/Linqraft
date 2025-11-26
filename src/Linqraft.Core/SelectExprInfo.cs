@@ -1117,9 +1117,13 @@ public abstract record SelectExprInfo
         if (info is null)
             return null;
 
+        // Fully qualify static references in base expression (issue #157)
+        // This handles .Where(c => c.EnumValue == SampleEnum.A) before the .Select()
+        var fullyQualifiedBaseExpression = FullyQualifyBaseExpression(info);
+
         // Apply comment removal to base expression
         var cleanedBaseExpression = RemoveComments(
-                SyntaxFactory.ParseExpression(info.BaseExpression)
+                SyntaxFactory.ParseExpression(fullyQualifiedBaseExpression)
             )
             .ToString();
 
@@ -1133,14 +1137,135 @@ public abstract record SelectExprInfo
                 .ToString();
         }
 
+        // Fully qualify static references in chained methods (issue #157)
+        var fullyQualifiedChainedMethods = FullyQualifyChainedMethods(info);
+
         return (
             cleanedBaseExpression,
             info.ParameterName,
-            info.ChainedMethods,
+            fullyQualifiedChainedMethods,
             info.HasNullableAccess,
             info.CoalescingDefaultValue,
             cleanedNullCheckExpression
         );
+    }
+
+    /// <summary>
+    /// Fully qualifies static, const, and enum references in the base expression.
+    /// This handles cases like s.Children.Where(c => c.EnumValue == SampleEnum.Value).Select(...)
+    /// where the .Where() comes before the .Select()
+    /// </summary>
+    protected string FullyQualifyBaseExpression(LinqMethodHelper.LinqInvocationInfo info)
+    {
+        if (info.BaseInvocations is null || info.BaseInvocations.Count == 0)
+        {
+            return info.BaseExpression;
+        }
+
+        // We need to rebuild the base expression with fully qualified arguments
+        // Use position-based replacement to avoid issues with duplicate patterns
+        var result = info.BaseExpression;
+
+        // Build a list of replacements (original text, replacement text, start position relative to base expression)
+        var replacements = new List<(string Original, string Replacement, int Start)>();
+
+        // Get the start position of the base expression in the original syntax
+        // The Invocation.Expression contains the base (e.g., s.Children.Where(...))
+        var baseExprSyntax = info.Invocation.Expression;
+        int baseExprStart = 0;
+        if (baseExprSyntax is MemberAccessExpressionSyntax linqMember)
+        {
+            // The base expression syntax is linqMember.Expression
+            baseExprStart = linqMember.Expression.SpanStart;
+        }
+
+        foreach (var invocation in info.BaseInvocations)
+        {
+            // Calculate the position of the argument list relative to the base expression start
+            var argListStart = invocation.ArgumentList.SpanStart - baseExprStart;
+
+            // Process each argument in the argument list
+            var processedArguments = new List<string>();
+            foreach (var argument in invocation.ArgumentList.Arguments)
+            {
+                var processedArg = FullyQualifyAllStaticReferences(argument.Expression);
+                processedArguments.Add(processedArg);
+            }
+
+            var originalArgs = invocation.ArgumentList.ToString();
+            var fullyQualifiedArgs = $"({string.Join(", ", processedArguments)})";
+
+            // Only add if there's a difference
+            if (originalArgs != fullyQualifiedArgs)
+            {
+                replacements.Add((originalArgs, fullyQualifiedArgs, argListStart));
+            }
+        }
+
+        // Sort replacements by position in descending order to avoid offset issues
+        replacements.Sort((a, b) => b.Start.CompareTo(a.Start));
+
+        // Apply replacements from end to beginning
+        foreach (var (original, replacement, start) in replacements)
+        {
+            if (start >= 0 && start + original.Length <= result.Length)
+            {
+                var substring = result.Substring(start, original.Length);
+                if (substring == original)
+                {
+                    result = result.Substring(0, start) + replacement + result.Substring(start + original.Length);
+                }
+            }
+        }
+
+        return result;
+    }
+
+    /// <summary>
+    /// Fully qualifies static, const, and enum references in chained method invocations.
+    /// This handles cases like .Where(c => c.EnumValue == SampleEnum.Value).FirstOrDefault(...)
+    /// </summary>
+    protected string FullyQualifyChainedMethods(LinqMethodHelper.LinqInvocationInfo info)
+    {
+        if (info.ChainedInvocations is null || info.ChainedInvocations.Count == 0)
+        {
+            return info.ChainedMethods;
+        }
+
+        var result = new StringBuilder();
+
+        foreach (var invocation in info.ChainedInvocations)
+        {
+            // Get the method name
+            string methodName;
+            if (invocation.Expression is MemberAccessExpressionSyntax memberAccess)
+            {
+                methodName = memberAccess.Name.Identifier.Text;
+            }
+            else if (invocation.Expression is MemberBindingExpressionSyntax memberBinding)
+            {
+                methodName = memberBinding.Name.Identifier.Text;
+            }
+            else
+            {
+                // Fallback to the original string
+                result.Append($".{invocation}");
+                continue;
+            }
+
+            // Process each argument in the argument list
+            var processedArguments = new List<string>();
+            foreach (var argument in invocation.ArgumentList.Arguments)
+            {
+                var processedArg = FullyQualifyAllStaticReferences(argument.Expression);
+                processedArguments.Add(processedArg);
+            }
+
+            // Build the fully qualified method call
+            result.Append($".{methodName}({string.Join(", ", processedArguments)})");
+        }
+
+        return result.ToString();
     }
 
     /// <summary>

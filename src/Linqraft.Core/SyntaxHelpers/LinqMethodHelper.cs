@@ -107,7 +107,17 @@ public static class LinqMethodHelper
         string ChainedMethods,
         bool HasNullableAccess,
         string? CoalescingDefaultValue,
-        string? NullCheckExpression = null
+        string? NullCheckExpression = null,
+        /// <summary>
+        /// The list of chained method invocation syntax nodes AFTER the target method (e.g., .FirstOrDefault(...))
+        /// These nodes are ordered from innermost to outermost (same order as ChainedMethods string)
+        /// </summary>
+        IReadOnlyList<InvocationExpressionSyntax>? ChainedInvocations = null,
+        /// <summary>
+        /// The list of method invocation syntax nodes BEFORE the target method (e.g., .Where(...), .OrderBy(...))
+        /// These are part of the base expression and also need to be fully qualified.
+        /// </summary>
+        IReadOnlyList<InvocationExpressionSyntax>? BaseInvocations = null
     );
 
     /// <summary>
@@ -150,6 +160,7 @@ public static class LinqMethodHelper
         // Find the LINQ method invocation and collect chained methods
         InvocationExpressionSyntax? linqInvocation = null;
         var chainedMethodsList = new List<string>();
+        var chainedInvocationsList = new List<InvocationExpressionSyntax>();
 
         // Walk the invocation chain to find the target LINQ method and collect chained methods
         var processingExpr = currentSyntax;
@@ -181,6 +192,7 @@ public static class LinqMethodHelper
             {
                 // This is a chained method after the LINQ method (e.g., .ToList(), .FirstOrDefault())
                 chainedMethodsList.Insert(0, $".{currentMethodName}{invocation.ArgumentList}");
+                chainedInvocationsList.Insert(0, invocation);
             }
 
             if (nextExpr is null)
@@ -203,6 +215,7 @@ public static class LinqMethodHelper
         // and null check expression (the part before ?. that needs null check)
         string baseExpression;
         string? nullCheckExpression = null;
+        var baseInvocationsList = new List<InvocationExpressionSyntax>();
 
         if (linqInvocation.Expression is MemberAccessExpressionSyntax linqMember)
         {
@@ -229,6 +242,10 @@ public static class LinqMethodHelper
             {
                 baseExpression = linqMember.Expression.ToString();
             }
+
+            // Collect invocations in the base expression (before Select)
+            // e.g., s.Children.Where(...).OrderBy(...) → [Where invocation, OrderBy invocation]
+            CollectBaseInvocations(linqMember.Expression, baseInvocationsList);
         }
         else if (linqInvocation.Expression is MemberBindingExpressionSyntax)
         {
@@ -251,7 +268,33 @@ public static class LinqMethodHelper
             chainedMethods,
             hasNullableAccess,
             coalescingDefaultValue,
-            nullCheckExpression
+            nullCheckExpression,
+            chainedInvocationsList.Count > 0 ? chainedInvocationsList : null,
+            baseInvocationsList.Count > 0 ? baseInvocationsList : null
         );
+    }
+
+    /// <summary>
+    /// Collects all invocation expressions within an expression, ordered from innermost to outermost.
+    /// This is used to find invocations like .Where(), .OrderBy() that appear before the target LINQ method.
+    /// </summary>
+    private static void CollectBaseInvocations(ExpressionSyntax expression, List<InvocationExpressionSyntax> invocations)
+    {
+        if (expression is InvocationExpressionSyntax invocation)
+        {
+            // First, recursively collect from the inner expression
+            if (invocation.Expression is MemberAccessExpressionSyntax memberAccess)
+            {
+                CollectBaseInvocations(memberAccess.Expression, invocations);
+            }
+            // Then add this invocation
+            invocations.Add(invocation);
+        }
+        else if (expression is MemberAccessExpressionSyntax memberAccess)
+        {
+            // Continue searching in the inner expression
+            CollectBaseInvocations(memberAccess.Expression, invocations);
+        }
+        // For other expressions (IdentifierNameSyntax, etc.), stop recursion
     }
 }
