@@ -130,8 +130,7 @@ public class GenerateDtoClassInfo
 
                 // Try to find nested class info by full name match
                 // Use BestName (which prefers HintName if available) for better class naming (issue #155)
-                var nestedClassName =
-                    $"{nestStructure.BestName}Dto_{nestStructure.GetUniqueId()}";
+                var nestedClassName = $"{nestStructure.BestName}Dto_{nestStructure.GetUniqueId()}";
                 var containedNestClasses = NestedClasses.FirstOrDefault(nc =>
                     nc.ClassName == nestedClassName
                 );

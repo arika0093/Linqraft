@@ -10,8 +10,7 @@ public class TernaryNullCheckToConditionalCodeFixProviderTests
     [Fact]
     public async Task CodeFix_ConvertsTernaryToNullConditional_SimpleCase_InsideSelectExpr()
     {
-        var test =
-            $$"""
+        var test = $$"""
             using System.Collections.Generic;
             using System.Linq;
             using Linqraft;
@@ -47,8 +46,7 @@ public class TernaryNullCheckToConditionalCodeFixProviderTests
             }
             """;
 
-        var fixedCode =
-            $$"""
+        var fixedCode = $$"""
             using System.Collections.Generic;
             using System.Linq;
             using Linqraft;
@@ -94,8 +92,7 @@ public class TernaryNullCheckToConditionalCodeFixProviderTests
     [Fact]
     public async Task CodeFix_ConvertsTernaryToNullConditional_NestedNullChecks_InsideSelectExpr()
     {
-        var test =
-            $$"""
+        var test = $$"""
             using System.Collections.Generic;
             using System.Linq;
             using Linqraft;
@@ -136,8 +133,7 @@ public class TernaryNullCheckToConditionalCodeFixProviderTests
             }
             """;
 
-        var fixedCode =
-            $$"""
+        var fixedCode = $$"""
             using System.Collections.Generic;
             using System.Linq;
             using Linqraft;
@@ -189,8 +185,7 @@ public class TernaryNullCheckToConditionalCodeFixProviderTests
     public async Task CodeFix_ConvertsTernaryToNullConditional_InvertedCondition_InsideSelectExpr()
     {
         // Test the inverted case: condition ? null : new{}
-        var test =
-            $$"""
+        var test = $$"""
             using System.Collections.Generic;
             using System.Linq;
             using Linqraft;
@@ -229,8 +224,7 @@ public class TernaryNullCheckToConditionalCodeFixProviderTests
             }
             """;
 
-        var fixedCode =
-            $$"""
+        var fixedCode = $$"""
             using System.Collections.Generic;
             using System.Linq;
             using Linqraft;
