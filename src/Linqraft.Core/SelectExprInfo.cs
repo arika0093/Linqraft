@@ -415,8 +415,140 @@ public abstract record SelectExprInfo
             return ConvertObjectCreationToFullyQualified(objectCreation);
         }
 
-        // Regular property access
-        return expression;
+        // For any other expression (including invocations like FirstOrDefault, Where, etc.),
+        // ensure all static/enum/const references are fully qualified (issue #157)
+        return FullyQualifyAllStaticReferences(syntax);
+    }
+
+    /// <summary>
+    /// Fully qualifies all static, const, and enum member references within an expression.
+    /// This handles nested expressions like lambdas inside FirstOrDefault, Where, etc.
+    /// </summary>
+    protected string FullyQualifyAllStaticReferences(ExpressionSyntax syntax)
+    {
+        // Find all member access expressions that might need qualification
+        var memberAccesses = syntax
+            .DescendantNodesAndSelf()
+            .OfType<MemberAccessExpressionSyntax>()
+            .ToList();
+
+        // Also find all identifier names (for unqualified enum values)
+        var identifiers = syntax
+            .DescendantNodesAndSelf()
+            .OfType<IdentifierNameSyntax>()
+            .ToList();
+
+        // Build a list of replacements (from original text to fully qualified text)
+        var replacements = new List<(string Original, string Replacement, int Start)>();
+
+        foreach (var memberAccess in memberAccesses)
+        {
+            if (memberAccess.Kind() != SyntaxKind.SimpleMemberAccessExpression)
+                continue;
+
+            var symbolInfo = SemanticModel.GetSymbolInfo(memberAccess);
+
+            // Check if it's a static field, const field, or enum value
+            if (symbolInfo.Symbol is IFieldSymbol fieldSymbol && (fieldSymbol.IsStatic || fieldSymbol.IsConst))
+            {
+                var containingType = fieldSymbol.ContainingType;
+                if (containingType is not null)
+                {
+                    var fullTypeName = containingType.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat);
+                    var memberName = fieldSymbol.Name;
+                    var fullyQualified = $"{fullTypeName}.{memberName}";
+                    var original = memberAccess.ToString();
+
+                    // Only add if not already fully qualified
+                    if (!original.StartsWith("global::"))
+                    {
+                        replacements.Add((original, fullyQualified, memberAccess.SpanStart));
+                    }
+                }
+            }
+            else if (symbolInfo.Symbol is IPropertySymbol propertySymbol && propertySymbol.IsStatic)
+            {
+                var containingType = propertySymbol.ContainingType;
+                if (containingType is not null)
+                {
+                    var fullTypeName = containingType.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat);
+                    var memberName = propertySymbol.Name;
+                    var fullyQualified = $"{fullTypeName}.{memberName}";
+                    var original = memberAccess.ToString();
+
+                    // Only add if not already fully qualified
+                    if (!original.StartsWith("global::"))
+                    {
+                        replacements.Add((original, fullyQualified, memberAccess.SpanStart));
+                    }
+                }
+            }
+        }
+
+        // Check identifiers for unqualified enum values
+        foreach (var identifier in identifiers)
+        {
+            // Skip if this identifier is part of a member access expression (already handled above)
+            if (identifier.Parent is MemberAccessExpressionSyntax)
+                continue;
+
+            var symbolInfo = SemanticModel.GetSymbolInfo(identifier);
+
+            if (symbolInfo.Symbol is IFieldSymbol fieldSymbol)
+            {
+                // Check if it's an enum value
+                if (fieldSymbol.ContainingType?.TypeKind == TypeKind.Enum)
+                {
+                    var containingType = fieldSymbol.ContainingType;
+                    var fullTypeName = containingType.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat);
+                    var memberName = fieldSymbol.Name;
+                    var fullyQualified = $"{fullTypeName}.{memberName}";
+                    var original = identifier.ToString();
+
+                    replacements.Add((original, fullyQualified, identifier.SpanStart));
+                }
+                // Check if it's a static const field
+                else if ((fieldSymbol.IsStatic || fieldSymbol.IsConst) && fieldSymbol.ContainingType is not null)
+                {
+                    var containingType = fieldSymbol.ContainingType;
+                    var fullTypeName = containingType.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat);
+                    var memberName = fieldSymbol.Name;
+                    var fullyQualified = $"{fullTypeName}.{memberName}";
+                    var original = identifier.ToString();
+
+                    replacements.Add((original, fullyQualified, identifier.SpanStart));
+                }
+            }
+        }
+
+        // If no replacements needed, return original expression
+        if (replacements.Count == 0)
+        {
+            return syntax.ToString();
+        }
+
+        // Sort replacements by start position in descending order to avoid offset issues
+        replacements = replacements.OrderByDescending(r => r.Start).ToList();
+
+        // Apply replacements
+        var result = syntax.ToString();
+        foreach (var (original, replacement, start) in replacements)
+        {
+            // Calculate the offset relative to the syntax start
+            var offset = start - syntax.SpanStart;
+
+            // Verify that the original text is at the expected position
+            if (offset >= 0 && offset + original.Length <= result.Length)
+            {
+                var substring = result.Substring(offset, original.Length);
+                if (substring == original)
+                {
+                    result = result.Substring(0, offset) + replacement + result.Substring(offset + original.Length);
+                }
+            }
+        }
+
+        return result;
     }
 
     /// <summary>
