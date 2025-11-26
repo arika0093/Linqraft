@@ -421,6 +421,9 @@ Linqraft supports several MSBuild properties to customize the generated code:
     <LinqraftPropertyAccessor>Default</LinqraftPropertyAccessor>
     <!-- has required keyword on properties -->
     <LinqraftHasRequired>true</LinqraftHasRequired>
+    <!-- generate xml documentation comments on properties -->
+    <!-- All(summary+reference), SummaryOnly(summary only), None(no comments) -->
+    <LinqraftCommentOutput>All</LinqraftCommentOutput>
   </PropertyGroup>
 </Project>
 ```
