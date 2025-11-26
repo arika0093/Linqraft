@@ -10,8 +10,7 @@ public class TernaryNullCheckToConditionalAnalyzerTests
     [Fact]
     public async Task Analyzer_DetectsTernaryNullCheckWithObjectCreation_InsideSelectExpr()
     {
-        var test =
-            $$"""
+        var test = $$"""
             using System.Collections.Generic;
             using System.Linq;
             using Linqraft;
@@ -58,8 +57,7 @@ public class TernaryNullCheckToConditionalAnalyzerTests
     [Fact]
     public async Task Analyzer_DetectsTernaryNullCheckWithAnonymousObjectCreation_InsideSelectExpr()
     {
-        var test =
-            $$"""
+        var test = $$"""
             using System.Collections.Generic;
             using System.Linq;
             using Linqraft;
@@ -152,8 +150,7 @@ class Test
     public async Task Analyzer_DetectsTernaryNullCheckWithInvertedCondition_InsideSelectExpr()
     {
         // Test inverted condition: x == null ? null : new{}
-        var test =
-            $$"""
+        var test = $$"""
             using System.Collections.Generic;
             using System.Linq;
             using Linqraft;
@@ -235,8 +232,7 @@ class Test
     public async Task Analyzer_DoesNotDetectTernaryNullCheck_InsideRegularSelect()
     {
         // Issue #156: LQRS004 should NOT trigger inside regular .Select() calls
-        var test =
-            """
+        var test = """
             using System.Collections.Generic;
             using System.Linq;
 
@@ -255,10 +251,12 @@ class Test
                 void Method()
                 {
                     var data = new List<Sample>();
-                    var result = data.Select(s => new
-                    {
-                        NestedData = s.Nest != null ? new { s.Nest.Id } : null
-                    });
+                    var result = data.AsQueryable()
+                        .Select(s => new
+                        {
+                            NestedData = s.Nest != null ? new { s.Nest.Id } : null
+                        })
+                        .ToList();
                 }
             }
             """;
