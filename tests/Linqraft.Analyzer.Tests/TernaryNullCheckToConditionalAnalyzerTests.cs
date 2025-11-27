@@ -194,6 +194,52 @@ class Test
     }
 
     [Fact]
+    public async Task Analyzer_DetectsTernaryNullCheckWithInvertedCondition_InsideSelectExprWithSelect()
+    {
+        // Test inverted condition: x == null ? null : new{}
+        var test = $$"""
+            using System.Collections.Generic;
+            using System.Linq;
+            using Linqraft;
+
+            {{TestSourceCodes.SelectExprWithFuncObjectInLinqraftNamespace}}
+
+            class Parent
+            {
+                public List<Child> Childs { get; set; }
+            }
+
+            class Child
+            {
+                public string? Name { get; set; }
+            }
+
+            partial class ParentDto {}
+
+            class Test
+            {
+                void Method()
+                {
+                    var data = new List<Parent>();
+                    var result = data.AsQueryable().SelectExpr<Parent, ParentDto>(p => new
+                    {
+                        ChildInfos = p.Childs.Select(c => new {
+                            NameObject = {|#0:c.Name == null ? null : new { c.Name }|}
+                        })
+                    });
+                }
+            }
+            """;
+
+        var expected = new DiagnosticResult(
+            TernaryNullCheckToConditionalAnalyzer.AnalyzerId,
+            DiagnosticSeverity.Info
+        ).WithLocation(0);
+
+        await RunAnalyzerTestAsync(test, expected);
+    }
+
+    [Fact]
     public async Task Analyzer_DoesNotDetectTernaryNullCheck_OutsideSelectExpr()
     {
         // Issue #156: LQRS004 should NOT trigger outside SelectExpr

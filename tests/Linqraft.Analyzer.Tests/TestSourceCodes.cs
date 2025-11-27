@@ -21,16 +21,10 @@ internal static class TestSourceCodes
     /// <summary>
     /// SelectExpr extension method in the Linqraft namespace (for tests that need to detect SelectExpr calls)
     /// </summary>
-    public const string SelectExprWithFuncInLinqraftNamespace = """
+    public const string SelectExprWithFuncInLinqraftNamespace = $$"""
         namespace Linqraft
         {
-            static class Extensions
-            {
-                public static IQueryable<TResult> SelectExpr<TSource, TResult>(
-                    this IQueryable<TSource> source,
-                    System.Func<TSource, TResult> selector)
-                    => source.Select(x => selector(x));
-            }
+        {{SelectExprWithFunc}}
         }
         """;
 
@@ -58,6 +52,16 @@ internal static class TestSourceCodes
                 this IQueryable<TSource> source,
                 System.Func<TSource, object> selector)
                 => throw new System.NotImplementedException();
+        }
+        """;
+
+    /// <summary>
+    /// SelectExpr extension method that accepts Func with object return type and throws NotImplementedException
+    /// </summary>
+    public const string SelectExprWithFuncObjectInLinqraftNamespace = $$"""
+        namespace Linqraft
+        {
+        {{SelectExprWithFuncObject}}
         }
         """;
 
