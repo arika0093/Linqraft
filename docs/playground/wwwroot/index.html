@@ -7,15 +7,29 @@
     <title>Linqraft Playground</title>
     <base href="/" />
     <link rel="preload" id="webassembly" />
-    <link rel="stylesheet" href="lib/bootstrap/dist/css/bootstrap.min.css" />
     <link rel="stylesheet" href="css/app.css" />
+    <link rel="stylesheet" href="css/tailwind-custom.css" />
     <link rel="icon" type="image/png" href="favicon.png" />
     <link href="Linqraft.Playground.styles.css" rel="stylesheet" />
     <link href="_content/BlazorMonaco/lib/monaco-editor/min/vs/editor/editor.main.css" rel="stylesheet" />
     <script type="importmap"></script>
+    <style>
+        /* JetBrains Mono fallback - using system monospace if font not available */
+        @font-face {
+            font-family: 'JetBrains Mono';
+            src: local('JetBrains Mono'), local('Consolas'), local('Monaco');
+            font-display: swap;
+        }
+        .monaco-editor-container {
+            height: 100%;
+        }
+        .monaco-editor, .monaco-editor .view-lines {
+            font-family: 'JetBrains Mono', 'Consolas', 'Monaco', monospace !important;
+        }
+    </style>
 </head>
 
-<body>
+<body class="bg-gray-900 text-white">
     <div id="app">
         <svg class="loading-progress">
             <circle r="40%" cx="50%" cy="50%" />

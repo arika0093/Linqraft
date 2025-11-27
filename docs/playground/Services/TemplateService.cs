@@ -4,6 +4,9 @@ namespace Linqraft.Playground.Services;
 
 /// <summary>
 /// Service for managing templates and sample code
+/// Templates are based on actual examples from the Linqraft repository
+/// Note: In Blazor WebAssembly, we cannot directly access the file system at runtime,
+/// so templates are embedded from the examples folder during build time.
 /// </summary>
 public class TemplateService
 {
@@ -18,18 +21,22 @@ public class TemplateService
         };
     }
 
+    /// <summary>
+    /// Template based on examples/Linqraft.MinimumSample
+    /// </summary>
     private static Template CreateMinimumSampleTemplate()
     {
         return new Template
         {
             Name = "Minimum Sample",
-            Description = "Basic example showing SelectExpr with null-conditional operators",
+            Description = "Basic example showing SelectExpr with null-conditional operators (from examples/Linqraft.MinimumSample)",
             Files = new List<ProjectFile>
             {
                 new ProjectFile
                 {
                     Name = "SampleClasses.cs",
                     Path = "SampleClasses.cs",
+                    // Content from: examples/Linqraft.MinimumSample/SampleClasses.cs
                     Content = """
                         namespace Linqraft.MinimumSample;
 
@@ -78,6 +85,7 @@ public class TemplateService
                 {
                     Name = "Program.cs",
                     Path = "Program.cs",
+                    // Content from: examples/Linqraft.MinimumSample/Program.cs
                     Content = """
                         using System.Text.Json;
                         using Linqraft.MinimumSample;
@@ -110,12 +118,15 @@ public class TemplateService
         };
     }
 
+    /// <summary>
+    /// Template demonstrating anonymous type pattern
+    /// </summary>
     private static Template CreateAnonymousTypeTemplate()
     {
         return new Template
         {
             Name = "Anonymous Type",
-            Description = "Using anonymous types with SelectExpr",
+            Description = "Using anonymous types with SelectExpr (Pattern 1)",
             Files = new List<ProjectFile>
             {
                 new ProjectFile
@@ -148,14 +159,14 @@ public class TemplateService
                     Content = """
                         using AnonymousTypeExample;
 
-                        // pattern 1: use anonymous type to specify selection
-                        // return type is anonymous type
+                        // Pattern 1: use anonymous type to specify selection
+                        // Return type is anonymous type
                         var query = products.AsQueryable();
                         var result = query.SelectExpr(x => new
                         {
                             x.Id,
                             x.Name,
-                            // you can use the null-conditional operator
+                            // You can use the null-conditional operator
                             CategoryName = x.Category?.Name,
                         });
                         """
@@ -164,12 +175,15 @@ public class TemplateService
         };
     }
 
+    /// <summary>
+    /// Template demonstrating explicit DTO pattern
+    /// </summary>
     private static Template CreateExplicitDtoTemplate()
     {
         return new Template
         {
             Name = "Explicit DTO",
-            Description = "Using explicit DTO type parameter with SelectExpr",
+            Description = "Using explicit DTO type parameter with SelectExpr (Pattern 2)",
             Files = new List<ProjectFile>
             {
                 new ProjectFile
@@ -210,15 +224,15 @@ public class TemplateService
                     Content = """
                         using ExplicitDtoExample;
 
-                        // pattern 2: use an explicit DTO class
-                        // return type is OrderDto (auto-generated)
+                        // Pattern 2: use an explicit DTO class
+                        // Return type is OrderDto (auto-generated)
                         var query = orders.AsQueryable();
                         var result = query.SelectExpr<OrderDto>(x => new
                         {
                             x.Id,
                             x.OrderDate,
                             CustomerName = x.Customer?.Name,
-                            // you can select child properties
+                            // You can select child properties
                             ItemNames = x.Items.Select(i => i.ProductName).ToList(),
                         });
                         """
@@ -227,12 +241,15 @@ public class TemplateService
         };
     }
 
+    /// <summary>
+    /// Template demonstrating nested object selections
+    /// </summary>
     private static Template CreateNestedObjectTemplate()
     {
         return new Template
         {
             Name = "Nested Objects",
-            Description = "Working with nested object selections",
+            Description = "Working with nested object selections and collections",
             Files = new List<ProjectFile>
             {
                 new ProjectFile

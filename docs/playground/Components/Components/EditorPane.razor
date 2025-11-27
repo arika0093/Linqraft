@@ -1,0 +1,72 @@
+@using BlazorMonaco
+@using BlazorMonaco.Editor
+
+<div class="flex flex-col min-w-[200px] overflow-hidden h-full">
+    <div class="flex items-center gap-2 px-3 py-2 bg-gray-800 border-b border-gray-700 text-gray-300">
+        <span class="text-sm">✏️</span>
+        <span class="text-xs font-medium">Editor - @(FileName ?? "Select a file")</span>
+    </div>
+    <div class="flex-1 overflow-hidden relative">
+        <StandaloneCodeEditor @ref="Editor"
+            Id="@EditorId"
+            ConstructionOptions="GetConstructionOptions"
+            OnDidChangeModelContent="OnContentChanged" />
+    </div>
+</div>
+
+@code {
+    [Parameter] public string EditorId { get; set; } = "editor";
+    [Parameter] public string? FileName { get; set; }
+    [Parameter] public string InitialContent { get; set; } = "";
+    [Parameter] public EventCallback<ModelContentChangedEvent> OnContentChanged { get; set; }
+
+    public StandaloneCodeEditor? Editor { get; private set; }
+
+    private StandaloneEditorConstructionOptions GetConstructionOptions(StandaloneCodeEditor editor)
+    {
+        return new StandaloneEditorConstructionOptions
+        {
+            AutomaticLayout = true,
+            Language = "csharp",
+            Theme = "vs-dark",
+            Value = InitialContent,
+            FontSize = 14,
+            FontFamily = "'JetBrains Mono', monospace",
+            Minimap = new EditorMinimapOptions { Enabled = false },
+            ScrollBeyondLastLine = false,
+            RenderLineHighlight = "all",
+            TabSize = 4,
+        };
+    }
+
+    public async Task SetValueAsync(string content)
+    {
+        if (Editor != null)
+        {
+            try
+            {
+                await Editor.SetValue(content);
+            }
+            catch
+            {
+                // Editor not yet initialized
+            }
+        }
+    }
+
+    public async Task<string> GetValueAsync()
+    {
+        if (Editor != null)
+        {
+            try
+            {
+                return await Editor.GetValue();
+            }
+            catch
+            {
+                // Editor not yet initialized
+            }
+        }
+        return "";
+    }
+}

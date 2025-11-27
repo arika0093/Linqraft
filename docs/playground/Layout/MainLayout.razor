@@ -1,17 +1,17 @@
 ﻿@inherits LayoutComponentBase
-<div class="playground-container">
-    <header class="playground-header">
-        <div class="logo">
-            <span class="logo-icon">⚡</span>
-            <span class="logo-text">Linqraft Playground</span>
+<div class="flex flex-col h-screen w-screen overflow-hidden bg-gray-900">
+    <header class="flex items-center justify-between px-4 h-12 bg-gradient-to-r from-blue-900 to-blue-700 text-white shadow-md z-50">
+        <div class="flex items-center gap-2">
+            <span class="text-2xl">⚡</span>
+            <span class="text-xl font-semibold">Linqraft Playground</span>
         </div>
-        <nav class="header-nav">
-            <a href="">Playground</a>
-            <a href="https://github.com/arika0093/Linqraft" target="_blank">GitHub</a>
-            <a href="https://github.com/arika0093/Linqraft#readme" target="_blank">Docs</a>
+        <nav class="flex gap-6">
+            <a href="" class="text-white opacity-90 hover:opacity-100 hover:underline transition-opacity">Playground</a>
+            <a href="https://github.com/arika0093/Linqraft" target="_blank" class="text-white opacity-90 hover:opacity-100 hover:underline transition-opacity">GitHub</a>
+            <a href="https://github.com/arika0093/Linqraft#readme" target="_blank" class="text-white opacity-90 hover:opacity-100 hover:underline transition-opacity">Docs</a>
         </nav>
     </header>
-    <main class="playground-main">
+    <main class="flex-1 overflow-hidden">
         @Body
     </main>
 </div>

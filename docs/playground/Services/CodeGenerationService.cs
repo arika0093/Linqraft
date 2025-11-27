@@ -6,7 +6,15 @@ namespace Linqraft.Playground.Services;
 
 /// <summary>
 /// Service for simulating Linqraft code generation
-/// This provides a simplified simulation of what the actual source generator does
+/// This provides a simulation of what the actual source generator does.
+/// 
+/// Note: The actual Linqraft source generator uses Roslyn for semantic analysis,
+/// which is not available in Blazor WebAssembly without significant overhead.
+/// This service provides a regex-based approximation for demonstration purposes.
+/// 
+/// For production use, consider:
+/// 1. A server-side API using the actual Linqraft.Core library
+/// 2. Or pre-computed examples stored as static files
 /// </summary>
 public partial class CodeGenerationService
 {

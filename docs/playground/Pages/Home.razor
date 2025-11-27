@@ -5,127 +5,72 @@
 
 <PageTitle>Linqraft Playground</PageTitle>
 
-<div class="playground-layout">
+<div class="flex h-full w-full overflow-hidden">
     <!-- Collapsible Sidebar -->
-    <div class="sidebar @(sidebarCollapsed ? "collapsed" : "")">
-        <div class="sidebar-toggle" @onclick="ToggleSidebar">
-            <span class="toggle-icon">@(sidebarCollapsed ? "▶" : "◀")</span>
-        </div>
-        <div class="sidebar-content">
-            <!-- Templates Section -->
-            <div class="sidebar-section">
-                <div class="section-header" @onclick="ToggleTemplatesSection">
-                    <span class="section-icon">📋</span>
-                    <span class="section-title">Templates</span>
-                    <span class="section-toggle">@(templatesExpanded ? "▼" : "▶")</span>
-                </div>
-                @if (templatesExpanded)
-                {
-                    <div class="section-content">
-                        @foreach (var template in templates)
-                        {
-                            <div class="template-item @(selectedTemplate == template ? "selected" : "")"
-                                 @onclick="() => SelectTemplate(template)"
-                                 title="@template.Description">
-                                <span class="template-icon">📄</span>
-                                <span class="template-name">@template.Name</span>
-                            </div>
-                        }
-                    </div>
-                }
-            </div>
-
-            <!-- Files Section -->
-            <div class="sidebar-section">
-                <div class="section-header" @onclick="ToggleFilesSection">
-                    <span class="section-icon">📁</span>
-                    <span class="section-title">Files</span>
-                    <span class="section-toggle">@(filesExpanded ? "▼" : "▶")</span>
-                </div>
-                @if (filesExpanded && selectedTemplate != null)
-                {
-                    <div class="section-content">
-                        @foreach (var file in selectedTemplate.Files)
-                        {
-                            <div class="file-item @(selectedFile == file ? "selected" : "")"
-                                 @onclick="() => SelectFile(file)">
-                                <span class="file-icon">📄</span>
-                                <span class="file-name">@file.Name</span>
-                            </div>
-                        }
-                    </div>
-                }
-            </div>
-        </div>
-    </div>
+    <Sidebar 
+        Collapsed="sidebarCollapsed"
+        TemplatesExpanded="templatesExpanded"
+        FilesExpanded="filesExpanded"
+        Templates="templates"
+        SelectedTemplate="selectedTemplate"
+        SelectedFile="selectedFile"
+        OnToggle="ToggleSidebar"
+        OnToggleTemplates="ToggleTemplatesSection"
+        OnToggleFiles="ToggleFilesSection"
+        OnSelectTemplate="SelectTemplate"
+        OnSelectFile="SelectFile" />
 
     <!-- Main Content Area -->
-    <div class="main-content">
-        <!-- Horizontal Splitter Container -->
-        <div class="horizontal-splitter-container">
-            <!-- Editor Pane (Left) -->
-            <div class="editor-pane" style="flex: @leftPaneFlex;">
-                <div class="pane-header">
-                    <span class="pane-icon">✏️</span>
-                    <span class="pane-title">Editor - @(selectedFile?.Name ?? "Select a file")</span>
-                </div>
-                <div class="pane-content">
-                    <StandaloneCodeEditor @ref="editor"
-                        Id="editor"
-                        ConstructionOptions="EditorConstructionOptions"
-                        OnDidChangeModelContent="OnEditorContentChanged" />
-                </div>
+    <div class="flex-1 flex overflow-hidden">
+        <!-- Editor Pane (Left) -->
+        <div class="flex-1 flex flex-col min-w-[200px] overflow-hidden">
+            <EditorPane 
+                @ref="editorPane"
+                EditorId="editor"
+                FileName="@selectedFile?.Name"
+                InitialContent="@(selectedFile?.Content ?? "// Select a file to edit")"
+                OnContentChanged="OnEditorContentChanged" />
+        </div>
+
+        <!-- Resize Handle -->
+        <div class="w-1 bg-gray-700 cursor-col-resize hover:bg-blue-600 flex items-center justify-center">
+            <div class="w-0.5 h-5 bg-gray-500 rounded"></div>
+        </div>
+
+        <!-- Preview Panes (Right) -->
+        <div class="flex-1 flex flex-col min-w-[200px] overflow-hidden">
+            <!-- Query Expression Preview -->
+            <div class="flex-1 min-h-[100px] overflow-hidden">
+                <PreviewPane 
+                    @ref="queryPreviewPane"
+                    EditorId="queryPreview"
+                    Title="Generated Expression"
+                    Icon="🔍"
+                    InitialContent="// Generated expression will appear here" />
             </div>
 
-            <!-- Horizontal Resize Handle -->
-            <div class="resize-handle horizontal">
-                <div class="handle-grip"></div>
+            <!-- Vertical Resize Handle -->
+            <div class="h-1 bg-gray-700 cursor-row-resize hover:bg-blue-600 flex items-center justify-center">
+                <div class="w-5 h-0.5 bg-gray-500 rounded"></div>
             </div>
 
-            <!-- Preview Panes (Right) -->
-            <div class="preview-panes" style="flex: @rightPaneFlex;">
-                <!-- Vertical Splitter Container -->
-                <div class="vertical-splitter-container">
-                    <!-- Query Expression Preview -->
-                    <div class="preview-pane" style="flex: @topPreviewFlex;">
-                        <div class="pane-header">
-                            <span class="pane-icon">🔍</span>
-                            <span class="pane-title">Generated Expression</span>
-                        </div>
-                        <div class="pane-content">
-                            <StandaloneCodeEditor @ref="queryPreview"
-                                Id="queryPreview"
-                                ConstructionOptions="QueryPreviewConstructionOptions" />
-                        </div>
-                    </div>
-
-                    <!-- Vertical Resize Handle -->
-                    <div class="resize-handle vertical">
-                        <div class="handle-grip"></div>
-                    </div>
-
-                    <!-- DTO Class Preview -->
-                    <div class="preview-pane" style="flex: @bottomPreviewFlex;">
-                        <div class="pane-header">
-                            <span class="pane-icon">📦</span>
-                            <span class="pane-title">Generated DTO Class</span>
-                        </div>
-                        <div class="pane-content">
-                            <StandaloneCodeEditor @ref="dtoPreview"
-                                Id="dtoPreview"
-                                ConstructionOptions="DtoPreviewConstructionOptions" />
-                        </div>
-                    </div>
-                </div>
+            <!-- DTO Class Preview -->
+            <div class="flex-1 min-h-[100px] overflow-hidden">
+                <PreviewPane 
+                    @ref="dtoPreviewPane"
+                    EditorId="dtoPreview"
+                    Title="Generated DTO Class"
+                    Icon="📦"
+                    InitialContent="// Generated DTO class will appear here" />
             </div>
         </div>
     </div>
 </div>
 
 @code {
-    private StandaloneCodeEditor? editor;
-    private StandaloneCodeEditor? queryPreview;
-    private StandaloneCodeEditor? dtoPreview;
+    private EditorPane? editorPane;
+    private PreviewPane? queryPreviewPane;
+    private PreviewPane? dtoPreviewPane;
 
     private List<Models.Template> templates = new();
     private Models.Template? selectedTemplate;
@@ -134,12 +79,6 @@
     private bool sidebarCollapsed = false;
     private bool templatesExpanded = true;
     private bool filesExpanded = true;
-
-    // Pane sizing
-    private double leftPaneFlex = 1;
-    private double rightPaneFlex = 1;
-    private double topPreviewFlex = 1;
-    private double bottomPreviewFlex = 1;
 
     protected override void OnInitialized()
     {
@@ -156,62 +95,12 @@
 
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
-        if (firstRender && selectedFile != null)
+        if (firstRender && selectedTemplate != null)
         {
             // Wait a bit for the editor to be fully initialized
             await Task.Delay(100);
-            await GeneratePreview();
+            await GeneratePreviewForTemplate();
         }
-    }
-
-    private StandaloneEditorConstructionOptions EditorConstructionOptions(StandaloneCodeEditor editor)
-    {
-        return new StandaloneEditorConstructionOptions
-        {
-            AutomaticLayout = true,
-            Language = "csharp",
-            Theme = "vs-dark",
-            Value = selectedFile?.Content ?? "// Select a file to edit",
-            FontSize = 14,
-            Minimap = new EditorMinimapOptions { Enabled = false },
-            ScrollBeyondLastLine = false,
-            RenderLineHighlight = "all",
-            TabSize = 4,
-        };
-    }
-
-    private StandaloneEditorConstructionOptions QueryPreviewConstructionOptions(StandaloneCodeEditor editor)
-    {
-        return new StandaloneEditorConstructionOptions
-        {
-            AutomaticLayout = true,
-            Language = "csharp",
-            Theme = "vs-dark",
-            Value = "// Generated expression will appear here",
-            FontSize = 13,
-            ReadOnly = true,
-            Minimap = new EditorMinimapOptions { Enabled = false },
-            ScrollBeyondLastLine = false,
-            RenderLineHighlight = "none",
-            TabSize = 4,
-        };
-    }
-
-    private StandaloneEditorConstructionOptions DtoPreviewConstructionOptions(StandaloneCodeEditor editor)
-    {
-        return new StandaloneEditorConstructionOptions
-        {
-            AutomaticLayout = true,
-            Language = "csharp",
-            Theme = "vs-dark",
-            Value = "// Generated DTO class will appear here",
-            FontSize = 13,
-            ReadOnly = true,
-            Minimap = new EditorMinimapOptions { Enabled = false },
-            ScrollBeyondLastLine = false,
-            RenderLineHighlight = "none",
-            TabSize = 4,
-        };
     }
 
     private void ToggleSidebar()
@@ -234,36 +123,36 @@
         selectedTemplate = template;
         if (template.Files.Count > 0)
         {
-            await SelectFile(template.Files[0]);
+            selectedFile = template.Files[0];
+            if (editorPane != null)
+            {
+                await editorPane.SetValueAsync(selectedFile.Content);
+            }
         }
+        // Generate preview for the entire template
+        await GeneratePreviewForTemplate();
     }
 
     private async Task SelectFile(Models.ProjectFile file)
     {
         selectedFile = file;
-        await UpdateEditorContent(file.Content);
-        await GeneratePreview();
-    }
-
-    private async Task UpdateEditorContent(string content)
-    {
-        if (editor != null)
+        if (editorPane != null)
         {
-            try
-            {
-                await editor.SetValue(content);
-            }
-            catch (Exception)
-            {
-                // Editor not yet initialized, ignore
-            }
+            await editorPane.SetValueAsync(file.Content);
         }
+        // Note: Preview is generated per template, not per file
     }
 
     private System.Timers.Timer? debounceTimer;
 
     private async Task OnEditorContentChanged(ModelContentChangedEvent e)
     {
+        // Update the selected file content
+        if (selectedFile != null && editorPane != null)
+        {
+            selectedFile.Content = await editorPane.GetValueAsync();
+        }
+
         // Debounce the preview generation
         debounceTimer?.Stop();
         debounceTimer?.Dispose();
@@ -273,30 +162,31 @@
             debounceTimer?.Stop();
             await InvokeAsync(async () =>
             {
-                await GeneratePreview();
+                await GeneratePreviewForTemplate();
             });
         };
         debounceTimer.AutoReset = false;
         debounceTimer.Start();
     }
 
-    private async Task GeneratePreview()
+    private async Task GeneratePreviewForTemplate()
     {
-        if (editor == null) return;
+        if (selectedTemplate == null) return;
 
         try
         {
-            var code = await editor.GetValue();
-            var output = CodeGenerationService.GenerateOutput(code);
+            // Combine all files in the template for analysis
+            var allCode = string.Join("\n\n", selectedTemplate.Files.Select(f => f.Content));
+            var output = CodeGenerationService.GenerateOutput(allCode);
 
-            if (queryPreview != null)
+            if (queryPreviewPane != null)
             {
-                await queryPreview.SetValue(output.HasError ? $"// Error: {output.ErrorMessage}" : output.QueryExpression);
+                await queryPreviewPane.SetValueAsync(output.HasError ? $"// Error: {output.ErrorMessage}" : output.QueryExpression);
             }
 
-            if (dtoPreview != null)
+            if (dtoPreviewPane != null)
             {
-                await dtoPreview.SetValue(output.HasError ? $"// Error: {output.ErrorMessage}" : output.DtoClass);
+                await dtoPreviewPane.SetValueAsync(output.HasError ? $"// Error: {output.ErrorMessage}" : output.DtoClass);
             }
         }
         catch (Exception)
