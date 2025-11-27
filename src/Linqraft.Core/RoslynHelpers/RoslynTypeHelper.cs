@@ -146,6 +146,7 @@ public static class RoslynTypeHelper
     /// Determines whether a type is a collection type (IEnumerable, List, Array, etc.)
     /// without requiring a Compilation object.
     /// Uses interface checking for robustness.
+    /// Note: String is explicitly excluded as it should not be treated as a collection for this purpose.
     /// </summary>
     /// <param name="typeSymbol">The type symbol to check</param>
     /// <returns>True if the type is a collection type</returns>
@@ -156,6 +157,10 @@ public static class RoslynTypeHelper
 
         // Get the underlying type if it's nullable
         var nonNullableType = GetNonNullableType(typeSymbol) ?? typeSymbol;
+
+        // Exclude string - it implements IEnumerable<char> but should not be treated as a collection
+        if (nonNullableType.SpecialType == SpecialType.System_String)
+            return false;
 
         // Check if it's an array type
         if (nonNullableType is IArrayTypeSymbol)
