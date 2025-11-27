@@ -85,6 +85,8 @@
     OnApply="OnSettingsApply" />
 
 @code {
+    private const int DebounceDelayMs = 300;
+    
     private EditorPane? editorPane;
     private PreviewPane? queryPreviewPane;
     private PreviewPane? dtoPreviewPane;
@@ -194,10 +196,10 @@
             selectedFile.Content = await editorPane.GetValueAsync();
         }
 
-        // Debounce the preview generation (300ms after input stops)
+        // Debounce the preview generation
         debounceTimer?.Stop();
         debounceTimer?.Dispose();
-        debounceTimer = new System.Timers.Timer(300);
+        debounceTimer = new System.Timers.Timer(DebounceDelayMs);
         debounceTimer.Elapsed += async (sender, args) =>
         {
             debounceTimer?.Stop();

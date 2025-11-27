@@ -60,7 +60,7 @@
                 <label class="text-sm text-gray-300">Comment Output</label>
                 <select class="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded text-gray-100 text-sm"
                         value="@((int)Configuration.CommentOutput)"
-                        @onchange="@(e => Configuration = Configuration with { CommentOutput = (CommentOutputMode)int.Parse(e.Value?.ToString() ?? "2") })">
+                        @onchange="@(e => Configuration = Configuration with { CommentOutput = (CommentOutputMode)int.Parse(e.Value?.ToString() ?? "0") })">
                     <option value="@((int)CommentOutputMode.None)">None</option>
                     <option value="@((int)CommentOutputMode.SummaryOnly)">Summary Only</option>
                     <option value="@((int)CommentOutputMode.All)">All</option>
