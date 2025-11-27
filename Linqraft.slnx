@@ -26,7 +26,6 @@
     <File Path="tests/Directory.Build.props" />
     <Project Path="tests/Linqraft.Analyzer.Tests/Linqraft.Analyzer.Tests.csproj" />
     <Project Path="tests/Linqraft.Tests.Configuration/Linqraft.Tests.Configuration.csproj" />
-    <Project Path="tests/Linqraft.Tests.NestedDtoNamespace/Linqraft.Tests.NestedDtoNamespace.csproj" />
     <Project Path="tests/Linqraft.Tests/Linqraft.Tests.csproj" />
   </Folder>
 </Solution>

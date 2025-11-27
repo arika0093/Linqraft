@@ -1,8 +1,0 @@
-﻿<Project Sdk="Microsoft.NET.Sdk">
-  <PropertyGroup>
-    <LinqraftGlobalNamespace>TestNamespace</LinqraftGlobalNamespace>
-    <LinqraftNestedDtoUseHashNamespace>true</LinqraftNestedDtoUseHashNamespace>
-    <EmitCompilerGeneratedFiles>true</EmitCompilerGeneratedFiles>
-    <CompilerGeneratedFilesOutputPath>.generated</CompilerGeneratedFilesOutputPath>
-  </PropertyGroup>
-</Project>

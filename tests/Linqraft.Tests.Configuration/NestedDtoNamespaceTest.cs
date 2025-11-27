@@ -1,18 +1,16 @@
 using System.Collections.Generic;
 using System.Linq;
-using TestNamespace;
+
+namespace Linqraft.Tests.Configuration.NestedDtoNSTest;
 
 public class NestedDtoNamespaceTest
 {
-    private readonly List<Order> Orders =
+    private readonly List<OrderNS> Orders =
     [
         new()
         {
             Id = 1,
-            Customer = new()
-            {
-                Name = "John Doe",
-            },
+            Customer = new() { Name = "John Doe" },
             OrderItems =
             [
                 new()
@@ -35,7 +33,7 @@ public class NestedDtoNamespaceTest
         // Test that nested DTOs are generated in Generated_{hash} namespace
         var results = Orders
             .AsQueryable()
-            .SelectExpr<Order, OrderDto>(s => new
+            .SelectExpr<OrderNS, OrderDto>(s => new
             {
                 Id = s.Id,
                 CustomerName = s.Customer?.Name,
@@ -59,29 +57,28 @@ public class NestedDtoNamespaceTest
         first.Items[1].ProductName.ShouldBe("Mouse");
         first.Items[1].Quantity.ShouldBe(2);
     }
-}
 
-// --------------------
-// Data model definitions
-public class Order
-{
-    public int Id { get; set; }
-    public Customer? Customer { get; set; }
-    public List<OrderItem> OrderItems { get; set; } = [];
-}
+    // Data model definitions
+    public class OrderNS
+    {
+        public int Id { get; set; }
+        public Customer? Customer { get; set; }
+        public List<OrderItem> OrderItems { get; set; } = [];
+    }
 
-public class Customer
-{
-    public string Name { get; set; } = "";
-}
+    public class CustomerNS
+    {
+        public string Name { get; set; } = "";
+    }
 
-public class OrderItem
-{
-    public Product? Product { get; set; }
-    public int Quantity { get; set; }
-}
+    public class OrderItemNS
+    {
+        public Product? Product { get; set; }
+        public int Quantity { get; set; }
+    }
 
-public class Product
-{
-    public string Name { get; set; } = "";
+    public class ProductNS
+    {
+        public string Name { get; set; } = "";
+    }
 }
