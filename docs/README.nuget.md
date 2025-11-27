@@ -95,4 +95,4 @@ namespace Tutorial
 }
 ```
 
-See the [GitHub Repository](https://arika0093.github.io/Linqraft/) for more details.
+See the [GitHub Repository](https://github.com/arika0093/Linqraft) for more details.
