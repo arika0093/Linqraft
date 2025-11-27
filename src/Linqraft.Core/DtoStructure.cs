@@ -69,7 +69,8 @@ public record DtoStructure(ITypeSymbol SourceType, List<DtoProperty> Properties)
         ObjectCreationExpressionSyntax namedObj,
         SemanticModel semanticModel,
         ITypeSymbol sourceType,
-        string? hintName = null
+        string? hintName = null,
+        LinqraftConfiguration? configuration = null
     )
     {
         // For named types, get the return type (the type being constructed) instead of the source type
@@ -104,7 +105,8 @@ public record DtoStructure(ITypeSymbol SourceType, List<DtoProperty> Properties)
                 propertyName,
                 expression,
                 semanticModel,
-                targetProp
+                targetProp,
+                configuration: configuration
             );
             if (property is not null)
             {
@@ -123,7 +125,8 @@ public record DtoStructure(ITypeSymbol SourceType, List<DtoProperty> Properties)
                 propertyName,
                 expression,
                 semanticModel,
-                targetProp
+                targetProp,
+                configuration: configuration
             );
             if (property is not null)
             {
@@ -144,12 +147,14 @@ public record DtoStructure(ITypeSymbol SourceType, List<DtoProperty> Properties)
     /// <param name="semanticModel">The semantic model for type resolution</param>
     /// <param name="sourceType">The source type being selected from</param>
     /// <param name="hintName">Optional hint name for better class naming</param>
+    /// <param name="configuration">Optional Linqraft configuration settings</param>
     /// <returns>A DtoStructure representing the anonymous type</returns>
     public static DtoStructure? AnalyzeAnonymousType(
         AnonymousObjectCreationExpressionSyntax anonymousObj,
         SemanticModel semanticModel,
         ITypeSymbol sourceType,
-        string? hintName = null
+        string? hintName = null,
+        LinqraftConfiguration? configuration = null
     )
     {
         // Get the type info of the anonymous object itself
@@ -203,7 +208,8 @@ public record DtoStructure(ITypeSymbol SourceType, List<DtoProperty> Properties)
                 propertyName,
                 expression,
                 semanticModel,
-                targetProperty
+                targetProperty,
+                configuration: configuration
             );
             if (property is not null)
             {

@@ -87,7 +87,7 @@ public class Issue_NullConditionalWithChainsTest
             {
                 data = d.Children.Select(c => new
                 {
-                    // Should be List<DateTimeOffset>? - when Child3 is null, result1 should be null
+                    // Should be List<DateTimeOffset> (non-nullable) - when Child3 is null, result1 should be empty list
                     result1 = c
                         .Child2.Child3?.Child4s.OrderByDescending(c4 => c4.CreatedAt)
                         .Select(c4 => c4.CreatedAt)
@@ -121,7 +121,12 @@ public class Issue_NullConditionalWithChainsTest
         var second = result[1];
         second.data.ShouldNotBeNull();
         var secondChild = second.data.First();
-        secondChild.result1.ShouldBeNull();
+        // result1 is a collection type with Select, so it should be an empty list (not null)
+        // per the new behavior: collections with null-conditional access and Select/SelectMany
+        // use empty collection fallback instead of null
+        secondChild.result1.ShouldNotBeNull();
+        secondChild.result1!.Count.ShouldBe(0);
+        // result2 is a single item from FirstOrDefault, so it should still be null
         secondChild.result2.ShouldBeNull();
     }
 

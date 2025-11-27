@@ -349,7 +349,7 @@ var val = 10;
 var multiplier = 2;
 var suffix = " units";
 var converted = dbContext.Entities
-    .SelectExpr(
+    .SelectExpr<Entity, EntityDto>(
         x => new {
             x.Id,
             // cannot use local variable 'val' directly
@@ -362,14 +362,47 @@ var converted = dbContext.Entities
     );
 ```
 
+<details>
+<summary>Generated code example</summary>
+
+```csharp
+// code snippet
+public static IQueryable<TResult> SelectExpr_223F344D_DD65E389<TIn, TResult>(
+    this IQueryable<TIn> query, Func<TIn, TResult> selector, object captureParam)
+{
+    var matchedQuery = query as object as IQueryable<global::Entity>;
+    dynamic captureObj = captureParam;
+    int val = captureObj.val;
+    int multiplier = captureObj.multiplier;
+    string suffix = captureObj.suffix;
+    var converted = matchedQuery.Select(x => new global::EntityDto
+    {
+        Id = x.Id,
+        NewValue = x.Value + val,
+        DoubledValue = x.Value * multiplier,
+        Description = x.Name + suffix,
+    });
+    return converted as object as IQueryable<TResult>;
+}
+```
+
+</details>
+
 An analyzer is also provided to automatically detect and apply this transformation.
 It is detected as an error, so just apply the code fix.
 
 ![](./assets/local-variable-capture-err.png)
 
 ### Removing nullability from arrays
-Basically, the types of the DTO class are generated as written. However, nullability is automatically removed at generation time for array types.
-Because in array types, there is little need to distinguish between `null` and `[]`.
+Generally, DTO class types should be generated as specified. However, for array types, it is convenient for null tolerance to be automatically removed during generation.
+This is because with array types, there is rarely a need to distinguish between `null` and `[]`.
+
+Linqraft automatically removes nullability from array-type properties according to the following rules.
+* Expression should NOT contain a ternary operator
+* The type must be IEnumerable<T> or derived (List, Array, etc.)
+* The expression uses null-conditional access (?.)
+* The expression contains a Select or SelectMany call
+
 For example, the following transformation is performed.
 
 ```csharp
@@ -377,21 +410,50 @@ query.SelectExpr<Entity, EntityDto>(e => new
 {
     // in general, this property is generated as List<string>?
     // but Linqraft removes nullability for array types.
-    // so the generated type is List<string>.
+    // so the generated type is List<string>
     ChildNames = e.Child?.Select(c => c.Name).ToList(),
 
     // This also applies to auto-generated child classes.
-    // so the generated type is IEnumerable<ChildDto_HASH1234>.
+    // so the generated type is IEnumerable<ChildDto_HASH1234>
     ChildDtos = e.Child?.Select(c => new { c.Name, c.Description }),
 
     // When explicitly comparing with a ternary operator, it is generated as a nullable type as usual.
-    // therefore, in this case, it is generated as List<string>?.
+    // therefore, in this case, it is generated as List<string>?
     ExplicitNullableNames = e.Child != null ? e.Child.Select(c => c.Name).ToList() : null,
 });
 ```
 
-This change helps avoid unnecessary null checks like `foreach(var name in dto.ChildNames ?? [])`, keeping the code simple.
+<details>
+<summary>Generated code example</summary>
 
+```csharp
+// code snippet
+var converted = matchedQuery.Select(d => new global::EntityDto
+{
+    ChildNames = d.Child != null ? d.Child.Select(c => c.Name).ToList() : new System.Collections.Generic.List<int>(),
+    ChildDtos = d.Child != null ? d.Child
+        .Select(c => new global::ChildDto_HASH1234
+        {
+            Name = c.Name,
+            Description = c.Description
+        }) : new System.Collections.Generic.List<global::ChildDto_HASH1234>(),
+    ExplicitNullableNames = d.Child != null ? d.Child.Select(c => c.Name).ToList() : null,
+});
+
+// generated DTO class
+public partial class EntityDto
+{
+    public required System.Collections.Generic.List<string> ChildNames { get; set; }
+    public required System.Collections.Generic.IEnumerable<global::ChildDto_HASH1234> ChildDtos { get; set; }
+    public required System.Collections.Generic.List<string>? ExplicitNullableNames { get; set; }
+}
+```
+
+</details>
+
+This change helps avoid unnecessary null checks like `dto.ChildNames ?? []`, keeping the code simple.
+
+If you don't like this behavior, you can disable it by setting the `LinqraftArrayNullabilityRemoval` property to `false`.
 
 ### Partial Classes
 You can extend the generated DTO classes as needed since they are output as `partial` classes.
@@ -431,6 +493,96 @@ public partial class ParentDto
 }
 ```
 
+### Auto generated comments
+Linqraft attempts to retrieve comments attached to the original properties as much as possible and attach them as XML documentation comments to the properties of the DTO class.
+In addition, reference information indicating what kind of query the DTO class was generated from is also attached.
+This feature can be controlled using the `LinqraftCommentOutput` property.
+
+<details>
+<summary>Generated code example with comments</summary>
+
+```csharp
+// based entity class with comments
+public class Entity
+{
+    /// <summary>
+    /// XML summary comment
+    /// </summary>
+    [Key]
+    public int Id { get; set; }
+
+    [Comment("EFCore Comment")]
+    public int Item1 { get; set; }
+
+    [Display(Name = "Display Comment")]
+    public int Item2 { get; set; }
+
+    public List<ChildEntity> Childs { get; set; }
+}
+public class ChildEntity
+{
+    // single-line comment are also supported
+    public int ChildId { get; set; }
+}
+
+// and use SelectExpr
+query.SelectExpr<Entity, EntityDto>(e => new
+{
+    Id = e.Id,
+    Item1Value = e.Item1,
+    Item2Value = e.Item2,
+    ChildIds = e.Childs.Select(c => c.ChildId).ToList(),
+});
+```
+
+generates the following DTO class:
+
+```csharp
+/// <summary>
+/// based entity class with comments
+/// </summary>
+/// <remarks>
+/// From: <c>Entity</c>
+/// </remarks>
+public partial class EntityDto
+{
+    /// <summary>
+    /// XML summary comment
+    /// </summary>
+    /// <remarks>
+    /// From: <c>Entity.Id</c>
+    /// Attributes: <c>[Key]</c>
+    /// </remarks>
+    public required int Id { get; set; }
+
+    /// <summary>
+    /// EFCore Comment
+    /// </summary>
+    /// <remarks>
+    /// From: <c>Entity.Item1</c>
+    /// </remarks>
+    public required int Item1Value { get; set; }
+
+    /// <summary>
+    /// Display Comment
+    /// </summary>
+    /// <remarks>
+    /// From: <c>Entity.Item2</c>
+    /// </remarks>
+    public required int Item2Value { get; set; }
+
+    /// <summary>
+    /// single-line comment are also supported
+    /// </summary>
+    /// <remarks>
+    /// From: <c>Entity.Childs.Select(...).ToList()</c>
+    /// </remarks>
+    public required System.Collections.Generic.List<int> ChildIds { get; set; }
+}
+```
+</details>
+
+
 ### Global Properties
 Linqraft supports several MSBuild properties to customize the generated code:
 
@@ -438,8 +590,8 @@ Linqraft supports several MSBuild properties to customize the generated code:
 <Project>
   <!-- The values listed are the default values. -->
   <PropertyGroup>
-    <!-- set namespace if based-class is in global namespace -->
-    <LinqraftGlobalNamespace>Linqraft</LinqraftGlobalNamespace>
+    <!-- set namespace if based-class is in global namespace. empty means use global namespace -->
+    <LinqraftGlobalNamespace></LinqraftGlobalNamespace>
     <!-- generate records instead of classes -->
     <LinqraftRecordGenerate>false</LinqraftRecordGenerate>
     <!-- set accessor pattern. Default, GetAndSet, GetAndInit, GetAndInternalSet -->
@@ -450,6 +602,8 @@ Linqraft supports several MSBuild properties to customize the generated code:
     <!-- generate xml documentation comments on properties -->
     <!-- All(summary+reference), SummaryOnly(summary), None(no comments) -->
     <LinqraftCommentOutput>All</LinqraftCommentOutput>
+    <!-- remove nullability from array-type properties -->
+    <LinqraftArrayNullabilityRemoval>true</LinqraftArrayNullabilityRemoval>
   </PropertyGroup>
 </Project>
 ```

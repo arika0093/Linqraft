@@ -531,7 +531,11 @@ public class ExplicitDtoComprehensiveTest
         result[0].PrimaryDetailDescriptions.ShouldNotBeNull();
         result[0].PrimaryDetailDescriptions!.ShouldBe(["Detail1", "Detail2"]);
         result[1].PrimaryChildName.ShouldBeNull();
-        result[1].PrimaryDetailDescriptions.ShouldBeNull();
+        // PrimaryDetailDescriptions is a collection type with Select, so it should be empty list (not null)
+        // per the new behavior: collections with null-conditional access and Select/SelectMany
+        // use empty collection fallback instead of null
+        result[1].PrimaryDetailDescriptions.ShouldNotBeNull();
+        result[1].PrimaryDetailDescriptions!.Count.ShouldBe(0);
     }
 
     [Fact]
