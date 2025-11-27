@@ -51,7 +51,7 @@ public class GenerateDtoClassInfo
     /// <summary>
     /// Set of property names that already exist in a predefined partial class (should not be generated)
     /// </summary>
-    public HashSet<string> ExistingProperties { get; set; } = new();
+    public HashSet<string> ExistingProperties { get; set; } = [];
 
     /// <summary>
     /// Gets the fully qualified name of the DTO class

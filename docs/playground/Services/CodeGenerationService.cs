@@ -1,5 +1,6 @@
 using System.Text;
 using Linqraft.Core;
+using Linqraft.Core.Formatting;
 using Linqraft.Playground.Models;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
@@ -74,27 +75,21 @@ public class CodeGenerationService
                 try
                 {
                     info.Configuration = config;
-
-                    // Generate DTO classes
-                    var dtoClasses = info.GenerateDtoClasses();
-                    foreach (var dtoClass in dtoClasses)
-                    {
-                        var generatedCode = dtoClass.BuildCode(config);
-                        dtoClassBuilder.AppendLine(generatedCode);
-                    }
-
-                    // Generate the select expression (simplified representation)
-                    var semanticModel = _sharedCompilation.GetSemanticModel(info.Invocation.SyntaxTree);
+                    var targetNamespace = info.GetNamespaceString();
+                    var semanticModel = _sharedCompilation.GetSemanticModel(
+                        info.Invocation.SyntaxTree
+                    );
                     var location = semanticModel.GetInterceptableLocation(info.Invocation);
-                    if (location != null)
-                    {
-                        var selectExprCodes = info.GenerateSelectExprCodes(location);
-                        foreach (var selectCode in selectExprCodes)
-                        {
-                            queryExpressionBuilder.AppendLine(selectCode);
-                            queryExpressionBuilder.AppendLine();
-                        }
-                    }
+                    var selectExprCodes = info.GenerateSelectExprCodes(location!);
+                    var dtoClasses = info.GenerateDtoClasses()
+                        .Select(c => c.BuildCode(config))
+                        .ToList();
+                    queryExpressionBuilder.AppendLine(
+                        GenerateSourceCodeSnippets.BuildExprCodeSnippets(selectExprCodes)
+                    );
+                    dtoClassBuilder.AppendLine(
+                        GenerateSourceCodeSnippets.BuildDtoCodeSnippets(dtoClasses, targetNamespace)
+                    );
                 }
                 catch (Exception ex)
                 {
@@ -110,11 +105,7 @@ public class CodeGenerationService
             // Add generated code to the shared compilation for accurate highlighting
             _sharedCompilation.AddGeneratedCode(expressionCode, dtoCode);
 
-            return new GeneratedOutput
-            {
-                QueryExpression = expressionCode,
-                DtoClass = dtoCode,
-            };
+            return new GeneratedOutput { QueryExpression = expressionCode, DtoClass = dtoCode };
         }
         catch (Exception ex)
         {

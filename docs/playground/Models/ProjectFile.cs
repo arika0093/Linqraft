@@ -10,7 +10,7 @@ public class ProjectFile
     public string Content { get; set; } = "";
     public bool IsFolder { get; set; }
     public bool IsHidden { get; set; }
-    public List<ProjectFile> Children { get; set; } = new();
+    public List<ProjectFile> Children { get; set; } = [];
 }
 
 /// <summary>
@@ -20,8 +20,8 @@ public class Template
 {
     public string Name { get; set; } = "";
     public string Description { get; set; } = "";
-    public List<ProjectFile> Files { get; set; } = new();
-    
+    public List<ProjectFile> Files { get; set; } = [];
+
     /// <summary>
     /// Gets visible files (non-hidden) for display
     /// </summary>

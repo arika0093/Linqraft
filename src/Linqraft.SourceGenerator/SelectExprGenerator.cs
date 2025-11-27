@@ -20,7 +20,7 @@ public partial class SelectExprGenerator : IIncrementalGenerator
     public void Initialize(IncrementalGeneratorInitializationContext context)
     {
         // Generate pre-defined source code
-        context.RegisterPostInitializationOutput(ctx => ConstSourceCodes.ExportAll(ctx));
+        context.RegisterPostInitializationOutput(ctx => GenerateSourceCodeSnippets.ExportAll(ctx));
 
         // Read MSBuild properties for configuration
         var configurationProvider = context.AnalyzerConfigOptionsProvider.Select(

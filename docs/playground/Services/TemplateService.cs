@@ -39,13 +39,13 @@ public class TemplateService
 
     public List<Template> GetTemplates()
     {
-        return new List<Template>
-        {
+        return
+        [
             CreateSimpleSampleTemplate(),
             CreateAnonymousTypeTemplate(),
             CreateExplicitDtoTemplate(),
             CreateNestedObjectTemplate(),
-        };
+        ];
     }
 
     /// <summary>
@@ -58,8 +58,8 @@ public class TemplateService
             Name = "Simple Sample",
             Description =
                 "Basic example showing SelectExpr with null-conditional operators (from examples/Linqraft.MinimumSample)",
-            Files = new List<ProjectFile>
-            {
+            Files =
+            [
                 new ProjectFile
                 {
                     Name = "SampleClasses.cs",
@@ -157,7 +157,7 @@ public class TemplateService
                     IsHidden = true,
                     Content = CommonUsings + "\n" + SelectExprStub,
                 },
-            },
+            ],
         };
     }
 
@@ -170,8 +170,8 @@ public class TemplateService
         {
             Name = "Anonymous Type",
             Description = "Using anonymous types with SelectExpr (Pattern 1)",
-            Files = new List<ProjectFile>
-            {
+            Files =
+            [
                 new ProjectFile
                 {
                     Name = "Models.cs",
@@ -237,7 +237,7 @@ public class TemplateService
                     IsHidden = true,
                     Content = CommonUsings + "\n" + SelectExprStub,
                 },
-            },
+            ],
         };
     }
 
@@ -250,8 +250,8 @@ public class TemplateService
         {
             Name = "Explicit DTO",
             Description = "Using explicit DTO type parameter with SelectExpr (Pattern 2)",
-            Files = new List<ProjectFile>
-            {
+            Files =
+            [
                 new ProjectFile
                 {
                     Name = "Models.cs",
@@ -347,7 +347,7 @@ public class TemplateService
                             }
                             """,
                 },
-            },
+            ],
         };
     }
 
@@ -360,8 +360,8 @@ public class TemplateService
         {
             Name = "Nested Objects",
             Description = "Working with nested object selections and collections",
-            Files = new List<ProjectFile>
-            {
+            Files =
+            [
                 new ProjectFile
                 {
                     Name = "Models.cs",
@@ -446,7 +446,7 @@ public class TemplateService
                     IsHidden = true,
                     Content = CommonUsings + "\n" + SelectExprStub,
                 },
-            },
+            ],
         };
     }
 }
