@@ -11,14 +11,11 @@
             @(IsCollapsed ? "▼" : "▲")
         </button>
     </div>
-    @if (!IsCollapsed)
-    {
-        <div class="flex-1 overflow-hidden relative">
-            <StandaloneCodeEditor @ref="Editor"
-                Id="@EditorId"
-                ConstructionOptions="GetConstructionOptions" />
-        </div>
-    }
+    <div class="flex-1 overflow-hidden relative" style="@(IsCollapsed ? "display: none;" : "")">
+        <StandaloneCodeEditor @ref="Editor"
+            Id="@EditorId"
+            ConstructionOptions="GetConstructionOptions" />
+    </div>
 </div>
 
 @code {
@@ -30,6 +27,12 @@
     [Parameter] public EventCallback<bool> IsCollapsedChanged { get; set; }
 
     public StandaloneCodeEditor? Editor { get; private set; }
+    private string currentContent = "";
+
+    protected override void OnInitialized()
+    {
+        currentContent = InitialContent;
+    }
 
     private StandaloneEditorConstructionOptions GetConstructionOptions(StandaloneCodeEditor editor)
     {
@@ -38,7 +41,7 @@
             AutomaticLayout = true,
             Language = "csharp",
             Theme = "vs-dark", // Dark theme
-            Value = InitialContent,
+            Value = currentContent,
             FontSize = 13,
             FontFamily = "'JetBrains Mono', monospace",
             ReadOnly = true,
@@ -57,6 +60,7 @@
 
     public async Task SetValueAsync(string content)
     {
+        currentContent = content;
         if (Editor != null)
         {
             try

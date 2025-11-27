@@ -49,6 +49,15 @@
                 </div>
             }
         </div>
+        
+        <!-- Settings Button -->
+        <div class="p-3">
+            <button class="w-full flex items-center gap-2 px-3 py-2 text-gray-300 text-sm rounded hover:bg-gray-700"
+                    @onclick="OnOpenSettings">
+                <span class="text-sm">⚙️</span>
+                <span>Settings</span>
+            </button>
+        </div>
     </div>
 </div>
 
@@ -64,10 +73,11 @@
     [Parameter] public EventCallback OnToggleFiles { get; set; }
     [Parameter] public EventCallback<Template> OnSelectTemplate { get; set; }
     [Parameter] public EventCallback<ProjectFile> OnSelectFile { get; set; }
+    [Parameter] public EventCallback OnOpenSettings { get; set; }
 
     private string GetSidebarClasses()
     {
-        var baseClasses = "flex relative bg-gray-800 border-r border-gray-700 transition-all duration-300";
+        var baseClasses = "flex flex-col relative bg-gray-800 border-r border-gray-700 transition-all duration-300";
         return Collapsed 
             ? $"{baseClasses} w-10 min-w-[2.5rem]" 
             : $"{baseClasses} w-60 min-w-[15rem]";

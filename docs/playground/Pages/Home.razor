@@ -1,4 +1,5 @@
 ﻿@page "/"
+@using Linqraft.Core
 @inject TemplateService TemplateService
 @inject CodeGenerationService CodeGenerationService
 @inject IJSRuntime JSRuntime
@@ -18,7 +19,8 @@
         OnToggleTemplates="ToggleTemplatesSection"
         OnToggleFiles="ToggleFilesSection"
         OnSelectTemplate="SelectTemplate"
-        OnSelectFile="SelectFile" />
+        OnSelectFile="SelectFile"
+        OnOpenSettings="OpenSettings" />
 
     <!-- Main Content Area -->
     <div class="flex-1 flex overflow-hidden">
@@ -74,6 +76,14 @@
     </div>
 </div>
 
+<!-- Settings Dialog -->
+<SettingsDialog 
+    IsOpen="settingsOpen"
+    IsOpenChanged="@(open => settingsOpen = open)"
+    Configuration="configuration"
+    ConfigurationChanged="@(config => configuration = config)"
+    OnApply="OnSettingsApply" />
+
 @code {
     private EditorPane? editorPane;
     private PreviewPane? queryPreviewPane;
@@ -88,6 +98,10 @@
     private bool filesExpanded = true;
     private bool queryPaneCollapsed = false;
     private bool dtoPaneCollapsed = false;
+    private bool settingsOpen = false;
+    
+    // Configuration with CommentOutput set to None by default
+    private LinqraftConfiguration configuration = new() { CommentOutput = CommentOutputMode.None };
 
     protected override void OnInitialized()
     {
@@ -98,11 +112,9 @@
             var visibleFiles = selectedTemplate.VisibleFiles.ToList();
             if (visibleFiles.Count > 0)
             {
-                // Default to the file containing SelectExpr (like Program.cs or Query.cs)
+                // Default to the file containing SelectExpr
                 selectedFile = visibleFiles.FirstOrDefault(f => 
-                    f.Content.Contains("SelectExpr") || 
-                    f.Name.Equals("Program.cs", StringComparison.OrdinalIgnoreCase) ||
-                    f.Name.Equals("Query.cs", StringComparison.OrdinalIgnoreCase)) 
+                    f.Content.Contains("SelectExpr")) 
                     ?? visibleFiles[0];
             }
         }
@@ -132,6 +144,17 @@
     {
         filesExpanded = !filesExpanded;
     }
+    
+    private void OpenSettings()
+    {
+        settingsOpen = true;
+    }
+    
+    private async Task OnSettingsApply()
+    {
+        // Regenerate preview with new settings
+        await GeneratePreviewForTemplate();
+    }
 
     private async Task SelectTemplate(Models.Template template)
     {
@@ -139,11 +162,8 @@
         var visibleFiles = template.VisibleFiles.ToList();
         if (visibleFiles.Count > 0)
         {
-            // Default to the file containing SelectExpr (like Program.cs or Query.cs)
-            selectedFile = visibleFiles.FirstOrDefault(f => 
-                f.Content.Contains("SelectExpr") || 
-                f.Name.Equals("Program.cs", StringComparison.OrdinalIgnoreCase) ||
-                f.Name.Equals("Query.cs", StringComparison.OrdinalIgnoreCase)) 
+            // Default to the file containing SelectExpr
+            selectedFile = visibleFiles.FirstOrDefault(f => f.Content.Contains("SelectExpr")) 
                 ?? visibleFiles[0];
             if (editorPane != null)
             {
@@ -174,10 +194,10 @@
             selectedFile.Content = await editorPane.GetValueAsync();
         }
 
-        // Debounce the preview generation
+        // Debounce the preview generation (300ms after input stops)
         debounceTimer?.Stop();
         debounceTimer?.Dispose();
-        debounceTimer = new System.Timers.Timer(500);
+        debounceTimer = new System.Timers.Timer(300);
         debounceTimer.Elapsed += async (sender, args) =>
         {
             debounceTimer?.Stop();
@@ -198,7 +218,7 @@
         {
             // Combine all files in the template for analysis
             var allCode = string.Join("\n\n", selectedTemplate.Files.Select(f => f.Content));
-            var output = CodeGenerationService.GenerateOutput(allCode);
+            var output = CodeGenerationService.GenerateOutput(allCode, configuration);
 
             if (queryPreviewPane != null)
             {
