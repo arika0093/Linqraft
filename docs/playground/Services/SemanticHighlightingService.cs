@@ -74,7 +74,10 @@ public class SemanticHighlightingService
     /// Analyzes generated code using the shared compilation.
     /// Call this after code generation to get accurate highlighting for generated code.
     /// </summary>
-    public List<SemanticToken> GetSemanticTokensForGenerated(string generatedCode, bool isExpression)
+    public List<SemanticToken> GetSemanticTokensForGenerated(
+        string generatedCode,
+        bool isExpression
+    )
     {
         var tokens = new List<SemanticToken>();
 
@@ -88,7 +91,7 @@ public class SemanticHighlightingService
             // Find the generated code tree in the compilation
             var fileName = isExpression ? "__GeneratedExpression.cs" : "__GeneratedDto.cs";
             SyntaxTree? syntaxTree = null;
-            
+
             foreach (var tree in _sharedCompilation.GetAllSyntaxTrees())
             {
                 if (tree.FilePath == fileName)
@@ -174,7 +177,12 @@ public class SemanticHighlightingService
         }
     }
 
-    private void ProcessNode(SyntaxNode node, SemanticModel? semanticModel, string code, List<SemanticToken> tokens)
+    private void ProcessNode(
+        SyntaxNode node,
+        SemanticModel? semanticModel,
+        string code,
+        List<SemanticToken> tokens
+    )
     {
         switch (node)
         {
@@ -246,7 +254,11 @@ public class SemanticHighlightingService
         }
     }
 
-    private void ProcessPropertyKeywords(PropertyDeclarationSyntax propDecl, string code, List<SemanticToken> tokens)
+    private void ProcessPropertyKeywords(
+        PropertyDeclarationSyntax propDecl,
+        string code,
+        List<SemanticToken> tokens
+    )
     {
         // Check for 'required' modifier
         foreach (var modifier in propDecl.Modifiers)
@@ -258,7 +270,11 @@ public class SemanticHighlightingService
         }
     }
 
-    private void ProcessAccessorKeywords(AccessorDeclarationSyntax accessorDecl, string code, List<SemanticToken> tokens)
+    private void ProcessAccessorKeywords(
+        AccessorDeclarationSyntax accessorDecl,
+        string code,
+        List<SemanticToken> tokens
+    )
     {
         // Highlight 'init' keyword (SyntaxKind.InitKeyword in accessor)
         var keyword = accessorDecl.Keyword;
@@ -268,14 +284,22 @@ public class SemanticHighlightingService
         }
     }
 
-    private void ProcessIdentifierName(IdentifierNameSyntax identifierName, SemanticModel semanticModel, string code, List<SemanticToken> tokens)
+    private void ProcessIdentifierName(
+        IdentifierNameSyntax identifierName,
+        SemanticModel semanticModel,
+        string code,
+        List<SemanticToken> tokens
+    )
     {
         // Skip if part of a declaration (already handled)
-        if (identifierName.Parent is MethodDeclarationSyntax or 
-            ClassDeclarationSyntax or 
-            PropertyDeclarationSyntax or 
-            VariableDeclaratorSyntax or
-            ParameterSyntax)
+        if (
+            identifierName.Parent
+            is MethodDeclarationSyntax
+                or ClassDeclarationSyntax
+                or PropertyDeclarationSyntax
+                or VariableDeclaratorSyntax
+                or ParameterSyntax
+        )
         {
             return;
         }
@@ -314,7 +338,12 @@ public class SemanticHighlightingService
         }
     }
 
-    private void ProcessTypeArgumentList(TypeArgumentListSyntax typeArgList, SemanticModel semanticModel, string code, List<SemanticToken> tokens)
+    private void ProcessTypeArgumentList(
+        TypeArgumentListSyntax typeArgList,
+        SemanticModel semanticModel,
+        string code,
+        List<SemanticToken> tokens
+    )
     {
         // Process each type argument in the generic type (e.g., Order in List<Order>)
         foreach (var typeArg in typeArgList.Arguments)
@@ -323,7 +352,12 @@ public class SemanticHighlightingService
         }
     }
 
-    private void ProcessTypeArgument(TypeSyntax typeSyntax, SemanticModel semanticModel, string code, List<SemanticToken> tokens)
+    private void ProcessTypeArgument(
+        TypeSyntax typeSyntax,
+        SemanticModel semanticModel,
+        string code,
+        List<SemanticToken> tokens
+    )
     {
         switch (typeSyntax)
         {
@@ -354,7 +388,12 @@ public class SemanticHighlightingService
         }
     }
 
-    private void ProcessGenericName(GenericNameSyntax genericName, SemanticModel semanticModel, string code, List<SemanticToken> tokens)
+    private void ProcessGenericName(
+        GenericNameSyntax genericName,
+        SemanticModel semanticModel,
+        string code,
+        List<SemanticToken> tokens
+    )
     {
         var symbolInfo = semanticModel.GetSymbolInfo(genericName);
         var symbol = symbolInfo.Symbol;
@@ -370,16 +409,23 @@ public class SemanticHighlightingService
         }
     }
 
-    private void ProcessInvocation(InvocationExpressionSyntax invocation, SemanticModel semanticModel, string code, List<SemanticToken> tokens)
+    private void ProcessInvocation(
+        InvocationExpressionSyntax invocation,
+        SemanticModel semanticModel,
+        string code,
+        List<SemanticToken> tokens
+    )
     {
         // Get the method name from the invocation
         SyntaxToken? methodIdentifier = invocation.Expression switch
         {
             IdentifierNameSyntax identName => identName.Identifier,
-            MemberAccessExpressionSyntax memberAccess when memberAccess.Name is IdentifierNameSyntax name => name.Identifier,
-            MemberAccessExpressionSyntax memberAccess when memberAccess.Name is GenericNameSyntax genericName => genericName.Identifier,
+            MemberAccessExpressionSyntax memberAccess
+                when memberAccess.Name is IdentifierNameSyntax name => name.Identifier,
+            MemberAccessExpressionSyntax memberAccess
+                when memberAccess.Name is GenericNameSyntax genericName => genericName.Identifier,
             GenericNameSyntax generic => generic.Identifier,
-            _ => null
+            _ => null,
         };
 
         if (methodIdentifier.HasValue)
@@ -392,7 +438,12 @@ public class SemanticHighlightingService
         }
     }
 
-    private void ProcessMemberAccess(MemberAccessExpressionSyntax memberAccess, SemanticModel semanticModel, string code, List<SemanticToken> tokens)
+    private void ProcessMemberAccess(
+        MemberAccessExpressionSyntax memberAccess,
+        SemanticModel semanticModel,
+        string code,
+        List<SemanticToken> tokens
+    )
     {
         // Get the member name
         var name = memberAccess.Name;
@@ -400,7 +451,7 @@ public class SemanticHighlightingService
         {
             IdentifierNameSyntax identName => identName.Identifier,
             GenericNameSyntax genericName => genericName.Identifier,
-            _ => default
+            _ => default,
         };
 
         if (identifier == default)
@@ -436,29 +487,36 @@ public class SemanticHighlightingService
             TypeKind.Struct => SemanticTokenType.Struct,
             TypeKind.Enum => SemanticTokenType.Enum,
             TypeKind.Delegate => SemanticTokenType.Delegate,
-            _ => SemanticTokenType.Class
+            _ => SemanticTokenType.Class,
         };
     }
 
-    private void AddToken(List<SemanticToken> tokens, SyntaxToken identifier, SemanticTokenType type, string code)
+    private void AddToken(
+        List<SemanticToken> tokens,
+        SyntaxToken identifier,
+        SemanticTokenType type,
+        string code
+    )
     {
         if (identifier == default)
             return;
 
         var span = identifier.Span;
         var lineSpan = identifier.SyntaxTree?.GetLineSpan(span);
-        
+
         if (lineSpan == null)
             return;
 
-        tokens.Add(new SemanticToken
-        {
-            StartLine = lineSpan.Value.StartLinePosition.Line + 1, // Monaco is 1-based
-            StartColumn = lineSpan.Value.StartLinePosition.Character + 1,
-            EndLine = lineSpan.Value.EndLinePosition.Line + 1,
-            EndColumn = lineSpan.Value.EndLinePosition.Character + 1,
-            Type = type
-        });
+        tokens.Add(
+            new SemanticToken
+            {
+                StartLine = lineSpan.Value.StartLinePosition.Line + 1, // Monaco is 1-based
+                StartColumn = lineSpan.Value.StartLinePosition.Character + 1,
+                EndLine = lineSpan.Value.EndLinePosition.Line + 1,
+                EndColumn = lineSpan.Value.EndLinePosition.Character + 1,
+                Type = type,
+            }
+        );
     }
 }
 
@@ -490,5 +548,5 @@ public enum SemanticTokenType
     Variable,
     Parameter,
     Namespace,
-    Keyword
+    Keyword,
 }
