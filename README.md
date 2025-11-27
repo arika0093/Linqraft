@@ -604,6 +604,9 @@ Linqraft supports several MSBuild properties to customize the generated code:
     <LinqraftCommentOutput>All</LinqraftCommentOutput>
     <!-- remove nullability from array-type properties -->
     <LinqraftArrayNullabilityRemoval>true</LinqraftArrayNullabilityRemoval>
+    <!-- generate nested DTOs in hash-named namespace (e.g., Generated_HASH.ItemsDto) -->
+    <!-- instead of hash-suffixed class names (e.g., ItemsDto_HASH) -->
+    <LinqraftNestedDtoNamespace>false</LinqraftNestedDtoNamespace>
   </PropertyGroup>
 </Project>
 ```

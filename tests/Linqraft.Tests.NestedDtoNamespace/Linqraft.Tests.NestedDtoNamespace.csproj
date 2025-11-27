@@ -1,0 +1,8 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <LinqraftGlobalNamespace>TestNamespace</LinqraftGlobalNamespace>
+    <LinqraftNestedDtoNamespace>true</LinqraftNestedDtoNamespace>
+    <EmitCompilerGeneratedFiles>true</EmitCompilerGeneratedFiles>
+    <CompilerGeneratedFilesOutputPath>.generated</CompilerGeneratedFilesOutputPath>
+  </PropertyGroup>
+</Project>

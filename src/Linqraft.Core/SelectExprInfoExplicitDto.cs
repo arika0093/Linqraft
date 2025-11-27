@@ -67,7 +67,8 @@ public record SelectExprInfoExplicitDto : SelectExprInfo
 
         // Get existing properties from the TResultType (only for the main DTO, not nested)
         var existingProperties = new HashSet<string>();
-        if (overrideClassName == ExplicitDtoName)
+        var isMainDto = overrideClassName == ExplicitDtoName;
+        if (isMainDto)
         {
             // This is the main DTO, check for existing properties
             var properties = TResultType.GetMembers().OfType<IPropertySymbol>();
@@ -99,6 +100,17 @@ public record SelectExprInfoExplicitDto : SelectExprInfo
         // Generate current DTO class
         // Use GetActualDtoNamespace() to handle global namespace correctly
         var actualNamespace = GetActualDtoNamespace();
+
+        // When NestedDtoNamespace option is enabled, child DTOs are placed in
+        // a hash-named sub-namespace (e.g., Generated_{Hash}.ClassName)
+        if (!isMainDto && Configuration?.NestedDtoNamespace == true)
+        {
+            var hash = structure.GetUniqueId();
+            actualNamespace = string.IsNullOrEmpty(actualNamespace)
+                ? $"Generated_{hash}"
+                : $"{actualNamespace}.Generated_{hash}";
+        }
+
         var dtoClassInfo = new GenerateDtoClassInfo
         {
             Accessibility = accessibility,
@@ -184,9 +196,17 @@ public record SelectExprInfoExplicitDto : SelectExprInfo
     /// <summary>
     /// Gets the DTO class name
     /// Uses BestName (which prefers HintName if available) for better class naming (issue #155)
+    /// When NestedDtoNamespace is enabled, the class name is just "{BestName}Dto"
+    /// Otherwise, it includes the hash suffix: "{BestName}Dto_{hash}"
     /// </summary>
-    protected override string GetClassName(DtoStructure structure) =>
-        $"{structure.BestName}Dto_{structure.GetUniqueId()}";
+    protected override string GetClassName(DtoStructure structure)
+    {
+        if (Configuration?.NestedDtoNamespace == true)
+        {
+            return $"{structure.BestName}Dto";
+        }
+        return $"{structure.BestName}Dto_{structure.GetUniqueId()}";
+    }
 
     /// <summary>
     /// Gets the parent DTO class name
@@ -200,6 +220,38 @@ public record SelectExprInfoExplicitDto : SelectExprInfo
 
     // Get expression type string (for documentation)
     protected override string GetExprTypeString() => "explicit";
+
+    /// <summary>
+    /// Gets the full name for a nested DTO class using the structure.
+    /// When NestedDtoNamespace is enabled, includes the Generated_{hash} namespace.
+    /// </summary>
+    protected override string GetNestedDtoFullNameFromStructure(DtoStructure nestedStructure)
+    {
+        var className = GetClassName(nestedStructure);
+        if (string.IsNullOrEmpty(className))
+            return "";
+
+        var actualNamespace = GetActualDtoNamespace();
+
+        // When NestedDtoNamespace option is enabled, include Generated_{hash} in namespace
+        if (Configuration?.NestedDtoNamespace == true)
+        {
+            var hash = nestedStructure.GetUniqueId();
+            var generatedNamespace = string.IsNullOrEmpty(actualNamespace)
+                ? $"Generated_{hash}"
+                : $"{actualNamespace}.Generated_{hash}";
+
+            // Handle parent classes
+            if (ParentClasses.Count > 0)
+            {
+                return $"global::{generatedNamespace}.{string.Join(".", ParentClasses)}.{className}";
+            }
+            return $"global::{generatedNamespace}.{className}";
+        }
+
+        // Default behavior: use GetNestedDtoFullName
+        return GetNestedDtoFullName(className);
+    }
 
     // Get the full name for a nested DTO class (including parent classes)
     protected override string GetNestedDtoFullName(string nestedClassName)

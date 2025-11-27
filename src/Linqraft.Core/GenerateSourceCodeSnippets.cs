@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Diagnostics.CodeAnalysis;
+using System.Linq;
 using Linqraft.Core.Formatting;
 using Microsoft.CodeAnalysis;
 
@@ -24,6 +25,26 @@ public static class GenerateSourceCodeSnippets
     {
         var exprPart = BuildExprCodeSnippets(expressions);
         var dtoPart = BuildDtoCodeSnippets(dtoClasses, dtoNamespace);
+        return $$"""
+            {{GenerateCommentHeaderPart()}}
+            {{GenerateHeaderFlagsPart()}}
+            {{exprPart}}
+            {{dtoPart}}
+            """;
+    }
+
+    /// <summary>
+    /// Generate total code with DTOs that may have different namespaces.
+    /// This is used when LinqraftNestedDtoNamespace is enabled.
+    /// </summary>
+    public static string BuildCodeSnippetAll(
+        List<string> expressions,
+        List<GenerateDtoClassInfo> dtoClassInfos,
+        LinqraftConfiguration configuration
+    )
+    {
+        var exprPart = BuildExprCodeSnippets(expressions);
+        var dtoPart = BuildDtoCodeSnippetsGroupedByNamespace(dtoClassInfos, configuration);
         return $$"""
             {{GenerateCommentHeaderPart()}}
             {{GenerateHeaderFlagsPart()}}
@@ -73,6 +94,52 @@ public static class GenerateSourceCodeSnippets
                 }
                 """;
         }
+    }
+
+    /// <summary>
+    /// Generate DTO part with DTOs grouped by their namespace.
+    /// Each namespace gets its own block.
+    /// </summary>
+    public static string BuildDtoCodeSnippetsGroupedByNamespace(
+        List<GenerateDtoClassInfo> dtoClassInfos,
+        LinqraftConfiguration configuration
+    )
+    {
+        // Group DTOs by namespace
+        var dtosByNamespace = dtoClassInfos
+            .GroupBy(c => c.Namespace)
+            .OrderBy(g => g.Key) // Sort for consistent output
+            .ToList();
+
+        var result = new List<string>();
+
+        foreach (var group in dtosByNamespace)
+        {
+            var namespaceName = group.Key;
+            var dtoClasses = group.Select(c => c.BuildCode(configuration)).ToList();
+
+            if (string.IsNullOrEmpty(namespaceName))
+            {
+                // Generate DTOs in global namespace (no namespace wrapper)
+                result.Add(string.Join(CodeFormatter.DefaultNewLine, dtoClasses));
+            }
+            else
+            {
+                // Generate DTOs in the specified namespace
+                var indentedClasses = CodeFormatter.IndentCode(
+                    string.Join(CodeFormatter.DefaultNewLine, dtoClasses),
+                    CodeFormatter.IndentSize
+                );
+                result.Add($$"""
+                    namespace {{namespaceName}}
+                    {
+                    {{indentedClasses}}
+                    }
+                    """);
+            }
+        }
+
+        return string.Join(CodeFormatter.DefaultNewLine, result);
     }
 
     [StringSyntax("csharp")]

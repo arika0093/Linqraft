@@ -159,9 +159,12 @@ public class GenerateDtoClassInfo
             {
                 var nestStructure = prop.NestedStructure;
 
-                // Try to find nested class info by full name match
-                // Use BestName (which prefers HintName if available) for better class naming (issue #155)
-                var nestedClassName = $"{nestStructure.BestName}Dto_{nestStructure.GetUniqueId()}";
+                // Compute the nested class name based on configuration
+                // When NestedDtoNamespace is enabled, class name is just "{BestName}Dto"
+                // Otherwise, it includes the hash suffix: "{BestName}Dto_{hash}"
+                var nestedClassName = configuration.NestedDtoNamespace
+                    ? $"{nestStructure.BestName}Dto"
+                    : $"{nestStructure.BestName}Dto_{nestStructure.GetUniqueId()}";
                 var containedNestClasses = NestedClasses.FirstOrDefault(nc =>
                     nc.ClassName == nestedClassName
                 );
@@ -174,9 +177,21 @@ public class GenerateDtoClassInfo
                 else
                 {
                     // Fallback: construct the full name based on the current namespace
-                    nestedDtoFullName = string.IsNullOrEmpty(Namespace)
-                        ? nestedClassName
-                        : $"{Namespace}.{nestedClassName}";
+                    // When NestedDtoNamespace is enabled, include Generated_{hash} namespace
+                    if (configuration.NestedDtoNamespace)
+                    {
+                        var hash = nestStructure.GetUniqueId();
+                        var generatedNamespace = string.IsNullOrEmpty(Namespace)
+                            ? $"Generated_{hash}"
+                            : $"{Namespace}.Generated_{hash}";
+                        nestedDtoFullName = $"{generatedNamespace}.{nestedClassName}";
+                    }
+                    else
+                    {
+                        nestedDtoFullName = string.IsNullOrEmpty(Namespace)
+                            ? nestedClassName
+                            : $"{Namespace}.{nestedClassName}";
+                    }
                 }
 
                 // Handle nullable types: temporarily remove the ? suffix if present

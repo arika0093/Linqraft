@@ -14,6 +14,8 @@ public record LinqraftConfiguration
     const string LinqraftCommentOutputOptionKey = "build_property.LinqraftCommentOutput";
     const string LinqraftArrayNullabilityRemovalOptionKey =
         "build_property.LinqraftArrayNullabilityRemoval";
+    const string LinqraftNestedDtoNamespaceOptionKey =
+        "build_property.LinqraftNestedDtoNamespace";
 
     /// <summary>
     /// The namespace where global namespace DTOs should exist.
@@ -51,6 +53,14 @@ public record LinqraftConfiguration
     /// Default is true (remove nullable, use empty collection fallback)
     /// </summary>
     public bool ArrayNullabilityRemoval { get; init; } = true;
+
+    /// <summary>
+    /// Whether to generate nested DTOs in a hash-named namespace instead of using hash suffix on the class name.
+    /// When true: Generated_(Hash).ClassName format (e.g., Generated_A1470000.ItemsDto)
+    /// When false: ClassName_Hash format (e.g., ItemsDto_A1470000)
+    /// Default is false (use hash suffix on class name)
+    /// </summary>
+    public bool NestedDtoNamespace { get; init; } = false;
 
     /// <summary>
     /// Gets the actual property accessor to use based on configuration
@@ -93,6 +103,10 @@ public record LinqraftConfiguration
             LinqraftArrayNullabilityRemovalOptionKey,
             out var arrayNullabilityRemovalStr
         );
+        globalOptions.GlobalOptions.TryGetValue(
+            LinqraftNestedDtoNamespaceOptionKey,
+            out var nestedDtoNamespaceStr
+        );
 
         var linqraftOptions = new LinqraftConfiguration();
         if (!string.IsNullOrWhiteSpace(globalNamespace))
@@ -132,6 +146,13 @@ public record LinqraftConfiguration
             linqraftOptions = linqraftOptions with
             {
                 ArrayNullabilityRemoval = arrayNullabilityRemoval,
+            };
+        }
+        if (bool.TryParse(nestedDtoNamespaceStr, out var nestedDtoNamespace))
+        {
+            linqraftOptions = linqraftOptions with
+            {
+                NestedDtoNamespace = nestedDtoNamespace,
             };
         }
         return linqraftOptions;
