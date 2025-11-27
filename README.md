@@ -493,6 +493,96 @@ public partial class ParentDto
 }
 ```
 
+### Auto generated comments
+Linqraft attempts to retrieve comments attached to the original properties as much as possible and attach them as XML documentation comments to the properties of the DTO class.
+In addition, reference information indicating what kind of query the DTO class was generated from is also attached.
+This feature can be controlled using the `LinqraftCommentOutput` property.
+
+<details>
+<summary>Generated code example with comments</summary>
+
+```csharp
+// based entity class with comments
+public class Entity
+{
+    /// <summary>
+    /// XML summary comment
+    /// </summary>
+    [Key]
+    public int Id { get; set; }
+
+    [Comment("EFCore Comment")]
+    public int Item1 { get; set; }
+
+    [Display(Name = "Display Comment")]
+    public int Item2 { get; set; }
+
+    public List<ChildEntity> Childs { get; set; }
+}
+public class ChildEntity
+{
+    // single-line comment are also supported
+    public int ChildId { get; set; }
+}
+
+// and use SelectExpr
+query.SelectExpr<Entity, EntityDto>(e => new
+{
+    Id = e.Id,
+    Item1Value = e.Item1,
+    Item2Value = e.Item2,
+    ChildIds = e.Childs.Select(c => c.ChildId).ToList(),
+});
+```
+
+generates the following DTO class:
+
+```csharp
+/// <summary>
+/// based entity class with comments
+/// </summary>
+/// <remarks>
+/// From: <c>Entity</c>
+/// </remarks>
+public partial class EntityDto
+{
+    /// <summary>
+    /// XML summary comment
+    /// </summary>
+    /// <remarks>
+    /// From: <c>Entity.Id</c>
+    /// Attributes: <c>[Key]</c>
+    /// </remarks>
+    public required int Id { get; set; }
+
+    /// <summary>
+    /// EFCore Comment
+    /// </summary>
+    /// <remarks>
+    /// From: <c>Entity.Item1</c>
+    /// </remarks>
+    public required int Item1Value { get; set; }
+
+    /// <summary>
+    /// Display Comment
+    /// </summary>
+    /// <remarks>
+    /// From: <c>Entity.Item2</c>
+    /// </remarks>
+    public required int Item2Value { get; set; }
+
+    /// <summary>
+    /// single-line comment are also supported
+    /// </summary>
+    /// <remarks>
+    /// From: <c>Entity.Childs.Select(...).ToList()</c>
+    /// </remarks>
+    public required System.Collections.Generic.List<int> ChildIds { get; set; }
+}
+```
+</details>
+
+
 ### Global Properties
 Linqraft supports several MSBuild properties to customize the generated code:
 
