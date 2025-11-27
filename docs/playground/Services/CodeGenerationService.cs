@@ -100,7 +100,6 @@ public class CodeGenerationService
                     {
                         var generatedCode = dtoClass.BuildCode(config);
                         dtoClassBuilder.AppendLine(generatedCode);
-                        dtoClassBuilder.AppendLine();
                     }
 
                     // Generate the select expression (simplified representation)
