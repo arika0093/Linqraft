@@ -40,28 +40,35 @@
         <!-- Preview Panes (Right) -->
         <div class="flex-1 flex flex-col min-w-[200px] overflow-hidden">
             <!-- Query Expression Preview -->
-            <div class="flex-1 min-h-[100px] overflow-hidden">
+            <div class="@(queryPaneCollapsed ? "" : "flex-1") min-h-[50px] overflow-hidden">
                 <PreviewPane 
                     @ref="queryPreviewPane"
                     EditorId="queryPreview"
                     Title="Generated Expression"
                     Icon="🔍"
-                    InitialContent="// Generated expression will appear here" />
+                    InitialContent="// Generated expression will appear here"
+                    IsCollapsed="queryPaneCollapsed"
+                    IsCollapsedChanged="@(collapsed => { queryPaneCollapsed = collapsed; StateHasChanged(); })" />
             </div>
 
             <!-- Vertical Resize Handle -->
-            <div class="h-1 bg-gray-700 cursor-row-resize hover:bg-blue-600 flex items-center justify-center">
-                <div class="w-5 h-0.5 bg-gray-500 rounded"></div>
-            </div>
+            @if (!queryPaneCollapsed && !dtoPaneCollapsed)
+            {
+                <div class="h-1 bg-gray-700 cursor-row-resize hover:bg-blue-600 flex items-center justify-center">
+                    <div class="w-5 h-0.5 bg-gray-500 rounded"></div>
+                </div>
+            }
 
             <!-- DTO Class Preview -->
-            <div class="flex-1 min-h-[100px] overflow-hidden">
+            <div class="@(dtoPaneCollapsed ? "" : "flex-1") min-h-[50px] overflow-hidden">
                 <PreviewPane 
                     @ref="dtoPreviewPane"
                     EditorId="dtoPreview"
                     Title="Generated DTO Class"
                     Icon="📦"
-                    InitialContent="// Generated DTO class will appear here" />
+                    InitialContent="// Generated DTO class will appear here"
+                    IsCollapsed="dtoPaneCollapsed"
+                    IsCollapsedChanged="@(collapsed => { dtoPaneCollapsed = collapsed; StateHasChanged(); })" />
             </div>
         </div>
     </div>
@@ -79,6 +86,8 @@
     private bool sidebarCollapsed = false;
     private bool templatesExpanded = true;
     private bool filesExpanded = true;
+    private bool queryPaneCollapsed = false;
+    private bool dtoPaneCollapsed = false;
 
     protected override void OnInitialized()
     {
