@@ -1,9 +1,7 @@
 <Project>
   <PropertyGroup>
-    <TargetFrameworks>net6.0;net8.0;net10.0</TargetFrameworks>
-    <TargetFrameworks Condition="'$(OS)' == 'Windows_NT'"
-      >$(TargetFrameworks);net48</TargetFrameworks
-    >
+    <TargetFrameworks Condition="'$(TFMS)' != ''">$(TFMS)</TargetFrameworks>
+    <TargetFrameworks Condition="'$(TFMS)' == ''">net10.0</TargetFrameworks>
     <LangVersion>latest</LangVersion>
     <Nullable>enable</Nullable>
     <IsPackable>false</IsPackable>
@@ -14,7 +12,6 @@
     <PackageReference Include="GitHubActionsTestLogger" Version="3.0.1" />
     <PackageReference Include="Microsoft.NET.Test.Sdk" Version="16.*" />
     <PackageReference Include="Shouldly" Version="4.*" />
-    <PackageReference Include="Newtonsoft.Json" Version="*" />
     <PackageReference Include="xunit" Version="2.*" />
     <PackageReference Include="xunit.runner.visualstudio" Version="3.0.2">
       <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>

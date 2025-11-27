@@ -9,7 +9,7 @@
 		// https://github.com/devcontainers/features/tree/main/src/dotnet
 		"ghcr.io/devcontainers/features/dotnet:2": {
 			"version": "latest",
-			"additionalVersions": "10.0, 8.0, 6.0"
+			"additionalVersions": "10.0"
 		}
 	},
 	"containerEnv": {
