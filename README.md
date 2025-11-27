@@ -453,7 +453,7 @@ public partial class EntityDto
 
 This change helps avoid unnecessary null checks like `dto.ChildNames ?? []`, keeping the code simple.
 
-もしこの挙動が気に入らない場合は、`LinqraftArrayNullabilityRemoval` プロパティを `false` に設定することで無効化できます。
+If you don't like this behavior, you can disable it by setting the `LinqraftArrayNullabilityRemoval` property to `false`.
 
 ### Partial Classes
 You can extend the generated DTO classes as needed since they are output as `partial` classes.
