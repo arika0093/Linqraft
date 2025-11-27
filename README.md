@@ -500,8 +500,8 @@ Linqraft supports several MSBuild properties to customize the generated code:
 <Project>
   <!-- The values listed are the default values. -->
   <PropertyGroup>
-    <!-- set namespace if based-class is in global namespace -->
-    <LinqraftGlobalNamespace>Linqraft</LinqraftGlobalNamespace>
+    <!-- set namespace if based-class is in global namespace. empty means use global namespace -->
+    <LinqraftGlobalNamespace></LinqraftGlobalNamespace>
     <!-- generate records instead of classes -->
     <LinqraftRecordGenerate>false</LinqraftRecordGenerate>
     <!-- set accessor pattern. Default, GetAndSet, GetAndInit, GetAndInternalSet -->
