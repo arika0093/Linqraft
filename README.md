@@ -397,7 +397,35 @@ query.SelectExpr<Entity, EntityDto>(e => new
 });
 ```
 
-This change helps avoid unnecessary null checks like `foreach(var name in dto.ChildNames ?? [])`, keeping the code simple.
+<details>
+<summary>Generated code example</summary>
+
+```csharp
+// code snippet
+var converted = matchedQuery.Select(d => new global::EntityDto
+{
+    ChildNames = d.Child != null ? d.Child.Select(c => c.Name).ToList() : new System.Collections.Generic.List<int>(),
+    ChildDtos = d.Child != null ? d.Child
+        .Select(c => new global::ChildDto_HASH1234
+        {
+            Name = c.Name,
+            Description = c.Description
+        }) : new System.Collections.Generic.List<global::ChildDto_HASH1234>(),
+    ExplicitNullableNames = d.Child != null ? d.Child.Select(c => c.Name).ToList() : null,
+});
+
+// generated DTO class
+public partial class EntityDto
+{
+    public required System.Collections.Generic.List<string> ChildNames { get; set; }
+    public required System.Collections.Generic.IEnumerable<global::ChildDto_HASH1234> ChildDtos { get; set; }
+    public required System.Collections.Generic.List<string>? ExplicitNullableNames { get; set; }
+}
+```
+
+</details>
+
+This change helps avoid unnecessary null checks like `dto.ChildNames ?? []`, keeping the code simple.
 
 
 ### Partial Classes
