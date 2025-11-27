@@ -28,7 +28,12 @@ public record SelectExprInfoAnonymous : SelectExprInfo
     /// </summary>
     protected override DtoStructure GenerateDtoStructure()
     {
-        return DtoStructure.AnalyzeAnonymousType(AnonymousObject, SemanticModel, SourceType)!;
+        return DtoStructure.AnalyzeAnonymousType(
+            AnonymousObject,
+            SemanticModel,
+            SourceType,
+            configuration: Configuration
+        )!;
     }
 
     /// <summary>

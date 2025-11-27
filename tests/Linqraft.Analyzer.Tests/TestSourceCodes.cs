@@ -24,7 +24,13 @@ internal static class TestSourceCodes
     public const string SelectExprWithFuncInLinqraftNamespace = $$"""
         namespace Linqraft
         {
-        {{SelectExprWithFunc}}
+            static class Extensions
+            {
+                public static IQueryable<TResult> SelectExpr<TSource, TResult>(
+                    this IQueryable<TSource> source,
+                    System.Func<TSource, TResult> selector)
+                    => source.Select(x => selector(x));
+            }
         }
         """;
 
@@ -61,7 +67,13 @@ internal static class TestSourceCodes
     public const string SelectExprWithFuncObjectInLinqraftNamespace = $$"""
         namespace Linqraft
         {
-        {{SelectExprWithFuncObject}}
+            static class Extensions
+            {
+                public static IQueryable<TResult> SelectExpr<TSource, TResult>(
+                    this IQueryable<TSource> source,
+                    System.Func<TSource, object> selector)
+                    => throw new System.NotImplementedException();
+            }
         }
         """;
 

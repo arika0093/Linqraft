@@ -304,10 +304,17 @@ public abstract record SelectExprInfo
             return expression;
         }
         // If nullable operator is used, convert to explicit null check
-        if (
-            property.IsNullable
-            && syntax.DescendantNodesAndSelf().OfType<ConditionalAccessExpressionSyntax>().Any()
-        )
+        // This also applies to collection types with Select/SelectMany that are now non-nullable
+        // but still need the null-conditional access converted to explicit null check with empty collection fallback
+        // Only apply empty collection fallback when ArrayNullabilityRemoval is enabled
+        var hasConditionalAccess = syntax.DescendantNodesAndSelf().OfType<ConditionalAccessExpressionSyntax>().Any();
+        var hasSelectOrSelectMany = RoslynTypeHelper.ContainsSelectInvocation(syntax)
+            || RoslynTypeHelper.ContainsSelectManyInvocation(syntax);
+        var isCollectionWithSelect = Configuration.ArrayNullabilityRemoval
+            && hasSelectOrSelectMany
+            && RoslynTypeHelper.IsCollectionType(property.TypeSymbol);
+
+        if (hasConditionalAccess && (property.IsNullable || isCollectionWithSelect))
         {
             return ConvertNullableAccessToExplicitCheckWithRoslyn(syntax, property.TypeSymbol);
         }
@@ -1434,6 +1441,7 @@ public abstract record SelectExprInfo
     {
         // Example: c.Child?.Id → c.Child != null ? (int?)c.Child.Id : null
         // Example: s.Child3?.Child?.Id → s.Child3 != null && s.Child3.Child != null ? (int?)s.Child3.Child.Id : null
+        // Example: d.InnerData?.Childs.Select(c => c.Id).ToList() → d.InnerData != null ? d.InnerData.Childs.Select(c => c.Id).ToList() : new List<int>()
 
         // Use Roslyn to verify this uses conditional access
         var hasConditionalAccess = syntax
@@ -1479,11 +1487,69 @@ public abstract record SelectExprInfo
 
         // Build null checks
         var nullCheckPart = string.Join(" && ", checks);
-        var typeSymbolValue = typeSymbol.ToDisplayString();
-        var nullableTypeName = typeSymbolValue != "?" ? $"({typeSymbolValue})" : "";
-        var defaultValue = GetDefaultValueForType(typeSymbol);
 
-        return $"{nullCheckPart} ? {nullableTypeName}{accessPath} : {defaultValue}";
+        // Check if expression contains Select or SelectMany invocation
+        var hasSelectOrSelectMany = RoslynTypeHelper.ContainsSelectInvocation(syntax)
+            || RoslynTypeHelper.ContainsSelectManyInvocation(syntax);
+
+        // Determine the default value based on whether the type is a collection with Select/SelectMany
+        // Only use empty collection fallback for collections that use Select/SelectMany
+        // and when ArrayNullabilityRemoval is enabled
+        string defaultValue;
+        string typeAnnotation;
+
+        if (
+            Configuration.ArrayNullabilityRemoval
+            && hasSelectOrSelectMany
+            && RoslynTypeHelper.IsCollectionType(typeSymbol)
+        )
+        {
+            // For collection types with Select/SelectMany, use an empty collection as the default value
+            defaultValue = GetEmptyCollectionExpressionForType(typeSymbol, cleanExpression);
+            // No need for nullable type annotation for collections since they use empty collection fallback
+            typeAnnotation = "";
+        }
+        else
+        {
+            // For non-collection types or collections without Select/SelectMany (e.g., byte[]),
+            // use null or default value with nullable type annotation
+            var typeSymbolValue = typeSymbol.ToDisplayString();
+            typeAnnotation = typeSymbolValue != "?" ? $"({typeSymbolValue})" : "";
+            defaultValue = GetDefaultValueForType(typeSymbol);
+        }
+
+        return $"{nullCheckPart} ? {typeAnnotation}{accessPath} : {defaultValue}";
+    }
+
+    /// <summary>
+    /// Gets the appropriate empty collection expression for a collection type symbol.
+    /// For List types, returns "new System.Collections.Generic.List&lt;T&gt;()".
+    /// For Array types (via ToArray()), returns "System.Array.Empty&lt;T&gt;()".
+    /// For IEnumerable types, returns "System.Linq.Enumerable.Empty&lt;T&gt;()".
+    /// </summary>
+    private static string GetEmptyCollectionExpressionForType(
+        ITypeSymbol typeSymbol,
+        string expressionText
+    )
+    {
+        // Get the element type from the collection
+        var nonNullableType = RoslynTypeHelper.GetNonNullableType(typeSymbol) ?? typeSymbol;
+        var elementType = RoslynTypeHelper.GetGenericTypeArgument(nonNullableType, 0);
+        var elementTypeName = elementType?.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat)
+            ?? "object";
+
+        // Detect chained methods from the expression text
+        var chainedMethods = "";
+        if (expressionText.Contains(".ToList()"))
+        {
+            chainedMethods = ".ToList()";
+        }
+        else if (expressionText.Contains(".ToArray()"))
+        {
+            chainedMethods = ".ToArray()";
+        }
+
+        return GetEmptyCollectionExpression(typeSymbol, elementTypeName, chainedMethods);
     }
 
     /// <summary>

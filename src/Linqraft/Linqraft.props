@@ -6,5 +6,6 @@
     <CompilerVisibleProperty Include="LinqraftPropertyAccessor" />
     <CompilerVisibleProperty Include="LinqraftHasRequired" />
     <CompilerVisibleProperty Include="LinqraftCommentOutput" />
+    <CompilerVisibleProperty Include="LinqraftArrayNullabilityRemoval" />
   </ItemGroup>
 </Project>

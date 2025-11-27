@@ -91,10 +91,11 @@ public class NullableCollectionWithEmptyFallbackTest
     }
 
     [Fact]
-    public void NullableParent_WithSelectSimple_ShouldRemainNullableCollection()
+    public void NullableParent_WithSelectSimple_ShouldGenerateNonNullableCollection()
     {
-        // When Select doesn't create an anonymous type, the collection should still be nullable
-        // because there's no nested structure that would use Enumerable.Empty<T>() as fallback
+        // When Select is used with simple type projection (not anonymous type),
+        // the collection should now be non-nullable (List<int>, not List<int>?)
+        // because we generate empty collection fallback for all Select/SelectMany expressions
         var result = _testData
             .AsQueryable()
             .SelectExpr<NullableParentTestData, NullableParentSimpleDto>(d => new
@@ -105,7 +106,12 @@ public class NullableCollectionWithEmptyFallbackTest
 
         result.Count.ShouldBe(2);
 
-        // CS8604 should not occur here when accessing Child3Datas (TODO)
-        // var rst = result[0].Child3Ids.First();
+        // CS8604 should not occur here when accessing Child3Ids - collection is non-nullable
+        var rst = result[0].Child3Ids.First();
+        rst.ShouldBe(1);
+
+        // When source is null, the collection should be empty (not null)
+        result[1].Child3Ids.ShouldNotBeNull();
+        result[1].Child3Ids.Count.ShouldBe(0);
     }
 }

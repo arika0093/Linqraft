@@ -28,7 +28,12 @@ public record SelectExprInfoNamed : SelectExprInfo
     /// </summary>
     protected override DtoStructure GenerateDtoStructure()
     {
-        return DtoStructure.AnalyzeNamedType(ObjectCreation, SemanticModel, SourceType)!;
+        return DtoStructure.AnalyzeNamedType(
+            ObjectCreation,
+            SemanticModel,
+            SourceType,
+            configuration: Configuration
+        )!;
     }
 
     /// <summary>
