@@ -49,11 +49,23 @@ public class CodeGenerationService
                 new CSharpCompilationOptions(OutputKind.DynamicallyLinkedLibrary)
             );
 
+            // Cache semantic models for each syntax tree
+            var semanticModelCache = new Dictionary<SyntaxTree, SemanticModel>();
+            SemanticModel GetSemanticModelCached(SyntaxTree tree)
+            {
+                if (!semanticModelCache.TryGetValue(tree, out var model))
+                {
+                    model = compilation.GetSemanticModel(tree);
+                    semanticModelCache[tree] = model;
+                }
+                return model;
+            }
+
             // Find SelectExpr invocations from all syntax trees
             var allSelectExprInfos = new List<SelectExprInfo>();
             foreach (var syntaxTree in syntaxTrees)
             {
-                var semanticModel = compilation.GetSemanticModel(syntaxTree);
+                var semanticModel = GetSemanticModelCached(syntaxTree);
                 var root = syntaxTree.GetRoot();
                 var infos = FindSelectExprInvocations(root, semanticModel);
                 allSelectExprInfos.AddRange(infos);
@@ -96,7 +108,7 @@ public class CodeGenerationService
                     }
 
                     // Generate the select expression (simplified representation)
-                    var semanticModel = compilation.GetSemanticModel(info.Invocation.SyntaxTree);
+                    var semanticModel = GetSemanticModelCached(info.Invocation.SyntaxTree);
                     var location = semanticModel.GetInterceptableLocation(info.Invocation);
                     if (location != null)
                     {
