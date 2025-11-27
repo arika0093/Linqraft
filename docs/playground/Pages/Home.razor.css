@@ -1,0 +1,270 @@
+.playground-layout {
+    display: flex;
+    height: 100%;
+    width: 100%;
+    overflow: hidden;
+}
+
+/* Sidebar Styles */
+.sidebar {
+    display: flex;
+    width: 250px;
+    min-width: 250px;
+    background-color: #252526;
+    border-right: 1px solid #3c3c3c;
+    transition: width 0.3s ease, min-width 0.3s ease;
+    position: relative;
+}
+
+.sidebar.collapsed {
+    width: 40px;
+    min-width: 40px;
+}
+
+.sidebar-toggle {
+    position: absolute;
+    top: 8px;
+    right: 8px;
+    width: 24px;
+    height: 24px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    color: #cccccc;
+    background-color: #3c3c3c;
+    border-radius: 4px;
+    z-index: 10;
+}
+
+.sidebar-toggle:hover {
+    background-color: #4c4c4c;
+}
+
+.toggle-icon {
+    font-size: 10px;
+}
+
+.sidebar-content {
+    flex: 1;
+    overflow-y: auto;
+    padding-top: 40px;
+}
+
+.sidebar.collapsed .sidebar-content {
+    display: none;
+}
+
+.sidebar-section {
+    border-bottom: 1px solid #3c3c3c;
+}
+
+.section-header {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 12px;
+    cursor: pointer;
+    color: #cccccc;
+    user-select: none;
+}
+
+.section-header:hover {
+    background-color: #2a2d2e;
+}
+
+.section-icon {
+    font-size: 14px;
+}
+
+.section-title {
+    flex: 1;
+    font-size: 13px;
+    font-weight: 600;
+    text-transform: uppercase;
+}
+
+.section-toggle {
+    font-size: 10px;
+    color: #888888;
+}
+
+.section-content {
+    padding: 4px 0;
+}
+
+.template-item,
+.file-item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 6px 12px 6px 24px;
+    cursor: pointer;
+    color: #cccccc;
+    font-size: 13px;
+}
+
+.template-item:hover,
+.file-item:hover {
+    background-color: #2a2d2e;
+}
+
+.template-item.selected,
+.file-item.selected {
+    background-color: #094771;
+}
+
+.template-icon,
+.file-icon {
+    font-size: 12px;
+}
+
+/* Main Content Area */
+.main-content {
+    flex: 1;
+    display: flex;
+    overflow: hidden;
+}
+
+.horizontal-splitter-container {
+    display: flex;
+    flex: 1;
+    overflow: hidden;
+}
+
+/* Editor Pane */
+.editor-pane {
+    display: flex;
+    flex-direction: column;
+    min-width: 200px;
+    overflow: hidden;
+}
+
+/* Preview Panes Container */
+.preview-panes {
+    display: flex;
+    flex-direction: column;
+    min-width: 200px;
+    overflow: hidden;
+}
+
+.vertical-splitter-container {
+    display: flex;
+    flex-direction: column;
+    flex: 1;
+    overflow: hidden;
+}
+
+/* Individual Preview Pane */
+.preview-pane {
+    display: flex;
+    flex-direction: column;
+    min-height: 100px;
+    overflow: hidden;
+}
+
+/* Pane Header */
+.pane-header {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 12px;
+    background-color: #2d2d2d;
+    border-bottom: 1px solid #3c3c3c;
+    color: #cccccc;
+}
+
+.pane-icon {
+    font-size: 14px;
+}
+
+.pane-title {
+    font-size: 12px;
+    font-weight: 500;
+}
+
+/* Pane Content */
+.pane-content {
+    flex: 1;
+    overflow: hidden;
+    position: relative;
+}
+
+.pane-content ::deep .monaco-editor {
+    position: absolute !important;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+}
+
+/* Resize Handles */
+.resize-handle {
+    background-color: #3c3c3c;
+    flex-shrink: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: background-color 0.2s;
+}
+
+.resize-handle:hover {
+    background-color: #0d47a1;
+}
+
+.resize-handle.horizontal {
+    width: 4px;
+    cursor: col-resize;
+}
+
+.resize-handle.vertical {
+    height: 4px;
+    cursor: row-resize;
+}
+
+.handle-grip {
+    background-color: #5c5c5c;
+    border-radius: 2px;
+}
+
+.resize-handle.horizontal .handle-grip {
+    width: 2px;
+    height: 20px;
+}
+
+.resize-handle.vertical .handle-grip {
+    width: 20px;
+    height: 2px;
+}
+
+.resize-handle:hover .handle-grip {
+    background-color: white;
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+    .sidebar {
+        width: 200px;
+        min-width: 200px;
+    }
+
+    .sidebar.collapsed {
+        width: 36px;
+        min-width: 36px;
+    }
+
+    .horizontal-splitter-container {
+        flex-direction: column;
+    }
+
+    .resize-handle.horizontal {
+        width: 100%;
+        height: 4px;
+        cursor: row-resize;
+    }
+
+    .resize-handle.horizontal .handle-grip {
+        width: 20px;
+        height: 2px;
+    }
+}
