@@ -1,5 +1,4 @@
 <Project Sdk="Microsoft.NET.Sdk.BlazorWebAssembly">
-
   <PropertyGroup>
     <TargetFramework>net10.0</TargetFramework>
     <Nullable>enable</Nullable>
@@ -10,7 +9,11 @@
   <ItemGroup>
     <PackageReference Include="BlazorMonaco" Version="3.4.0" />
     <PackageReference Include="Microsoft.AspNetCore.Components.WebAssembly" Version="10.0.0" />
-    <PackageReference Include="Microsoft.AspNetCore.Components.WebAssembly.DevServer" Version="10.0.0" PrivateAssets="all" />
+    <PackageReference
+      Include="Microsoft.AspNetCore.Components.WebAssembly.DevServer"
+      Version="10.0.0"
+      PrivateAssets="all"
+    />
     <PackageReference Include="Microsoft.CodeAnalysis.CSharp" Version="5.0.0" />
     <PackageReference Include="Basic.Reference.Assemblies.Net90" Version="1.8.0" />
   </ItemGroup>
@@ -19,4 +22,20 @@
     <ProjectReference Include="../../src/Linqraft.Core/Linqraft.Core.csproj" />
   </ItemGroup>
 
+  <!-- tailwind setting -->
+  <ItemGroup>
+    <PackageReference Include="Tailwind.Hosting" Version="*" />
+    <PackageReference Include="Tailwind.Hosting.Build" Version="*" />
+  </ItemGroup>
+  <PropertyGroup Label="Tailwind.Hosting.Build Props">
+    <TailwindVersion>latest</TailwindVersion>
+    <TailwindWatch>true</TailwindWatch>
+    <TailwindInputCssFile>tailwind.css</TailwindInputCssFile>
+    <TailwindOutputCssFile>wwwroot/css/tailwind.css</TailwindOutputCssFile>
+  </PropertyGroup>
+  <Target Name="CleanUpTailwindStaticCache" BeforeTargets="PrepareForBuild">
+    <ItemGroup>
+      <Content Remove="$(TailwindOutputCssFile)" />
+    </ItemGroup>
+  </Target>
 </Project>
