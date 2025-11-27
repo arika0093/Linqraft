@@ -1,0 +1,82 @@
+@page "/"
+
+<PageTitle>Linqraft - Expression Tree Code Generator for LINQ</PageTitle>
+
+<div class="min-h-screen bg-gray-900 text-gray-100">
+    <!-- Hero Section -->
+    <div class="flex flex-col items-center justify-center px-6 py-16">
+        <div class="flex items-center gap-3 mb-6">
+            <span class="text-5xl">⚡</span>
+            <h1 class="text-5xl font-bold text-white">Linqraft</h1>
+        </div>
+        <p class="text-xl text-gray-400 text-center max-w-2xl mb-8">
+            A C# Source Generator that automatically generates Expression trees and DTO classes 
+            from your LINQ <code class="text-blue-400 bg-gray-800 px-2 py-1 rounded">SelectExpr</code> calls.
+        </p>
+        <a href="/playground" class="px-8 py-3 bg-blue-600 text-white rounded-lg text-lg font-medium hover:bg-blue-500 transition-colors">
+            Try the Playground →
+        </a>
+    </div>
+
+    <!-- Features Section -->
+    <div class="max-w-4xl mx-auto px-6 py-12">
+        <h2 class="text-2xl font-bold text-center mb-8">Features</h2>
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+            <div class="bg-gray-800 rounded-lg p-6">
+                <div class="text-3xl mb-3">🔧</div>
+                <h3 class="text-lg font-semibold mb-2">Automatic Generation</h3>
+                <p class="text-gray-400 text-sm">
+                    Expression trees are generated at compile time, eliminating runtime overhead.
+                </p>
+            </div>
+            <div class="bg-gray-800 rounded-lg p-6">
+                <div class="text-3xl mb-3">📦</div>
+                <h3 class="text-lg font-semibold mb-2">DTO Classes</h3>
+                <p class="text-gray-400 text-sm">
+                    Automatically creates strongly-typed DTO classes based on your projections.
+                </p>
+            </div>
+            <div class="bg-gray-800 rounded-lg p-6">
+                <div class="text-3xl mb-3">✨</div>
+                <h3 class="text-lg font-semibold mb-2">Clean Syntax</h3>
+                <p class="text-gray-400 text-sm">
+                    Write anonymous type projections and get type-safe DTOs automatically.
+                </p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Example Section -->
+    <div class="max-w-4xl mx-auto px-6 py-12">
+        <h2 class="text-2xl font-bold text-center mb-8">How It Works</h2>
+        <div class="bg-gray-800 rounded-lg p-6">
+            <pre class="text-sm text-gray-300 overflow-x-auto"><code>// Write this:
+query.SelectExpr(x => new
+{
+    x.Id,
+    CustomerName = x.Customer?.Name,
+    Items = x.OrderItems.Select(oi => new { oi.ProductName })
+});
+
+// Get Expression&lt;Func&lt;TSource, TResult&gt;&gt; generated at compile time!</code></pre>
+        </div>
+    </div>
+
+    <!-- CTA Section -->
+    <div class="flex flex-col items-center px-6 py-12">
+        <h2 class="text-xl font-semibold mb-4">Ready to try it?</h2>
+        <div class="flex gap-4">
+            <a href="/playground" class="px-6 py-2 bg-blue-600 text-white rounded hover:bg-blue-500 transition-colors">
+                Open Playground
+            </a>
+            <a href="https://github.com/arika0093/Linqraft" target="_blank" class="px-6 py-2 bg-gray-700 text-white rounded hover:bg-gray-600 transition-colors">
+                View on GitHub
+            </a>
+        </div>
+    </div>
+
+    <!-- Footer -->
+    <div class="text-center py-8 text-gray-500 text-sm">
+        <p>Linqraft is open source software under the MIT license.</p>
+    </div>
+</div>

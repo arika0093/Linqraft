@@ -1,0 +1,65 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Linqraft Playground</title>
+    <base href="/" />
+    <link rel="preload" id="webassembly" />
+    <link rel="stylesheet" href="css/app.css" />
+    <link rel="stylesheet" href="css/tailwind.css" />
+    <link rel="icon" type="image/png" href="favicon.png" />
+    <link href="Linqraft.Playground.styles.css" rel="stylesheet" />
+    <link href="_content/BlazorMonaco/lib/monaco-editor/min/vs/editor/editor.main.css" rel="stylesheet" />
+    <!-- JetBrains Mono web font -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+    <script type="importmap"></script>
+    <style>
+        .monaco-editor-container {
+            height: 100%;
+        }
+        .monaco-editor, .monaco-editor .view-lines {
+            font-family: 'JetBrains Mono', 'Consolas', 'Monaco', monospace !important;
+        }
+        /* Semantic highlighting colors matching Visual Studio dark theme */
+        .semantic-class { color: #4EC9B0 !important; }
+        .semantic-interface { color: #B8D7A3 !important; }
+        .semantic-struct { color: #86C691 !important; }
+        .semantic-enum { color: #B8D7A3 !important; }
+        .semantic-delegate { color: #4EC9B0 !important; }
+        .semantic-method { color: #DCDCAA !important; }
+        .semantic-property { color: #9CDCFE !important; }
+        .semantic-field { color: #9CDCFE !important; }
+        .semantic-variable { color: #9CDCFE !important; }
+        .semantic-parameter { color: #9CDCFE !important; }
+        .semantic-namespace { color: #C8C8C8 !important; }
+        .semantic-keyword { color: #569CD6 !important; }
+    </style>
+</head>
+
+<body class="bg-gray-900 text-white">
+    <div id="app">
+        <svg class="loading-progress">
+            <circle r="40%" cx="50%" cy="50%" />
+            <circle r="40%" cx="50%" cy="50%" />
+        </svg>
+        <div class="loading-progress-text"></div>
+    </div>
+
+    <div id="blazor-error-ui">
+        An unhandled error has occurred.
+        <a href="." class="reload">Reload</a>
+        <span class="dismiss">🗙</span>
+    </div>
+    <script src="_content/BlazorMonaco/lib/monaco-editor/min/vs/loader.js"></script>
+    <script>require.config({ paths: { 'vs': '_content/BlazorMonaco/lib/monaco-editor/min/vs' } });</script>
+    <script src="_content/BlazorMonaco/lib/monaco-editor/min/vs/editor/editor.main.js"></script>
+    <script src="_content/BlazorMonaco/jsInterop.js"></script>
+    <script src="js/semanticHighlighting.js"></script>
+    <script src="_framework/blazor.webassembly#[.{fingerprint}].js"></script>
+</body>
+
+</html>

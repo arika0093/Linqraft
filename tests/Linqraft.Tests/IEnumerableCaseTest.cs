@@ -6,8 +6,7 @@ namespace Linqraft.Tests;
 public class IEnumerableCaseTest
 {
     private static List<Simple1> EnumerableData =>
-        new()
-        {
+        [
             new Simple1
             {
                 Id = 1,
@@ -20,7 +19,7 @@ public class IEnumerableCaseTest
                 FirstName = "Jane",
                 LastName = "Smith",
             },
-        };
+        ];
 
     [Fact]
     public void BasicEnumerableCase()

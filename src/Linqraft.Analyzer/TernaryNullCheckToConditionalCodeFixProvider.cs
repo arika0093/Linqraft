@@ -447,7 +447,7 @@ public class TernaryNullCheckToConditionalCodeFixProvider : CodeFixProvider
                         break;
                     default:
                         // Unsupported expression type, return empty to skip rewriting
-                        return new List<string>();
+                        return [];
                 }
             }
 

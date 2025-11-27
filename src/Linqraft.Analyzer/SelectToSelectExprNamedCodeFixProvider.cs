@@ -467,7 +467,7 @@ public class SelectToSelectExprNamedCodeFixProvider : CodeFixProvider
         // Find the lambda expression
         var lambda = FindLambdaExpression(invocation.ArgumentList);
         if (lambda == null)
-            return new HashSet<string>();
+            return [];
 
         // Get lambda parameter names
         var lambdaParameters = LambdaHelper.GetLambdaParameterNames(lambda);

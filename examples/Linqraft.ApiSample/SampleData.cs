@@ -4,8 +4,8 @@ public static class SampleData
 {
     public static List<Order> GetOrdersFromOtherSource()
     {
-        return new List<Order>
-        {
+        return
+        [
             new Order
             {
                 Id = 1,
@@ -18,8 +18,8 @@ public static class SampleData
                         City = new City { Name = "New York" },
                     },
                 },
-                OrderItems = new List<OrderItem>
-                {
+                OrderItems =
+                [
                     new OrderItem
                     {
                         Product = new Product { Name = "Laptop" },
@@ -30,7 +30,7 @@ public static class SampleData
                         Product = new Product { Name = "Mouse" },
                         Quantity = 2,
                     },
-                },
+                ],
             },
             new Order
             {
@@ -44,15 +44,15 @@ public static class SampleData
                         City = new City { Name = "Toronto" },
                     },
                 },
-                OrderItems = new List<OrderItem>
-                {
+                OrderItems =
+                [
                     new OrderItem
                     {
                         Product = new Product { Name = "Smartphone" },
                         Quantity = 1,
                     },
-                },
+                ],
             },
-        };
+        ];
     }
 }
