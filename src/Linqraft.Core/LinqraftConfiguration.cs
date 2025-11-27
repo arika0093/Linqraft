@@ -12,6 +12,8 @@ public record LinqraftConfiguration
     const string LinqraftPropertyAccessorOptionKey = "build_property.LinqraftPropertyAccessor";
     const string LinqraftHasRequiredOptionKey = "build_property.LinqraftHasRequired";
     const string LinqraftCommentOutputOptionKey = "build_property.LinqraftCommentOutput";
+    const string LinqraftArrayNullabilityRemovalOptionKey =
+        "build_property.LinqraftArrayNullabilityRemoval";
 
     /// <summary>
     /// The namespace where global namespace DTOs should exist.
@@ -42,6 +44,13 @@ public record LinqraftConfiguration
     /// Default is All (include all comments and source information)
     /// </summary>
     public CommentOutputMode CommentOutput { get; init; } = CommentOutputMode.All;
+
+    /// <summary>
+    /// Whether to remove nullable annotation from collection types with Select/SelectMany
+    /// and use empty collection fallback instead of null.
+    /// Default is true (remove nullable, use empty collection fallback)
+    /// </summary>
+    public bool ArrayNullabilityRemoval { get; init; } = true;
 
     /// <summary>
     /// Gets the actual property accessor to use based on configuration
@@ -80,6 +89,10 @@ public record LinqraftConfiguration
             LinqraftCommentOutputOptionKey,
             out var commentOutputStr
         );
+        globalOptions.GlobalOptions.TryGetValue(
+            LinqraftArrayNullabilityRemovalOptionKey,
+            out var arrayNullabilityRemovalStr
+        );
 
         var linqraftOptions = new LinqraftConfiguration();
         if (!string.IsNullOrWhiteSpace(globalNamespace))
@@ -113,6 +126,13 @@ public record LinqraftConfiguration
         )
         {
             linqraftOptions = linqraftOptions with { CommentOutput = commentOutputEnum };
+        }
+        if (bool.TryParse(arrayNullabilityRemovalStr, out var arrayNullabilityRemoval))
+        {
+            linqraftOptions = linqraftOptions with
+            {
+                ArrayNullabilityRemoval = arrayNullabilityRemoval,
+            };
         }
         return linqraftOptions;
     }

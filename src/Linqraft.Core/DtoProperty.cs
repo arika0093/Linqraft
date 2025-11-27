@@ -64,7 +64,8 @@ public record DtoProperty(
         ExpressionSyntax expression,
         SemanticModel semanticModel,
         IPropertySymbol? targetProperty = null,
-        string? accessibility = null
+        string? accessibility = null,
+        LinqraftConfiguration? configuration = null
     )
     {
         var typeInfo = semanticModel.GetTypeInfo(expression);
@@ -247,7 +248,8 @@ public record DtoProperty(
                             nestedAnonymous,
                             semanticModel,
                             elementType,
-                            propertyName
+                            propertyName,
+                            configuration
                         );
                     }
                     else if (nestedLambda.Body is ObjectCreationExpressionSyntax nestedNamed)
@@ -256,7 +258,8 @@ public record DtoProperty(
                             nestedNamed,
                             semanticModel,
                             elementType,
-                            propertyName
+                            propertyName,
+                            configuration
                         );
                         isNestedFromNamedType = true;
                     }
@@ -354,7 +357,8 @@ public record DtoProperty(
                                             innerAnonymous,
                                             semanticModel,
                                             innerElementType,
-                                            propertyName
+                                            propertyName,
+                                            configuration
                                         );
                                     }
                                     else if (
@@ -366,7 +370,8 @@ public record DtoProperty(
                                             innerNamed,
                                             semanticModel,
                                             innerElementType,
-                                            propertyName
+                                            propertyName,
+                                            configuration
                                         );
                                         isNestedFromNamedType = true;
                                     }
@@ -383,7 +388,8 @@ public record DtoProperty(
                                 anonymousBody,
                                 semanticModel,
                                 elementType,
-                                propertyName
+                                propertyName,
+                                configuration
                             );
                         }
                         // Note: For simple member access like c => c.GrandChildren,
@@ -428,7 +434,8 @@ public record DtoProperty(
                 directAnonymous,
                 semanticModel,
                 sourceTypeForNested,
-                propertyName
+                propertyName,
+                configuration
             );
         }
 
@@ -470,7 +477,8 @@ public record DtoProperty(
                         anonymousCreation,
                         semanticModel,
                         underlyingType,
-                        propertyName
+                        propertyName,
+                        configuration
                     );
                 }
             }
@@ -497,7 +505,8 @@ public record DtoProperty(
                             anonymousCreation,
                             semanticModel,
                             elementType,
-                            propertyName
+                            propertyName,
+                            configuration
                         );
                     }
                 }
@@ -526,6 +535,7 @@ public record DtoProperty(
             || RoslynTypeHelper.ContainsSelectManyInvocation(expression);
 
         // Apply non-nullable for collections that:
+        // - ArrayNullabilityRemoval is enabled (default: true)
         // - Are currently marked as nullable (either by type annotation or has null-conditional access)
         // - Don't have a ternary operator (explicit null handling)
         // - Have a Select/SelectMany call (indicates transformation that can use empty collection fallback)
@@ -533,8 +543,10 @@ public record DtoProperty(
         // This handles both:
         //   1. foo.bar?.buz.Select(b => new { }) -> IEnumerable<DTO>
         //   2. foo.bar?.buz.Select(b => b.Id).ToList() -> List<int>
+        var arrayNullabilityRemoval = configuration?.ArrayNullabilityRemoval ?? true;
         if (
-            shouldBeNullable
+            arrayNullabilityRemoval
+            && shouldBeNullable
             && !hasTernaryOperator
             && hasSelectOrSelectMany
             && RoslynTypeHelper.IsCollectionType(propertyType)

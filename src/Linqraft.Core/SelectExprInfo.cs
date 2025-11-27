@@ -306,10 +306,13 @@ public abstract record SelectExprInfo
         // If nullable operator is used, convert to explicit null check
         // This also applies to collection types with Select/SelectMany that are now non-nullable
         // but still need the null-conditional access converted to explicit null check with empty collection fallback
+        // Only apply empty collection fallback when ArrayNullabilityRemoval is enabled
         var hasConditionalAccess = syntax.DescendantNodesAndSelf().OfType<ConditionalAccessExpressionSyntax>().Any();
         var hasSelectOrSelectMany = RoslynTypeHelper.ContainsSelectInvocation(syntax)
             || RoslynTypeHelper.ContainsSelectManyInvocation(syntax);
-        var isCollectionWithSelect = hasSelectOrSelectMany && RoslynTypeHelper.IsCollectionType(property.TypeSymbol);
+        var isCollectionWithSelect = Configuration.ArrayNullabilityRemoval
+            && hasSelectOrSelectMany
+            && RoslynTypeHelper.IsCollectionType(property.TypeSymbol);
 
         if (hasConditionalAccess && (property.IsNullable || isCollectionWithSelect))
         {
@@ -1491,10 +1494,15 @@ public abstract record SelectExprInfo
 
         // Determine the default value based on whether the type is a collection with Select/SelectMany
         // Only use empty collection fallback for collections that use Select/SelectMany
+        // and when ArrayNullabilityRemoval is enabled
         string defaultValue;
         string typeAnnotation;
 
-        if (hasSelectOrSelectMany && RoslynTypeHelper.IsCollectionType(typeSymbol))
+        if (
+            Configuration.ArrayNullabilityRemoval
+            && hasSelectOrSelectMany
+            && RoslynTypeHelper.IsCollectionType(typeSymbol)
+        )
         {
             // For collection types with Select/SelectMany, use an empty collection as the default value
             defaultValue = GetEmptyCollectionExpressionForType(typeSymbol, cleanExpression);
