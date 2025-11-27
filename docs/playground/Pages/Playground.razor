@@ -35,10 +35,7 @@
                 OnContentChanged="OnEditorContentChanged" />
         </div>
 
-        <!-- Resize Handle (visual only) -->
-        <div class="w-1 bg-gray-700 flex items-center justify-center">
-            <div class="w-0.5 h-5 bg-gray-500 rounded"></div>
-        </div>
+        <div class="w-1 bg-gray-700 flex items-center justify-center"></div>
 
         <!-- Preview Panes (Right) -->
         <div class="flex-1 flex flex-col min-w-[200px] overflow-hidden">
@@ -54,12 +51,9 @@
                     IsCollapsedChanged="@(collapsed => { queryPaneCollapsed = collapsed; StateHasChanged(); })" />
             </div>
 
-            <!-- Vertical Resize Handle (visual only) -->
             @if (!queryPaneCollapsed && !dtoPaneCollapsed)
             {
-                <div class="h-1 bg-gray-700 flex items-center justify-center">
-                    <div class="w-5 h-0.5 bg-gray-500 rounded"></div>
-                </div>
+                <div class="h-1 bg-gray-700 flex items-center justify-center"></div>
             }
 
             <!-- DTO Class Preview -->
@@ -206,18 +200,21 @@
 
         try
         {
-            // Pass all files to the code generation service
-            var output = CodeGenerationService.GenerateOutput(selectedTemplate.Files, configuration);
-
-            if (queryPreviewPane != null)
+            _ = InvokeAsync(async () => 
             {
-                await queryPreviewPane.SetValueAsync(output.HasError ? $"// Error: {output.ErrorMessage}" : output.QueryExpression);
-            }
+                // Pass all files to the code generation service
+                var output = CodeGenerationService.GenerateOutput(selectedTemplate.Files, configuration);
 
-            if (dtoPreviewPane != null)
-            {
-                await dtoPreviewPane.SetValueAsync(output.HasError ? $"// Error: {output.ErrorMessage}" : output.DtoClass);
-            }
+                if (queryPreviewPane != null)
+                {
+                    await queryPreviewPane.SetValueAsync(output.HasError ? $"// Error: {output.ErrorMessage}" : output.QueryExpression);
+                }
+
+                if (dtoPreviewPane != null)
+                {
+                    await dtoPreviewPane.SetValueAsync(output.HasError ? $"// Error: {output.ErrorMessage}" : output.DtoClass);
+                }
+            });
         }
         catch (Exception)
         {
