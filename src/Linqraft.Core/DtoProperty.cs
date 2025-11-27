@@ -531,8 +531,8 @@ public record DtoProperty(
         // - Have a Select/SelectMany call (indicates transformation that can use empty collection fallback)
         // - Are a collection type
         // This handles both:
-        //   1. foo.bar?.buz.Select(b => new { }) -> IEnumerable<DTO> (with nestedStructure)
-        //   2. foo.bar?.buz.Select(b => b.Id).ToList() -> List<int> (without nestedStructure)
+        //   1. foo.bar?.buz.Select(b => new { }) -> IEnumerable<DTO>
+        //   2. foo.bar?.buz.Select(b => b.Id).ToList() -> List<int>
         if (
             shouldBeNullable
             && !hasTernaryOperator
@@ -540,7 +540,7 @@ public record DtoProperty(
             && RoslynTypeHelper.IsCollectionType(propertyType)
         )
         {
-            // Collection with null-conditional access, Select/SelectMany, and no ternary
+            // Collection with Select/SelectMany and no ternary
             // will use empty collection as fallback, so the collection itself should not be nullable
             shouldBeNullable = false;
             // Also remove the nullable annotation from the type symbol if present
