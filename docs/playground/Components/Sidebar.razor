@@ -1,4 +1,5 @@
 @using Linqraft.Playground.Models
+@using Linqraft.Core
 
 <div class="@GetSidebarClasses()">
     <div class="absolute top-2 right-2 w-6 h-6 flex items-center justify-center cursor-pointer text-gray-400 bg-gray-700 rounded z-10 hover:bg-gray-600" @onclick="OnToggle">
@@ -50,13 +51,82 @@
             }
         </div>
         
-        <!-- Settings Button -->
-        <div class="p-3">
-            <button class="w-full flex items-center gap-2 px-3 py-2 text-gray-300 text-sm rounded hover:bg-gray-700"
-                    @onclick="OnOpenSettings">
+        <!-- Settings Section (Collapsible like Templates/Files) -->
+        <div class="border-b border-gray-700">
+            <div class="flex items-center gap-2 px-3 py-2 cursor-pointer text-gray-300 select-none hover:bg-gray-800" @onclick="ToggleSettings">
                 <span class="text-sm">⚙️</span>
-                <span>Settings</span>
-            </button>
+                <span class="flex-1 text-xs font-semibold uppercase">Settings</span>
+                <span class="text-xs text-gray-500">@(settingsExpanded ? "▼" : "▶")</span>
+            </div>
+            @if (settingsExpanded)
+            {
+                <div class="py-2 px-3 space-y-3 text-sm">
+                    <!-- Global Namespace -->
+                    <div>
+                        <label class="text-xs text-gray-400">Global Namespace</label>
+                        <input type="text" 
+                               class="w-full px-2 py-1 bg-gray-700 border border-gray-600 rounded text-gray-100 text-xs mt-1"
+                               placeholder="(empty for global)"
+                               value="@Configuration.GlobalNamespace"
+                               @onchange="@(e => UpdateConfig(c => c with { GlobalNamespace = e.Value?.ToString() ?? "" }))" />
+                    </div>
+                    
+                    <!-- Record Generate -->
+                    <div class="flex items-center gap-2">
+                        <input type="checkbox" 
+                               id="recordGenerate"
+                               class="w-3 h-3"
+                               checked="@Configuration.RecordGenerate"
+                               @onchange="@(e => UpdateConfig(c => c with { RecordGenerate = (bool)(e.Value ?? false) }))" />
+                        <label for="recordGenerate" class="text-xs text-gray-300">Generate Records</label>
+                    </div>
+                    
+                    <!-- Property Accessor -->
+                    <div>
+                        <label class="text-xs text-gray-400">Property Accessor</label>
+                        <select class="w-full px-2 py-1 bg-gray-700 border border-gray-600 rounded text-gray-100 text-xs mt-1"
+                                value="@((int)Configuration.PropertyAccessor)"
+                                @onchange="@(e => UpdateConfig(c => c with { PropertyAccessor = (PropertyAccessor)int.Parse(e.Value?.ToString() ?? "0") }))">
+                            <option value="@((int)PropertyAccessor.Default)">Default</option>
+                            <option value="@((int)PropertyAccessor.GetAndSet)">get; set;</option>
+                            <option value="@((int)PropertyAccessor.GetAndInit)">get; init;</option>
+                            <option value="@((int)PropertyAccessor.GetAndInternalSet)">get; internal set;</option>
+                        </select>
+                    </div>
+                    
+                    <!-- Has Required -->
+                    <div class="flex items-center gap-2">
+                        <input type="checkbox" 
+                               id="hasRequired"
+                               class="w-3 h-3"
+                               checked="@Configuration.HasRequired"
+                               @onchange="@(e => UpdateConfig(c => c with { HasRequired = (bool)(e.Value ?? false) }))" />
+                        <label for="hasRequired" class="text-xs text-gray-300">Use 'required' keyword</label>
+                    </div>
+                    
+                    <!-- Comment Output -->
+                    <div>
+                        <label class="text-xs text-gray-400">Comment Output</label>
+                        <select class="w-full px-2 py-1 bg-gray-700 border border-gray-600 rounded text-gray-100 text-xs mt-1"
+                                value="@((int)Configuration.CommentOutput)"
+                                @onchange="@(e => UpdateConfig(c => c with { CommentOutput = (CommentOutputMode)int.Parse(e.Value?.ToString() ?? "0") }))">
+                            <option value="@((int)CommentOutputMode.None)">None</option>
+                            <option value="@((int)CommentOutputMode.SummaryOnly)">Summary Only</option>
+                            <option value="@((int)CommentOutputMode.All)">All</option>
+                        </select>
+                    </div>
+                    
+                    <!-- Array Nullability Removal -->
+                    <div class="flex items-center gap-2">
+                        <input type="checkbox" 
+                               id="arrayNullabilityRemoval"
+                               class="w-3 h-3"
+                               checked="@Configuration.ArrayNullabilityRemoval"
+                               @onchange="@(e => UpdateConfig(c => c with { ArrayNullabilityRemoval = (bool)(e.Value ?? false) }))" />
+                        <label for="arrayNullabilityRemoval" class="text-xs text-gray-300">Array Nullability Removal</label>
+                    </div>
+                </div>
+            }
         </div>
     </div>
 </div>
@@ -68,12 +138,15 @@
     [Parameter] public List<Template> Templates { get; set; } = new();
     [Parameter] public Template? SelectedTemplate { get; set; }
     [Parameter] public ProjectFile? SelectedFile { get; set; }
+    [Parameter] public LinqraftConfiguration Configuration { get; set; } = new() { CommentOutput = CommentOutputMode.None };
     [Parameter] public EventCallback OnToggle { get; set; }
     [Parameter] public EventCallback OnToggleTemplates { get; set; }
     [Parameter] public EventCallback OnToggleFiles { get; set; }
     [Parameter] public EventCallback<Template> OnSelectTemplate { get; set; }
     [Parameter] public EventCallback<ProjectFile> OnSelectFile { get; set; }
-    [Parameter] public EventCallback OnOpenSettings { get; set; }
+    [Parameter] public EventCallback<LinqraftConfiguration> OnConfigurationChanged { get; set; }
+    
+    private bool settingsExpanded = false;
 
     private string GetSidebarClasses()
     {
@@ -97,5 +170,16 @@
         return file == SelectedFile 
             ? $"{baseClasses} bg-blue-900" 
             : baseClasses;
+    }
+    
+    private void ToggleSettings()
+    {
+        settingsExpanded = !settingsExpanded;
+    }
+    
+    private async Task UpdateConfig(Func<LinqraftConfiguration, LinqraftConfiguration> update)
+    {
+        Configuration = update(Configuration);
+        await OnConfigurationChanged.InvokeAsync(Configuration);
     }
 }

@@ -1,239 +1,82 @@
-﻿@page "/"
-@using Linqraft.Core
-@inject TemplateService TemplateService
-@inject CodeGenerationService CodeGenerationService
-@inject IJSRuntime JSRuntime
+@page "/"
 
-<PageTitle>Linqraft Playground</PageTitle>
+<PageTitle>Linqraft - Expression Tree Code Generator for LINQ</PageTitle>
 
-<div class="flex h-full w-full overflow-hidden">
-    <!-- Collapsible Sidebar -->
-    <Sidebar 
-        Collapsed="sidebarCollapsed"
-        TemplatesExpanded="templatesExpanded"
-        FilesExpanded="filesExpanded"
-        Templates="templates"
-        SelectedTemplate="selectedTemplate"
-        SelectedFile="selectedFile"
-        OnToggle="ToggleSidebar"
-        OnToggleTemplates="ToggleTemplatesSection"
-        OnToggleFiles="ToggleFilesSection"
-        OnSelectTemplate="SelectTemplate"
-        OnSelectFile="SelectFile"
-        OnOpenSettings="OpenSettings" />
-
-    <!-- Main Content Area -->
-    <div class="flex-1 flex overflow-hidden">
-        <!-- Editor Pane (Left) -->
-        <div class="flex-1 flex flex-col min-w-[200px] overflow-hidden">
-            <EditorPane 
-                @ref="editorPane"
-                EditorId="editor"
-                FileName="@selectedFile?.Name"
-                InitialContent="@(selectedFile?.Content ?? "// Select a file to edit")"
-                OnContentChanged="OnEditorContentChanged" />
+<div class="min-h-screen bg-gray-900 text-gray-100">
+    <!-- Hero Section -->
+    <div class="flex flex-col items-center justify-center px-6 py-16">
+        <div class="flex items-center gap-3 mb-6">
+            <span class="text-5xl">⚡</span>
+            <h1 class="text-5xl font-bold text-white">Linqraft</h1>
         </div>
+        <p class="text-xl text-gray-400 text-center max-w-2xl mb-8">
+            A C# Source Generator that automatically generates Expression trees and DTO classes 
+            from your LINQ <code class="text-blue-400 bg-gray-800 px-2 py-1 rounded">SelectExpr</code> calls.
+        </p>
+        <a href="/playground" class="px-8 py-3 bg-blue-600 text-white rounded-lg text-lg font-medium hover:bg-blue-500 transition-colors">
+            Try the Playground →
+        </a>
+    </div>
 
-        <!-- Resize Handle -->
-        <div class="w-1 bg-gray-700 cursor-col-resize hover:bg-blue-600 flex items-center justify-center">
-            <div class="w-0.5 h-5 bg-gray-500 rounded"></div>
-        </div>
-
-        <!-- Preview Panes (Right) -->
-        <div class="flex-1 flex flex-col min-w-[200px] overflow-hidden">
-            <!-- Query Expression Preview -->
-            <div class="@(queryPaneCollapsed ? "" : "flex-1") min-h-[50px] overflow-hidden">
-                <PreviewPane 
-                    @ref="queryPreviewPane"
-                    EditorId="queryPreview"
-                    Title="Generated Expression"
-                    Icon="🔍"
-                    InitialContent="// Generated expression will appear here"
-                    IsCollapsed="queryPaneCollapsed"
-                    IsCollapsedChanged="@(collapsed => { queryPaneCollapsed = collapsed; StateHasChanged(); })" />
+    <!-- Features Section -->
+    <div class="max-w-4xl mx-auto px-6 py-12">
+        <h2 class="text-2xl font-bold text-center mb-8">Features</h2>
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+            <div class="bg-gray-800 rounded-lg p-6">
+                <div class="text-3xl mb-3">🔧</div>
+                <h3 class="text-lg font-semibold mb-2">Automatic Generation</h3>
+                <p class="text-gray-400 text-sm">
+                    Expression trees are generated at compile time, eliminating runtime overhead.
+                </p>
             </div>
-
-            <!-- Vertical Resize Handle -->
-            @if (!queryPaneCollapsed && !dtoPaneCollapsed)
-            {
-                <div class="h-1 bg-gray-700 cursor-row-resize hover:bg-blue-600 flex items-center justify-center">
-                    <div class="w-5 h-0.5 bg-gray-500 rounded"></div>
-                </div>
-            }
-
-            <!-- DTO Class Preview -->
-            <div class="@(dtoPaneCollapsed ? "" : "flex-1") min-h-[50px] overflow-hidden">
-                <PreviewPane 
-                    @ref="dtoPreviewPane"
-                    EditorId="dtoPreview"
-                    Title="Generated DTO Class"
-                    Icon="📦"
-                    InitialContent="// Generated DTO class will appear here"
-                    IsCollapsed="dtoPaneCollapsed"
-                    IsCollapsedChanged="@(collapsed => { dtoPaneCollapsed = collapsed; StateHasChanged(); })" />
+            <div class="bg-gray-800 rounded-lg p-6">
+                <div class="text-3xl mb-3">📦</div>
+                <h3 class="text-lg font-semibold mb-2">DTO Classes</h3>
+                <p class="text-gray-400 text-sm">
+                    Automatically creates strongly-typed DTO classes based on your projections.
+                </p>
+            </div>
+            <div class="bg-gray-800 rounded-lg p-6">
+                <div class="text-3xl mb-3">✨</div>
+                <h3 class="text-lg font-semibold mb-2">Clean Syntax</h3>
+                <p class="text-gray-400 text-sm">
+                    Write anonymous type projections and get type-safe DTOs automatically.
+                </p>
             </div>
         </div>
     </div>
+
+    <!-- Example Section -->
+    <div class="max-w-4xl mx-auto px-6 py-12">
+        <h2 class="text-2xl font-bold text-center mb-8">How It Works</h2>
+        <div class="bg-gray-800 rounded-lg p-6">
+            <pre class="text-sm text-gray-300 overflow-x-auto"><code>// Write this:
+query.SelectExpr(x => new
+{
+    x.Id,
+    CustomerName = x.Customer?.Name,
+    Items = x.OrderItems.Select(oi => new { oi.ProductName })
+});
+
+// Get Expression&lt;Func&lt;TSource, TResult&gt;&gt; generated at compile time!</code></pre>
+        </div>
+    </div>
+
+    <!-- CTA Section -->
+    <div class="flex flex-col items-center px-6 py-12">
+        <h2 class="text-xl font-semibold mb-4">Ready to try it?</h2>
+        <div class="flex gap-4">
+            <a href="/playground" class="px-6 py-2 bg-blue-600 text-white rounded hover:bg-blue-500 transition-colors">
+                Open Playground
+            </a>
+            <a href="https://github.com/arika0093/Linqraft" target="_blank" class="px-6 py-2 bg-gray-700 text-white rounded hover:bg-gray-600 transition-colors">
+                View on GitHub
+            </a>
+        </div>
+    </div>
+
+    <!-- Footer -->
+    <div class="text-center py-8 text-gray-500 text-sm">
+        <p>Linqraft is open source software under the MIT license.</p>
+    </div>
 </div>
-
-<!-- Settings Dialog -->
-<SettingsDialog 
-    IsOpen="settingsOpen"
-    IsOpenChanged="@(open => settingsOpen = open)"
-    Configuration="configuration"
-    ConfigurationChanged="@(config => configuration = config)"
-    OnApply="OnSettingsApply" />
-
-@code {
-    private const int DebounceDelayMs = 300;
-    
-    private EditorPane? editorPane;
-    private PreviewPane? queryPreviewPane;
-    private PreviewPane? dtoPreviewPane;
-
-    private List<Models.Template> templates = new();
-    private Models.Template? selectedTemplate;
-    private Models.ProjectFile? selectedFile;
-
-    private bool sidebarCollapsed = false;
-    private bool templatesExpanded = true;
-    private bool filesExpanded = true;
-    private bool queryPaneCollapsed = false;
-    private bool dtoPaneCollapsed = false;
-    private bool settingsOpen = false;
-    
-    // Configuration with CommentOutput set to None by default
-    private LinqraftConfiguration configuration = new() { CommentOutput = CommentOutputMode.None };
-
-    protected override void OnInitialized()
-    {
-        templates = TemplateService.GetTemplates();
-        if (templates.Count > 0)
-        {
-            selectedTemplate = templates[0];
-            var visibleFiles = selectedTemplate.VisibleFiles.ToList();
-            if (visibleFiles.Count > 0)
-            {
-                // Default to the file containing SelectExpr
-                selectedFile = visibleFiles.FirstOrDefault(f => 
-                    f.Content.Contains("SelectExpr")) 
-                    ?? visibleFiles[0];
-            }
-        }
-    }
-
-    protected override async Task OnAfterRenderAsync(bool firstRender)
-    {
-        if (firstRender && selectedTemplate != null)
-        {
-            // Wait a bit for the editor to be fully initialized
-            await Task.Delay(100);
-            await GeneratePreviewForTemplate();
-        }
-    }
-
-    private void ToggleSidebar()
-    {
-        sidebarCollapsed = !sidebarCollapsed;
-    }
-
-    private void ToggleTemplatesSection()
-    {
-        templatesExpanded = !templatesExpanded;
-    }
-
-    private void ToggleFilesSection()
-    {
-        filesExpanded = !filesExpanded;
-    }
-    
-    private void OpenSettings()
-    {
-        settingsOpen = true;
-    }
-    
-    private async Task OnSettingsApply()
-    {
-        // Regenerate preview with new settings
-        await GeneratePreviewForTemplate();
-    }
-
-    private async Task SelectTemplate(Models.Template template)
-    {
-        selectedTemplate = template;
-        var visibleFiles = template.VisibleFiles.ToList();
-        if (visibleFiles.Count > 0)
-        {
-            // Default to the file containing SelectExpr
-            selectedFile = visibleFiles.FirstOrDefault(f => f.Content.Contains("SelectExpr")) 
-                ?? visibleFiles[0];
-            if (editorPane != null)
-            {
-                await editorPane.SetValueAsync(selectedFile.Content);
-            }
-        }
-        // Generate preview for the entire template
-        await GeneratePreviewForTemplate();
-    }
-
-    private async Task SelectFile(Models.ProjectFile file)
-    {
-        selectedFile = file;
-        if (editorPane != null)
-        {
-            await editorPane.SetValueAsync(file.Content);
-        }
-        // Note: Preview is generated per template, not per file
-    }
-
-    private System.Timers.Timer? debounceTimer;
-
-    private async Task OnEditorContentChanged(ModelContentChangedEvent e)
-    {
-        // Update the selected file content
-        if (selectedFile != null && editorPane != null)
-        {
-            selectedFile.Content = await editorPane.GetValueAsync();
-        }
-
-        // Debounce the preview generation
-        debounceTimer?.Stop();
-        debounceTimer?.Dispose();
-        debounceTimer = new System.Timers.Timer(DebounceDelayMs);
-        debounceTimer.Elapsed += async (sender, args) =>
-        {
-            debounceTimer?.Stop();
-            await InvokeAsync(async () =>
-            {
-                await GeneratePreviewForTemplate();
-            });
-        };
-        debounceTimer.AutoReset = false;
-        debounceTimer.Start();
-    }
-
-    private async Task GeneratePreviewForTemplate()
-    {
-        if (selectedTemplate == null) return;
-
-        try
-        {
-            // Pass all files to the code generation service
-            var output = CodeGenerationService.GenerateOutput(selectedTemplate.Files, configuration);
-
-            if (queryPreviewPane != null)
-            {
-                await queryPreviewPane.SetValueAsync(output.HasError ? $"// Error: {output.ErrorMessage}" : output.QueryExpression);
-            }
-
-            if (dtoPreviewPane != null)
-            {
-                await dtoPreviewPane.SetValueAsync(output.HasError ? $"// Error: {output.ErrorMessage}" : output.DtoClass);
-            }
-        }
-        catch (Exception)
-        {
-            // Editor not yet initialized, ignore
-        }
-    }
-}
