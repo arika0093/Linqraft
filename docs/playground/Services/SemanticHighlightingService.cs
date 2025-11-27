@@ -1,42 +1,62 @@
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
-using Basic.Reference.Assemblies;
 
 namespace Linqraft.Playground.Services;
 
 /// <summary>
 /// Service for extracting semantic highlighting tokens from C# code using Roslyn.
-/// Identifies class names, method names, property names, and other semantic constructs.
+/// Uses SharedCompilationService for consistent compilation across services.
 /// </summary>
 public class SemanticHighlightingService
 {
-    private static readonly Lazy<MetadataReference[]> LazyReferences = new(() =>
-        Net90.References.All.ToArray()
-    );
+    private readonly SharedCompilationService _sharedCompilation;
+
+    public SemanticHighlightingService(SharedCompilationService sharedCompilation)
+    {
+        _sharedCompilation = sharedCompilation;
+    }
 
     /// <summary>
-    /// Analyzes C# code and returns semantic tokens for syntax highlighting.
+    /// Analyzes C# code using the shared compilation and returns semantic tokens.
+    /// This provides accurate highlighting for all code including generated code.
     /// </summary>
-    public List<SemanticToken> GetSemanticTokens(string code)
+    public List<SemanticToken> GetSemanticTokens(string code, string? filePath = null)
     {
         var tokens = new List<SemanticToken>();
 
         try
         {
-            var syntaxTree = CSharpSyntaxTree.ParseText(code);
-            var references = LazyReferences.Value;
-            var compilation = CSharpCompilation.Create(
-                "SemanticAnalysis",
-                [syntaxTree],
-                references,
-                new CSharpCompilationOptions(OutputKind.DynamicallyLinkedLibrary)
-            );
+            // Find the matching syntax tree in the shared compilation
+            SyntaxTree? syntaxTree = null;
+            SemanticModel? semanticModel = null;
 
-            var semanticModel = compilation.GetSemanticModel(syntaxTree);
+            if (_sharedCompilation.Compilation != null)
+            {
+                // Try to find matching tree by content or path
+                foreach (var tree in _sharedCompilation.GetAllSyntaxTrees())
+                {
+                    var treeText = tree.GetText().ToString();
+                    if (treeText == code || (filePath != null && tree.FilePath == filePath))
+                    {
+                        syntaxTree = tree;
+                        semanticModel = _sharedCompilation.GetSemanticModel(tree);
+                        break;
+                    }
+                }
+            }
+
+            // If no matching tree found, parse independently (fallback)
+            if (syntaxTree == null)
+            {
+                syntaxTree = CSharpSyntaxTree.ParseText(code);
+                // For fallback, we can't get semantic model without compilation
+                // Process only syntactic tokens
+            }
+
             var root = syntaxTree.GetRoot();
 
-            // Process all identifier tokens
+            // Process all nodes
             foreach (var node in root.DescendantNodesAndSelf())
             {
                 ProcessNode(node, semanticModel, code, tokens);
@@ -50,7 +70,111 @@ public class SemanticHighlightingService
         return tokens;
     }
 
-    private void ProcessNode(SyntaxNode node, SemanticModel semanticModel, string code, List<SemanticToken> tokens)
+    /// <summary>
+    /// Analyzes generated code using the shared compilation.
+    /// Call this after code generation to get accurate highlighting for generated code.
+    /// </summary>
+    public List<SemanticToken> GetSemanticTokensForGenerated(string generatedCode, bool isExpression)
+    {
+        var tokens = new List<SemanticToken>();
+
+        try
+        {
+            if (_sharedCompilation.Compilation == null || string.IsNullOrWhiteSpace(generatedCode))
+            {
+                return tokens;
+            }
+
+            // Find the generated code tree in the compilation
+            var fileName = isExpression ? "__GeneratedExpression.cs" : "__GeneratedDto.cs";
+            SyntaxTree? syntaxTree = null;
+            
+            foreach (var tree in _sharedCompilation.GetAllSyntaxTrees())
+            {
+                if (tree.FilePath == fileName)
+                {
+                    syntaxTree = tree;
+                    break;
+                }
+            }
+
+            if (syntaxTree != null)
+            {
+                var semanticModel = _sharedCompilation.GetSemanticModel(syntaxTree);
+                var root = syntaxTree.GetRoot();
+
+                foreach (var node in root.DescendantNodesAndSelf())
+                {
+                    ProcessNode(node, semanticModel, generatedCode, tokens);
+                }
+            }
+            else
+            {
+                // Fallback: parse and analyze independently
+                return GetSemanticTokensFallback(generatedCode);
+            }
+        }
+        catch
+        {
+            // Ignore parsing errors
+        }
+
+        return tokens;
+    }
+
+    /// <summary>
+    /// Fallback method for when shared compilation is not available.
+    /// </summary>
+    private List<SemanticToken> GetSemanticTokensFallback(string code)
+    {
+        var tokens = new List<SemanticToken>();
+
+        try
+        {
+            var syntaxTree = CSharpSyntaxTree.ParseText(code);
+            var root = syntaxTree.GetRoot();
+
+            // Process only syntactic tokens (no semantic analysis)
+            foreach (var node in root.DescendantNodesAndSelf())
+            {
+                ProcessNodeSyntaxOnly(node, code, tokens);
+            }
+        }
+        catch
+        {
+            // Ignore parsing errors
+        }
+
+        return tokens;
+    }
+
+    private void ProcessNodeSyntaxOnly(SyntaxNode node, string code, List<SemanticToken> tokens)
+    {
+        switch (node)
+        {
+            case ClassDeclarationSyntax classDecl:
+                AddToken(tokens, classDecl.Identifier, SemanticTokenType.Class, code);
+                break;
+            case RecordDeclarationSyntax recordDecl:
+                AddToken(tokens, recordDecl.Identifier, SemanticTokenType.Class, code);
+                break;
+            case InterfaceDeclarationSyntax interfaceDecl:
+                AddToken(tokens, interfaceDecl.Identifier, SemanticTokenType.Interface, code);
+                break;
+            case StructDeclarationSyntax structDecl:
+                AddToken(tokens, structDecl.Identifier, SemanticTokenType.Struct, code);
+                break;
+            case MethodDeclarationSyntax methodDecl:
+                AddToken(tokens, methodDecl.Identifier, SemanticTokenType.Method, code);
+                break;
+            case PropertyDeclarationSyntax propDecl:
+                AddToken(tokens, propDecl.Identifier, SemanticTokenType.Property, code);
+                ProcessPropertyKeywords(propDecl, code, tokens);
+                break;
+        }
+    }
+
+    private void ProcessNode(SyntaxNode node, SemanticModel? semanticModel, string code, List<SemanticToken> tokens)
     {
         switch (node)
         {
@@ -96,27 +220,27 @@ public class SemanticHighlightingService
                 break;
 
             // Type argument list (for generics like List<Order>)
-            case TypeArgumentListSyntax typeArgList:
+            case TypeArgumentListSyntax typeArgList when semanticModel != null:
                 ProcessTypeArgumentList(typeArgList, semanticModel, code, tokens);
                 break;
 
             // Generic names (must come before TypeSyntax/IdentifierNameSyntax)
-            case GenericNameSyntax genericName:
+            case GenericNameSyntax genericName when semanticModel != null:
                 ProcessGenericName(genericName, semanticModel, code, tokens);
                 break;
 
             // Identifier names that refer to types or methods
-            case IdentifierNameSyntax identifierName:
+            case IdentifierNameSyntax identifierName when semanticModel != null:
                 ProcessIdentifierName(identifierName, semanticModel, code, tokens);
                 break;
 
             // Invocation expressions (method calls)
-            case InvocationExpressionSyntax invocation:
+            case InvocationExpressionSyntax invocation when semanticModel != null:
                 ProcessInvocation(invocation, semanticModel, code, tokens);
                 break;
 
             // Member access expressions
-            case MemberAccessExpressionSyntax memberAccess:
+            case MemberAccessExpressionSyntax memberAccess when semanticModel != null:
                 ProcessMemberAccess(memberAccess, semanticModel, code, tokens);
                 break;
         }

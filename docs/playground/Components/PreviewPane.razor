@@ -28,6 +28,7 @@
     [Parameter] public string InitialContent { get; set; } = "";
     [Parameter] public bool IsCollapsed { get; set; } = false;
     [Parameter] public EventCallback<bool> IsCollapsedChanged { get; set; }
+    [Parameter] public bool IsExpressionPane { get; set; } = false;
 
     public StandaloneCodeEditor? Editor { get; private set; }
     private string currentContent = "";
@@ -87,7 +88,8 @@
         
         try
         {
-            var tokens = SemanticHighlightingService.GetSemanticTokens(currentContent);
+            // Use GetSemanticTokensForGenerated for preview panes (generated code)
+            var tokens = SemanticHighlightingService.GetSemanticTokensForGenerated(currentContent, IsExpressionPane);
             
             // Convert to JS-compatible format
             var jsTokens = tokens.Select(t => new

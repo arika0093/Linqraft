@@ -1,5 +1,4 @@
 using System.Text;
-using Basic.Reference.Assemblies;
 using Linqraft.Core;
 using Linqraft.Playground.Models;
 using Microsoft.CodeAnalysis;
@@ -11,12 +10,16 @@ namespace Linqraft.Playground.Services;
 /// <summary>
 /// Service for Linqraft code generation using Roslyn
 /// This uses the actual Linqraft.Core library for semantic analysis and code generation.
+/// Uses SharedCompilationService for consistent compilation across services.
 /// </summary>
 public class CodeGenerationService
 {
-    private static readonly Lazy<MetadataReference[]> LazyReferences = new(() =>
-        Net90.References.All.ToArray()
-    );
+    private readonly SharedCompilationService _sharedCompilation;
+
+    public CodeGenerationService(SharedCompilationService sharedCompilation)
+    {
+        _sharedCompilation = sharedCompilation;
+    }
 
     /// <summary>
     /// Generates Linqraft output based on multiple source files
@@ -30,12 +33,8 @@ public class CodeGenerationService
 
         try
         {
-            // Parse each file into its own syntax tree
-            var syntaxTrees = files
-                .Select(f => CSharpSyntaxTree.ParseText(f.Content, path: f.Path))
-                .ToList();
-
-            if (syntaxTrees.Count == 0)
+            var filesList = files.ToList();
+            if (filesList.Count == 0)
             {
                 return new GeneratedOutput
                 {
@@ -44,32 +43,14 @@ public class CodeGenerationService
                 };
             }
 
-            // Create compilation with all syntax trees and reference assemblies
-            var references = LazyReferences.Value;
-            var compilation = CSharpCompilation.Create(
-                "PlaygroundAnalysis",
-                syntaxTrees,
-                references,
-                new CSharpCompilationOptions(OutputKind.DynamicallyLinkedLibrary)
-            );
+            // Create shared compilation with all source files
+            _sharedCompilation.CreateCompilation(filesList);
 
-            // Cache semantic models for each syntax tree
-            var semanticModelCache = new Dictionary<SyntaxTree, SemanticModel>();
-            SemanticModel GetSemanticModelCached(SyntaxTree tree)
-            {
-                if (!semanticModelCache.TryGetValue(tree, out var model))
-                {
-                    model = compilation.GetSemanticModel(tree);
-                    semanticModelCache[tree] = model;
-                }
-                return model;
-            }
-
-            // Find SelectExpr invocations from all syntax trees
+            // Find SelectExpr invocations from all user syntax trees
             var allSelectExprInfos = new List<SelectExprInfo>();
-            foreach (var syntaxTree in syntaxTrees)
+            foreach (var syntaxTree in _sharedCompilation.GetUserSyntaxTrees())
             {
-                var semanticModel = GetSemanticModelCached(syntaxTree);
+                var semanticModel = _sharedCompilation.GetSemanticModel(syntaxTree);
                 var root = syntaxTree.GetRoot();
                 var infos = FindSelectExprInvocations(root, semanticModel);
                 allSelectExprInfos.AddRange(infos);
@@ -103,7 +84,7 @@ public class CodeGenerationService
                     }
 
                     // Generate the select expression (simplified representation)
-                    var semanticModel = GetSemanticModelCached(info.Invocation.SyntaxTree);
+                    var semanticModel = _sharedCompilation.GetSemanticModel(info.Invocation.SyntaxTree);
                     var location = semanticModel.GetInterceptableLocation(info.Invocation);
                     if (location != null)
                     {
@@ -123,10 +104,16 @@ public class CodeGenerationService
                 }
             }
 
+            var expressionCode = queryExpressionBuilder.ToString().TrimEnd();
+            var dtoCode = dtoClassBuilder.ToString().TrimEnd();
+
+            // Add generated code to the shared compilation for accurate highlighting
+            _sharedCompilation.AddGeneratedCode(expressionCode, dtoCode);
+
             return new GeneratedOutput
             {
-                QueryExpression = queryExpressionBuilder.ToString().TrimEnd(),
-                DtoClass = dtoClassBuilder.ToString().TrimEnd(),
+                QueryExpression = expressionCode,
+                DtoClass = dtoCode,
             };
         }
         catch (Exception ex)
