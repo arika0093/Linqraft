@@ -34,7 +34,7 @@ public static class DocumentationCommentHelper
         /// <summary>
         /// List of attribute names (e.g., ["Key", "Required", "StringLength(100)"])
         /// </summary>
-        public List<string> Attributes { get; init; } = new();
+        public List<string> Attributes { get; init; } = [];
 
         /// <summary>
         /// Returns true if there is any documentation to output

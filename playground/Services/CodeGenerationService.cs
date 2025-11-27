@@ -1,108 +1,153 @@
-using System.Collections.Generic;
-using System.Linq;
+using System.Text;
 using Linqraft.Core;
-using Linqraft.Core.SyntaxHelpers;
+using Linqraft.Core.Formatting;
+using Linqraft.Playground.Models;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
 
-namespace Linqraft;
+namespace Linqraft.Playground.Services;
 
 /// <summary>
-/// Generator for SelectExpr method
+/// Service for Linqraft code generation using Roslyn
+/// This uses the actual Linqraft.Core library for semantic analysis and code generation.
+/// Uses SharedCompilationService for consistent compilation across services.
 /// </summary>
-[Generator]
-public partial class SelectExprGenerator : IIncrementalGenerator
+public class CodeGenerationService
 {
-    /// <summary>
-    /// Initialize the generator
-    /// </summary>
-    public void Initialize(IncrementalGeneratorInitializationContext context)
+    private readonly SharedCompilationService _sharedCompilation;
+
+    public CodeGenerationService(SharedCompilationService sharedCompilation)
     {
-        // Generate pre-defined source code
-        context.RegisterPostInitializationOutput(ctx => GenerateSourceCodeSnippets.ExportAll(ctx));
-
-        // Read MSBuild properties for configuration
-        var configurationProvider = context.AnalyzerConfigOptionsProvider.Select(
-            static (provider, _) => LinqraftConfiguration.GenerateFromGlobalOptions(provider)
-        );
-
-        // Provider to detect SelectExpr method invocations
-        var invocations = context
-            .SyntaxProvider.CreateSyntaxProvider(
-                predicate: static (node, _) => IsSelectExprInvocation(node),
-                transform: static (ctx, _) => GetSelectExprInfo(ctx)
-            )
-            .Where(static info => info is not null)
-            .Collect();
-
-        // Combine configuration with invocations
-        var invocationsWithConfig = invocations.Combine(configurationProvider);
-
-        // Code generation
-        context.RegisterSourceOutput(
-            invocationsWithConfig,
-            (spc, data) =>
-            {
-                var (infos, config) = data;
-                var infoWithoutNulls = infos.Where(info => info is not null).Select(info => info!);
-
-                // assign configuration to each SelectExprInfo
-                foreach (var info in infoWithoutNulls)
-                {
-                    info.Configuration = config;
-                }
-
-                // record locations by SelectExprInfo Id
-                var exprGroups = infoWithoutNulls
-                    .GroupBy(info => new
-                    {
-                        Namespace = info.GetNamespaceString(),
-                        FileName = info.GetFileNameString() ?? "",
-                    })
-                    .Select(g =>
-                    {
-                        var exprs = g.Select(info =>
-                        {
-                            var location = info.SemanticModel.GetInterceptableLocation(
-                                info.Invocation
-                            )!;
-                            return new SelectExprLocations { Info = info, Location = location };
-                        });
-                        return new SelectExprGroups
-                        {
-                            TargetNamespace = g.Key.Namespace,
-                            TargetFileName = g.Key.FileName,
-                            Exprs = [.. exprs],
-                            Configuration = config,
-                        };
-                    })
-                    .ToList();
-
-                // Generate code for explicit DTO infos (one method per group)
-                foreach (var exprGroup in exprGroups)
-                {
-                    exprGroup.GenerateCode(spc);
-                }
-            }
-        );
+        _sharedCompilation = sharedCompilation;
     }
 
-    private static bool IsSelectExprInvocation(SyntaxNode node)
+    /// <summary>
+    /// Generates Linqraft output based on multiple source files
+    /// </summary>
+    public GeneratedOutput GenerateOutput(
+        IEnumerable<ProjectFile> files,
+        LinqraftConfiguration? config = null
+    )
     {
-        // Detect InvocationExpression with method name "SelectExpr"
-        if (node is not InvocationExpressionSyntax invocation)
-            return false;
+        config ??= new LinqraftConfiguration { CommentOutput = CommentOutputMode.None };
 
+        try
+        {
+            var filesList = files.ToList();
+            if (filesList.Count == 0)
+            {
+                return new GeneratedOutput
+                {
+                    QueryExpression = "// No source files provided",
+                    DtoClass = "// No DTO class generated",
+                };
+            }
+
+            // Create shared compilation with all source files
+            _sharedCompilation.CreateCompilation(filesList);
+
+            // Find SelectExpr invocations from all user syntax trees
+            var allSelectExprInfos = new List<SelectExprInfo>();
+            foreach (var syntaxTree in _sharedCompilation.GetUserSyntaxTrees())
+            {
+                var semanticModel = _sharedCompilation.GetSemanticModel(syntaxTree);
+                var root = syntaxTree.GetRoot();
+                var infos = FindSelectExprInvocations(root, semanticModel);
+                allSelectExprInfos.AddRange(infos);
+            }
+
+            if (allSelectExprInfos.Count == 0)
+            {
+                return new GeneratedOutput
+                {
+                    QueryExpression = "// No SelectExpr call found in the code",
+                    DtoClass = "// No DTO class generated",
+                };
+            }
+
+            // Generate code for each SelectExpr
+            var queryExpressionBuilder = new StringBuilder();
+            var dtoClassBuilder = new StringBuilder();
+
+            foreach (var info in allSelectExprInfos)
+            {
+                try
+                {
+                    info.Configuration = config;
+                    var targetNamespace = info.GetNamespaceString();
+                    var semanticModel = _sharedCompilation.GetSemanticModel(
+                        info.Invocation.SyntaxTree
+                    );
+                    var location = semanticModel.GetInterceptableLocation(info.Invocation);
+                    var selectExprCodes = info.GenerateSelectExprCodes(location!);
+                    var dtoClasses = info.GenerateDtoClasses()
+                        .Select(c => c.BuildCode(config))
+                        .ToList();
+                    queryExpressionBuilder.AppendLine(
+                        GenerateSourceCodeSnippets.BuildExprCodeSnippets(selectExprCodes)
+                    );
+                    dtoClassBuilder.AppendLine(
+                        GenerateSourceCodeSnippets.BuildDtoCodeSnippets(dtoClasses, targetNamespace)
+                    );
+                }
+                catch (Exception ex)
+                {
+                    queryExpressionBuilder.AppendLine(
+                        $"// Error processing SelectExpr: {ex.Message}"
+                    );
+                }
+            }
+
+            var expressionCode = queryExpressionBuilder.ToString().TrimEnd();
+            var dtoCode = dtoClassBuilder.ToString().TrimEnd();
+
+            // Add generated code to the shared compilation for accurate highlighting
+            _sharedCompilation.AddGeneratedCode(expressionCode, dtoCode);
+
+            return new GeneratedOutput { QueryExpression = expressionCode, DtoClass = dtoCode };
+        }
+        catch (Exception ex)
+        {
+            return new GeneratedOutput { ErrorMessage = $"Error generating output: {ex.Message}" };
+        }
+    }
+
+    private static List<SelectExprInfo> FindSelectExprInvocations(
+        SyntaxNode root,
+        SemanticModel semanticModel
+    )
+    {
+        var results = new List<SelectExprInfo>();
+
+        var invocations = root.DescendantNodes().OfType<InvocationExpressionSyntax>();
+
+        foreach (var invocation in invocations)
+        {
+            if (!IsSelectExprInvocation(invocation))
+                continue;
+
+            var info = GetSelectExprInfo(invocation, semanticModel);
+            if (info != null)
+            {
+                results.Add(info);
+            }
+        }
+
+        return results;
+    }
+
+    private static bool IsSelectExprInvocation(InvocationExpressionSyntax invocation)
+    {
         var expression = invocation.Expression;
-
-        // Use shared helper for syntax-level check
         return SelectExprHelper.IsSelectExprInvocationSyntax(expression);
     }
 
-    private static SelectExprInfo? GetSelectExprInfo(GeneratorSyntaxContext context)
+    private static SelectExprInfo? GetSelectExprInfo(
+        InvocationExpressionSyntax invocation,
+        SemanticModel semanticModel
+    )
     {
-        var invocation = (InvocationExpressionSyntax)context.Node;
         // Get lambda expression from arguments
         if (invocation.ArgumentList.Arguments.Count == 0)
             return null;
@@ -112,31 +157,26 @@ public partial class SelectExprGenerator : IIncrementalGenerator
             return null;
 
         // Extract lambda parameter name
-        var lambdaParamName = LambdaHelper.GetLambdaParameterName(lambda);
+        var lambdaParamName = GetLambdaParameterName(lambda);
 
         // Extract capture argument info (if present)
-        var (captureArgExpr, captureType) = GetCaptureInfo(invocation, context.SemanticModel);
+        var (captureArgExpr, captureType) = GetCaptureInfo(invocation, semanticModel);
 
-        // check
-        // 1. SelectExpr with predefined DTO type
-        // 2. SelectExpr with explicit DTO type in generic arguments
-        // 3. SelectExpr with anonymous object creation
         var body = lambda.Body;
 
-        // 1. Check if this is a generic invocation with predefined DTO type
-        // If generics are used, but the body is an ObjectCreationExpression, this takes precedence.
+        // Check for different SelectExpr patterns
         if (body is ObjectCreationExpressionSyntax objCreation)
         {
             return GetNamedSelectExprInfo(
-                context,
+                invocation,
                 objCreation,
                 lambdaParamName,
+                semanticModel,
                 captureArgExpr,
                 captureType
             );
         }
 
-        // 2. Check for SelectExpr<TIn, TResult>
         if (
             invocation.Expression is MemberAccessExpressionSyntax memberAccess
             && memberAccess.Name is GenericNameSyntax genericName
@@ -145,29 +185,44 @@ public partial class SelectExprGenerator : IIncrementalGenerator
         )
         {
             return GetExplicitDtoSelectExprInfo(
-                context,
+                invocation,
                 anonSyntax,
                 genericName,
                 lambdaParamName,
+                semanticModel,
                 captureArgExpr,
                 captureType
             );
         }
 
-        // 3. Check for anonymous object creation
         if (body is AnonymousObjectCreationExpressionSyntax anon)
         {
             return GetAnonymousSelectExprInfo(
-                context,
+                invocation,
                 anon,
                 lambdaParamName,
+                semanticModel,
                 captureArgExpr,
                 captureType
             );
         }
 
-        // Not a supported form
         return null;
+    }
+
+    private static string GetLambdaParameterName(LambdaExpressionSyntax lambda)
+    {
+        return lambda switch
+        {
+            SimpleLambdaExpressionSyntax simple => simple.Parameter.Identifier.Text,
+            ParenthesizedLambdaExpressionSyntax paren
+                when paren.ParameterList.Parameters.Count > 0 => paren
+                .ParameterList
+                .Parameters[0]
+                .Identifier
+                .Text,
+            _ => "x",
+        };
     }
 
     private static (ExpressionSyntax? captureArgExpr, ITypeSymbol? captureType) GetCaptureInfo(
@@ -175,46 +230,37 @@ public partial class SelectExprGenerator : IIncrementalGenerator
         SemanticModel semanticModel
     )
     {
-        // Check if invocation has 2 arguments (second one is the capture argument)
         ExpressionSyntax? captureArgExpr = null;
         ITypeSymbol? captureType = null;
         if (invocation.ArgumentList.Arguments.Count == 2)
         {
             captureArgExpr = invocation.ArgumentList.Arguments[1].Expression;
-            // Get the type of the capture argument
             var typeInfo = semanticModel.GetTypeInfo(captureArgExpr);
             captureType = typeInfo.Type ?? typeInfo.ConvertedType;
         }
-
         return (captureArgExpr, captureType);
     }
 
     private static SelectExprInfoAnonymous? GetAnonymousSelectExprInfo(
-        GeneratorSyntaxContext context,
+        InvocationExpressionSyntax invocation,
         AnonymousObjectCreationExpressionSyntax anonymousObj,
         string lambdaParameterName,
+        SemanticModel semanticModel,
         ExpressionSyntax? captureArgumentExpression,
         ITypeSymbol? captureArgumentType
     )
     {
-        var invocation = (InvocationExpressionSyntax)context.Node;
-        var semanticModel = context.SemanticModel;
-
-        // Get target type from MemberAccessExpression
         if (invocation.Expression is not MemberAccessExpressionSyntax memberAccess)
             return null;
 
-        // Get type information
         var typeInfo = semanticModel.GetTypeInfo(memberAccess.Expression);
         if (typeInfo.Type is not INamedTypeSymbol namedType)
             return null;
 
-        // Get T from IQueryable<T>
         var sourceType = namedType.TypeArguments.FirstOrDefault();
         if (sourceType is null)
             return null;
 
-        // Get the namespace of the calling code
         var namespaceDecl = invocation
             .Ancestors()
             .OfType<BaseNamespaceDeclarationSyntax>()
@@ -229,38 +275,31 @@ public partial class SelectExprGenerator : IIncrementalGenerator
             Invocation = invocation,
             LambdaParameterName = lambdaParameterName,
             CallerNamespace = callerNamespace,
-            CaptureParameterName = null, // No longer used - capture is via closure
             CaptureArgumentExpression = captureArgumentExpression,
             CaptureArgumentType = captureArgumentType,
         };
     }
 
     private static SelectExprInfoNamed? GetNamedSelectExprInfo(
-        GeneratorSyntaxContext context,
+        InvocationExpressionSyntax invocation,
         ObjectCreationExpressionSyntax obj,
         string lambdaParameterName,
+        SemanticModel semanticModel,
         ExpressionSyntax? captureArgumentExpression,
         ITypeSymbol? captureArgumentType
     )
     {
-        var invocation = (InvocationExpressionSyntax)context.Node;
-        var semanticModel = context.SemanticModel;
-
-        // Get target type from MemberAccessExpression
         if (invocation.Expression is not MemberAccessExpressionSyntax memberAccess)
             return null;
 
-        // Get type information
         var typeInfo = semanticModel.GetTypeInfo(memberAccess.Expression);
         if (typeInfo.Type is not INamedTypeSymbol namedType)
             return null;
 
-        // Get T from IQueryable<T>
         var sourceType = namedType.TypeArguments.FirstOrDefault();
         if (sourceType is null)
             return null;
 
-        // Get the namespace of the calling code
         var namespaceDecl = invocation
             .Ancestors()
             .OfType<BaseNamespaceDeclarationSyntax>()
@@ -275,39 +314,32 @@ public partial class SelectExprGenerator : IIncrementalGenerator
             Invocation = invocation,
             LambdaParameterName = lambdaParameterName,
             CallerNamespace = callerNamespace,
-            CaptureParameterName = null, // No longer used - capture is via closure
             CaptureArgumentExpression = captureArgumentExpression,
             CaptureArgumentType = captureArgumentType,
         };
     }
 
     private static SelectExprInfoExplicitDto? GetExplicitDtoSelectExprInfo(
-        GeneratorSyntaxContext context,
+        InvocationExpressionSyntax invocation,
         AnonymousObjectCreationExpressionSyntax anonymousObj,
         GenericNameSyntax genericName,
         string lambdaParameterName,
+        SemanticModel semanticModel,
         ExpressionSyntax? captureArgumentExpression,
         ITypeSymbol? captureArgumentType
     )
     {
-        var invocation = (InvocationExpressionSyntax)context.Node;
-        var semanticModel = context.SemanticModel;
-
-        // Get target type from MemberAccessExpression
         if (invocation.Expression is not MemberAccessExpressionSyntax memberAccess)
             return null;
 
-        // Get type information
         var typeInfo = semanticModel.GetTypeInfo(memberAccess.Expression);
         if (typeInfo.Type is not INamedTypeSymbol namedType)
             return null;
 
-        // Get TIn from IQueryable<TIn>
         var sourceType = namedType.TypeArguments.FirstOrDefault();
         if (sourceType is null)
             return null;
 
-        // Get TResult (second type parameter) - this is the explicit DTO name
         var typeArguments = genericName.TypeArgumentList.Arguments;
         if (typeArguments.Count < 2)
             return null;
@@ -318,7 +350,6 @@ public partial class SelectExprGenerator : IIncrementalGenerator
 
         var explicitDtoName = tResultType.Name;
 
-        // Extract parent class names if the DTO type is nested
         var parentClasses = new List<string>();
         var currentContaining = tResultType.ContainingType;
         while (currentContaining is not null)
@@ -327,9 +358,6 @@ public partial class SelectExprGenerator : IIncrementalGenerator
             currentContaining = currentContaining.ContainingType;
         }
 
-        // Get the namespace of the calling code
-        var invocationSyntaxTree = invocation.SyntaxTree;
-        var root = invocationSyntaxTree.GetRoot();
         var namespaceDecl = invocation
             .Ancestors()
             .OfType<BaseNamespaceDeclarationSyntax>()
@@ -348,7 +376,6 @@ public partial class SelectExprGenerator : IIncrementalGenerator
             CallerNamespace = targetNamespace,
             ParentClasses = parentClasses,
             TResultType = tResultType,
-            CaptureParameterName = null, // No longer used - capture is via closure
             CaptureArgumentExpression = captureArgumentExpression,
             CaptureArgumentType = captureArgumentType,
         };

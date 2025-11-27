@@ -625,8 +625,8 @@ public record DtoProperty(
     /// <summary>
     /// Collection creation method names that produce non-nullable collections
     /// </summary>
-    private static readonly HashSet<string> CollectionCreationMethods = new()
-    {
+    private static readonly HashSet<string> CollectionCreationMethods =
+    [
         "ToList",
         "ToArray",
         "ToHashSet",
@@ -639,7 +639,7 @@ public record DtoProperty(
         "ToLookup",
         "AsEnumerable",
         "AsQueryable",
-    };
+    ];
 
     /// <summary>
     /// Checks if an invocation is a collection creation method like ToList(), ToArray(), etc.
