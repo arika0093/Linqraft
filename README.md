@@ -368,8 +368,15 @@ It is detected as an error, so just apply the code fix.
 ![](./assets/local-variable-capture-err.png)
 
 ### Removing nullability from arrays
-Basically, the types of the DTO class are generated as written. However, nullability is automatically removed at generation time for array types.
-Because in array types, there is little need to distinguish between `null` and `[]`.
+Generally, DTO class types should be generated as specified. However, for array types, it is convenient for null tolerance to be automatically removed during generation.
+This is because with array types, there is rarely a need to distinguish between `null` and `[]`.
+
+Linqraft automatically removes nullability from array-type properties according to the following rules.
+* Expression should NOT contain a ternary operator
+* The type must be IEnumerable<T> or derived (List, Array, etc.)
+* The expression uses null-conditional access (?.)
+* The expression contains a Select or SelectMany call
+
 For example, the following transformation is performed.
 
 ```csharp
@@ -377,15 +384,15 @@ query.SelectExpr<Entity, EntityDto>(e => new
 {
     // in general, this property is generated as List<string>?
     // but Linqraft removes nullability for array types.
-    // so the generated type is List<string>.
+    // so the generated type is List<string>
     ChildNames = e.Child?.Select(c => c.Name).ToList(),
 
     // This also applies to auto-generated child classes.
-    // so the generated type is IEnumerable<ChildDto_HASH1234>.
+    // so the generated type is IEnumerable<ChildDto_HASH1234>
     ChildDtos = e.Child?.Select(c => new { c.Name, c.Description }),
 
     // When explicitly comparing with a ternary operator, it is generated as a nullable type as usual.
-    // therefore, in this case, it is generated as List<string>?.
+    // therefore, in this case, it is generated as List<string>?
     ExplicitNullableNames = e.Child != null ? e.Child.Select(c => c.Name).ToList() : null,
 });
 ```
