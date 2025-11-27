@@ -453,6 +453,7 @@ public partial class EntityDto
 
 This change helps avoid unnecessary null checks like `dto.ChildNames ?? []`, keeping the code simple.
 
+もしこの挙動が気に入らない場合は、`LinqraftArrayNullabilityRemoval` プロパティを `false` に設定することで無効化できます。
 
 ### Partial Classes
 You can extend the generated DTO classes as needed since they are output as `partial` classes.
@@ -511,6 +512,8 @@ Linqraft supports several MSBuild properties to customize the generated code:
     <!-- generate xml documentation comments on properties -->
     <!-- All(summary+reference), SummaryOnly(summary), None(no comments) -->
     <LinqraftCommentOutput>All</LinqraftCommentOutput>
+    <!-- remove nullability from array-type properties -->
+    <LinqraftArrayNullabilityRemoval>true</LinqraftArrayNullabilityRemoval>
   </PropertyGroup>
 </Project>
 ```
