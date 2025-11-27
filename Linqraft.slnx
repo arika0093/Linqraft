@@ -4,9 +4,6 @@
     <Platform Name="x64" />
     <Platform Name="x86" />
   </Configurations>
-  <Folder Name="/docs/">
-    <Project Path="docs/playground/Linqraft.Playground.csproj" />
-  </Folder>
   <Folder Name="/example/">
     <File Path="examples/Directory.Build.props" />
     <Project Path="examples/Linqraft.ApiSample/Linqraft.ApiSample.csproj" />
@@ -14,6 +11,9 @@
     <Project Path="examples/Linqraft.MinimumSample.OldVersion/Linqraft.MinimumSample.OldVersion.csproj" />
     <Project Path="examples/Linqraft.MinimumSample/Linqraft.MinimumSample.csproj" />
     <Project Path="examples/Linqraft.Sample/Linqraft.Sample.csproj" />
+  </Folder>
+  <Folder Name="/playground/">
+    <Project Path="playground/Linqraft.Playground.csproj" />
   </Folder>
   <Folder Name="/src/">
     <File Path="src/Directory.Build.props" />

@@ -17,7 +17,7 @@
     <PackageReference Include="Basic.Reference.Assemblies.Net90" Version="1.8.0" />
   </ItemGroup>
   <ItemGroup>
-    <ProjectReference Include="../../src/Linqraft.Core/Linqraft.Core.csproj" />
+    <ProjectReference Include="../src/Linqraft.Core/Linqraft.Core.csproj" />
   </ItemGroup>
   <!-- tailwind setting -->
   <ItemGroup>
