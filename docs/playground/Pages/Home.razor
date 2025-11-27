@@ -95,9 +95,15 @@
         if (templates.Count > 0)
         {
             selectedTemplate = templates[0];
-            if (selectedTemplate.Files.Count > 0)
+            var visibleFiles = selectedTemplate.VisibleFiles.ToList();
+            if (visibleFiles.Count > 0)
             {
-                selectedFile = selectedTemplate.Files[0];
+                // Default to the file containing SelectExpr (like Program.cs or Query.cs)
+                selectedFile = visibleFiles.FirstOrDefault(f => 
+                    f.Content.Contains("SelectExpr") || 
+                    f.Name.Equals("Program.cs", StringComparison.OrdinalIgnoreCase) ||
+                    f.Name.Equals("Query.cs", StringComparison.OrdinalIgnoreCase)) 
+                    ?? visibleFiles[0];
             }
         }
     }
@@ -130,9 +136,15 @@
     private async Task SelectTemplate(Models.Template template)
     {
         selectedTemplate = template;
-        if (template.Files.Count > 0)
+        var visibleFiles = template.VisibleFiles.ToList();
+        if (visibleFiles.Count > 0)
         {
-            selectedFile = template.Files[0];
+            // Default to the file containing SelectExpr (like Program.cs or Query.cs)
+            selectedFile = visibleFiles.FirstOrDefault(f => 
+                f.Content.Contains("SelectExpr") || 
+                f.Name.Equals("Program.cs", StringComparison.OrdinalIgnoreCase) ||
+                f.Name.Equals("Query.cs", StringComparison.OrdinalIgnoreCase)) 
+                ?? visibleFiles[0];
             if (editorPane != null)
             {
                 await editorPane.SetValueAsync(selectedFile.Content);

@@ -1,4 +1,5 @@
 using System.Text;
+using Basic.Reference.Assemblies;
 using Linqraft.Core;
 using Linqraft.Playground.Models;
 using Microsoft.CodeAnalysis;
@@ -13,58 +14,8 @@ namespace Linqraft.Playground.Services;
 /// </summary>
 public class CodeGenerationService
 {
-    private static readonly Lazy<MetadataReference[]> LazyReferences = new(() => GetDefaultReferences());
-
-    private static MetadataReference[] GetDefaultReferences()
-    {
-        // In Blazor WebAssembly, we need to get references from loaded assemblies
-        var references = new List<MetadataReference>();
-
-        // Try to get references from loaded assemblies
-        foreach (var assembly in AppDomain.CurrentDomain.GetAssemblies())
-        {
-            try
-            {
-                if (assembly.IsDynamic) continue;
-                if (string.IsNullOrEmpty(assembly.Location)) continue;
-
-                references.Add(MetadataReference.CreateFromFile(assembly.Location));
-            }
-            catch
-            {
-                // Skip assemblies that can't be loaded as metadata references
-            }
-        }
-
-        // If no references were found from loaded assemblies, create from well-known types
-        if (references.Count == 0)
-        {
-            // Fallback: create references from the types we need
-            var assemblies = new[]
-            {
-                typeof(object).Assembly,
-                typeof(Enumerable).Assembly,
-                typeof(System.Linq.Expressions.Expression).Assembly,
-            };
-
-            foreach (var asm in assemblies)
-            {
-                try
-                {
-                    if (!string.IsNullOrEmpty(asm.Location))
-                    {
-                        references.Add(MetadataReference.CreateFromFile(asm.Location));
-                    }
-                }
-                catch
-                {
-                    // Skip
-                }
-            }
-        }
-
-        return references.ToArray();
-    }
+    private static readonly Lazy<MetadataReference[]> LazyReferences = new(() => 
+        Net90.References.All.ToArray());
 
     /// <summary>
     /// Generates Linqraft output based on the input code using Roslyn
@@ -77,7 +28,7 @@ public class CodeGenerationService
             var syntaxTree = CSharpSyntaxTree.ParseText(code);
             var root = syntaxTree.GetRoot();
 
-            // Create compilation with available references
+            // Create compilation with reference assemblies
             var references = LazyReferences.Value;
             var compilation = CSharpCompilation.Create(
                 "PlaygroundAnalysis",

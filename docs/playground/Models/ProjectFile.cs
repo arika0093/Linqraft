@@ -9,6 +9,7 @@ public class ProjectFile
     public string Path { get; set; } = "";
     public string Content { get; set; } = "";
     public bool IsFolder { get; set; }
+    public bool IsHidden { get; set; }
     public List<ProjectFile> Children { get; set; } = new();
 }
 
@@ -20,6 +21,11 @@ public class Template
     public string Name { get; set; } = "";
     public string Description { get; set; } = "";
     public List<ProjectFile> Files { get; set; } = new();
+    
+    /// <summary>
+    /// Gets visible files (non-hidden) for display
+    /// </summary>
+    public IEnumerable<ProjectFile> VisibleFiles => Files.Where(f => !f.IsHidden);
 }
 
 /// <summary>

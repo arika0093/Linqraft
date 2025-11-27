@@ -38,7 +38,7 @@
             @if (FilesExpanded && SelectedTemplate != null)
             {
                 <div class="py-1">
-                    @foreach (var file in SelectedTemplate.Files)
+                    @foreach (var file in SelectedTemplate.VisibleFiles)
                     {
                         <div class="@GetFileItemClasses(file)"
                              @onclick="() => OnSelectFile.InvokeAsync(file)">
