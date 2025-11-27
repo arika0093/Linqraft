@@ -1,18 +1,19 @@
 /*! tailwindcss v4.1.17 | MIT License | https://tailwindcss.com */
+@import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;700&display=swap');
 @layer properties;
 @layer theme, base, components, utilities;
 @layer theme {
   :root, :host {
     --font-sans: ui-sans-serif, system-ui, sans-serif, 'Apple Color Emoji', 'Segoe UI Emoji', 'Segoe UI Symbol',
     'Noto Color Emoji';
-    --font-mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono', 'Courier New',
-    monospace;
+    --font-mono: 'JetBrains Mono', 'Monaco', 'Consolas', 'Courier New', monospace;
+    --color-cyan-700: oklch(52% 0.105 223.128);
     --color-blue-400: oklch(70.7% 0.165 254.624);
     --color-blue-500: oklch(62.3% 0.214 259.815);
     --color-blue-600: oklch(54.6% 0.245 262.881);
-    --color-blue-700: oklch(48.8% 0.243 264.376);
     --color-blue-900: oklch(37.9% 0.146 265.522);
     --color-gray-100: oklch(96.7% 0.003 264.542);
+    --color-gray-200: oklch(92.8% 0.006 264.531);
     --color-gray-300: oklch(87.2% 0.01 258.338);
     --color-gray-400: oklch(70.7% 0.022 261.325);
     --color-gray-500: oklch(55.1% 0.027 264.364);
@@ -42,6 +43,7 @@
     --font-weight-semibold: 600;
     --font-weight-bold: 700;
     --radius-lg: 0.5rem;
+    --animate-spin: spin 1s linear infinite;
     --default-transition-duration: 150ms;
     --default-transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
     --default-font-family: var(--font-sans);
@@ -251,6 +253,9 @@
   .hidden {
     display: none;
   }
+  .inline-block {
+    display: inline-block;
+  }
   .h-1 {
     height: calc(var(--spacing) * 1);
   }
@@ -265,6 +270,9 @@
   }
   .h-12 {
     height: calc(var(--spacing) * 12);
+  }
+  .h-24 {
+    height: calc(var(--spacing) * 24);
   }
   .h-full {
     height: 100%;
@@ -289,6 +297,9 @@
   }
   .w-10 {
     width: calc(var(--spacing) * 10);
+  }
+  .w-24 {
+    width: calc(var(--spacing) * 24);
   }
   .w-60 {
     width: calc(var(--spacing) * 60);
@@ -316,6 +327,9 @@
   }
   .flex-1 {
     flex: 1;
+  }
+  .animate-spin {
+    animation: var(--animate-spin);
   }
   .cursor-pointer {
     cursor: pointer;
@@ -366,12 +380,23 @@
   .rounded {
     border-radius: 0.25rem;
   }
+  .rounded-full {
+    border-radius: calc(infinity * 1px);
+  }
   .rounded-lg {
     border-radius: var(--radius-lg);
   }
   .border {
     border-style: var(--tw-border-style);
     border-width: 1px;
+  }
+  .border-8 {
+    border-style: var(--tw-border-style);
+    border-width: 8px;
+  }
+  .border-t-8 {
+    border-top-style: var(--tw-border-style);
+    border-top-width: 8px;
   }
   .border-r {
     border-right-style: var(--tw-border-style);
@@ -381,11 +406,17 @@
     border-bottom-style: var(--tw-border-style);
     border-bottom-width: 1px;
   }
+  .border-gray-200 {
+    border-color: var(--color-gray-200);
+  }
   .border-gray-600 {
     border-color: var(--color-gray-600);
   }
   .border-gray-700 {
     border-color: var(--color-gray-700);
+  }
+  .border-t-blue-500 {
+    border-top-color: var(--color-blue-500);
   }
   .bg-blue-600 {
     background-color: var(--color-blue-600);
@@ -410,8 +441,8 @@
     --tw-gradient-from: var(--color-blue-900);
     --tw-gradient-stops: var(--tw-gradient-via-stops, var(--tw-gradient-position), var(--tw-gradient-from) var(--tw-gradient-from-position), var(--tw-gradient-to) var(--tw-gradient-to-position));
   }
-  .to-blue-700 {
-    --tw-gradient-to: var(--color-blue-700);
+  .to-cyan-700 {
+    --tw-gradient-to: var(--color-cyan-700);
     --tw-gradient-stops: var(--tw-gradient-via-stops, var(--tw-gradient-position), var(--tw-gradient-from) var(--tw-gradient-from-position), var(--tw-gradient-to) var(--tw-gradient-to-position));
   }
   .p-6 {
@@ -735,6 +766,11 @@
 @property --tw-duration {
   syntax: "*";
   inherits: false;
+}
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
 }
 @layer properties {
   @supports ((-webkit-hyphens: none) and (not (margin-trim: inline))) or ((-moz-orient: inline) and (not (color:rgb(from red r g b)))) {

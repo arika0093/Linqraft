@@ -1,1 +1,6 @@
+@import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;700&display=swap');
 @import "tailwindcss";
+
+@theme {
+	--font-mono: 'JetBrains Mono', 'Monaco', 'Consolas', 'Courier New', monospace;
+}

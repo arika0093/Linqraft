@@ -13,13 +13,17 @@ namespace Linqraft.Playground.Services;
 /// </summary>
 public class SharedCompilationService
 {
-    private static readonly Lazy<MetadataReference[]> LazyReferences = new(() =>
-        Net90.References.All.ToArray()
-    );
+    private Lazy<MetadataReference[]> LazyReferences { get; }
 
     private CSharpCompilation? _compilation;
     private List<SyntaxTree> _syntaxTrees = [];
     private readonly Dictionary<SyntaxTree, SemanticModel> _semanticModelCache = [];
+
+    public SharedCompilationService()
+    {
+        // load reference on need
+        LazyReferences = new(() => [.. Net90.References.All]);
+    }
 
     /// <summary>
     /// Creates or updates the shared compilation with the provided source files.
