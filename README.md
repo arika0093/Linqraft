@@ -349,7 +349,7 @@ var val = 10;
 var multiplier = 2;
 var suffix = " units";
 var converted = dbContext.Entities
-    .SelectExpr(
+    .SelectExpr<Entity, EntityDto>(
         x => new {
             x.Id,
             // cannot use local variable 'val' directly
@@ -361,6 +361,32 @@ var converted = dbContext.Entities
         capture: new { val, multiplier, suffix }
     );
 ```
+
+<details>
+<summary>Generated code example</summary>
+
+```csharp
+// code snippet
+public static IQueryable<TResult> SelectExpr_223F344D_DD65E389<TIn, TResult>(
+    this IQueryable<TIn> query, Func<TIn, TResult> selector, object captureParam)
+{
+    var matchedQuery = query as object as IQueryable<global::Entity>;
+    dynamic captureObj = captureParam;
+    int val = captureObj.val;
+    int multiplier = captureObj.multiplier;
+    string suffix = captureObj.suffix;
+    var converted = matchedQuery.Select(x => new global::EntityDto
+    {
+        Id = x.Id,
+        NewValue = x.Value + val,
+        DoubledValue = x.Value * multiplier,
+        Description = x.Name + suffix,
+    });
+    return converted as object as IQueryable<TResult>;
+}
+```
+
+</details>
 
 An analyzer is also provided to automatically detect and apply this transformation.
 It is detected as an error, so just apply the code fix.
