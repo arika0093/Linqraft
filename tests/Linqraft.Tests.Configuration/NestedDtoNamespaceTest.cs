@@ -3,7 +3,7 @@ using System.Linq;
 
 namespace Linqraft.Tests.Configuration.NestedDtoNSTest;
 
-public class NestedDtoNamespaceTest
+public class NestedDtoUseHashNamespaceTest
 {
     private readonly List<OrderNS> Orders =
     [
@@ -28,7 +28,7 @@ public class NestedDtoNamespaceTest
     ];
 
     [Fact]
-    public void NestedDtoNamespace_ShouldGenerateChildDtoInHashNamespace()
+    public void NestedDtoUseHashNamespace_ShouldGenerateChildDtoInHashNamespace()
     {
         // Test that nested DTOs are generated in Generated_{hash} namespace
         var results = Orders

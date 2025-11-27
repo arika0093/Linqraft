@@ -160,9 +160,9 @@ public class GenerateDtoClassInfo
                 var nestStructure = prop.NestedStructure;
 
                 // Compute the nested class name based on configuration
-                // When NestedDtoNamespace is enabled, class name is just "{BestName}Dto"
+                // When NestedDtoUseHashNamespace is enabled, class name is just "{BestName}Dto"
                 // Otherwise, it includes the hash suffix: "{BestName}Dto_{hash}"
-                var nestedClassName = configuration.NestedDtoNamespace
+                var nestedClassName = configuration.NestedDtoUseHashNamespace
                     ? $"{nestStructure.BestName}Dto"
                     : $"{nestStructure.BestName}Dto_{nestStructure.GetUniqueId()}";
                 var containedNestClasses = NestedClasses.FirstOrDefault(nc =>
@@ -177,8 +177,8 @@ public class GenerateDtoClassInfo
                 else
                 {
                     // Fallback: construct the full name based on the current namespace
-                    // When NestedDtoNamespace is enabled, include Generated_{hash} namespace
-                    if (configuration.NestedDtoNamespace)
+                    // When NestedDtoUseHashNamespace is enabled, include Generated_{hash} namespace
+                    if (configuration.NestedDtoUseHashNamespace)
                     {
                         var hash = nestStructure.GetUniqueId();
                         var generatedNamespace = string.IsNullOrEmpty(Namespace)

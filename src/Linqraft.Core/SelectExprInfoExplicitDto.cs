@@ -101,9 +101,9 @@ public record SelectExprInfoExplicitDto : SelectExprInfo
         // Use GetActualDtoNamespace() to handle global namespace correctly
         var actualNamespace = GetActualDtoNamespace();
 
-        // When NestedDtoNamespace option is enabled, child DTOs are placed in
+        // When NestedDtoUseHashNamespace option is enabled, child DTOs are placed in
         // a hash-named sub-namespace (e.g., Generated_{Hash}.ClassName)
-        if (!isMainDto && Configuration?.NestedDtoNamespace == true)
+        if (!isMainDto && Configuration?.NestedDtoUseHashNamespace == true)
         {
             var hash = structure.GetUniqueId();
             actualNamespace = string.IsNullOrEmpty(actualNamespace)
@@ -196,12 +196,12 @@ public record SelectExprInfoExplicitDto : SelectExprInfo
     /// <summary>
     /// Gets the DTO class name
     /// Uses BestName (which prefers HintName if available) for better class naming (issue #155)
-    /// When NestedDtoNamespace is enabled, the class name is just "{BestName}Dto"
+    /// When NestedDtoUseHashNamespace is enabled, the class name is just "{BestName}Dto"
     /// Otherwise, it includes the hash suffix: "{BestName}Dto_{hash}"
     /// </summary>
     protected override string GetClassName(DtoStructure structure)
     {
-        if (Configuration?.NestedDtoNamespace == true)
+        if (Configuration?.NestedDtoUseHashNamespace == true)
         {
             return $"{structure.BestName}Dto";
         }
@@ -223,7 +223,7 @@ public record SelectExprInfoExplicitDto : SelectExprInfo
 
     /// <summary>
     /// Gets the full name for a nested DTO class using the structure.
-    /// When NestedDtoNamespace is enabled, includes the Generated_{hash} namespace.
+    /// When NestedDtoUseHashNamespace is enabled, includes the Generated_{hash} namespace.
     /// </summary>
     protected override string GetNestedDtoFullNameFromStructure(DtoStructure nestedStructure)
     {
@@ -233,8 +233,8 @@ public record SelectExprInfoExplicitDto : SelectExprInfo
 
         var actualNamespace = GetActualDtoNamespace();
 
-        // When NestedDtoNamespace option is enabled, include Generated_{hash} in namespace
-        if (Configuration?.NestedDtoNamespace == true)
+        // When NestedDtoUseHashNamespace option is enabled, include Generated_{hash} in namespace
+        if (Configuration?.NestedDtoUseHashNamespace == true)
         {
             var hash = nestedStructure.GetUniqueId();
             var generatedNamespace = string.IsNullOrEmpty(actualNamespace)

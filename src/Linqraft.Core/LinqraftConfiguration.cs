@@ -60,7 +60,7 @@ public record LinqraftConfiguration
     /// When false: ClassName_Hash format (e.g., ItemsDto_A1470000)
     /// Default is false (use hash suffix on class name)
     /// </summary>
-    public bool NestedDtoNamespace { get; init; } = false;
+    public bool NestedDtoUseHashNamespace { get; init; } = false;
 
     /// <summary>
     /// Gets the actual property accessor to use based on configuration
@@ -105,7 +105,7 @@ public record LinqraftConfiguration
         );
         globalOptions.GlobalOptions.TryGetValue(
             LinqraftNestedDtoUseHashNamespaceOptionKey,
-            out var nestedDtoNamespaceStr
+            out var NestedDtoUseHashNamespaceStr
         );
 
         var linqraftOptions = new LinqraftConfiguration();
@@ -148,9 +148,12 @@ public record LinqraftConfiguration
                 ArrayNullabilityRemoval = arrayNullabilityRemoval,
             };
         }
-        if (bool.TryParse(nestedDtoNamespaceStr, out var nestedDtoNamespace))
+        if (bool.TryParse(NestedDtoUseHashNamespaceStr, out var NestedDtoUseHashNamespace))
         {
-            linqraftOptions = linqraftOptions with { NestedDtoNamespace = nestedDtoNamespace };
+            linqraftOptions = linqraftOptions with
+            {
+                NestedDtoUseHashNamespace = NestedDtoUseHashNamespace,
+            };
         }
         return linqraftOptions;
     }

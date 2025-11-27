@@ -16,27 +16,7 @@ public static class GenerateSourceCodeSnippets
         context.AddSource("SelectExprExtensions.g.cs", SelectExprExtensions);
     }
 
-    // Generate total code
-    public static string BuildCodeSnippetAll(
-        List<string> expressions,
-        List<string> dtoClasses,
-        string dtoNamespace
-    )
-    {
-        var exprPart = BuildExprCodeSnippets(expressions);
-        var dtoPart = BuildDtoCodeSnippets(dtoClasses, dtoNamespace);
-        return $$"""
-            {{GenerateCommentHeaderPart()}}
-            {{GenerateHeaderFlagsPart()}}
-            {{exprPart}}
-            {{dtoPart}}
-            """;
-    }
-
-    /// <summary>
-    /// Generate total code with DTOs that may have different namespaces.
-    /// This is used when LinqraftNestedDtoUseHashNamespace is enabled.
-    /// </summary>
+    // Generate total code with DTOs that may have different namespaces.
     public static string BuildCodeSnippetAll(
         List<string> expressions,
         List<GenerateDtoClassInfo> dtoClassInfos,
