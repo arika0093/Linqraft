@@ -307,10 +307,15 @@ public abstract record SelectExprInfo
         // This also applies to collection types with Select/SelectMany that are now non-nullable
         // but still need the null-conditional access converted to explicit null check with empty collection fallback
         // Only apply empty collection fallback when ArrayNullabilityRemoval is enabled
-        var hasConditionalAccess = syntax.DescendantNodesAndSelf().OfType<ConditionalAccessExpressionSyntax>().Any();
-        var hasSelectOrSelectMany = RoslynTypeHelper.ContainsSelectInvocation(syntax)
+        var hasConditionalAccess = syntax
+            .DescendantNodesAndSelf()
+            .OfType<ConditionalAccessExpressionSyntax>()
+            .Any();
+        var hasSelectOrSelectMany =
+            RoslynTypeHelper.ContainsSelectInvocation(syntax)
             || RoslynTypeHelper.ContainsSelectManyInvocation(syntax);
-        var isCollectionWithSelect = Configuration.ArrayNullabilityRemoval
+        var isCollectionWithSelect =
+            Configuration.ArrayNullabilityRemoval
             && hasSelectOrSelectMany
             && RoslynTypeHelper.IsCollectionType(property.TypeSymbol);
 
@@ -1489,7 +1494,8 @@ public abstract record SelectExprInfo
         var nullCheckPart = string.Join(" && ", checks);
 
         // Check if expression contains Select or SelectMany invocation
-        var hasSelectOrSelectMany = RoslynTypeHelper.ContainsSelectInvocation(syntax)
+        var hasSelectOrSelectMany =
+            RoslynTypeHelper.ContainsSelectInvocation(syntax)
             || RoslynTypeHelper.ContainsSelectManyInvocation(syntax);
 
         // Determine the default value based on whether the type is a collection with Select/SelectMany
@@ -1535,8 +1541,8 @@ public abstract record SelectExprInfo
         // Get the element type from the collection
         var nonNullableType = RoslynTypeHelper.GetNonNullableType(typeSymbol) ?? typeSymbol;
         var elementType = RoslynTypeHelper.GetGenericTypeArgument(nonNullableType, 0);
-        var elementTypeName = elementType?.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat)
-            ?? "object";
+        var elementTypeName =
+            elementType?.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat) ?? "object";
 
         // Detect chained methods from the expression text
         var chainedMethods = "";

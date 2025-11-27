@@ -531,7 +531,8 @@ public record DtoProperty(
             .Any();
 
         // Check if expression contains Select or SelectMany invocation
-        var hasSelectOrSelectMany = RoslynTypeHelper.ContainsSelectInvocation(expression)
+        var hasSelectOrSelectMany =
+            RoslynTypeHelper.ContainsSelectInvocation(expression)
             || RoslynTypeHelper.ContainsSelectManyInvocation(expression);
 
         // Apply non-nullable for collections that:
