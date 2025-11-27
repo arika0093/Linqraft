@@ -41,7 +41,7 @@ public class TemplateService
     {
         return new List<Template>
         {
-            CreateMinimumSampleTemplate(),
+            CreateSimpleSampleTemplate(),
             CreateAnonymousTypeTemplate(),
             CreateExplicitDtoTemplate(),
             CreateNestedObjectTemplate(),
@@ -51,12 +51,13 @@ public class TemplateService
     /// <summary>
     /// Template based on examples/Linqraft.MinimumSample
     /// </summary>
-    private static Template CreateMinimumSampleTemplate()
+    private static Template CreateSimpleSampleTemplate()
     {
         return new Template
         {
-            Name = "Minimum Sample",
-            Description = "Basic example showing SelectExpr with null-conditional operators (from examples/Linqraft.MinimumSample)",
+            Name = "Simple Sample",
+            Description =
+                "Basic example showing SelectExpr with null-conditional operators (from examples/Linqraft.MinimumSample)",
             Files = new List<ProjectFile>
             {
                 new ProjectFile
@@ -65,50 +66,52 @@ public class TemplateService
                     Path = "SampleClasses.cs",
                     IsHidden = false,
                     // Content from: examples/Linqraft.MinimumSample/SampleClasses.cs
-                    Content = CommonUsings + """
+                    Content =
+                        CommonUsings
+                        + """
 
-                        namespace Linqraft.MinimumSample;
+                            namespace Linqraft.MinimumSample;
 
-                        public class Order
-                        {
-                            public int Id { get; set; }
-                            public Customer? Customer { get; set; }
-                            public List<OrderItem> OrderItems { get; set; } = new();
-                        }
+                            public class Order
+                            {
+                                public int Id { get; set; }
+                                public Customer? Customer { get; set; }
+                                public List<OrderItem> OrderItems { get; set; } = new();
+                            }
 
-                        public class Customer
-                        {
-                            public string Name { get; set; } = "";
-                            public Address? Address { get; set; }
-                        }
+                            public class Customer
+                            {
+                                public string Name { get; set; } = "";
+                                public Address? Address { get; set; }
+                            }
 
-                        public class Address
-                        {
-                            public Country? Country { get; set; }
-                            public City? City { get; set; }
-                        }
+                            public class Address
+                            {
+                                public Country? Country { get; set; }
+                                public City? City { get; set; }
+                            }
 
-                        public class Country
-                        {
-                            public string Name { get; set; } = "";
-                        }
+                            public class Country
+                            {
+                                public string Name { get; set; } = "";
+                            }
 
-                        public class City
-                        {
-                            public string Name { get; set; } = "";
-                        }
+                            public class City
+                            {
+                                public string Name { get; set; } = "";
+                            }
 
-                        public class OrderItem
-                        {
-                            public Product? Product { get; set; }
-                            public int Quantity { get; set; }
-                        }
+                            public class OrderItem
+                            {
+                                public Product? Product { get; set; }
+                                public int Quantity { get; set; }
+                            }
 
-                        public class Product
-                        {
-                            public string Name { get; set; } = "";
-                        }
-                        """
+                            public class Product
+                            {
+                                public string Name { get; set; } = "";
+                            }
+                            """,
                 },
                 new ProjectFile
                 {
@@ -116,43 +119,45 @@ public class TemplateService
                     Path = "Program.cs",
                     IsHidden = false,
                     // Content from: examples/Linqraft.MinimumSample/Program.cs
-                    Content = CommonUsings + """
+                    Content =
+                        CommonUsings
+                        + """
 
-                        using Linqraft;
-                        using Linqraft.MinimumSample;
+                            using Linqraft;
+                            using Linqraft.MinimumSample;
 
-                        public class Program
-                        {
-                            public void Execute()
+                            public class Program
                             {
-                                var orders = new List<Order>();
-                                var results = orders
-                                    .AsQueryable()
-                                    .SelectExpr(s => new
-                                    {
-                                        Id = s.Id,
-                                        CustomerName = s.Customer?.Name,
-                                        CustomerCountry = s.Customer?.Address?.Country?.Name,
-                                        CustomerCity = s.Customer?.Address?.City?.Name,
-                                        Items = s.OrderItems.Select(oi => new
+                                public void Execute()
+                                {
+                                    var orders = new List<Order>();
+                                    var results = orders
+                                        .AsQueryable()
+                                        .SelectExpr<Order,OrderDto>(s => new
                                         {
-                                            ProductName = oi.Product?.Name,
-                                            Quantity = oi.Quantity,
-                                        }),
-                                    })
-                                    .ToList();
+                                            Id = s.Id,
+                                            CustomerName = s.Customer?.Name,
+                                            CustomerCountry = s.Customer?.Address?.Country?.Name,
+                                            CustomerCity = s.Customer?.Address?.City?.Name,
+                                            Items = s.OrderItems.Select(oi => new
+                                            {
+                                                ProductName = oi.Product?.Name,
+                                                Quantity = oi.Quantity,
+                                            }),
+                                        })
+                                        .ToList();
+                                }
                             }
-                        }
-                        """
+                            """,
                 },
                 new ProjectFile
                 {
                     Name = "_LinqraftStub.cs",
                     Path = "_LinqraftStub.cs",
                     IsHidden = true,
-                    Content = CommonUsings + "\n" + SelectExprStub
-                }
-            }
+                    Content = CommonUsings + "\n" + SelectExprStub,
+                },
+            },
         };
     }
 
@@ -172,63 +177,67 @@ public class TemplateService
                     Name = "Models.cs",
                     Path = "Models.cs",
                     IsHidden = false,
-                    Content = CommonUsings + """
+                    Content =
+                        CommonUsings
+                        + """
 
-                        namespace AnonymousTypeExample;
+                            namespace AnonymousTypeExample;
 
-                        public class Product
-                        {
-                            public int Id { get; set; }
-                            public string Name { get; set; } = "";
-                            public decimal Price { get; set; }
-                            public Category? Category { get; set; }
-                        }
+                            public class Product
+                            {
+                                public int Id { get; set; }
+                                public string Name { get; set; } = "";
+                                public decimal Price { get; set; }
+                                public Category? Category { get; set; }
+                            }
 
-                        public class Category
-                        {
-                            public int Id { get; set; }
-                            public string Name { get; set; } = "";
-                            public string Description { get; set; } = "";
-                        }
-                        """
+                            public class Category
+                            {
+                                public int Id { get; set; }
+                                public string Name { get; set; } = "";
+                                public string Description { get; set; } = "";
+                            }
+                            """,
                 },
                 new ProjectFile
                 {
                     Name = "Query.cs",
                     Path = "Query.cs",
                     IsHidden = false,
-                    Content = CommonUsings + """
+                    Content =
+                        CommonUsings
+                        + """
 
-                        using Linqraft;
-                        using AnonymousTypeExample;
+                            using Linqraft;
+                            using AnonymousTypeExample;
 
-                        public class QueryExample
-                        {
-                            public void Execute()
+                            public class QueryExample
                             {
-                                var products = new List<Product>();
-                                // Pattern 1: use anonymous type to specify selection
-                                // Return type is anonymous type
-                                var query = products.AsQueryable();
-                                var result = query.SelectExpr(x => new
+                                public void Execute()
                                 {
-                                    x.Id,
-                                    x.Name,
-                                    // You can use the null-conditional operator
-                                    CategoryName = x.Category?.Name,
-                                });
+                                    var products = new List<Product>();
+                                    // Pattern 1: use anonymous type to specify selection
+                                    // Return type is anonymous type
+                                    var query = products.AsQueryable();
+                                    var result = query.SelectExpr(x => new
+                                    {
+                                        x.Id,
+                                        x.Name,
+                                        // You can use the null-conditional operator
+                                        CategoryName = x.Category?.Name,
+                                    });
+                                }
                             }
-                        }
-                        """
+                            """,
                 },
                 new ProjectFile
                 {
                     Name = "_LinqraftStub.cs",
                     Path = "_LinqraftStub.cs",
                     IsHidden = true,
-                    Content = CommonUsings + "\n" + SelectExprStub
-                }
-            }
+                    Content = CommonUsings + "\n" + SelectExprStub,
+                },
+            },
         };
     }
 
@@ -248,91 +257,97 @@ public class TemplateService
                     Name = "Models.cs",
                     Path = "Models.cs",
                     IsHidden = false,
-                    Content = CommonUsings + """
+                    Content =
+                        CommonUsings
+                        + """
 
-                        namespace ExplicitDtoExample;
+                            namespace ExplicitDtoExample;
 
-                        public class Order
-                        {
-                            public int Id { get; set; }
-                            public DateTime OrderDate { get; set; }
-                            public Customer? Customer { get; set; }
-                            public List<OrderItem> Items { get; set; } = new();
-                        }
+                            public class Order
+                            {
+                                public int Id { get; set; }
+                                public DateTime OrderDate { get; set; }
+                                public Customer? Customer { get; set; }
+                                public List<OrderItem> Items { get; set; } = new();
+                            }
 
-                        public class Customer
-                        {
-                            public int Id { get; set; }
-                            public string Name { get; set; } = "";
-                            public string Email { get; set; } = "";
-                        }
+                            public class Customer
+                            {
+                                public int Id { get; set; }
+                                public string Name { get; set; } = "";
+                                public string Email { get; set; } = "";
+                            }
 
-                        public class OrderItem
-                        {
-                            public int Id { get; set; }
-                            public string ProductName { get; set; } = "";
-                            public int Quantity { get; set; }
-                            public decimal UnitPrice { get; set; }
-                        }
-                        """
+                            public class OrderItem
+                            {
+                                public int Id { get; set; }
+                                public string ProductName { get; set; } = "";
+                                public int Quantity { get; set; }
+                                public decimal UnitPrice { get; set; }
+                            }
+                            """,
                 },
                 new ProjectFile
                 {
                     Name = "Query.cs",
                     Path = "Query.cs",
                     IsHidden = false,
-                    Content = CommonUsings + """
+                    Content =
+                        CommonUsings
+                        + """
 
-                        using Linqraft;
-                        using ExplicitDtoExample;
+                            using Linqraft;
+                            using ExplicitDtoExample;
 
-                        public class QueryExample
-                        {
-                            public void Execute()
+                            public class QueryExample
                             {
-                                var orders = new List<Order>();
-                                // Pattern 2: use an explicit DTO class
-                                // Return type is OrderDto (auto-generated)
-                                var query = orders.AsQueryable();
-                                var result = query.SelectExpr<Order, OrderDto>(x => new
+                                public void Execute()
                                 {
-                                    x.Id,
-                                    x.OrderDate,
-                                    CustomerName = x.Customer?.Name,
-                                    // You can select child properties
-                                    ItemNames = x.Items.Select(i => i.ProductName).ToList(),
-                                });
+                                    var orders = new List<Order>();
+                                    // Pattern 2: use an explicit DTO class
+                                    // Return type is OrderDto (auto-generated)
+                                    var query = orders.AsQueryable();
+                                    var result = query.SelectExpr<Order, OrderDto>(x => new
+                                    {
+                                        x.Id,
+                                        x.OrderDate,
+                                        CustomerName = x.Customer?.Name,
+                                        // You can select child properties
+                                        ItemNames = x.Items.Select(i => i.ProductName).ToList(),
+                                    });
+                                }
                             }
-                        }
 
-                        // This DTO class will be auto-generated by Linqraft
-                        public partial class OrderDto { }
-                        """
+                            // This DTO class will be auto-generated by Linqraft
+                            public partial class OrderDto { }
+                            """,
                 },
                 new ProjectFile
                 {
                     Name = "_LinqraftStub.cs",
                     Path = "_LinqraftStub.cs",
                     IsHidden = true,
-                    Content = CommonUsings + """
+                    Content =
+                        CommonUsings
+                        + """
 
-                        // Stub SelectExpr extension for playground analysis
-                        namespace Linqraft
-                        {
-                            public static class LinqraftExtensions
+                            // Stub SelectExpr extension for playground analysis
+                            namespace Linqraft
                             {
-                                public static IQueryable<TResult> SelectExpr<TSource, TResult>(
-                                    this IQueryable<TSource> source,
-                                    Expression<Func<TSource, TResult>> selector) => source.Select(selector);
-                                
-                                public static IQueryable<TResult> SelectExpr<TSource, TResult>(
-                                    this IQueryable<TSource> source,
-                                    Expression<Func<TSource, object>> selector) => source.Cast<TResult>();
+                                public static class LinqraftExtensions
+                                {
+                                    public static IQueryable<TResult> SelectExpr<TSource, TResult>(
+                                        this IQueryable<TSource> source,
+                                        Expression<Func<TSource, TResult>> selector) => source.Select(selector);
+                                    
+                                    public static IQueryable<TResult> SelectExpr<TSource, TResult>(
+                                        this IQueryable<TSource> source,
+                                        Expression<Func<TSource, object>> selector) => source.Cast<TResult>();
+                                }
                             }
-                        }
-                        """
-                }
-            }
+                            """,
+                },
+            },
         };
     }
 
@@ -352,82 +367,86 @@ public class TemplateService
                     Name = "Models.cs",
                     Path = "Models.cs",
                     IsHidden = false,
-                    Content = CommonUsings + """
+                    Content =
+                        CommonUsings
+                        + """
 
-                        namespace NestedObjectExample;
+                            namespace NestedObjectExample;
 
-                        public class Company
-                        {
-                            public int Id { get; set; }
-                            public string Name { get; set; } = "";
-                            public Address? Headquarters { get; set; }
-                            public List<Employee> Employees { get; set; } = new();
-                        }
+                            public class Company
+                            {
+                                public int Id { get; set; }
+                                public string Name { get; set; } = "";
+                                public Address? Headquarters { get; set; }
+                                public List<Employee> Employees { get; set; } = new();
+                            }
 
-                        public class Address
-                        {
-                            public string Street { get; set; } = "";
-                            public string City { get; set; } = "";
-                            public string Country { get; set; } = "";
-                        }
+                            public class Address
+                            {
+                                public string Street { get; set; } = "";
+                                public string City { get; set; } = "";
+                                public string Country { get; set; } = "";
+                            }
 
-                        public class Employee
-                        {
-                            public int Id { get; set; }
-                            public string Name { get; set; } = "";
-                            public Department? Department { get; set; }
-                        }
+                            public class Employee
+                            {
+                                public int Id { get; set; }
+                                public string Name { get; set; } = "";
+                                public Department? Department { get; set; }
+                            }
 
-                        public class Department
-                        {
-                            public string Name { get; set; } = "";
-                            public string Code { get; set; } = "";
-                        }
-                        """
+                            public class Department
+                            {
+                                public string Name { get; set; } = "";
+                                public string Code { get; set; } = "";
+                            }
+                            """,
                 },
                 new ProjectFile
                 {
                     Name = "Query.cs",
                     Path = "Query.cs",
                     IsHidden = false,
-                    Content = CommonUsings + """
+                    Content =
+                        CommonUsings
+                        + """
 
-                        using Linqraft;
-                        using NestedObjectExample;
+                            using Linqraft;
+                            using NestedObjectExample;
 
-                        public class QueryExample
-                        {
-                            public void Execute()
+                            public class QueryExample
                             {
-                                var companies = new List<Company>();
-                                // Nested object selection with null-conditional operators
-                                var query = companies.AsQueryable();
-                                var result = query.SelectExpr(c => new
+                                public void Execute()
                                 {
-                                    c.Id,
-                                    c.Name,
-                                    // Nested address info
-                                    HeadquartersCity = c.Headquarters?.City,
-                                    HeadquartersCountry = c.Headquarters?.Country,
-                                    // Nested employee with department
-                                    EmployeeInfo = c.Employees.Select(e => new
+                                    var companies = new List<Company>();
+                                    // Nested object selection with null-conditional operators
+                                    var query = companies.AsQueryable();
+                                    var result = query.SelectExpr(c => new
                                     {
-                                        e.Name,
-                                        DepartmentName = e.Department?.Name,
-                                    }),
-                                });
+                                        c.Id,
+                                        c.Name,
+                                        // Nested address info
+                                        HeadquartersCity = c.Headquarters?.City,
+                                        HeadquartersCountry = c.Headquarters?.Country,
+                                        // Nested employee with department
+                                        EmployeeInfo = c.Employees.Select(e => new
+                                        {
+                                            e.Name,
+                                            DepartmentName = e.Department?.Name,
+                                        }),
+                                    });
+                                }
                             }
-                        }
-                        """
+                            """,
                 },
                 new ProjectFile
                 {
                     Name = "_LinqraftStub.cs",
                     Path = "_LinqraftStub.cs",
                     IsHidden = true,
-                    Content = CommonUsings + "\n" + SelectExprStub
-                }
-            }
+                    Content = CommonUsings + "\n" + SelectExprStub,
+                },
+            },
         };
     }
 }
