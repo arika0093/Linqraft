@@ -9,5 +9,6 @@ builder.RootComponents.Add<HeadOutlet>("head::after");
 
 builder.Services.AddSingleton<TemplateService>();
 builder.Services.AddSingleton<CodeGenerationService>();
+builder.Services.AddSingleton<SemanticHighlightingService>();
 
 await builder.Build().RunAsync();

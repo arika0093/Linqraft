@@ -1,5 +1,8 @@
 @using BlazorMonaco
 @using BlazorMonaco.Editor
+@using Linqraft.Playground.Services
+@inject IJSRuntime JSRuntime
+@inject SemanticHighlightingService SemanticHighlightingService
 
 <div class="flex flex-col min-h-[50px] overflow-hidden @(IsCollapsed ? "h-10" : "h-full")">
     <div class="flex items-center gap-2 px-3 py-2 bg-gray-800 border-b border-gray-700 text-gray-300 cursor-pointer select-none hover:bg-gray-700" @onclick="ToggleCollapse">
@@ -66,11 +69,49 @@
             try
             {
                 await Editor.SetValue(content);
+                // Apply semantic highlighting after content change
+                await ApplySemanticHighlighting();
             }
             catch
             {
                 // Editor not yet initialized
             }
+        }
+    }
+
+    private async Task ApplySemanticHighlighting()
+    {
+        if (Editor == null) return;
+        
+        try
+        {
+            var tokens = SemanticHighlightingService.GetSemanticTokens(currentContent);
+            
+            // Convert to JS-compatible format
+            var jsTokens = tokens.Select(t => new
+            {
+                startLine = t.StartLine,
+                startColumn = t.StartColumn,
+                endLine = t.EndLine,
+                endColumn = t.EndColumn,
+                type = (int)t.Type
+            }).ToArray();
+            
+            await JSRuntime.InvokeVoidAsync("monacoSemanticHighlighting.applySemanticTokens", EditorId, jsTokens);
+        }
+        catch
+        {
+            // Ignore errors during highlighting
+        }
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender && Editor != null && !string.IsNullOrEmpty(currentContent))
+        {
+            // Wait for editor to be fully initialized
+            await Task.Delay(100);
+            await ApplySemanticHighlighting();
         }
     }
 }

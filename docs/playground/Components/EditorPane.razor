@@ -1,5 +1,8 @@
 @using BlazorMonaco
 @using BlazorMonaco.Editor
+@using Linqraft.Playground.Services
+@inject IJSRuntime JSRuntime
+@inject SemanticHighlightingService SemanticHighlightingService
 
 <div class="flex flex-col min-w-[200px] overflow-hidden h-full">
     <div class="flex items-center gap-2 px-3 py-2 bg-gray-800 border-b border-gray-700 text-gray-300">
@@ -10,7 +13,7 @@
         <StandaloneCodeEditor @ref="Editor"
             Id="@EditorId"
             ConstructionOptions="GetConstructionOptions"
-            OnDidChangeModelContent="OnContentChanged" />
+            OnDidChangeModelContent="HandleContentChanged" />
     </div>
 </div>
 
@@ -21,6 +24,8 @@
     [Parameter] public EventCallback<ModelContentChangedEvent> OnContentChanged { get; set; }
 
     public StandaloneCodeEditor? Editor { get; private set; }
+    private System.Timers.Timer? highlightTimer;
+    private const int HighlightDebounceMs = 200;
 
     private StandaloneEditorConstructionOptions GetConstructionOptions(StandaloneCodeEditor editor)
     {
@@ -41,6 +46,29 @@
         };
     }
 
+    private async Task HandleContentChanged(ModelContentChangedEvent e)
+    {
+        // Notify parent of content change
+        await OnContentChanged.InvokeAsync(e);
+        
+        // Debounce semantic highlighting
+        ScheduleSemanticHighlighting();
+    }
+
+    private void ScheduleSemanticHighlighting()
+    {
+        highlightTimer?.Stop();
+        highlightTimer?.Dispose();
+        highlightTimer = new System.Timers.Timer(HighlightDebounceMs);
+        highlightTimer.Elapsed += async (sender, args) =>
+        {
+            highlightTimer?.Stop();
+            await InvokeAsync(ApplySemanticHighlighting);
+        };
+        highlightTimer.AutoReset = false;
+        highlightTimer.Start();
+    }
+
     public async Task SetValueAsync(string content)
     {
         if (Editor != null)
@@ -48,6 +76,8 @@
             try
             {
                 await Editor.SetValue(content);
+                // Apply semantic highlighting after content change
+                await ApplySemanticHighlighting();
             }
             catch
             {
@@ -70,5 +100,42 @@
             }
         }
         return "";
+    }
+
+    private async Task ApplySemanticHighlighting()
+    {
+        if (Editor == null) return;
+        
+        try
+        {
+            var content = await Editor.GetValue();
+            var tokens = SemanticHighlightingService.GetSemanticTokens(content);
+            
+            // Convert to JS-compatible format
+            var jsTokens = tokens.Select(t => new
+            {
+                startLine = t.StartLine,
+                startColumn = t.StartColumn,
+                endLine = t.EndLine,
+                endColumn = t.EndColumn,
+                type = (int)t.Type
+            }).ToArray();
+            
+            await JSRuntime.InvokeVoidAsync("monacoSemanticHighlighting.applySemanticTokens", EditorId, jsTokens);
+        }
+        catch
+        {
+            // Ignore errors during highlighting
+        }
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender && Editor != null)
+        {
+            // Wait for editor to be fully initialized
+            await Task.Delay(100);
+            await ApplySemanticHighlighting();
+        }
     }
 }
