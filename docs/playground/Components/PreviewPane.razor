@@ -20,6 +20,8 @@
 </div>
 
 @code {
+    private const int InitialHighlightDelayMs = 100;
+    
     [Parameter] public string EditorId { get; set; } = "preview";
     [Parameter] public string Title { get; set; } = "Preview";
     [Parameter] public string Icon { get; set; } = "🔍";
@@ -110,7 +112,7 @@
         if (firstRender && Editor != null && !string.IsNullOrEmpty(currentContent))
         {
             // Wait for editor to be fully initialized
-            await Task.Delay(100);
+            await Task.Delay(InitialHighlightDelayMs);
             await ApplySemanticHighlighting();
         }
     }

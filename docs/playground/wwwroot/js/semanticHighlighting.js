@@ -54,7 +54,9 @@ window.monacoSemanticHighlighting = {
     // Get CSS class name for token type
     getClassName: function(type) {
         const types = ['class', 'interface', 'struct', 'enum', 'delegate', 'method', 'property', 'field', 'variable', 'parameter', 'namespace'];
-        const typeName = types[type] || 'class';
-        return this.tokenClasses[typeName];
+        if (type < 0 || type >= types.length) {
+            return this.tokenClasses['class'];
+        }
+        return this.tokenClasses[types[type]];
     }
 };
