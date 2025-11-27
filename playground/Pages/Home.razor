@@ -1,81 +1,289 @@
 @page "/"
 
-<PageTitle>Linqraft - On-demand DTO and Expression Tree Generation for LINQ Provider</PageTitle>
+<PageTitle>Linqraft - On-demand DTO and Expression Tree Generation</PageTitle>
 
-<div class="min-h-screen bg-gray-900 text-gray-100">
-    <!-- Hero Section -->
-    <div class="flex flex-col items-center justify-center px-6 py-16">
-        <div class="flex items-center gap-3 mb-6">
-            <h1 class="text-5xl font-bold text-white">Linqraft</h1>
+<div class="min-h-screen bg-gray-950 text-gray-100">
+    <!-- Hero -->
+    <section class="max-w-5xl mx-auto px-6 py-16 flex flex-col items-center text-center">
+        <div class="flex items-center gap-3 mb-4">
+            <img src="/linqraft.png" alt="Linqraft logo" class="w-10 h-10" />
+            <h1 class="text-4xl sm:text-5xl font-bold tracking-tight text-white" translate="no">
+                Linqraft
+            </h1>
         </div>
-        <p class="text-xl text-gray-400 text-center max-w-2xl mb-8">
-            A C# Source Generator that automatically generates Expression trees and DTO classes 
-            from your LINQ <code class="text-blue-400 bg-gray-800 px-2 py-1 rounded font^italic">SelectExpr</code> calls.
+        <p id="caption" class="text-lg sm:text-xl text-gray-300 max-w-3xl mb-4">
+            A Roslyn Source Generator for LINQ that gives you
+            on-demand DTO generation and null-safe projections – with
+            no runtime overhead and no extra dependencies.
         </p>
-        <a href="/playground" class="px-8 py-3 bg-blue-600 text-white rounded-lg text-lg font-medium hover:bg-blue-500 transition-colors">
-            Try the Playground →
-        </a>
-    </div>
-
-    <!-- Features Section -->
-    <div class="max-w-4xl mx-auto px-6 py-12">
-        <h2 class="text-2xl font-bold text-center mb-8">Features</h2>
-        <div class="grid grid-cols-1 md:grid-cols-3 gap-6 text-center">
-            <div class="bg-gray-800 rounded-lg p-6">
-                <div class="text-3xl mb-3">🔧</div>
-                <h3 class="text-lg font-semibold mb-2">Automatic Generation</h3>
-                <p class="text-gray-400 text-sm">
-                    Expression trees are generated at compile time, eliminating runtime overhead.
-                </p>
-            </div>
-            <div class="bg-gray-800 rounded-lg p-6">
-                <div class="text-3xl mb-3">📦</div>
-                <h3 class="text-lg font-semibold mb-2">DTO Classes</h3>
-                <p class="text-gray-400 text-sm">
-                    Automatically creates strongly-typed DTO classes based on your projections.
-                </p>
-            </div>
-            <div class="bg-gray-800 rounded-lg p-6">
-                <div class="text-3xl mb-3">✨</div>
-                <h3 class="text-lg font-semibold mb-2">Clean Syntax</h3>
-                <p class="text-gray-400 text-sm">
-                    Write anonymous type projections and get type-safe DTOs automatically.
-                </p>
-            </div>
-        </div>
-    </div>
-
-    <!-- Example Section -->
-    <div class="max-w-4xl mx-auto px-6 py-12">
-        <h2 class="text-2xl font-bold text-center mb-8">How It Works</h2>
-        <div class="bg-gray-800 rounded-lg p-6">
-            <pre class="text-sm text-gray-300 overflow-x-auto"><code>// Write this:
-query.SelectExpr(x => new
-{
-    x.Id,
-    CustomerName = x.Customer?.Name,
-    Items = x.OrderItems.Select(oi => new { oi.ProductName })
-});
-
-// Get Expression&lt;Func&lt;TSource, TResult&gt;&gt; generated at compile time!</code></pre>
-        </div>
-    </div>
-
-    <!-- CTA Section -->
-    <div class="flex flex-col items-center px-6 py-12">
-        <h2 class="text-xl font-semibold mb-4">Ready to try it?</h2>
-        <div class="flex gap-4">
-            <a href="/playground" class="px-6 py-2 bg-blue-600 text-white rounded hover:bg-blue-500 transition-colors">
-                Open Playground
+        <p class="text-sm text-gray-400 mb-8">
+            Write simple <code class="px-1.5 py-0.5 rounded bg-gray-800 text-blue-300 text-xs">SelectExpr</code> queries and let Linqraft
+            handle expression trees, DTO classes, and null-propagation for you.
+        </p>
+        <div class="flex flex-wrap items-center justify-center gap-4 mb-6">
+            <a href="/playground"
+               class="inline-flex items-center gap-2 px-6 py-3 rounded-lg bg-blue-600 hover:bg-blue-500 text-white font-medium text-sm sm:text-base transition-colors">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z"/>
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                </svg>
+                Try Online Playground
             </a>
-            <a href="https://github.com/arika0093/Linqraft" target="_blank" class="px-6 py-2 bg-gray-700 text-white rounded hover:bg-gray-600 transition-colors">
+            <a href="https://www.nuget.org/packages/Linqraft" target="_blank"
+               class="inline-flex items-center gap-2 px-6 py-3 rounded-lg bg-gray-800 hover:bg-gray-700 text-gray-100 font-medium text-sm sm:text-base transition-colors">
+                <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
+
+                    
+                </svg>
+                Install from NuGet
+            </a>
+            <a href="https://github.com/arika0093/Linqraft" target="_blank"
+               class="inline-flex items-center gap-2 px-6 py-3 rounded-lg border border-gray-700 hover:border-gray-500 text-gray-200 font-medium text-sm sm:text-base transition-colors">
+                <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
+                    <path d="M12 0c-6.626 0-12 5.373-12 12 0 5.302 3.438 9.8 8.207 11.387.599.111.793-.261.793-.577v-2.234c-3.338.726-4.033-1.416-4.033-1.416-.546-1.387-1.333-1.756-1.333-1.756-1.089-.745.083-.729.083-.729 1.205.084 1.839 1.237 1.839 1.237 1.07 1.834 2.807 1.304 3.492.997.107-.775.418-1.305.762-1.604-2.665-.305-5.467-1.334-5.467-5.931 0-1.311.469-2.381 1.236-3.221-.124-.303-.535-1.524.117-3.176 0 0 1.008-.322 3.301 1.23.957-.266 1.983-.399 3.003-.404 1.02.005 2.047.138 3.006.404 2.291-1.552 3.297-1.23 3.297-1.23.653 1.653.242 2.874.118 3.176.77.84 1.235 1.911 1.235 3.221 0 4.609-2.807 5.624-5.479 5.921.43.372.823 1.102.823 2.222v3.293c0 .319.192.694.801.576 4.765-1.589 8.199-6.086 8.199-11.386 0-6.627-5.373-12-12-12z"/>
+                </svg>
                 View on GitHub
             </a>
         </div>
-    </div>
+        <div class="flex flex-wrap justify-center gap-3 text-xs sm:text-sm text-gray-400" translate="no">
+            <span class="inline-flex items-center gap-1.5 bg-gray-900/70 border border-gray-800 rounded-full px-3 py-1">
+                <span class="text-indigo-400">●</span> C# 12 / Interceptors
+            </span>
+            <span class="inline-flex items-center gap-1.5 bg-gray-900/70 border border-gray-800 rounded-full px-3 py-1">
+                <span class="text-blue-400">●</span> EF Core and any LINQ provider
+            </span>
+            <span class="inline-flex items-center gap-1.5 bg-gray-900/70 border border-gray-800 rounded-full px-3 py-1">
+                <span class="text-cyan-400">●</span> No runtime reflection, no extra deppendencies
+            </span>
+        </div>
+    </section>
+
+    <!-- Why Section -->
+    <section class="bg-gradient-to-b from-gray-950 to-gray-900 border-y border-gray-800">
+        <div class="max-w-5xl mx-auto px-6 py-12">
+            <h2 class="text-2xl font-bold text-white mb-8">
+                Why Linqraft?
+            </h2>
+            
+            <!-- Tabs Navigation -->
+            <div class="flex gap-2 mb-6 border-b border-gray-800 overflow-x-auto">
+                <button class="why-tab tab-active px-4 py-2 text-sm font-medium text-gray-300 hover:text-white border-b-2 border-b-blue-500 transition-colors" data-tab="include">
+                    Include / ThenInclude
+                </button>
+                <button class="why-tab px-4 py-2 text-sm font-medium text-gray-400 hover:text-white border-b-2 border-b-transparent transition-colors" data-tab="manual">
+                    Manual DTO
+                </button>
+                <button class="why-tab px-4 py-2 text-sm font-medium text-gray-400 hover:text-white border-b-2 border-b-transparent transition-colors" data-tab="linqraft">
+                    Linqraft
+                </button>
+            </div>
+
+            <!-- Tab Content -->
+            <div class="grid gap-8 md:grid-cols-2 md:items-center">
+                <!-- Include / ThenInclude Tab -->
+                <div class="why-tab-content tab-content-active" data-tab="include">
+                    <div>
+                        <h3 class="text-xl font-semibold text-white mb-3">Include / ThenInclude</h3>
+                <p class="text-gray-300 mb-4 text-sm sm:text-base">
+                    When querying complex object graphs (e.g., EF Core with multiple
+                    <code class="px-1 py-0.5 ml-1 rounded bg-gray-800 text-blue-300 text-xs">Include</code> /
+                    <code class="px-1 py-0.5 rounded bg-gray-800 text-blue-300 text-xs">ThenInclude</code>
+                    calls), code quickly becomes unreadable and brittle.
+                </p>
+                <ul class="space-y-2 text-gray-300 text-sm sm:text-base">
+                    <li>Hard-to-read chains of <code class="px-1 py-0.5 rounded bg-gray-800 text-blue-300 text-xs">Include</code> / <code class="px-1 py-0.5 rounded bg-gray-800 text-blue-300 text-xs">ThenInclude</code></li>
+                    <li>Hidden <code class="px-1 py-0.5 rounded bg-gray-800 text-blue-300 text-xs">NullReferenceException</code>s when you forget an include</li>
+                    <li>Manually maintained DTO classes that must stay in sync</li>
+                    <li>Verbose null checks because expression trees don’t support <code class="px-1 py-0.5 rounded bg-gray-800 text-blue-300 text-xs">?.</code></li>
+                </ul>
+                <p class="text-gray-300 mt-4 text-sm sm:text-base">
+                    Linqraft lets you project to DTOs using simple anonymous-type selectors,
+                    automatically generates the DTO types, and translates null-propagation operators into
+                    safe expression-tree code.
+                </p>
+            </div>
+
+            <div class="bg-gray-900 rounded-xl border border-gray-800 p-4 sm:p-5 text-xs sm:text-sm text-gray-200 shadow-lg shadow-black/30">
+                <p class="font-semibold text-gray-100 mb-2">From this:</p>
+<pre class="overflow-x-auto text-[0.7rem] sm:text-xs leading-relaxed"><code>// Verbose and error-prone
+var orders = await dbContext.Orders
+    .Include(o =&gt; o.Customer).ThenInclude(c =&gt; c.Address).ThenInclude(a =&gt; a.Country)
+    .Include(o =&gt; o.Customer).ThenInclude(c =&gt; c.Address).ThenInclude(a =&gt; a.City)
+    .Include(o =&gt; o.OrderItems).ThenInclude(oi =&gt; oi.Product)
+    .ToListAsync();</code></pre>
+
+                <p class="font-semibold text-gray-100 mt-4 mb-2">To this:</p>
+<pre class="overflow-x-auto text-[0.7rem] sm:text-xs leading-relaxed"><code>// Clean, null-safe, DTO-based
+var orders = await dbContext.Orders
+    .SelectExpr&lt;Order, OrderDto&gt;(o =&gt; new
+    {
+        o.Id,
+        CustomerName     = o.Customer?.Name,
+        CustomerCountry  = o.Customer?.Address?.Country?.Name,
+        CustomerCity     = o.Customer?.Address?.City?.Name,
+        Items = o.OrderItems.Select(oi =&gt; new
+        {
+            ProductName = oi.Product?.Name,
+            oi.Quantity
+        })
+    })
+    .ToListAsync();
+
+// OrderDto and nested DTOs are auto-generated.</code></pre>
+            </div>
+        </div>
+        </div>
+        </div>
+    </section>
+
+    <!-- Key Features -->
+    <section class="max-w-5xl mx-auto px-6 py-12 text-center">
+        <h2 class="text-2xl font-bold text-center text-white mb-8">
+            Key Features
+        </h2>
+        <div class="grid gap-6 md:grid-cols-3">
+            <div class="bg-gray-900 border border-gray-800 rounded-xl p-5">
+                <div class="text-2xl mb-3">⚙️</div>
+                <h3 class="text-lg font-semibold mb-2 text-white">
+                    On-Demand DTO Generation
+                </h3>
+                <p class="text-gray-300 text-sm text-left">
+                    Define your projection once using an anonymous type. Linqraft generates strongly-typed DTO classes
+                    – no manual DTO definitions required, even for nested types and collections.
+                </p>
+            </div>
+            <div class="bg-gray-900 border border-gray-800 rounded-xl p-5">
+                <div class="text-2xl mb-3">🛡️</div>
+                <h3 class="text-lg font-semibold mb-2 text-white">
+                    Null-Safe Projections
+                </h3>
+                <p class="text-gray-300 text-sm text-left">
+                    Write using <code class="px-1 py-0.5 rounded bg-gray-800 text-blue-300 text-xs">?.</code> as usual.
+                    Linqraft translates null-conditional access into expression-tree friendly null checks,
+                    keeping your queries readable and safe.
+                </p>
+            </div>
+            <div class="bg-gray-900 border border-gray-800 rounded-xl p-5">
+                <div class="text-2xl mb-3">🔍</div>
+                <h3 class="text-lg font-semibold mb-2 text-white">
+                    Analyzer-Based Migration
+                </h3>
+                <p class="text-gray-300 text-sm text-left">
+                    Built-in analyzers can detect traditional <code class="px-1 py-0.5 rounded bg-gray-800 text-blue-300 text-xs">Select</code>
+                    patterns and offer code fixes to migrate to <code class="px-1 py-0.5 rounded bg-gray-800 text-blue-300 text-xs">SelectExpr</code>
+                    in seconds.
+                </p>
+            </div>
+            <div class="bg-gray-900 border border-gray-800 rounded-xl p-5">
+                <div class="text-2xl mb-3">🧩</div>
+                <h3 class="text-lg font-semibold mb-2 text-white">
+                    Works with Any LINQ Provider
+                </h3>
+                <p class="text-gray-300 text-sm text-left">
+                    Use Linqraft with EF Core or any other LINQ provider that supports
+                    <code class="px-1 py-0.5 rounded bg-gray-800 text-blue-300 text-xs">IQueryable</code> /
+                    <code class="px-1 py-0.5 rounded bg-gray-800 text-blue-300 text-xs">IEnumerable</code>.
+                    No runtime reflection, no custom query provider required.
+                </p>
+            </div>
+            <div class="bg-gray-900 border border-gray-800 rounded-xl p-5">
+                <div class="text-2xl mb-3">✏️</div>
+                <h3 class="text-lg font-semibold mb-2 text-white">
+                    Customizable DTOs
+                </h3>
+                <p class="text-gray-300 text-sm text-left">
+                    Generated DTOs are partial (or records, if you prefer).
+                    Extend them with your own members, control property accessibility, and tweak XML documentation via MSBuild properties.
+                </p>
+            </div>
+            <div class="bg-gray-900 border border-gray-800 rounded-xl p-5">
+                <div class="text-2xl mb-3">🚀</div>
+                <h3 class="text-lg font-semibold mb-2 text-white">
+                    Production-Ready Performance
+                </h3>
+                <p class="text-gray-300 text-sm text-left">
+                    Benchmarks show Linqraft projections are on par with traditional manual DTO mappings,
+                    while keeping your query code significantly cleaner and easier to maintain.
+                </p>
+            </div>
+        </div>
+    </section>
+
+    <!-- FAQ & Links -->
+    <section class="max-w-5xl mx-auto px-6 py-12">
+        <h2 class="text-2xl font-bold text-white mb-6 text-center md:text-left">
+            FAQ & Resources
+        </h2>
+        <div class="grid gap-8 md:grid-cols-2">
+            <div>
+                <h3 class="text-lg font-semibold text-white mb-3">
+                    Common Questions
+                </h3>
+                <dl class="space-y-3 text-sm sm:text-base text-gray-200">
+                    <div>
+                        <dt class="font-semibold">Can I use it without EF Core?</dt>
+                        <dd class="text-gray-300">
+                            Yes. Linqraft works with any LINQ provider that supports
+                            <code class="px-1 py-0.5 rounded bg-gray-800 text-blue-300 text-xs">IQueryable</code> /
+                            <code class="px-1 py-0.5 rounded bg-gray-800 text-blue-300 text-xs">IEnumerable</code>.
+                        </dd>
+                    </div>
+                    <div>
+                        <dt class="font-semibold">Can I reuse the generated DTOs?</dt>
+                        <dd class="text-gray-300">
+                            Absolutely. Use them in controllers, API contracts, Swagger schemas, or anywhere in your codebase.
+                            You can also navigate to the generated code and copy it if you want to decouple it.
+                        </dd>
+                    </div>
+                    <div>
+                        <dt class="font-semibold">What about performance?</dt>
+                        <dd class="text-gray-300">
+                            Benchmarks show Linqraft is comparable to traditional manual DTO projections in both time and allocations.
+                        </dd>
+                    </div>
+                </dl>
+            </div>
+            <div class="text-right">
+                <h3 class="text-lg font-semibold text-white mb-3">
+                    Explore More
+                </h3>
+                <ul class="space-y-2 text-sm sm:text-base text-blue-300">
+                    <li>
+                        <a href="https://github.com/arika009/Linqraft" target="_blank" class="hover:underline">
+                            GitHub Repository
+                        </a>
+                    </li>
+                    <li>
+                        <a href="https://www.nuget.org/packages/Linqraft" target="_blank" class="hover:underline">
+                            NuGet Package
+                        </a>
+                    </li>
+                    <li>
+                        <a href="https://deepwiki.com/arika009/Linqraft" target="_blank" class="hover:underline">
+                            DeepWiki – In-depth Documentation
+                        </a>
+                    </li>
+                    <li>
+                        <a href="/playground" class="hover:underline">
+                            Online Playground
+                        </a>
+                    </li>
+                    <li>
+                        <a href="https://github.com/arika009/Linqraft/tree/main/examples" target="_blank" class="hover:underline">
+                            Example Projects (EF Core, API, Benchmarks)
+                        </a>
+                    </li>
+                </ul>
+            </div>
+        </div>
+    </section>
 
     <!-- Footer -->
-    <div class="text-center py-8 text-gray-500 text-sm">
-        <p>Linqraft is open source software under the MIT license.</p>
-    </div>
+    <footer class="border-t border-gray-800">
+        <div class="max-w-5xl mx-auto px-6 py-6 text-center text-xs sm:text-sm text-gray-500">
+            <p>
+                Linqraft is open source software licensed under the Apache License 2.0.
+            </p>
+        </div>
+    </footer>
 </div>
