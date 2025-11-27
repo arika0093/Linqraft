@@ -493,6 +493,53 @@ public partial class ParentDto
 }
 ```
 
+### Remove Hash from Generated Class Names
+ By default, nested DTO classes are generated with hash-suffixed class names (e.g., `ItemsDto_HASH1234`).
+This behavior is necessary to avoid class name collisions, but in some cases, the hash name can be inconvenient (for example, in OpenAPI/Swagger where class names are displayed).
+In such cases, you can change the behavior to generate nested DTO classes in hash-named namespaces (e.g., `Generated_HASH1234.ItemsDto`) instead.
+This option can be controlled using the `LinqraftNestedDtoUseHashNamespace` property.
+
+<details>
+<summary>Generated code example</summary>
+
+**LinqraftNestedDtoUseHashNamespace = false (default)**
+
+```csharp
+namespace Tutorial
+{
+    public partial class OrderDto
+    {
+        public required System.Collections.Generic.List<global::Tutorial.OrderItemDto_DE33EA40> Items { get; set; }
+    }
+
+    public partial class OrderItemDto_DE33EA40
+    {
+        public required string? ProductName { get; set; }
+    }
+}
+```
+
+**LinqraftNestedDtoUseHashNamespace = true**
+
+```csharp
+namespace Tutorial
+{
+    public partial class OrderDto
+    {
+        public required System.Collections.Generic.List<global::Tutorial.Generated_DE33EA40.ItemsDto> Items { get; set; }
+    }
+}
+namespace Tutorial.Generated_DE33EA40
+{
+    public partial class ItemsDto
+    {
+        public required string? ProductName { get; set; }
+    }
+}
+```
+
+</details>
+
 ### Auto generated comments
 Linqraft attempts to retrieve comments attached to the original properties as much as possible and attach them as XML documentation comments to the properties of the DTO class.
 In addition, reference information indicating what kind of query the DTO class was generated from is also attached.
