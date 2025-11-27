@@ -35,7 +35,7 @@ public static class GenerateSourceCodeSnippets
 
     /// <summary>
     /// Generate total code with DTOs that may have different namespaces.
-    /// This is used when LinqraftNestedDtoNamespace is enabled.
+    /// This is used when LinqraftNestedDtoUseHashNamespace is enabled.
     /// </summary>
     public static string BuildCodeSnippetAll(
         List<string> expressions,
@@ -130,12 +130,14 @@ public static class GenerateSourceCodeSnippets
                     string.Join(CodeFormatter.DefaultNewLine, dtoClasses),
                     CodeFormatter.IndentSize
                 );
-                result.Add($$"""
+                result.Add(
+                    $$"""
                     namespace {{namespaceName}}
                     {
                     {{indentedClasses}}
                     }
-                    """);
+                    """
+                );
             }
         }
 

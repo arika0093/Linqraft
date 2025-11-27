@@ -14,8 +14,8 @@ public record LinqraftConfiguration
     const string LinqraftCommentOutputOptionKey = "build_property.LinqraftCommentOutput";
     const string LinqraftArrayNullabilityRemovalOptionKey =
         "build_property.LinqraftArrayNullabilityRemoval";
-    const string LinqraftNestedDtoNamespaceOptionKey =
-        "build_property.LinqraftNestedDtoNamespace";
+    const string LinqraftNestedDtoUseHashNamespaceOptionKey =
+        "build_property.LinqraftNestedDtoUseHashNamespace";
 
     /// <summary>
     /// The namespace where global namespace DTOs should exist.
@@ -104,7 +104,7 @@ public record LinqraftConfiguration
             out var arrayNullabilityRemovalStr
         );
         globalOptions.GlobalOptions.TryGetValue(
-            LinqraftNestedDtoNamespaceOptionKey,
+            LinqraftNestedDtoUseHashNamespaceOptionKey,
             out var nestedDtoNamespaceStr
         );
 
@@ -150,10 +150,7 @@ public record LinqraftConfiguration
         }
         if (bool.TryParse(nestedDtoNamespaceStr, out var nestedDtoNamespace))
         {
-            linqraftOptions = linqraftOptions with
-            {
-                NestedDtoNamespace = nestedDtoNamespace,
-            };
+            linqraftOptions = linqraftOptions with { NestedDtoNamespace = nestedDtoNamespace };
         }
         return linqraftOptions;
     }

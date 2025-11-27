@@ -40,7 +40,7 @@
     <CompilerVisibleProperty Include="LinqraftHasRequired" />
     <CompilerVisibleProperty Include="LinqraftCommentOutput" />
     <CompilerVisibleProperty Include="LinqraftArrayNullabilityRemoval" />
-    <CompilerVisibleProperty Include="LinqraftNestedDtoNamespace" />
+    <CompilerVisibleProperty Include="LinqraftNestedDtoUseHashNamespace" />
   </ItemGroup>
   <ItemGroup>
     <Using Include="Xunit" />

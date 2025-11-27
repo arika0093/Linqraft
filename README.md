@@ -606,7 +606,7 @@ Linqraft supports several MSBuild properties to customize the generated code:
     <LinqraftArrayNullabilityRemoval>true</LinqraftArrayNullabilityRemoval>
     <!-- generate nested DTOs in hash-named namespace (e.g., Generated_HASH.ItemsDto) -->
     <!-- instead of hash-suffixed class names (e.g., ItemsDto_HASH) -->
-    <LinqraftNestedDtoNamespace>false</LinqraftNestedDtoNamespace>
+    <LinqraftNestedDtoUseHashNamespace>false</LinqraftNestedDtoUseHashNamespace>
   </PropertyGroup>
 </Project>
 ```
