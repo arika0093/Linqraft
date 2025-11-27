@@ -507,10 +507,11 @@ public record DtoProperty(
         // Determine final nullability
         // Special case: When we have a collection with nullable access that will use Enumerable.Empty<T>()
         // as the fallback value, the property should NOT be nullable.
-        // Simplified approach (per maintainer feedback):
+        // Rules for removing nullable from collection types:
         // 1. Expression should NOT contain a ternary operator (if it does, keep nullable)
         // 2. The type must be IEnumerable<T> or derived (List, Array, etc.)
-        // 3. If nested structure exists (anonymous type in Select), remove nullable
+        // 3. The expression uses null-conditional access (?.)
+        // 4. The expression contains a Select or SelectMany call
         var shouldBeNullable = isNullable || hasNullableAccess;
         var finalPropertyType = propertyType;
 
@@ -520,20 +521,27 @@ public record DtoProperty(
             .OfType<ConditionalExpressionSyntax>()
             .Any();
 
-        // Apply non-nullable only when:
-        // - Currently marked as nullable
-        // - No ternary operator present
-        // - Type is a collection type (IEnumerable, List, Array, etc.)
-        // - Has nested structure (anonymous type in Select/SelectMany)
+        // Check if expression contains Select or SelectMany invocation
+        var hasSelectOrSelectMany = RoslynTypeHelper.ContainsSelectInvocation(expression)
+            || RoslynTypeHelper.ContainsSelectManyInvocation(expression);
+
+        // Apply non-nullable for collections that:
+        // - Are currently marked as nullable (either by type annotation or has null-conditional access)
+        // - Don't have a ternary operator (explicit null handling)
+        // - Have a Select/SelectMany call (indicates transformation that can use empty collection fallback)
+        // - Are a collection type
+        // This handles both:
+        //   1. foo.bar?.buz.Select(b => new { }) -> IEnumerable<DTO> (with nestedStructure)
+        //   2. foo.bar?.buz.Select(b => b.Id).ToList() -> List<int> (without nestedStructure)
         if (
             shouldBeNullable
             && !hasTernaryOperator
-            && nestedStructure is not null
+            && hasSelectOrSelectMany
             && RoslynTypeHelper.IsCollectionType(propertyType)
         )
         {
-            // Collection with nested structure and no ternary will use Enumerable.Empty<T>() as fallback
-            // So the collection itself should not be nullable
+            // Collection with null-conditional access, Select/SelectMany, and no ternary
+            // will use empty collection as fallback, so the collection itself should not be nullable
             shouldBeNullable = false;
             // Also remove the nullable annotation from the type symbol if present
             finalPropertyType = RoslynTypeHelper.GetNonNullableType(propertyType) ?? propertyType;
