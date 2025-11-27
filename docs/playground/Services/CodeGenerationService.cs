@@ -18,33 +18,48 @@ public class CodeGenerationService
         Net90.References.All.ToArray());
 
     /// <summary>
-    /// Generates Linqraft output based on the input code using Roslyn
+    /// Generates Linqraft output based on multiple source files
     /// </summary>
-    public GeneratedOutput GenerateOutput(string code, LinqraftConfiguration? config = null)
+    public GeneratedOutput GenerateOutput(IEnumerable<ProjectFile> files, LinqraftConfiguration? config = null)
     {
         config ??= new LinqraftConfiguration { CommentOutput = CommentOutputMode.None };
         
         try
         {
-            // Parse the code into a syntax tree
-            var syntaxTree = CSharpSyntaxTree.ParseText(code);
-            var root = syntaxTree.GetRoot();
+            // Parse each file into its own syntax tree
+            var syntaxTrees = files
+                .Select(f => CSharpSyntaxTree.ParseText(f.Content, path: f.Path))
+                .ToList();
 
-            // Create compilation with reference assemblies
+            if (syntaxTrees.Count == 0)
+            {
+                return new GeneratedOutput
+                {
+                    QueryExpression = "// No source files provided",
+                    DtoClass = "// No DTO class generated"
+                };
+            }
+
+            // Create compilation with all syntax trees and reference assemblies
             var references = LazyReferences.Value;
             var compilation = CSharpCompilation.Create(
                 "PlaygroundAnalysis",
-                [syntaxTree],
+                syntaxTrees,
                 references,
                 new CSharpCompilationOptions(OutputKind.DynamicallyLinkedLibrary)
             );
 
-            var semanticModel = compilation.GetSemanticModel(syntaxTree);
+            // Find SelectExpr invocations from all syntax trees
+            var allSelectExprInfos = new List<SelectExprInfo>();
+            foreach (var syntaxTree in syntaxTrees)
+            {
+                var semanticModel = compilation.GetSemanticModel(syntaxTree);
+                var root = syntaxTree.GetRoot();
+                var infos = FindSelectExprInvocations(root, semanticModel);
+                allSelectExprInfos.AddRange(infos);
+            }
 
-            // Find SelectExpr invocations
-            var selectExprInfos = FindSelectExprInvocations(root, semanticModel);
-
-            if (selectExprInfos.Count == 0)
+            if (allSelectExprInfos.Count == 0)
             {
                 return new GeneratedOutput
                 {
@@ -65,7 +80,7 @@ public class CodeGenerationService
             dtoClassBuilder.AppendLine("// DTO classes are automatically created based on SelectExpr projections");
             dtoClassBuilder.AppendLine();
 
-            foreach (var info in selectExprInfos)
+            foreach (var info in allSelectExprInfos)
             {
                 try
                 {
@@ -81,6 +96,7 @@ public class CodeGenerationService
                     }
 
                     // Generate the select expression (simplified representation)
+                    var semanticModel = compilation.GetSemanticModel(info.Invocation.SyntaxTree);
                     var location = semanticModel.GetInterceptableLocation(info.Invocation);
                     if (location != null)
                     {

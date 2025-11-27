@@ -218,9 +218,8 @@
 
         try
         {
-            // Combine all files in the template for analysis
-            var allCode = string.Join("\n\n", selectedTemplate.Files.Select(f => f.Content));
-            var output = CodeGenerationService.GenerateOutput(allCode, configuration);
+            // Pass all files to the code generation service
+            var output = CodeGenerationService.GenerateOutput(selectedTemplate.Files, configuration);
 
             if (queryPreviewPane != null)
             {
