@@ -59,6 +59,11 @@ public class SemanticHighlightingService
                 AddToken(tokens, classDecl.Identifier, SemanticTokenType.Class, code);
                 break;
 
+            // Record declarations
+            case RecordDeclarationSyntax recordDecl:
+                AddToken(tokens, recordDecl.Identifier, SemanticTokenType.Class, code);
+                break;
+
             // Interface declarations
             case InterfaceDeclarationSyntax interfaceDecl:
                 AddToken(tokens, interfaceDecl.Identifier, SemanticTokenType.Interface, code);
@@ -79,9 +84,20 @@ public class SemanticHighlightingService
                 AddToken(tokens, methodDecl.Identifier, SemanticTokenType.Method, code);
                 break;
 
-            // Property declarations
+            // Property declarations (including required modifier)
             case PropertyDeclarationSyntax propDecl:
                 AddToken(tokens, propDecl.Identifier, SemanticTokenType.Property, code);
+                ProcessPropertyKeywords(propDecl, code, tokens);
+                break;
+
+            // Accessor declarations (get, set, init)
+            case AccessorDeclarationSyntax accessorDecl:
+                ProcessAccessorKeywords(accessorDecl, code, tokens);
+                break;
+
+            // Type argument list (for generics like List<Order>)
+            case TypeArgumentListSyntax typeArgList:
+                ProcessTypeArgumentList(typeArgList, semanticModel, code, tokens);
                 break;
 
             // Generic names (must come before TypeSyntax/IdentifierNameSyntax)
@@ -103,6 +119,28 @@ public class SemanticHighlightingService
             case MemberAccessExpressionSyntax memberAccess:
                 ProcessMemberAccess(memberAccess, semanticModel, code, tokens);
                 break;
+        }
+    }
+
+    private void ProcessPropertyKeywords(PropertyDeclarationSyntax propDecl, string code, List<SemanticToken> tokens)
+    {
+        // Check for 'required' modifier
+        foreach (var modifier in propDecl.Modifiers)
+        {
+            if (modifier.IsKind(SyntaxKind.RequiredKeyword))
+            {
+                AddToken(tokens, modifier, SemanticTokenType.Keyword, code);
+            }
+        }
+    }
+
+    private void ProcessAccessorKeywords(AccessorDeclarationSyntax accessorDecl, string code, List<SemanticToken> tokens)
+    {
+        // Highlight 'init' keyword (SyntaxKind.InitKeyword in accessor)
+        var keyword = accessorDecl.Keyword;
+        if (keyword.IsKind(SyntaxKind.InitKeyword))
+        {
+            AddToken(tokens, keyword, SemanticTokenType.Keyword, code);
         }
     }
 
@@ -149,6 +187,46 @@ public class SemanticHighlightingService
         else if (symbol is INamespaceSymbol)
         {
             AddToken(tokens, identifierName.Identifier, SemanticTokenType.Namespace, code);
+        }
+    }
+
+    private void ProcessTypeArgumentList(TypeArgumentListSyntax typeArgList, SemanticModel semanticModel, string code, List<SemanticToken> tokens)
+    {
+        // Process each type argument in the generic type (e.g., Order in List<Order>)
+        foreach (var typeArg in typeArgList.Arguments)
+        {
+            ProcessTypeArgument(typeArg, semanticModel, code, tokens);
+        }
+    }
+
+    private void ProcessTypeArgument(TypeSyntax typeSyntax, SemanticModel semanticModel, string code, List<SemanticToken> tokens)
+    {
+        switch (typeSyntax)
+        {
+            case IdentifierNameSyntax identifierName:
+                var symbolInfo = semanticModel.GetSymbolInfo(identifierName);
+                if (symbolInfo.Symbol is INamedTypeSymbol namedType)
+                {
+                    var tokenType = GetTypeTokenType(namedType);
+                    AddToken(tokens, identifierName.Identifier, tokenType, code);
+                }
+                break;
+            case GenericNameSyntax genericName:
+                // Handle nested generics (e.g., List<Dictionary<string, Order>>)
+                ProcessGenericName(genericName, semanticModel, code, tokens);
+                break;
+            case NullableTypeSyntax nullableType:
+                // Handle nullable types (e.g., Order?)
+                ProcessTypeArgument(nullableType.ElementType, semanticModel, code, tokens);
+                break;
+            case ArrayTypeSyntax arrayType:
+                // Handle array types (e.g., Order[])
+                ProcessTypeArgument(arrayType.ElementType, semanticModel, code, tokens);
+                break;
+            case QualifiedNameSyntax qualifiedName:
+                // Handle qualified names (e.g., System.Collections.Generic.List<T>)
+                ProcessTypeArgument(qualifiedName.Right, semanticModel, code, tokens);
+                break;
         }
     }
 
@@ -287,5 +365,6 @@ public enum SemanticTokenType
     Field,
     Variable,
     Parameter,
-    Namespace
+    Namespace,
+    Keyword
 }

@@ -15,7 +15,8 @@ window.monacoSemanticHighlighting = {
         field: 'semantic-field',
         variable: 'semantic-variable',
         parameter: 'semantic-parameter',
-        namespace: 'semantic-namespace'
+        namespace: 'semantic-namespace',
+        keyword: 'semantic-keyword'
     },
     
     // Apply semantic tokens as decorations to a Monaco editor
@@ -53,7 +54,7 @@ window.monacoSemanticHighlighting = {
     
     // Get CSS class name for token type
     getClassName: function(type) {
-        const types = ['class', 'interface', 'struct', 'enum', 'delegate', 'method', 'property', 'field', 'variable', 'parameter', 'namespace'];
+        const types = ['class', 'interface', 'struct', 'enum', 'delegate', 'method', 'property', 'field', 'variable', 'parameter', 'namespace', 'keyword'];
         if (type < 0 || type >= types.length) {
             return this.tokenClasses['class'];
         }
