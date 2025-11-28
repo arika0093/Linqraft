@@ -111,7 +111,7 @@
                 <!-- Tab Content (Right Side) -->
                 <div class="flex-1">
                     @* Include Pattern Tab *@
-                    <div id="tab-content-0" role="tabpanel" aria-labelledby="tab-include" class="tab-scroll-target @(activeTab == 0 ? "" : "hidden")">>
+                    <div id="tab-content-0" role="tabpanel" aria-labelledby="tab-include" class="tab-scroll-target @(activeTab == 0 ? "" : "hidden")">
                         <div class="grid gap-6 lg:grid-cols-2 items-start">
                             <div>
                                 <h3 class="text-xl font-semibold text-white mb-3 flex items-center gap-2">
@@ -150,7 +150,7 @@
                     </div>
 
                     @* Manual DTO Tab *@
-                    <div id="tab-content-1" role="tabpanel" aria-labelledby="tab-manual" class="tab-scroll-target @(activeTab == 1 ? "" : "hidden")">>
+                    <div id="tab-content-1" role="tabpanel" aria-labelledby="tab-manual" class="tab-scroll-target @(activeTab == 1 ? "" : "hidden")">
                         <div class="grid gap-6 lg:grid-cols-2 items-start">
                             <div>
                                 <h3 class="text-xl font-semibold text-white mb-3 flex items-center gap-2">
@@ -188,7 +188,7 @@
                     </div>
 
                     @* Linqraft Tab *@
-                    <div id="tab-content-2" role="tabpanel" aria-labelledby="tab-linqraft" class="tab-scroll-target @(activeTab == 2 ? "" : "hidden")">>
+                    <div id="tab-content-2" role="tabpanel" aria-labelledby="tab-linqraft" class="tab-scroll-target @(activeTab == 2 ? "" : "hidden")">
                         <div class="grid gap-6 lg:grid-cols-2 items-start">
                             <div>
                                 <h3 class="text-xl font-semibold text-white mb-3 flex items-center gap-2">
@@ -581,15 +581,19 @@
     {
         try
         {
-            // Use injected HttpClient to avoid socket exhaustion
-            Http.DefaultRequestHeaders.Remove("User-Agent");
-            Http.DefaultRequestHeaders.Add("User-Agent", "Linqraft-Playground");
-            var response = await Http.GetFromJsonAsync<GitHubRepo>(
-                "https://api.github.com/repos/arika0093/Linqraft");
-            if (response != null)
+            // Use HttpRequestMessage to avoid modifying shared HttpClient headers
+            using var request = new HttpRequestMessage(HttpMethod.Get, "https://api.github.com/repos/arika0093/Linqraft");
+            request.Headers.Add("User-Agent", "Linqraft-Playground");
+            
+            var response = await Http.SendAsync(request);
+            if (response.IsSuccessStatusCode)
             {
-                gitHubStars = response.StargazersCount;
-                await InvokeAsync(StateHasChanged);
+                var repo = await response.Content.ReadFromJsonAsync<GitHubRepo>();
+                if (repo != null)
+                {
+                    gitHubStars = repo.StargazersCount;
+                    await InvokeAsync(StateHasChanged);
+                }
             }
         }
         catch (HttpRequestException)
