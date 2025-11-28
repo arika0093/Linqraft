@@ -16,12 +16,12 @@
             </h1>
         </div>
         <p id="caption" class="text-lg sm:text-xl text-gray-200 max-w-3xl mb-4">
-            A Roslyn Source Generator for
-            <span class="feature-text inline-block min-w-[280px] text-blue-400 font-semibold transition-opacity duration-500 @(isTransitioning ? "opacity-0" : "opacity-100")">
+            Select Query with
+            <span class="feature-text inline-block min-w-[300px] text-blue-400 font-semibold transition-opacity duration-500 @(isTransitioning ? "opacity-0" : "opacity-100")">
                 @rotatingFeatures[currentFeatureIndex]
             </span>
         </p>
-        <p class="text-sm text-gray-300 mb-8">
+        <p class="text-md text-gray-300 mb-8">
             Write simple <code class="px-1.5 py-0.5 rounded bg-gray-800 text-blue-300 text-xs">SelectExpr</code> queries and let Linqraft
             handle expression trees, DTO classes, and null-propagation for you.
         </p>
@@ -72,7 +72,7 @@
 
     <!-- Why Section with Sticky Tabs -->
     <section id="why-section" class="bg-gradient-to-b from-gray-950 to-gray-900 border-y border-gray-800">
-        <div class="max-w-6xl mx-auto px-6 py-12">
+        <div class="max-w-8xl mx-auto px-12 py-12">
             <h2 class="text-2xl font-bold text-white mb-8 text-center">
                 Why Linqraft?
             </h2>
@@ -139,9 +139,6 @@
                             </div>
                             <div class="code-block">
                                 <div class="code-block-header">
-                                    <span class="code-block-dot bg-red-500"></span>
-                                    <span class="code-block-dot bg-yellow-500"></span>
-                                    <span class="code-block-dot bg-green-500"></span>
                                     <span class="ml-2 text-gray-400 text-xs">Include Pattern</span>
                                 </div>
                                 <pre class="code-content"><code class="language-csharp">@((MarkupString)includePatternCode)</code></pre>
@@ -177,9 +174,6 @@
                             </div>
                             <div class="code-block">
                                 <div class="code-block-header">
-                                    <span class="code-block-dot bg-red-500"></span>
-                                    <span class="code-block-dot bg-yellow-500"></span>
-                                    <span class="code-block-dot bg-green-500"></span>
                                     <span class="ml-2 text-gray-400 text-xs">Manual DTO Pattern</span>
                                 </div>
                                 <pre class="code-content"><code class="language-csharp">@((MarkupString)manualDtoCode)</code></pre>
@@ -219,10 +213,7 @@
                             </div>
                             <div class="code-block border-green-800">
                                 <div class="code-block-header bg-green-950/50">
-                                    <span class="code-block-dot bg-red-500"></span>
-                                    <span class="code-block-dot bg-yellow-500"></span>
-                                    <span class="code-block-dot bg-green-500"></span>
-                                    <span class="ml-2 text-green-400 text-xs">Linqraft Pattern</span>
+                                    <span class="ml-2 text-xs">Linqraft Pattern</span>
                                 </div>
                                 <pre class="code-content"><code class="language-csharp">@((MarkupString)linqraftCode)</code></pre>
                             </div>
@@ -234,11 +225,11 @@
     </section>
 
     <!-- Code Comparison Section -->
-    <section class="max-w-6xl mx-auto px-6 py-12">
+    <section class="max-w-8xl mx-auto px-12 py-12">
         <h2 class="text-2xl font-bold text-white mb-4 text-center">
             Side-by-Side Comparison
         </h2>
-        <p class="text-gray-400 text-center mb-8 max-w-2xl mx-auto">
+        <p class="text-gray-400 text-center mb-8 max-w-4xl mx-auto">
             See the difference between traditional manual DTO projection and Linqraft's clean approach
         </p>
         
@@ -251,10 +242,7 @@
                 </div>
                 <div class="code-block h-full">
                     <div class="code-block-header">
-                        <span class="code-block-dot bg-red-500"></span>
-                        <span class="code-block-dot bg-yellow-500"></span>
-                        <span class="code-block-dot bg-green-500"></span>
-                        <span class="ml-2 text-gray-400 text-xs">Before - Verbose</span>
+                        <span class="ml-2 text-gray-400 text-xs">Before</span>
                     </div>
                     <pre class="code-content text-xs"><code class="language-csharp">@((MarkupString)comparisonManualCode)</code></pre>
                 </div>
@@ -268,10 +256,7 @@
                 </div>
                 <div class="code-block h-full border-green-800">
                     <div class="code-block-header bg-green-950/50">
-                        <span class="code-block-dot bg-red-500"></span>
-                        <span class="code-block-dot bg-yellow-500"></span>
-                        <span class="code-block-dot bg-green-500"></span>
-                        <span class="ml-2 text-green-400 text-xs">After - Clean</span>
+                        <span class="ml-2 text-green-400 text-xs">After</span>
                     </div>
                     <pre class="code-content text-xs"><code class="language-csharp">@((MarkupString)comparisonLinqraftCode)</code></pre>
                 </div>
@@ -337,8 +322,8 @@
     </section>
 
     <!-- FAQ & Links -->
-    <section class="max-w-5xl mx-auto px-6 py-12">
-        <h2 class="text-2xl font-bold text-white mb-6 text-center md:text-left">FAQ & Resources</h2>
+    <section class="max-w-5xl mx-auto px-12 py-12">
+        <h2 class="text-2xl font-bold text-white mb-8 text-center md:text-left">FAQ & Resources</h2>
         <div class="grid gap-8 md:grid-cols-2">
             <div>
                 <h3 class="text-lg font-semibold text-white mb-3">Common Questions</h3>
@@ -437,7 +422,6 @@
     private readonly string[] rotatingFeatures = [
         "On-Demand DTO Generation",
         "Null Conditional Operators",
-        "Analyzer-Based Migration",
         "Zero Runtime Dependencies"
     ];
     
