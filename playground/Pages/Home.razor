@@ -7,16 +7,16 @@
     <section class="max-w-5xl mx-auto px-6 py-16 flex flex-col items-center text-center">
         <div class="flex items-center gap-3 mb-4">
             <img src="/linqraft.png" alt="Linqraft logo" class="w-10 h-10" />
-            <h1 class="text-4xl sm:text-5xl font-bold tracking-tight text-white" translate="no">
+            <h1 class="font-display tracking-wide text-4xl sm:text-5xl font-bold tracking-tight text-white" translate="no">
                 Linqraft
             </h1>
         </div>
-        <p id="caption" class="text-lg sm:text-xl text-gray-300 max-w-3xl mb-4">
+        <p id="caption" class="text-lg sm:text-xl text-gray-200 max-w-3xl mb-4">
             A Roslyn Source Generator for LINQ that gives you
-            on-demand DTO generation and null-safe projections – with
-            no runtime overhead and no extra dependencies.
+            on-demand DTO generation and null-safe projections - with
+            no runtime overhead and no dependencies.
         </p>
-        <p class="text-sm text-gray-400 mb-8">
+        <p class="text-sm text-gray-300 mb-8">
             Write simple <code class="px-1.5 py-0.5 rounded bg-gray-800 text-blue-300 text-xs">SelectExpr</code> queries and let Linqraft
             handle expression trees, DTO classes, and null-propagation for you.
         </p>
@@ -53,7 +53,7 @@
                 <span class="text-blue-400">●</span> EF Core and any LINQ provider
             </span>
             <span class="inline-flex items-center gap-1.5 bg-gray-900/70 border border-gray-800 rounded-full px-3 py-1">
-                <span class="text-cyan-400">●</span> No runtime reflection, no extra deppendencies
+                <span class="text-cyan-400">●</span> No reflection, No dependencies
             </span>
         </div>
     </section>
@@ -141,7 +141,7 @@ var orders = await dbContext.Orders
         <h2 class="text-2xl font-bold text-center text-white mb-8">
             Key Features
         </h2>
-        <div class="grid gap-6 md:grid-cols-3">
+        <div class="grid gap-6 md:grid-cols-2">
             <div class="bg-gray-900 border border-gray-800 rounded-xl p-5">
                 <div class="text-2xl mb-3">⚙️</div>
                 <h3 class="text-lg font-semibold mb-2 text-white">
@@ -149,7 +149,7 @@ var orders = await dbContext.Orders
                 </h3>
                 <p class="text-gray-300 text-sm text-left">
                     Define your projection once using an anonymous type. Linqraft generates strongly-typed DTO classes
-                    – no manual DTO definitions required, even for nested types and collections.
+                    - no manual DTO definitions required, even for nested types and collections.
                 </p>
             </div>
             <div class="bg-gray-900 border border-gray-800 rounded-xl p-5">
@@ -219,7 +219,7 @@ var orders = await dbContext.Orders
                 <h3 class="text-lg font-semibold text-white mb-3">
                     Common Questions
                 </h3>
-                <dl class="space-y-3 text-sm sm:text-base text-gray-200">
+                <dl class="space-y-6 text-sm sm:text-base text-gray-200">
                     <div>
                         <dt class="font-semibold">Can I use it without EF Core?</dt>
                         <dd class="text-gray-300">
@@ -247,7 +247,7 @@ var orders = await dbContext.Orders
                 <h3 class="text-lg font-semibold text-white mb-3">
                     Explore More
                 </h3>
-                <ul class="space-y-2 text-sm sm:text-base text-blue-300">
+                <ul class="space-y-4 text-sm sm:text-base text-blue-300">
                     <li>
                         <a href="https://github.com/arika009/Linqraft" target="_blank" class="hover:underline">
                             GitHub Repository
@@ -260,7 +260,7 @@ var orders = await dbContext.Orders
                     </li>
                     <li>
                         <a href="https://deepwiki.com/arika009/Linqraft" target="_blank" class="hover:underline">
-                            DeepWiki – In-depth Documentation
+                            DeepWiki - In-depth Documentation
                         </a>
                     </li>
                     <li>
