@@ -49,12 +49,15 @@
                     var newTokens = [];
                     var lastIndex = 0;
                     
-                    // Create a new regex for each string to avoid issues
-                    var re = new RegExp(regex.source, regex.flags);
+                    // Create a new regex for each string with global flag to avoid issues
+                    var flags = regex.flags.includes('g') ? regex.flags : regex.flags + 'g';
+                    var re = new RegExp(regex.source, flags);
                     while ((match = re.exec(str)) !== null) {
                         // Prevent infinite loops on zero-width matches
                         if (match[0].length === 0) {
-                            re.lastIndex++;
+                            if (re.lastIndex === lastIndex) {
+                                re.lastIndex++;
+                            }
                             continue;
                         }
                         
