@@ -1,0 +1,11 @@
+
+<script src="@TailwindCDN"></script>
+
+@code {
+#if DEBUG
+	  private const string TailwindCDN = "https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4";
+#else
+		private const string TailwindCDN = "";
+#endif
+}
+
