@@ -18,7 +18,7 @@
         <div id="include-problem" class="mb-16">
             <h3 class="text-xl font-semibold text-white mb-4">The Include / ThenInclude Problem</h3>
             <p class="text-gray-300 mb-4">
-                Writing it naively would involve heavy use of <code class="code-inline">Include</code> / <code class="code-inline">ThenInclude</code>, 
+                Writing it naively would involve heavy use of <InlineCode>Include</InlineCode> / <InlineCode>ThenInclude</InlineCode>, 
                 resulting in code that is hard to read and maintain.
             </p>
             <ul class="space-y-2 text-gray-300 mb-6">
@@ -28,7 +28,7 @@
                 </li>
                 <li class="flex items-start gap-2">
                     <span class="text-gray-500">•</span>
-                    <span>Forgetting an <code class="code-inline">Include</code> can lead to runtime <code class="code-inline">NullReferenceException</code>s that are hard to detect at compile time.</span>
+                    <span>Forgetting an <InlineCode>Include</InlineCode> can lead to runtime <InlineCode>NullReferenceException</InlineCode>s that are hard to detect at compile time.</span>
                 </li>
                 <li class="flex items-start gap-2">
                     <span class="text-gray-500">•</span>
@@ -52,7 +52,7 @@
                 </li>
                 <li class="flex items-start gap-2">
                     <span class="text-gray-500">•</span>
-                    <span>The expression APIs don't support the <code class="code-inline">?.</code> operator directly, forcing verbose null checks using ternary operators.</span>
+                    <span>The expression APIs don't support the <InlineCode>?.</InlineCode> operator directly, forcing verbose null checks using ternary operators.</span>
                 </li>
                 <li class="flex items-start gap-2">
                     <span class="text-gray-500">•</span>
@@ -66,13 +66,13 @@
         <div id="linqraft-solution">
             <h3 class="text-xl font-semibold text-white mb-4">The Linqraft Solution</h3>
             <p class="text-gray-300 mb-4">
-                Linqraft solves these problems by providing <code class="code-inline">SelectExpr</code>, 
+                Linqraft solves these problems by providing <InlineCode>SelectExpr</InlineCode>, 
                 which supports null-propagation operators and automatic DTO generation.
             </p>
             <ul class="space-y-2 text-gray-300 mb-6">
                 <li class="flex items-start gap-2">
                     <span class="text-green-500">✓</span>
-                    <span>Use <code class="code-inline">?.</code> naturally - Linqraft translates it for you</span>
+                    <span>Use <InlineCode>?.</InlineCode> naturally - Linqraft translates it for you</span>
                 </li>
                 <li class="flex items-start gap-2">
                     <span class="text-green-500">✓</span>
@@ -154,7 +154,7 @@ var orders = await dbContext.Orders
         CustomerName = o.Customer?.Name,
         CustomerCountry = o.Customer?.Address?.Country?.Name,
         CustomerCity = o.Customer?.Address?.City?.Name,
-        Items = o.OrderItems.Select(oi => new OrderItemDto
+        Items = o.OrderItems.Select(oi => new
         {
             ProductName = oi.Product?.Name,
             oi.Quantity

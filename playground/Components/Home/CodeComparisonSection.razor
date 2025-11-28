@@ -6,9 +6,9 @@
         See the difference between traditional manual DTO projection and Linqraft's clean approach
     </p>
     
-    <div class="grid gap-6 lg:grid-cols-2 lg:max-h-screen overflow-auto">
+    <div class="lg:grid gap-6 lg:grid-cols-2 lg:max-h-screen overflow-auto">
         <!-- Manual DTO Side -->
-        <div class="flex flex-col">
+        <div class="flex flex-col p-4 border-1 border-solid rounded-md border-gray-700">
             <div class="flex items-center gap-2 mb-3">
                 <h3 class="text-lg font-semibold text-gray-300">Traditional Manual DTO</h3>
             </div>
@@ -16,12 +16,20 @@
         </div>
         
         <!-- Linqraft Side -->
-        <div class="flex flex-col">
+        <div class="flex flex-col p-4 border-1 border-solid rounded-md border-green-500">
             <div class="flex items-center gap-2 mb-3">
                 <span class="text-green-400">✓</span>
                 <h3 class="text-lg font-semibold text-gray-300">With Linqraft</h3>
             </div>
             <CodeBlock Title="After" Code="@linqraftCode" Highlight />
+            <div class="flex-grow"></div>
+            <div class="mt-4 p-2 text-sm text-gray-400 bg-cyan-800/20">
+                <a href="https://github.com/arika0093/Linqraft" target="_blank">
+                    Did you like this library? Please give us a
+                    <span class="text-yellow-400 font-semibold px-1">⭐star</span>
+                    on GitHub!
+                </a>
+            </div>
         </div>
     </div>
 </section>
@@ -76,7 +84,7 @@ var orders = await dbContext.Orders
         CustomerName = o.Customer?.Name,
         CustomerCountry = o.Customer?.Address?.Country?.Name,
         CustomerCity = o.Customer?.Address?.City?.Name,
-        Items = o.OrderItems.Select(oi => new OrderItemDto
+        Items = o.OrderItems.Select(oi => new
         {
             ProductName = oi.Product?.Name,
             oi.Quantity
