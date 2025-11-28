@@ -1,4 +1,5 @@
 @page "/"
+@using System.Text.Json
 @inject IJSRuntime JS
 @inject HttpClient Http
 @implements IAsyncDisposable
@@ -79,16 +80,28 @@
             <div class="flex flex-col lg:flex-row gap-8">
                 <!-- Sticky Tabs Navigation (Left Side on Desktop) -->
                 <div class="lg:w-48 lg:sticky lg:top-4 lg:self-start">
-                    <div class="flex lg:flex-col gap-2 overflow-x-auto lg:overflow-visible bg-gray-900/50 lg:bg-transparent p-2 lg:p-0 rounded-lg lg:rounded-none">
+                    <div role="tablist" aria-label="Why Linqraft options" class="flex lg:flex-col gap-2 overflow-x-auto lg:overflow-visible bg-gray-900/50 lg:bg-transparent p-2 lg:p-0 rounded-lg lg:rounded-none">
                         <button @onclick="() => SetActiveTab(0)" 
+                                role="tab"
+                                id="tab-include"
+                                aria-selected="@(activeTab == 0)"
+                                aria-controls="tab-content-0"
                                 class="why-tab whitespace-nowrap px-4 py-3 text-sm font-medium rounded-lg transition-all duration-200 @(activeTab == 0 ? "bg-blue-600 text-white shadow-lg" : "text-gray-400 hover:text-white hover:bg-gray-800")">
                             ⚠️ Include Pattern
                         </button>
                         <button @onclick="() => SetActiveTab(1)" 
+                                role="tab"
+                                id="tab-manual"
+                                aria-selected="@(activeTab == 1)"
+                                aria-controls="tab-content-1"
                                 class="why-tab whitespace-nowrap px-4 py-3 text-sm font-medium rounded-lg transition-all duration-200 @(activeTab == 1 ? "bg-blue-600 text-white shadow-lg" : "text-gray-400 hover:text-white hover:bg-gray-800")">
                             📝 Manual DTO
                         </button>
                         <button @onclick="() => SetActiveTab(2)" 
+                                role="tab"
+                                id="tab-linqraft"
+                                aria-selected="@(activeTab == 2)"
+                                aria-controls="tab-content-2"
                                 class="why-tab whitespace-nowrap px-4 py-3 text-sm font-medium rounded-lg transition-all duration-200 @(activeTab == 2 ? "bg-blue-600 text-white shadow-lg" : "text-gray-400 hover:text-white hover:bg-gray-800")">
                             ✨ Linqraft
                         </button>
@@ -98,7 +111,7 @@
                 <!-- Tab Content (Right Side) -->
                 <div class="flex-1">
                     @* Include Pattern Tab *@
-                    <div id="tab-content-0" class="tab-scroll-target @(activeTab == 0 ? "" : "hidden")">
+                    <div id="tab-content-0" role="tabpanel" aria-labelledby="tab-include" class="tab-scroll-target @(activeTab == 0 ? "" : "hidden")">>
                         <div class="grid gap-6 lg:grid-cols-2 items-start">
                             <div>
                                 <h3 class="text-xl font-semibold text-white mb-3 flex items-center gap-2">
@@ -137,7 +150,7 @@
                     </div>
 
                     @* Manual DTO Tab *@
-                    <div id="tab-content-1" class="tab-scroll-target @(activeTab == 1 ? "" : "hidden")">
+                    <div id="tab-content-1" role="tabpanel" aria-labelledby="tab-manual" class="tab-scroll-target @(activeTab == 1 ? "" : "hidden")">>
                         <div class="grid gap-6 lg:grid-cols-2 items-start">
                             <div>
                                 <h3 class="text-xl font-semibold text-white mb-3 flex items-center gap-2">
@@ -175,7 +188,7 @@
                     </div>
 
                     @* Linqraft Tab *@
-                    <div id="tab-content-2" class="tab-scroll-target @(activeTab == 2 ? "" : "hidden")">
+                    <div id="tab-content-2" role="tabpanel" aria-labelledby="tab-linqraft" class="tab-scroll-target @(activeTab == 2 ? "" : "hidden")">>
                         <div class="grid gap-6 lg:grid-cols-2 items-start">
                             <div>
                                 <h3 class="text-xl font-semibold text-white mb-3 flex items-center gap-2">
@@ -568,9 +581,10 @@
     {
         try
         {
-            using var httpClient = new HttpClient();
-            httpClient.DefaultRequestHeaders.Add("User-Agent", "Linqraft-Playground");
-            var response = await httpClient.GetFromJsonAsync<GitHubRepo>(
+            // Use injected HttpClient to avoid socket exhaustion
+            Http.DefaultRequestHeaders.Remove("User-Agent");
+            Http.DefaultRequestHeaders.Add("User-Agent", "Linqraft-Playground");
+            var response = await Http.GetFromJsonAsync<GitHubRepo>(
                 "https://api.github.com/repos/arika0093/Linqraft");
             if (response != null)
             {
@@ -578,7 +592,14 @@
                 await InvokeAsync(StateHasChanged);
             }
         }
-        catch { }
+        catch (HttpRequestException)
+        {
+            // GitHub API is unreachable or rate limited - star count is optional
+        }
+        catch (JsonException)
+        {
+            // API response format changed - star count is optional
+        }
     }
     
     public async ValueTask DisposeAsync()
