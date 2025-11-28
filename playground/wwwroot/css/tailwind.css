@@ -310,8 +310,8 @@
   .h-screen {
     height: 100vh;
   }
-  .max-h-150 {
-    max-height: calc(var(--spacing) * 150);
+  .max-h-120 {
+    max-height: calc(var(--spacing) * 120);
   }
   .min-h-\[50px\] {
     min-height: 50px;
