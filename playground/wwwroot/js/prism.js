@@ -10,22 +10,24 @@
         },
         highlightElement: function(element) {
             var language = element.className.match(/language-(\w+)/);
-            if (language && Prism.languages[language[1]]) {
-                var grammar = Prism.languages[language[1]];
-                var code = element.textContent;
-                element.innerHTML = Prism.highlight(code, grammar);
-            }
+            var code = element.textContent;
             
-            // Add line numbers
+            // Add line numbers first (before modifying content)
             var pre = element.parentElement;
             if (pre && pre.classList.contains('line-numbers')) {
-                var lines = element.textContent.split('\n');
+                var lines = code.split('\n');
                 var lineNumbersWrapper = document.createElement('span');
                 lineNumbersWrapper.className = 'line-numbers-rows';
                 for (var i = 0; i < lines.length; i++) {
                     lineNumbersWrapper.appendChild(document.createElement('span'));
                 }
                 pre.appendChild(lineNumbersWrapper);
+            }
+            
+            // Then apply syntax highlighting
+            if (language && Prism.languages[language[1]]) {
+                var grammar = Prism.languages[language[1]];
+                element.innerHTML = Prism.highlight(code, grammar);
             }
         },
         highlight: function(text, grammar) {
@@ -47,8 +49,15 @@
                     var newTokens = [];
                     var lastIndex = 0;
                     
-                    regex.lastIndex = 0;
-                    while ((match = regex.exec(str)) !== null) {
+                    // Create a new regex for each string to avoid issues
+                    var re = new RegExp(regex.source, regex.flags);
+                    while ((match = re.exec(str)) !== null) {
+                        // Prevent infinite loops on zero-width matches
+                        if (match[0].length === 0) {
+                            re.lastIndex++;
+                            continue;
+                        }
+                        
                         if (match.index > lastIndex) {
                             newTokens.push(str.slice(lastIndex, match.index));
                         }
