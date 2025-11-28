@@ -5,6 +5,7 @@
     <LinqraftPropertyAccessor>GetAndInternalSet</LinqraftPropertyAccessor>
     <LinqraftHasRequired>false</LinqraftHasRequired>
     <LinqraftCommentOutput>None</LinqraftCommentOutput>
+    <LinqraftNestedDtoUseHashNamespace>true</LinqraftNestedDtoUseHashNamespace>
     <EmitCompilerGeneratedFiles>true</EmitCompilerGeneratedFiles>
     <CompilerGeneratedFilesOutputPath>.generated</CompilerGeneratedFilesOutputPath>
   </PropertyGroup>

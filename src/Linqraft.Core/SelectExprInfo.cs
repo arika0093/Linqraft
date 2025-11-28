@@ -93,6 +93,18 @@ public abstract record SelectExprInfo
     // Get expression type string (for documentation)
     protected abstract string GetExprTypeString();
 
+    /// <summary>
+    /// Gets the full name for a nested DTO class using the structure.
+    /// This allows derived classes to compute namespace-based naming using the structure's hash.
+    /// </summary>
+    protected virtual string GetNestedDtoFullNameFromStructure(DtoStructure nestedStructure)
+    {
+        var className = GetClassName(nestedStructure);
+        if (string.IsNullOrEmpty(className))
+            return "";
+        return GetNestedDtoFullName(className);
+    }
+
     // Get the full name for a nested DTO class (can be overridden for nested class support)
     protected virtual string GetNestedDtoFullName(string nestedClassName)
     {
@@ -104,6 +116,7 @@ public abstract record SelectExprInfo
         }
         return $"global::{dtoNamespace}.{nestedClassName}";
     }
+
 
     /// <summary>
     /// Generates the SelectExpr method code
@@ -610,10 +623,7 @@ public abstract record SelectExprInfo
     {
         var spaces = CodeFormatter.IndentSpaces(indents);
         var innerSpaces = CodeFormatter.IndentSpaces(indents + CodeFormatter.IndentSize);
-        var nestedClassName = GetClassName(nestedStructure);
-        var nestedDtoName = string.IsNullOrEmpty(nestedClassName)
-            ? ""
-            : GetNestedDtoFullName(nestedClassName);
+        var nestedDtoName = GetNestedDtoFullNameFromStructure(nestedStructure);
 
         // Generate the DTO object creation to replace the anonymous type with proper formatting
         var propertyAssignments = new List<string>();
@@ -657,11 +667,7 @@ public abstract record SelectExprInfo
     {
         var spaces = CodeFormatter.IndentSpaces(indents);
         var innerSpaces = CodeFormatter.IndentSpaces(indents + CodeFormatter.IndentSize);
-        var nestedClassName = GetClassName(nestedStructure);
-        // For anonymous types (empty class name), don't use namespace qualification
-        var nestedDtoName = string.IsNullOrEmpty(nestedClassName)
-            ? ""
-            : GetNestedDtoFullName(nestedClassName);
+        var nestedDtoName = GetNestedDtoFullNameFromStructure(nestedStructure);
 
         // Generate property assignments for nested DTO with proper formatting
         var propertyAssignments = new List<string>();
@@ -697,11 +703,8 @@ public abstract record SelectExprInfo
         var nestedStructure = property.NestedStructure!;
         var spaces = CodeFormatter.IndentSpaces(indents);
         var innerSpaces = CodeFormatter.IndentSpaces(indents + CodeFormatter.IndentSize);
-        var nestedClassName = GetClassName(nestedStructure);
-        // For anonymous types (empty class name), don't use namespace qualification
-        var nestedDtoName = string.IsNullOrEmpty(nestedClassName)
-            ? ""
-            : GetNestedDtoFullName(nestedClassName);
+        // For anonymous types (empty class name), GetNestedDtoFullNameFromStructure returns empty string
+        var nestedDtoName = GetNestedDtoFullNameFromStructure(nestedStructure);
 
         // Use Roslyn to extract Select information
         var selectInfo = ExtractSelectInfoFromSyntax(syntax);
@@ -1107,10 +1110,7 @@ public abstract record SelectExprInfo
         // If there's a nested structure, generate the Select with projection
         if (nestedStructure is not null)
         {
-            var nestedClassName = GetClassName(nestedStructure);
-            var nestedDtoName = string.IsNullOrEmpty(nestedClassName)
-                ? ""
-                : GetNestedDtoFullName(nestedClassName);
+            var nestedDtoName = GetNestedDtoFullNameFromStructure(nestedStructure);
 
             // Generate property assignments for nested DTO with proper formatting
             // Properties should be indented two levels from the base (one for SelectMany block, one for properties)
