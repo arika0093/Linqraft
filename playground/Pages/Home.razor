@@ -1,4 +1,7 @@
 @page "/"
+@inject IJSRuntime JS
+@inject HttpClient Http
+@implements IAsyncDisposable
 
 <PageTitle>Linqraft - On-demand DTO and Expression Tree Generation</PageTitle>
 
@@ -12,9 +15,10 @@
             </h1>
         </div>
         <p id="caption" class="text-lg sm:text-xl text-gray-200 max-w-3xl mb-4">
-            A Roslyn Source Generator for LINQ that gives you
-            on-demand DTO generation and null-safe projections - with
-            no runtime overhead and no dependencies.
+            A Roslyn Source Generator for
+            <span class="feature-text inline-block min-w-[280px] text-blue-400 font-semibold transition-opacity duration-500 @(isTransitioning ? "opacity-0" : "opacity-100")">
+                @rotatingFeatures[currentFeatureIndex]
+            </span>
         </p>
         <p class="text-sm text-gray-300 mb-8">
             Write simple <code class="px-1.5 py-0.5 rounded bg-gray-800 text-blue-300 text-xs">SelectExpr</code> queries and let Linqraft
@@ -31,9 +35,10 @@
             </a>
             <a href="https://www.nuget.org/packages/Linqraft" target="_blank"
                class="inline-flex items-center gap-2 px-6 py-3 rounded-lg bg-gray-800 hover:bg-gray-700 text-gray-100 font-medium text-sm sm:text-base transition-colors">
-                <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
-
-                    
+                <!-- NuGet Icon -->
+                <svg class="w-5 h-5" viewBox="0 0 512 512" fill="currentColor">
+                    <path d="M374.28 306.91c-29.19 0-52.87 23.67-52.87 52.87s23.67 52.87 52.87 52.87c29.19 0 52.87-23.67 52.87-52.87s-23.68-52.87-52.87-52.87zM203.04 170.07c-37.48 0-67.87 30.39-67.87 67.87s30.38 67.87 67.87 67.87c37.48 0 67.87-30.38 67.87-67.87s-30.39-67.87-67.87-67.87zM120.28 310.19c0 37.72-30.57 68.29-68.29 68.29-1.72 0-3.42-.07-5.11-.2v54.91c1.69.08 3.39.13 5.11.13 68 0 123.14-55.14 123.14-123.14 0-1.71-.05-3.41-.13-5.1H120.09c.13 1.69.19 3.39.19 5.11zM51.99 323.62c-28.68 0-51.93-23.25-51.93-51.93S23.31 219.77 51.99 219.77s51.93 23.25 51.93 51.93-23.25 51.92-51.93 51.92z" fill="#004880"/>
+                    <path d="M203.04 170.07c-37.48 0-67.87 30.39-67.87 67.87s30.38 67.87 67.87 67.87c37.48 0 67.87-30.38 67.87-67.87s-30.39-67.87-67.87-67.87z" fill="#004880"/>
                 </svg>
                 Install from NuGet
             </a>
@@ -43,6 +48,12 @@
                     <path d="M12 0c-6.626 0-12 5.373-12 12 0 5.302 3.438 9.8 8.207 11.387.599.111.793-.261.793-.577v-2.234c-3.338.726-4.033-1.416-4.033-1.416-.546-1.387-1.333-1.756-1.333-1.756-1.089-.745.083-.729.083-.729 1.205.084 1.839 1.237 1.839 1.237 1.07 1.834 2.807 1.304 3.492.997.107-.775.418-1.305.762-1.604-2.665-.305-5.467-1.334-5.467-5.931 0-1.311.469-2.381 1.236-3.221-.124-.303-.535-1.524.117-3.176 0 0 1.008-.322 3.301 1.23.957-.266 1.983-.399 3.003-.404 1.02.005 2.047.138 3.006.404 2.291-1.552 3.297-1.23 3.297-1.23.653 1.653.242 2.874.118 3.176.77.84 1.235 1.911 1.235 3.221 0 4.609-2.807 5.624-5.479 5.921.43.372.823 1.102.823 2.222v3.293c0 .319.192.694.801.576 4.765-1.589 8.199-6.086 8.199-11.386 0-6.627-5.373-12-12-12z"/>
                 </svg>
                 View on GitHub
+                @if (gitHubStars > 0)
+                {
+                    <span class="ml-1 px-2 py-0.5 bg-gray-700 rounded-full text-xs">
+                        ⭐ @gitHubStars.ToString("N0")
+                    </span>
+                }
             </a>
         </div>
         <div class="flex flex-wrap justify-center gap-3 text-xs sm:text-sm text-gray-400" translate="no">
@@ -58,81 +69,200 @@
         </div>
     </section>
 
-    <!-- Why Section -->
-    <section class="bg-gradient-to-b from-gray-950 to-gray-900 border-y border-gray-800">
-        <div class="max-w-5xl mx-auto px-6 py-12">
-            <h2 class="text-2xl font-bold text-white mb-8">
+    <!-- Why Section with Sticky Tabs -->
+    <section id="why-section" class="bg-gradient-to-b from-gray-950 to-gray-900 border-y border-gray-800">
+        <div class="max-w-6xl mx-auto px-6 py-12">
+            <h2 class="text-2xl font-bold text-white mb-8 text-center">
                 Why Linqraft?
             </h2>
             
-            <!-- Tabs Navigation -->
-            <div class="flex gap-2 mb-6 border-b border-gray-800 overflow-x-auto">
-                <button class="why-tab tab-active px-4 py-2 text-sm font-medium text-gray-300 hover:text-white border-b-2 border-b-blue-500 transition-colors" data-tab="include">
-                    Include / ThenInclude
-                </button>
-                <button class="why-tab px-4 py-2 text-sm font-medium text-gray-400 hover:text-white border-b-2 border-b-transparent transition-colors" data-tab="manual">
-                    Manual DTO
-                </button>
-                <button class="why-tab px-4 py-2 text-sm font-medium text-gray-400 hover:text-white border-b-2 border-b-transparent transition-colors" data-tab="linqraft">
-                    Linqraft
-                </button>
-            </div>
+            <div class="flex flex-col lg:flex-row gap-8">
+                <!-- Sticky Tabs Navigation (Left Side on Desktop) -->
+                <div class="lg:w-48 lg:sticky lg:top-4 lg:self-start">
+                    <div class="flex lg:flex-col gap-2 overflow-x-auto lg:overflow-visible bg-gray-900/50 lg:bg-transparent p-2 lg:p-0 rounded-lg lg:rounded-none">
+                        <button @onclick="() => SetActiveTab(0)" 
+                                class="why-tab whitespace-nowrap px-4 py-3 text-sm font-medium rounded-lg transition-all duration-200 @(activeTab == 0 ? "bg-blue-600 text-white shadow-lg" : "text-gray-400 hover:text-white hover:bg-gray-800")">
+                            ⚠️ Include Pattern
+                        </button>
+                        <button @onclick="() => SetActiveTab(1)" 
+                                class="why-tab whitespace-nowrap px-4 py-3 text-sm font-medium rounded-lg transition-all duration-200 @(activeTab == 1 ? "bg-blue-600 text-white shadow-lg" : "text-gray-400 hover:text-white hover:bg-gray-800")">
+                            📝 Manual DTO
+                        </button>
+                        <button @onclick="() => SetActiveTab(2)" 
+                                class="why-tab whitespace-nowrap px-4 py-3 text-sm font-medium rounded-lg transition-all duration-200 @(activeTab == 2 ? "bg-blue-600 text-white shadow-lg" : "text-gray-400 hover:text-white hover:bg-gray-800")">
+                            ✨ Linqraft
+                        </button>
+                    </div>
+                </div>
 
-            <!-- Tab Content -->
-            <div class="grid gap-8 md:grid-cols-2 md:items-center">
-                <!-- Include / ThenInclude Tab -->
-                <div class="why-tab-content tab-content-active" data-tab="include">
-                    <div>
-                        <h3 class="text-xl font-semibold text-white mb-3">Include / ThenInclude</h3>
-                <p class="text-gray-300 mb-4 text-sm sm:text-base">
-                    When querying complex object graphs (e.g., EF Core with multiple
-                    <code class="px-1 py-0.5 ml-1 rounded bg-gray-800 text-blue-300 text-xs">Include</code> /
-                    <code class="px-1 py-0.5 rounded bg-gray-800 text-blue-300 text-xs">ThenInclude</code>
-                    calls), code quickly becomes unreadable and brittle.
-                </p>
-                <ul class="space-y-2 text-gray-300 text-sm sm:text-base">
-                    <li>Hard-to-read chains of <code class="px-1 py-0.5 rounded bg-gray-800 text-blue-300 text-xs">Include</code> / <code class="px-1 py-0.5 rounded bg-gray-800 text-blue-300 text-xs">ThenInclude</code></li>
-                    <li>Hidden <code class="px-1 py-0.5 rounded bg-gray-800 text-blue-300 text-xs">NullReferenceException</code>s when you forget an include</li>
-                    <li>Manually maintained DTO classes that must stay in sync</li>
-                    <li>Verbose null checks because expression trees don’t support <code class="px-1 py-0.5 rounded bg-gray-800 text-blue-300 text-xs">?.</code></li>
-                </ul>
-                <p class="text-gray-300 mt-4 text-sm sm:text-base">
-                    Linqraft lets you project to DTOs using simple anonymous-type selectors,
-                    automatically generates the DTO types, and translates null-propagation operators into
-                    safe expression-tree code.
-                </p>
-            </div>
+                <!-- Tab Content (Right Side) -->
+                <div class="flex-1">
+                    @* Include Pattern Tab *@
+                    <div id="tab-content-0" class="tab-scroll-target @(activeTab == 0 ? "" : "hidden")">
+                        <div class="grid gap-6 lg:grid-cols-2 items-start">
+                            <div>
+                                <h3 class="text-xl font-semibold text-white mb-3 flex items-center gap-2">
+                                    <span class="text-yellow-500">⚠️</span> The Include / ThenInclude Problem
+                                </h3>
+                                <p class="text-gray-300 mb-4 text-sm sm:text-base">
+                                    When fetching data from a database with many related tables, writing it naively would involve heavy use of 
+                                    <code class="code-inline">Include</code> / <code class="code-inline">ThenInclude</code>, 
+                                    resulting in code that is hard to read and maintain.
+                                </p>
+                                <ul class="space-y-3 text-gray-300 text-sm sm:text-base">
+                                    <li class="flex items-start gap-2">
+                                        <span class="text-red-400 mt-1">✗</span>
+                                        <span>The Include-based style becomes <strong class="text-white">verbose and hard to follow</strong></span>
+                                    </li>
+                                    <li class="flex items-start gap-2">
+                                        <span class="text-red-400 mt-1">✗</span>
+                                        <span>Forgetting an <code class="code-inline">Include</code> can lead to runtime <code class="code-inline">NullReferenceException</code>s</span>
+                                    </li>
+                                    <li class="flex items-start gap-2">
+                                        <span class="text-red-400 mt-1">✗</span>
+                                        <span>Fetching entire object graphs is often <strong class="text-white">wasteful and hurts performance</strong></span>
+                                    </li>
+                                </ul>
+                            </div>
+                            <div class="code-block">
+                                <div class="code-block-header">
+                                    <span class="code-block-dot bg-red-500"></span>
+                                    <span class="code-block-dot bg-yellow-500"></span>
+                                    <span class="code-block-dot bg-green-500"></span>
+                                    <span class="ml-2 text-gray-400 text-xs">Include Pattern</span>
+                                </div>
+                                <pre class="code-content"><code class="language-csharp">@((MarkupString)includePatternCode)</code></pre>
+                            </div>
+                        </div>
+                    </div>
 
-            <div class="bg-gray-900 rounded-xl border border-gray-800 p-4 sm:p-5 text-xs sm:text-sm text-gray-200 shadow-lg shadow-black/30">
-                <p class="font-semibold text-gray-100 mb-2">From this:</p>
-<pre class="overflow-x-auto text-[0.7rem] sm:text-xs leading-relaxed"><code>// Verbose and error-prone
-var orders = await dbContext.Orders
-    .Include(o =&gt; o.Customer).ThenInclude(c =&gt; c.Address).ThenInclude(a =&gt; a.Country)
-    .Include(o =&gt; o.Customer).ThenInclude(c =&gt; c.Address).ThenInclude(a =&gt; a.City)
-    .Include(o =&gt; o.OrderItems).ThenInclude(oi =&gt; oi.Product)
-    .ToListAsync();</code></pre>
+                    @* Manual DTO Tab *@
+                    <div id="tab-content-1" class="tab-scroll-target @(activeTab == 1 ? "" : "hidden")">
+                        <div class="grid gap-6 lg:grid-cols-2 items-start">
+                            <div>
+                                <h3 class="text-xl font-semibold text-white mb-3 flex items-center gap-2">
+                                    <span class="text-blue-400">📝</span> Manual DTO Projection
+                                </h3>
+                                <p class="text-gray-300 mb-4 text-sm sm:text-base">
+                                    A better approach is to project into DTOs and select only the fields you need. 
+                                    This yields better performance but has drawbacks:
+                                </p>
+                                <ul class="space-y-3 text-gray-300 text-sm sm:text-base">
+                                    <li class="flex items-start gap-2">
+                                        <span class="text-yellow-400 mt-1">⚠</span>
+                                        <span>You must <strong class="text-white">define DTO classes manually</strong></span>
+                                    </li>
+                                    <li class="flex items-start gap-2">
+                                        <span class="text-yellow-400 mt-1">⚠</span>
+                                        <span>Expression trees <strong class="text-white">don't support the <code class="code-inline">?.</code> operator</strong></span>
+                                    </li>
+                                    <li class="flex items-start gap-2">
+                                        <span class="text-yellow-400 mt-1">⚠</span>
+                                        <span>The deeper the child elements, the <strong class="text-white">more complex null checks</strong></span>
+                                    </li>
+                                </ul>
+                            </div>
+                            <div class="code-block">
+                                <div class="code-block-header">
+                                    <span class="code-block-dot bg-red-500"></span>
+                                    <span class="code-block-dot bg-yellow-500"></span>
+                                    <span class="code-block-dot bg-green-500"></span>
+                                    <span class="ml-2 text-gray-400 text-xs">Manual DTO Pattern</span>
+                                </div>
+                                <pre class="code-content"><code class="language-csharp">@((MarkupString)manualDtoCode)</code></pre>
+                            </div>
+                        </div>
+                    </div>
 
-                <p class="font-semibold text-gray-100 mt-4 mb-2">To this:</p>
-<pre class="overflow-x-auto text-[0.7rem] sm:text-xs leading-relaxed"><code>// Clean, null-safe, DTO-based
-var orders = await dbContext.Orders
-    .SelectExpr&lt;Order, OrderDto&gt;(o =&gt; new
-    {
-        o.Id,
-        CustomerName     = o.Customer?.Name,
-        CustomerCountry  = o.Customer?.Address?.Country?.Name,
-        CustomerCity     = o.Customer?.Address?.City?.Name,
-        Items = o.OrderItems.Select(oi =&gt; new
-        {
-            ProductName = oi.Product?.Name,
-            oi.Quantity
-        })
-    })
-    .ToListAsync();
-
-// OrderDto and nested DTOs are auto-generated.</code></pre>
+                    @* Linqraft Tab *@
+                    <div id="tab-content-2" class="tab-scroll-target @(activeTab == 2 ? "" : "hidden")">
+                        <div class="grid gap-6 lg:grid-cols-2 items-start">
+                            <div>
+                                <h3 class="text-xl font-semibold text-white mb-3 flex items-center gap-2">
+                                    <span class="text-green-400">✨</span> The Linqraft Solution
+                                </h3>
+                                <p class="text-gray-300 mb-4 text-sm sm:text-base">
+                                    Linqraft solves these problems by providing <code class="code-inline">SelectExpr</code>, 
+                                    which supports null-propagation and automatic DTO generation.
+                                </p>
+                                <ul class="space-y-3 text-gray-300 text-sm sm:text-base">
+                                    <li class="flex items-start gap-2">
+                                        <span class="text-green-400 mt-1">✓</span>
+                                        <span>Use <code class="code-inline">?.</code> naturally - Linqraft translates it for you</span>
+                                    </li>
+                                    <li class="flex items-start gap-2">
+                                        <span class="text-green-400 mt-1">✓</span>
+                                        <span><strong class="text-white">No manual DTO definitions</strong> - auto-generated</span>
+                                    </li>
+                                    <li class="flex items-start gap-2">
+                                        <span class="text-green-400 mt-1">✓</span>
+                                        <span><strong class="text-white">No runtime overhead</strong> - compile time generation</span>
+                                    </li>
+                                    <li class="flex items-start gap-2">
+                                        <span class="text-green-400 mt-1">✓</span>
+                                        <span><strong class="text-white">Zero dependencies</strong> - only a source generator</span>
+                                    </li>
+                                </ul>
+                            </div>
+                            <div class="code-block border-green-800">
+                                <div class="code-block-header bg-green-950/50">
+                                    <span class="code-block-dot bg-red-500"></span>
+                                    <span class="code-block-dot bg-yellow-500"></span>
+                                    <span class="code-block-dot bg-green-500"></span>
+                                    <span class="ml-2 text-green-400 text-xs">Linqraft Pattern</span>
+                                </div>
+                                <pre class="code-content"><code class="language-csharp">@((MarkupString)linqraftCode)</code></pre>
+                            </div>
+                        </div>
+                    </div>
+                </div>
             </div>
         </div>
-        </div>
+    </section>
+
+    <!-- Code Comparison Section -->
+    <section class="max-w-6xl mx-auto px-6 py-12">
+        <h2 class="text-2xl font-bold text-white mb-4 text-center">
+            Side-by-Side Comparison
+        </h2>
+        <p class="text-gray-400 text-center mb-8 max-w-2xl mx-auto">
+            See the difference between traditional manual DTO projection and Linqraft's clean approach
+        </p>
+        
+        <div class="grid gap-6 lg:grid-cols-2">
+            <!-- Manual DTO Side -->
+            <div>
+                <div class="flex items-center gap-2 mb-3">
+                    <span class="text-red-400 text-lg">❌</span>
+                    <h3 class="text-lg font-semibold text-gray-300">Traditional Manual DTO</h3>
+                </div>
+                <div class="code-block h-full">
+                    <div class="code-block-header">
+                        <span class="code-block-dot bg-red-500"></span>
+                        <span class="code-block-dot bg-yellow-500"></span>
+                        <span class="code-block-dot bg-green-500"></span>
+                        <span class="ml-2 text-gray-400 text-xs">Before - Verbose</span>
+                    </div>
+                    <pre class="code-content text-xs"><code class="language-csharp">@((MarkupString)comparisonManualCode)</code></pre>
+                </div>
+            </div>
+            
+            <!-- Linqraft Side -->
+            <div>
+                <div class="flex items-center gap-2 mb-3">
+                    <span class="text-green-400 text-lg">✅</span>
+                    <h3 class="text-lg font-semibold text-gray-300">With Linqraft</h3>
+                </div>
+                <div class="code-block h-full border-green-800">
+                    <div class="code-block-header bg-green-950/50">
+                        <span class="code-block-dot bg-red-500"></span>
+                        <span class="code-block-dot bg-yellow-500"></span>
+                        <span class="code-block-dot bg-green-500"></span>
+                        <span class="ml-2 text-green-400 text-xs">After - Clean</span>
+                    </div>
+                    <pre class="code-content text-xs"><code class="language-csharp">@((MarkupString)comparisonLinqraftCode)</code></pre>
+                </div>
+            </div>
         </div>
     </section>
 
@@ -144,9 +274,7 @@ var orders = await dbContext.Orders
         <div class="grid gap-6 md:grid-cols-2">
             <div class="bg-gray-900 border border-gray-800 rounded-xl p-5">
                 <div class="text-2xl mb-3">⚙️</div>
-                <h3 class="text-lg font-semibold mb-2 text-white">
-                    On-Demand DTO Generation
-                </h3>
+                <h3 class="text-lg font-semibold mb-2 text-white">On-Demand DTO Generation</h3>
                 <p class="text-gray-300 text-sm text-left">
                     Define your projection once using an anonymous type. Linqraft generates strongly-typed DTO classes
                     - no manual DTO definitions required, even for nested types and collections.
@@ -154,53 +282,39 @@ var orders = await dbContext.Orders
             </div>
             <div class="bg-gray-900 border border-gray-800 rounded-xl p-5">
                 <div class="text-2xl mb-3">🛡️</div>
-                <h3 class="text-lg font-semibold mb-2 text-white">
-                    Null-Safe Projections
-                </h3>
+                <h3 class="text-lg font-semibold mb-2 text-white">Null-Safe Projections</h3>
                 <p class="text-gray-300 text-sm text-left">
-                    Write using <code class="px-1 py-0.5 rounded bg-gray-800 text-blue-300 text-xs">?.</code> as usual.
-                    Linqraft translates null-conditional access into expression-tree friendly null checks,
-                    keeping your queries readable and safe.
+                    Write using <code class="code-inline">?.</code> as usual. Linqraft translates null-conditional access
+                    into expression-tree friendly null checks, keeping your queries readable and safe.
                 </p>
             </div>
             <div class="bg-gray-900 border border-gray-800 rounded-xl p-5">
                 <div class="text-2xl mb-3">🔍</div>
-                <h3 class="text-lg font-semibold mb-2 text-white">
-                    Analyzer-Based Migration
-                </h3>
+                <h3 class="text-lg font-semibold mb-2 text-white">Analyzer-Based Migration</h3>
                 <p class="text-gray-300 text-sm text-left">
-                    Built-in analyzers can detect traditional <code class="px-1 py-0.5 rounded bg-gray-800 text-blue-300 text-xs">Select</code>
-                    patterns and offer code fixes to migrate to <code class="px-1 py-0.5 rounded bg-gray-800 text-blue-300 text-xs">SelectExpr</code>
-                    in seconds.
+                    Built-in analyzers can detect traditional <code class="code-inline">Select</code> patterns and offer
+                    code fixes to migrate to <code class="code-inline">SelectExpr</code> in seconds.
                 </p>
             </div>
             <div class="bg-gray-900 border border-gray-800 rounded-xl p-5">
                 <div class="text-2xl mb-3">🧩</div>
-                <h3 class="text-lg font-semibold mb-2 text-white">
-                    Works with Any LINQ Provider
-                </h3>
+                <h3 class="text-lg font-semibold mb-2 text-white">Works with Any LINQ Provider</h3>
                 <p class="text-gray-300 text-sm text-left">
                     Use Linqraft with EF Core or any other LINQ provider that supports
-                    <code class="px-1 py-0.5 rounded bg-gray-800 text-blue-300 text-xs">IQueryable</code> /
-                    <code class="px-1 py-0.5 rounded bg-gray-800 text-blue-300 text-xs">IEnumerable</code>.
-                    No runtime reflection, no custom query provider required.
+                    <code class="code-inline">IQueryable</code> / <code class="code-inline">IEnumerable</code>.
                 </p>
             </div>
             <div class="bg-gray-900 border border-gray-800 rounded-xl p-5">
                 <div class="text-2xl mb-3">✏️</div>
-                <h3 class="text-lg font-semibold mb-2 text-white">
-                    Customizable DTOs
-                </h3>
+                <h3 class="text-lg font-semibold mb-2 text-white">Customizable DTOs</h3>
                 <p class="text-gray-300 text-sm text-left">
-                    Generated DTOs are partial (or records, if you prefer).
-                    Extend them with your own members, control property accessibility, and tweak XML documentation via MSBuild properties.
+                    Generated DTOs are partial (or records). Extend them with your own members,
+                    control property accessibility, and tweak XML documentation via MSBuild properties.
                 </p>
             </div>
             <div class="bg-gray-900 border border-gray-800 rounded-xl p-5">
                 <div class="text-2xl mb-3">🚀</div>
-                <h3 class="text-lg font-semibold mb-2 text-white">
-                    Production-Ready Performance
-                </h3>
+                <h3 class="text-lg font-semibold mb-2 text-white">Production-Ready Performance</h3>
                 <p class="text-gray-300 text-sm text-left">
                     Benchmarks show Linqraft projections are on par with traditional manual DTO mappings,
                     while keeping your query code significantly cleaner and easier to maintain.
@@ -211,68 +325,34 @@ var orders = await dbContext.Orders
 
     <!-- FAQ & Links -->
     <section class="max-w-5xl mx-auto px-6 py-12">
-        <h2 class="text-2xl font-bold text-white mb-6 text-center md:text-left">
-            FAQ & Resources
-        </h2>
+        <h2 class="text-2xl font-bold text-white mb-6 text-center md:text-left">FAQ & Resources</h2>
         <div class="grid gap-8 md:grid-cols-2">
             <div>
-                <h3 class="text-lg font-semibold text-white mb-3">
-                    Common Questions
-                </h3>
+                <h3 class="text-lg font-semibold text-white mb-3">Common Questions</h3>
                 <dl class="space-y-6 text-sm sm:text-base text-gray-200">
                     <div>
                         <dt class="font-semibold">Can I use it without EF Core?</dt>
-                        <dd class="text-gray-300">
-                            Yes. Linqraft works with any LINQ provider that supports
-                            <code class="px-1 py-0.5 rounded bg-gray-800 text-blue-300 text-xs">IQueryable</code> /
-                            <code class="px-1 py-0.5 rounded bg-gray-800 text-blue-300 text-xs">IEnumerable</code>.
-                        </dd>
+                        <dd class="text-gray-300">Yes. Linqraft works with any LINQ provider that supports
+                            <code class="code-inline">IQueryable</code> / <code class="code-inline">IEnumerable</code>.</dd>
                     </div>
                     <div>
                         <dt class="font-semibold">Can I reuse the generated DTOs?</dt>
-                        <dd class="text-gray-300">
-                            Absolutely. Use them in controllers, API contracts, Swagger schemas, or anywhere in your codebase.
-                            You can also navigate to the generated code and copy it if you want to decouple it.
-                        </dd>
+                        <dd class="text-gray-300">Absolutely. Use them in controllers, API contracts, Swagger schemas, or anywhere.</dd>
                     </div>
                     <div>
                         <dt class="font-semibold">What about performance?</dt>
-                        <dd class="text-gray-300">
-                            Benchmarks show Linqraft is comparable to traditional manual DTO projections in both time and allocations.
-                        </dd>
+                        <dd class="text-gray-300">Benchmarks show Linqraft is comparable to traditional manual DTO projections.</dd>
                     </div>
                 </dl>
             </div>
             <div class="text-right">
-                <h3 class="text-lg font-semibold text-white mb-3">
-                    Explore More
-                </h3>
+                <h3 class="text-lg font-semibold text-white mb-3">Explore More</h3>
                 <ul class="space-y-4 text-sm sm:text-base text-blue-300">
-                    <li>
-                        <a href="https://github.com/arika009/Linqraft" target="_blank" class="hover:underline">
-                            GitHub Repository
-                        </a>
-                    </li>
-                    <li>
-                        <a href="https://www.nuget.org/packages/Linqraft" target="_blank" class="hover:underline">
-                            NuGet Package
-                        </a>
-                    </li>
-                    <li>
-                        <a href="https://deepwiki.com/arika009/Linqraft" target="_blank" class="hover:underline">
-                            DeepWiki - In-depth Documentation
-                        </a>
-                    </li>
-                    <li>
-                        <a href="/playground" class="hover:underline">
-                            Online Playground
-                        </a>
-                    </li>
-                    <li>
-                        <a href="https://github.com/arika009/Linqraft/tree/main/examples" target="_blank" class="hover:underline">
-                            Example Projects (EF Core, API, Benchmarks)
-                        </a>
-                    </li>
+                    <li><a href="https://github.com/arika0093/Linqraft" target="_blank" class="hover:underline">GitHub Repository</a></li>
+                    <li><a href="https://www.nuget.org/packages/Linqraft" target="_blank" class="hover:underline">NuGet Package</a></li>
+                    <li><a href="https://deepwiki.com/arika0093/Linqraft" target="_blank" class="hover:underline">DeepWiki Documentation</a></li>
+                    <li><a href="/playground" class="hover:underline">Online Playground</a></li>
+                    <li><a href="https://github.com/arika0093/Linqraft/tree/main/examples" target="_blank" class="hover:underline">Example Projects</a></li>
                 </ul>
             </div>
         </div>
@@ -281,9 +361,237 @@ var orders = await dbContext.Orders
     <!-- Footer -->
     <footer class="border-t border-gray-800">
         <div class="max-w-5xl mx-auto px-6 py-6 text-center text-xs sm:text-sm text-gray-500">
-            <p>
-                Linqraft is open source software licensed under the Apache License 2.0.
-            </p>
+            <p>Linqraft is open source software licensed under the Apache License 2.0.</p>
         </div>
     </footer>
 </div>
+
+<style>
+    .code-inline {
+        padding: 0.125rem 0.25rem;
+        border-radius: 0.25rem;
+        background-color: rgb(31 41 55);
+        color: rgb(147 197 253);
+        font-size: 0.75rem;
+    }
+    
+    .code-block {
+        background-color: rgb(17 24 39);
+        border-radius: 0.75rem;
+        border: 1px solid rgb(31 41 55);
+        overflow: hidden;
+        box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.3);
+    }
+    
+    .code-block-header {
+        display: flex;
+        align-items: center;
+        gap: 0.375rem;
+        padding: 0.5rem 1rem;
+        background-color: rgba(31, 41, 55, 0.5);
+        border-bottom: 1px solid rgb(55 65 81);
+    }
+    
+    .code-block-dot {
+        width: 0.75rem;
+        height: 0.75rem;
+        border-radius: 9999px;
+    }
+    
+    .code-content {
+        padding: 1rem;
+        overflow-x: auto;
+        font-size: 0.875rem;
+        line-height: 1.625;
+        font-family: "JetBrains Mono", "Consolas", "Monaco", monospace;
+        color: #d4d4d4;
+        background: #1e1e1e;
+    }
+    
+    /* C# Syntax Highlighting - VS Dark Theme */
+    .code-content .keyword { color: #569cd6; }
+    .code-content .type { color: #4ec9b0; }
+    .code-content .string { color: #ce9178; }
+    .code-content .comment { color: #6a9955; }
+    .code-content .method { color: #dcdcaa; }
+    .code-content .property { color: #9cdcfe; }
+    .code-content .number { color: #b5cea8; }
+    .code-content .operator { color: #d4d4d4; }
+    .code-content .variable { color: #9cdcfe; }
+</style>
+
+@code {
+    private readonly string[] rotatingFeatures = [
+        "On-Demand DTO Generation",
+        "Null Conditional Operators",
+        "Analyzer-Based Migration",
+        "Zero Runtime Dependencies"
+    ];
+    
+    private int currentFeatureIndex = 0;
+    private bool isTransitioning = false;
+    private System.Timers.Timer? featureRotationTimer;
+    private int gitHubStars = 0;
+    private int activeTab = 0;
+    
+    private readonly string includePatternCode = @"<span class=""comment"">// ⚠️ Unreadable, inefficient, and error-prone</span>
+<span class=""keyword"">var</span> orders = <span class=""keyword"">await</span> dbContext.<span class=""property"">Orders</span>
+    .<span class=""method"">Include</span>(o =&gt; o.<span class=""property"">Customer</span>)
+        .<span class=""method"">ThenInclude</span>(c =&gt; c.<span class=""property"">Address</span>)
+            .<span class=""method"">ThenInclude</span>(a =&gt; a.<span class=""property"">Country</span>)
+    .<span class=""method"">Include</span>(o =&gt; o.<span class=""property"">Customer</span>)
+        .<span class=""method"">ThenInclude</span>(c =&gt; c.<span class=""property"">Address</span>)
+            .<span class=""method"">ThenInclude</span>(a =&gt; a.<span class=""property"">City</span>)
+    .<span class=""method"">Include</span>(o =&gt; o.<span class=""property"">OrderItems</span>)
+        .<span class=""method"">ThenInclude</span>(oi =&gt; oi.<span class=""property"">Product</span>)
+    .<span class=""method"">ToListAsync</span>();";
+
+    private readonly string manualDtoCode = @"<span class=""comment"">// 🤔 Verbose null checks required</span>
+<span class=""keyword"">var</span> orders = <span class=""keyword"">await</span> dbContext.<span class=""property"">Orders</span>
+    .<span class=""method"">Select</span>(o =&gt; <span class=""keyword"">new</span> <span class=""type"">OrderDto</span>
+    {
+        <span class=""property"">Id</span> = o.<span class=""property"">Id</span>,
+        <span class=""property"">CustomerName</span> = o.<span class=""property"">Customer</span> != <span class=""keyword"">null</span> 
+            ? o.<span class=""property"">Customer</span>.<span class=""property"">Name</span> : <span class=""keyword"">null</span>,
+        <span class=""property"">CustomerCountry</span> = o.<span class=""property"">Customer</span> != <span class=""keyword"">null</span> 
+            &amp;&amp; o.<span class=""property"">Customer</span>.<span class=""property"">Address</span> != <span class=""keyword"">null</span>
+            &amp;&amp; o.<span class=""property"">Customer</span>.<span class=""property"">Address</span>.<span class=""property"">Country</span> != <span class=""keyword"">null</span>
+                ? o.<span class=""property"">Customer</span>.<span class=""property"">Address</span>.<span class=""property"">Country</span>.<span class=""property"">Name</span>
+                : <span class=""keyword"">null</span>,
+    }).<span class=""method"">ToListAsync</span>();
+
+<span class=""comment"">// 🤔 You must define DTO classes manually</span>
+<span class=""keyword"">public class</span> <span class=""type"">OrderDto</span> { <span class=""comment"">/* ... */</span> }
+<span class=""keyword"">public class</span> <span class=""type"">OrderItemDto</span> { <span class=""comment"">/* ... */</span> }";
+
+    private readonly string linqraftCode = @"<span class=""comment"">// ✨ Clean and null-safe with Linqraft</span>
+<span class=""keyword"">var</span> orders = <span class=""keyword"">await</span> dbContext.<span class=""property"">Orders</span>
+    .<span class=""method"">SelectExpr</span>&lt;<span class=""type"">Order</span>, <span class=""type"">OrderDto</span>&gt;(o =&gt; <span class=""keyword"">new</span>
+    {
+        o.<span class=""property"">Id</span>,
+        <span class=""property"">CustomerName</span> = o.<span class=""property"">Customer</span>?.<span class=""property"">Name</span>,
+        <span class=""property"">CustomerCountry</span> = o.<span class=""property"">Customer</span>?.<span class=""property"">Address</span>?.<span class=""property"">Country</span>?.<span class=""property"">Name</span>,
+        <span class=""property"">CustomerCity</span> = o.<span class=""property"">Customer</span>?.<span class=""property"">Address</span>?.<span class=""property"">City</span>?.<span class=""property"">Name</span>,
+        <span class=""property"">Items</span> = o.<span class=""property"">OrderItems</span>.<span class=""method"">Select</span>(oi =&gt; <span class=""keyword"">new</span>
+        {
+            <span class=""property"">ProductName</span> = oi.<span class=""property"">Product</span>?.<span class=""property"">Name</span>,
+            oi.<span class=""property"">Quantity</span>
+        })
+    }).<span class=""method"">ToListAsync</span>();
+
+<span class=""comment"">// ✨ OrderDto and nested DTOs are auto-generated!</span>";
+
+    private readonly string comparisonManualCode = @"<span class=""comment"">// Manual DTO with verbose null checks</span>
+<span class=""keyword"">var</span> orders = <span class=""keyword"">await</span> dbContext.<span class=""property"">Orders</span>
+    .<span class=""method"">Select</span>(o =&gt; <span class=""keyword"">new</span> <span class=""type"">OrderDto</span>
+    {
+        <span class=""property"">Id</span> = o.<span class=""property"">Id</span>,
+        <span class=""property"">CustomerName</span> = o.<span class=""property"">Customer</span> != <span class=""keyword"">null</span> 
+            ? o.<span class=""property"">Customer</span>.<span class=""property"">Name</span> : <span class=""keyword"">null</span>,
+        <span class=""property"">CustomerCountry</span> = o.<span class=""property"">Customer</span> != <span class=""keyword"">null</span> 
+            &amp;&amp; o.<span class=""property"">Customer</span>.<span class=""property"">Address</span> != <span class=""keyword"">null</span>
+            &amp;&amp; o.<span class=""property"">Customer</span>.<span class=""property"">Address</span>.<span class=""property"">Country</span> != <span class=""keyword"">null</span>
+                ? o.<span class=""property"">Customer</span>.<span class=""property"">Address</span>.<span class=""property"">Country</span>.<span class=""property"">Name</span>
+                : <span class=""keyword"">null</span>,
+        <span class=""property"">Items</span> = o.<span class=""property"">OrderItems</span>.<span class=""method"">Select</span>(oi =&gt; 
+            <span class=""keyword"">new</span> <span class=""type"">OrderItemDto</span>
+            {
+                <span class=""property"">ProductName</span> = oi.<span class=""property"">Product</span> != <span class=""keyword"">null</span> 
+                    ? oi.<span class=""property"">Product</span>.<span class=""property"">Name</span> : <span class=""keyword"">null</span>,
+                <span class=""property"">Quantity</span> = oi.<span class=""property"">Quantity</span>
+            }).<span class=""method"">ToList</span>()
+    }).<span class=""method"">ToListAsync</span>();
+
+<span class=""comment"">// You must define these DTO classes manually:</span>
+<span class=""keyword"">public class</span> <span class=""type"">OrderDto</span>
+{
+    <span class=""keyword"">public int</span> <span class=""property"">Id</span> { <span class=""keyword"">get</span>; <span class=""keyword"">set</span>; }
+    <span class=""keyword"">public string</span>? <span class=""property"">CustomerName</span> { <span class=""keyword"">get</span>; <span class=""keyword"">set</span>; }
+    <span class=""keyword"">public string</span>? <span class=""property"">CustomerCountry</span> { <span class=""keyword"">get</span>; <span class=""keyword"">set</span>; }
+    <span class=""keyword"">public</span> <span class=""type"">List</span>&lt;<span class=""type"">OrderItemDto</span>&gt; <span class=""property"">Items</span> { <span class=""keyword"">get</span>; <span class=""keyword"">set</span>; }
+}
+
+<span class=""keyword"">public class</span> <span class=""type"">OrderItemDto</span>
+{
+    <span class=""keyword"">public string</span>? <span class=""property"">ProductName</span> { <span class=""keyword"">get</span>; <span class=""keyword"">set</span>; }
+    <span class=""keyword"">public int</span> <span class=""property"">Quantity</span> { <span class=""keyword"">get</span>; <span class=""keyword"">set</span>; }
+}";
+
+    private readonly string comparisonLinqraftCode = @"<span class=""comment"">// With Linqraft - clean and auto-generated</span>
+<span class=""keyword"">var</span> orders = <span class=""keyword"">await</span> dbContext.<span class=""property"">Orders</span>
+    .<span class=""method"">SelectExpr</span>&lt;<span class=""type"">Order</span>, <span class=""type"">OrderDto</span>&gt;(o =&gt; <span class=""keyword"">new</span>
+    {
+        o.<span class=""property"">Id</span>,
+        <span class=""property"">CustomerName</span> = o.<span class=""property"">Customer</span>?.<span class=""property"">Name</span>,
+        <span class=""property"">CustomerCountry</span> = o.<span class=""property"">Customer</span>?.<span class=""property"">Address</span>?.<span class=""property"">Country</span>?.<span class=""property"">Name</span>,
+        <span class=""property"">Items</span> = o.<span class=""property"">OrderItems</span>.<span class=""method"">Select</span>(oi =&gt; <span class=""keyword"">new</span>
+        {
+            <span class=""property"">ProductName</span> = oi.<span class=""property"">Product</span>?.<span class=""property"">Name</span>,
+            oi.<span class=""property"">Quantity</span>
+        })
+    }).<span class=""method"">ToListAsync</span>();
+
+<span class=""comment"">// ✨ That's it! No DTO classes to define.</span>
+<span class=""comment"">// OrderDto and OrderItemDto are auto-generated</span>
+<span class=""comment"">// with all required properties.</span>
+<span class=""comment"">//</span>
+<span class=""comment"">// The null-conditional operators (?.) are</span>
+<span class=""comment"">// automatically translated to expression-tree</span>
+<span class=""comment"">// compatible null checks.</span>";
+
+    protected override async Task OnInitializedAsync()
+    {
+        featureRotationTimer = new System.Timers.Timer(3000);
+        featureRotationTimer.Elapsed += async (sender, e) => await RotateFeature();
+        featureRotationTimer.AutoReset = true;
+        featureRotationTimer.Start();
+        
+        await FetchGitHubStars();
+    }
+    
+    private async Task RotateFeature()
+    {
+        isTransitioning = true;
+        await InvokeAsync(StateHasChanged);
+        
+        await Task.Delay(300);
+        
+        currentFeatureIndex = (currentFeatureIndex + 1) % rotatingFeatures.Length;
+        isTransitioning = false;
+        
+        await InvokeAsync(StateHasChanged);
+    }
+    
+    private void SetActiveTab(int tabIndex) => activeTab = tabIndex;
+    
+    private async Task FetchGitHubStars()
+    {
+        try
+        {
+            using var httpClient = new HttpClient();
+            httpClient.DefaultRequestHeaders.Add("User-Agent", "Linqraft-Playground");
+            var response = await httpClient.GetFromJsonAsync<GitHubRepo>(
+                "https://api.github.com/repos/arika0093/Linqraft");
+            if (response != null)
+            {
+                gitHubStars = response.StargazersCount;
+                await InvokeAsync(StateHasChanged);
+            }
+        }
+        catch { }
+    }
+    
+    public async ValueTask DisposeAsync()
+    {
+        if (featureRotationTimer != null)
+        {
+            featureRotationTimer.Stop();
+            featureRotationTimer.Dispose();
+        }
+    }
+    
+    private class GitHubRepo
+    {
+        public int StargazersCount { get; set; }
+    }
+}
