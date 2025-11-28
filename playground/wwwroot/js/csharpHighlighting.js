@@ -3,6 +3,10 @@
 // for generics, classes, methods, variables, and properties.
 
 window.csharpHighlighting = {
+    // Constants for span detection lookback/lookahead limits
+    SPAN_LOOKBACK_LIMIT: 50,
+    SPAN_LOOKAHEAD_LIMIT: 20,
+
     // C# keywords that should not be treated as identifiers
     keywords: new Set([
         'abstract', 'as', 'base', 'bool', 'break', 'byte', 'case', 'catch',
@@ -22,6 +26,12 @@ window.csharpHighlighting = {
         'add', 'remove', 'value', 'init', 'record', 'with', 'and', 'or', 'not',
         'when', 'nameof', 'required', 'scoped', 'file', 'allows', 'notnull'
     ]),
+
+    // Check if position is inside an existing span by looking at surrounding context
+    isInsideSpan: function(fullString, offset, lookback) {
+        const beforeMatch = fullString.substring(Math.max(0, offset - lookback), offset);
+        return beforeMatch.includes('<span') && !beforeMatch.includes('</span>');
+    },
 
     // Enhanced highlighting for C# code blocks
     enhanceHighlighting: function() {
@@ -63,8 +73,7 @@ window.csharpHighlighting = {
         // Process text nodes only - match TypeName&lt; patterns
         return html.replace(/([A-Z][a-zA-Z0-9]*)(&lt;)/g, function(match, typeName, bracket, offset, fullString) {
             // Check if this is inside a span (look for unbalanced tags before)
-            const beforeMatch = fullString.substring(Math.max(0, offset - 50), offset);
-            if (beforeMatch.includes('<span') && !beforeMatch.includes('</span>')) {
+            if (self.isInsideSpan(fullString, offset, self.SPAN_LOOKBACK_LIMIT)) {
                 return match; // Skip if inside a span
             }
             if (self.keywords.has(typeName)) return match;
@@ -91,8 +100,7 @@ window.csharpHighlighting = {
         // Match: .MethodName( pattern
         html = html.replace(/(\.)([A-Z][a-zA-Z0-9]*)(\s*\()/g, function(match, dot, methodName, paren, offset, fullString) {
             // Check if this is inside a span
-            const beforeMatch = fullString.substring(Math.max(0, offset - 50), offset);
-            if (beforeMatch.includes('<span') && !beforeMatch.includes('</span>')) {
+            if (self.isInsideSpan(fullString, offset, self.SPAN_LOOKBACK_LIMIT)) {
                 return match;
             }
             if (self.keywords.has(methodName)) return match;
@@ -102,8 +110,7 @@ window.csharpHighlighting = {
         // Also process standalone method calls like SelectExpr(
         html = html.replace(/(^|[^.\w>])([A-Z][a-zA-Z0-9]*)(\s*\()/gm, function(match, prefix, methodName, paren, offset, fullString) {
             // Check if this is inside a span
-            const beforeMatch = fullString.substring(Math.max(0, offset - 50), offset);
-            if (beforeMatch.includes('<span') && !beforeMatch.includes('</span>')) {
+            if (self.isInsideSpan(fullString, offset, self.SPAN_LOOKBACK_LIMIT)) {
                 return match;
             }
             if (self.keywords.has(methodName)) return match;
@@ -123,12 +130,11 @@ window.csharpHighlighting = {
         // Use a more careful pattern
         return html.replace(/(\.)([A-Z][a-zA-Z0-9]*)(?!\s*\()/g, function(match, dot, propName, offset, fullString) {
             // Check if this is inside a span
-            const beforeMatch = fullString.substring(Math.max(0, offset - 50), offset);
-            if (beforeMatch.includes('<span') && !beforeMatch.includes('</span>')) {
+            if (self.isInsideSpan(fullString, offset, self.SPAN_LOOKBACK_LIMIT)) {
                 return match;
             }
-            // Check if already processed
-            const afterMatch = fullString.substring(offset + match.length, offset + match.length + 20);
+            // Check if already processed (look ahead for closing span tag)
+            const afterMatch = fullString.substring(offset + match.length, offset + match.length + self.SPAN_LOOKAHEAD_LIMIT);
             if (afterMatch.startsWith('</span>')) {
                 return match;
             }
@@ -144,8 +150,7 @@ window.csharpHighlighting = {
         // Match: identifier followed by => (HTML: =&gt;)
         html = html.replace(/([a-z_][a-zA-Z0-9]*)(\s*)(=&gt;)/g, function(match, param, space, arrow, offset, fullString) {
             // Check if this is inside a span
-            const beforeMatch = fullString.substring(Math.max(0, offset - 50), offset);
-            if (beforeMatch.includes('<span') && !beforeMatch.includes('</span>')) {
+            if (self.isInsideSpan(fullString, offset, self.SPAN_LOOKBACK_LIMIT)) {
                 return match;
             }
             if (self.keywords.has(param)) return match;
@@ -155,8 +160,7 @@ window.csharpHighlighting = {
         // Match: (identifier) followed by => 
         html = html.replace(/\(([a-z_][a-zA-Z0-9]*)\)(\s*)(=&gt;)/g, function(match, param, space, arrow, offset, fullString) {
             // Check if this is inside a span
-            const beforeMatch = fullString.substring(Math.max(0, offset - 50), offset);
-            if (beforeMatch.includes('<span') && !beforeMatch.includes('</span>')) {
+            if (self.isInsideSpan(fullString, offset, self.SPAN_LOOKBACK_LIMIT)) {
                 return match;
             }
             if (self.keywords.has(param)) return match;
@@ -173,8 +177,8 @@ window.csharpHighlighting = {
             const self = this;
             Prism.hooks.add('complete', function(env) {
                 if (env.language === 'csharp') {
-                    // Delay slightly to ensure Prism has finished
-                    setTimeout(function() { self.enhanceHighlighting(); }, 0);
+                    // Use requestAnimationFrame for better performance than setTimeout(0)
+                    requestAnimationFrame(function() { self.enhanceHighlighting(); });
                 }
             });
         }
