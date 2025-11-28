@@ -22,7 +22,7 @@
             </span>
         </p>
         <p class="text-md text-gray-300 mb-8">
-            Write simple <code class="px-1.5 py-0.5 rounded bg-gray-800 text-blue-300 text-xs">SelectExpr</code> queries and let Linqraft
+            Write simple <code class="px-1.5 py-0.5 rounded bg-gray-800 text-blue-300 text-sm">SelectExpr</code> queries and let Linqraft
             handle expression trees, DTO classes, and null-propagation for you.
         </p>
         <div class="flex flex-wrap items-center justify-center gap-4 mb-6">
@@ -36,11 +36,6 @@
             </a>
             <a href="https://www.nuget.org/packages/Linqraft" target="_blank"
                class="inline-flex items-center gap-2 px-6 py-3 rounded-lg bg-gray-800 hover:bg-gray-700 text-gray-100 font-medium text-sm sm:text-base transition-colors">
-                <!-- NuGet Icon -->
-                <svg class="w-5 h-5" viewBox="0 0 512 512" fill="currentColor">
-                    <path d="M374.28 306.91c-29.19 0-52.87 23.67-52.87 52.87s23.67 52.87 52.87 52.87c29.19 0 52.87-23.67 52.87-52.87s-23.68-52.87-52.87-52.87zM203.04 170.07c-37.48 0-67.87 30.39-67.87 67.87s30.38 67.87 67.87 67.87c37.48 0 67.87-30.38 67.87-67.87s-30.39-67.87-67.87-67.87zM120.28 310.19c0 37.72-30.57 68.29-68.29 68.29-1.72 0-3.42-.07-5.11-.2v54.91c1.69.08 3.39.13 5.11.13 68 0 123.14-55.14 123.14-123.14 0-1.71-.05-3.41-.13-5.1H120.09c.13 1.69.19 3.39.19 5.11zM51.99 323.62c-28.68 0-51.93-23.25-51.93-51.93S23.31 219.77 51.99 219.77s51.93 23.25 51.93 51.93-23.25 51.92-51.93 51.92z" fill="#004880"/>
-                    <path d="M203.04 170.07c-37.48 0-67.87 30.39-67.87 67.87s30.38 67.87 67.87 67.87c37.48 0 67.87-30.38 67.87-67.87s-30.39-67.87-67.87-67.87z" fill="#004880"/>
-                </svg>
                 Install from NuGet
             </a>
             <a href="https://github.com/arika0093/Linqraft" target="_blank"
@@ -370,7 +365,6 @@
         border-radius: 0.25rem;
         background-color: rgb(31 41 55);
         color: rgb(147 197 253);
-        font-size: 0.75rem;
     }
     
     .code-block {
@@ -526,15 +520,7 @@
             <span class=""property"">ProductName</span> = oi.<span class=""property"">Product</span>?.<span class=""property"">Name</span>,
             oi.<span class=""property"">Quantity</span>
         })
-    }).<span class=""method"">ToListAsync</span>();
-
-<span class=""comment"">// ✨ That's it! No DTO classes to define.</span>
-<span class=""comment"">// OrderDto and OrderItemDto are auto-generated</span>
-<span class=""comment"">// with all required properties.</span>
-<span class=""comment"">//</span>
-<span class=""comment"">// The null-conditional operators (?.) are</span>
-<span class=""comment"">// automatically translated to expression-tree</span>
-<span class=""comment"">// compatible null checks.</span>";
+    }).<span class=""method"">ToListAsync</span>();";
 
     private CancellationTokenSource? _cts;
     
