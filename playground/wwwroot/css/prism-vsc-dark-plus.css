@@ -271,3 +271,46 @@ pre[class*="language-"] > code[class*="language-"] {
 	box-shadow: inset 5px 0 0 #f7d87c;
 	z-index: 0;
 }
+/*********************************************************
+* Enhanced C# Semantic Highlighting (VSCode Dark+ Theme)
+*/
+
+/* Type names - teal/cyan color like VSCode */
+.token.type-name {
+	color: #4ec9b0;
+}
+
+/* Method names - yellow color like VSCode */
+.token.method-name {
+	color: #dcdcaa;
+}
+
+/* Property access - light blue like VSCode */
+.token.property-access {
+	color: #9cdcfe;
+}
+
+/* Variable names - light blue like VSCode */
+.token.variable-name {
+	color: #9cdcfe;
+}
+
+/* Parameter names in lambdas - light blue like VSCode */
+.token.parameter-name {
+	color: #9cdcfe;
+}
+
+/* Interface names - slightly different teal for interfaces */
+.token.interface-name {
+	color: #b8d7a3;
+}
+
+/* Struct names - similar to class names */
+.token.struct-name {
+	color: #86c691;
+}
+
+/* Enum names */
+.token.enum-name {
+	color: #b8d7a3;
+}

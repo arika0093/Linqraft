@@ -117,6 +117,8 @@ var orders = await dbContext.Orders
         if (firstRender)
         {
             await JS.InvokeVoidAsync("Prism.highlightAll");
+            // Apply enhanced C# semantic highlighting after Prism
+            await JS.InvokeVoidAsync("csharpHighlighting.enhanceHighlighting");
         }
     }
 }
