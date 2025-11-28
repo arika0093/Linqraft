@@ -36,9 +36,14 @@
     <TailwindInputCssFile>tailwind.css</TailwindInputCssFile>
     <TailwindOutputCssFile>wwwroot/css/tailwind.css</TailwindOutputCssFile>
   </PropertyGroup>
-  <!-- <Target Name="CleanUpTailwindStaticCache" BeforeTargets="PrepareForBuild">
+  <!-- cleanup only use Debug build -->
+  <Target
+    Name="CleanUpTailwindStaticCache"
+    BeforeTargets="PrepareForBuild"
+    Condition="'$(Configuration)' == 'Debug'"
+  >
     <ItemGroup>
       <Content Remove="$(TailwindOutputCssFile)" />
     </ItemGroup>
-  </Target> -->
+  </Target>
 </Project>

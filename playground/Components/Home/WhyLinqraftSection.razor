@@ -1,19 +1,12 @@
 @inject IJSRuntime JS
 
 <section id="why-section" class="bg-gradient-to-b from-gray-950 to-gray-900 border-y border-gray-800">
-    <div class="max-w-5xl mx-auto px-6 py-16">
+    <div class="max-w-6xl mx-auto px-6 pt-16 pb-9">
         <SectionTitle>Why Linqraft?</SectionTitle>
         <p class="text-gray-400 text-center mb-8 max-w-3xl mx-auto">
             Consider a case where you need to fetch data from a database with many related tables.
         </p>
         
-        <!-- Horizontal Navigation -->
-        <nav class="flex justify-center gap-8 mb-12 border-b border-gray-800 pb-4">
-            <a href="#include-problem" class="text-gray-400 hover:text-white transition-colors text-sm">Include Problem</a>
-            <a href="#manual-dto" class="text-gray-400 hover:text-white transition-colors text-sm">Manual DTO</a>
-            <a href="#linqraft-solution" class="text-gray-400 hover:text-white transition-colors text-sm">Linqraft Solution</a>
-        </nav>
-
         <!-- Include Problem Section -->
         <div id="include-problem" class="mb-16">
             <h3 class="text-xl font-semibold text-white mb-4">The Include / ThenInclude Problem</h3>
@@ -59,7 +52,14 @@
                     <span>The deeper the child elements become, the more complex null checks are required.</span>
                 </li>
             </ul>
-            <CodeBlock Title="Manual DTO Pattern" Code="@manualDtoCode" />
+            <div class="lg:grid lg:grid-cols-2 lg:gap-3 mb-6">
+                <div class=" mb-4 lg:mb-0">
+                    <CodeBlock Title="Manual DTO / Select Query" Code="@manualDtoCodeSelectPart" />
+                </div>
+                <div class="">
+                    <CodeBlock Title="Manual DTO / Definition" Code="@manualDtoCodeDefinition" />
+                </div>
+            </div>
         </div>
 
         <!-- Linqraft Solution Section -->
@@ -87,7 +87,15 @@
                     <span>Zero dependencies - only a source generator, no runtime library needed</span>
                 </li>
             </ul>
-            <CodeBlock Title="Linqraft Pattern" Code="@linqraftCode" Highlight />
+
+            <div class="flex flex-col text-lg text-cyan-300/80 pt-6 text-center">
+                <p>See the comparison section below to see what it looks like in practice!</p>
+                <div class="mt-4 animate-bounce">
+                    <svg class="w-6 h-6 mx-auto" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/>
+                    </svg>
+                </div> 
+            </div>
         </div>
     </div>
 </section>
@@ -106,7 +114,7 @@ var invalidAccess = orders[0].Customer.Profile.EmailAddress;
 // -> crash!";
 
     // Code from README - Manual DTO with null checks (full version)
-    private const string manualDtoCode = @"// too ugly code with lots of null checks
+    private const string manualDtoCodeSelectPart = @"// too ugly code with lots of null checks
 var orders = await dbContext.Orders
     .Select(o => new OrderDto
     {
@@ -127,9 +135,9 @@ var orders = await dbContext.Orders
             Quantity = oi.Quantity
         })
     })
-    .ToListAsync();
+    .ToListAsync();";
 
-// you must define DTO classes manually
+    private const string manualDtoCodeDefinition = @"// you must define DTO classes manually
 public class OrderDto
 {
     public int Id { get; set; }
@@ -138,31 +146,13 @@ public class OrderDto
     public string? CustomerCity { get; set; }
     public List<OrderItemDto> Items { get; set; } = [];
 }
+
 // When child DTOs are deep, the problem worsens
 public class OrderItemDto
 {
     public string? ProductName { get; set; }
     public int Quantity { get; set; }
 }";
-
-    // Code from README - Linqraft Solution
-    private const string linqraftCode = @"// usable null-propagation operators
-var orders = await dbContext.Orders
-    .SelectExpr<Order, OrderDto>(o => new
-    {
-        o.Id,
-        CustomerName = o.Customer?.Name,
-        CustomerCountry = o.Customer?.Address?.Country?.Name,
-        CustomerCity = o.Customer?.Address?.City?.Name,
-        Items = o.OrderItems.Select(oi => new
-        {
-            ProductName = oi.Product?.Name,
-            oi.Quantity
-        })
-    })
-    .ToListAsync();
-
-// OrderDto and OrderItemDto classes are auto-generated";
 
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
