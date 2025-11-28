@@ -8,14 +8,22 @@
   <ItemGroup>
     <PackageReference Include="BlazorMonaco" Version="3.4.0" />
     <PackageReference Include="Microsoft.AspNetCore.Components.WebAssembly" Version="10.0.0" />
+    <PackageReference Include="Microsoft.CodeAnalysis.CSharp" Version="5.0.0" />
+    <PackageReference Include="Basic.Reference.Assemblies.Net90" Version="1.8.0" />
+    <PackageReference Include="PublishSPAforGitHubPages.Build" Version="3.0.3" />
     <PackageReference
       Include="Microsoft.AspNetCore.Components.WebAssembly.DevServer"
       Version="10.0.0"
       PrivateAssets="all"
     />
-    <PackageReference Include="Microsoft.CodeAnalysis.CSharp" Version="5.0.0" />
-    <PackageReference Include="Basic.Reference.Assemblies.Net90" Version="1.8.0" />
-    <PackageReference Include="PublishSPAforGitHubPages.Build" Version="3.0.3" />
+    <PackageReference
+      Include="Nerdbank.GitVersioning"
+      Version="3.*"
+      Condition="!Exists('packages.config')"
+    >
+      <PrivateAssets>all</PrivateAssets>
+      <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+    </PackageReference>
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="../src/Linqraft.Core/Linqraft.Core.csproj" />

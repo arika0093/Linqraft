@@ -37,7 +37,7 @@ public class SemanticHighlightingService
                 foreach (var tree in _sharedCompilation.GetAllSyntaxTrees())
                 {
                     var treeText = tree.GetText().ToString();
-                    if (treeText == code || (filePath != null && tree.FilePath == filePath))
+                    if (filePath != null && tree.FilePath == filePath)
                     {
                         syntaxTree = tree;
                         semanticModel = _sharedCompilation.GetSemanticModel(tree);

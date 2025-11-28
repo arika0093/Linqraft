@@ -55,7 +55,6 @@
     --font-weight-medium: 500;
     --font-weight-semibold: 600;
     --font-weight-bold: 700;
-    --tracking-tight: -0.025em;
     --tracking-wide: 0.025em;
     --radius-md: 0.375rem;
     --radius-lg: 0.5rem;
@@ -245,6 +244,9 @@
   .mx-auto {
     margin-inline: auto;
   }
+  .my-3 {
+    margin-block: calc(var(--spacing) * 3);
+  }
   .mt-1 {
     margin-top: calc(var(--spacing) * 1);
   }
@@ -406,9 +408,6 @@
   }
   .justify-center {
     justify-content: center;
-  }
-  .justify-start {
-    justify-content: flex-start;
   }
   .gap-1\.5 {
     gap: calc(var(--spacing) * 1.5);
@@ -681,9 +680,6 @@
   .text-center {
     text-align: center;
   }
-  .text-left {
-    text-align: left;
-  }
   .font-display {
     font-family: var(--font-display);
   }
@@ -722,10 +718,6 @@
   .font-semibold {
     --tw-font-weight: var(--font-weight-semibold);
     font-weight: var(--font-weight-semibold);
-  }
-  .tracking-tight {
-    --tw-tracking: var(--tracking-tight);
-    letter-spacing: var(--tracking-tight);
   }
   .tracking-wide {
     --tw-tracking: var(--tracking-wide);
@@ -927,9 +919,14 @@
       grid-column: span 6 / span 6;
     }
   }
-  .lg\:mt-0 {
+  .lg\:col-span-12 {
     @media (width >= 64rem) {
-      margin-top: calc(var(--spacing) * 0);
+      grid-column: span 12 / span 12;
+    }
+  }
+  .lg\:mt-\[-16px\] {
+    @media (width >= 64rem) {
+      margin-top: -16px;
     }
   }
   .lg\:mb-0 {
@@ -947,11 +944,6 @@
       display: grid;
     }
   }
-  .lg\:max-h-screen {
-    @media (width >= 64rem) {
-      max-height: 100vh;
-    }
-  }
   .lg\:grid-cols-2 {
     @media (width >= 64rem) {
       grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -962,14 +954,29 @@
       grid-template-columns: repeat(12, minmax(0, 1fr));
     }
   }
+  .lg\:items-start {
+    @media (width >= 64rem) {
+      align-items: flex-start;
+    }
+  }
   .lg\:justify-end {
     @media (width >= 64rem) {
       justify-content: flex-end;
     }
   }
+  .lg\:justify-start {
+    @media (width >= 64rem) {
+      justify-content: flex-start;
+    }
+  }
   .lg\:gap-3 {
     @media (width >= 64rem) {
       gap: calc(var(--spacing) * 3);
+    }
+  }
+  .lg\:text-left {
+    @media (width >= 64rem) {
+      text-align: left;
     }
   }
 }
