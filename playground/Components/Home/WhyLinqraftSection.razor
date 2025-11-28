@@ -9,26 +9,32 @@
         
         <!-- Include Problem Section -->
         <div id="include-problem" class="mb-16">
-            <h3 class="text-xl font-semibold text-white mb-4">The Include / ThenInclude Problem</h3>
-            <p class="text-gray-300 mb-4">
-                Writing it naively would involve heavy use of <InlineCode>Include</InlineCode> / <InlineCode>ThenInclude</InlineCode>, 
-                resulting in code that is hard to read and maintain.
-            </p>
-            <ul class="space-y-2 text-gray-300 mb-6">
-                <li class="flex items-start gap-2">
-                    <span class="text-gray-500">•</span>
-                    <span>The Include-based style becomes verbose and hard to follow.</span>
-                </li>
-                <li class="flex items-start gap-2">
-                    <span class="text-gray-500">•</span>
-                    <span>Forgetting an <InlineCode>Include</InlineCode> can lead to runtime <InlineCode>NullReferenceException</InlineCode>s that are hard to detect at compile time.</span>
-                </li>
-                <li class="flex items-start gap-2">
-                    <span class="text-gray-500">•</span>
-                    <span>Fetching entire object graphs is often wasteful and hurts performance.</span>
-                </li>
-            </ul>
-            <CodeBlock Title="Include Pattern" Code="@includeCode" />
+            <div class="lg:grid lg:grid-cols-2 lg:gap-3 mb-6">
+                <div class=" mb-4 lg:mb-0">
+                    <h3 class="text-xl font-semibold text-white mb-4">The Include / ThenInclude Problem</h3>
+                    <p class="text-gray-300 mb-4">
+                        Writing it naively would involve heavy use of <InlineCode>Include</InlineCode> / <InlineCode>ThenInclude</InlineCode>, 
+                        resulting in code that is hard to read and maintain.
+                    </p>
+                    <ul class="space-y-2 text-gray-300 mb-6">
+                        <li class="flex items-start gap-2">
+                            <span class="text-gray-500">•</span>
+                            <span>The Include-based style becomes verbose and hard to follow.</span>
+                        </li>
+                        <li class="flex items-start gap-2">
+                            <span class="text-gray-500">•</span>
+                            <span>Forgetting an <InlineCode>Include</InlineCode> can lead to runtime <InlineCode>NullReferenceException</InlineCode>s that are hard to detect at compile time.</span>
+                        </li>
+                        <li class="flex items-start gap-2">
+                            <span class="text-gray-500">•</span>
+                            <span>Fetching entire object graphs is often wasteful and hurts performance.</span>
+                        </li>
+                    </ul>
+                </div>
+                <div>
+                    <CodeBlock Title="Include Pattern" Code="@includeCode" />
+                </div>
+            </div>
         </div>
 
         <!-- Manual DTO Section -->
