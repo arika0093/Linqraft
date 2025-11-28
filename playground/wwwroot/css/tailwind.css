@@ -6,7 +6,6 @@
   :root, :host {
     --font-sans: 'Montserrat', ui-sans-serif, system-ui, sans-serif, 'Apple Color Emoji', 'Segoe UI Emoji', 'Segoe UI Symbol', 'Noto Color Emoji';
     --font-mono: 'JetBrains Mono', ui-monospace, 'Monaco', 'Consolas', 'Courier New', monospace;
-    --color-red-400: oklch(70.4% 0.191 22.216);
     --color-green-400: oklch(79.2% 0.209 151.711);
     --color-green-500: oklch(72.3% 0.219 149.579);
     --color-green-800: oklch(44.8% 0.119 151.328);
@@ -310,8 +309,8 @@
   .h-screen {
     height: 100vh;
   }
-  .max-h-120 {
-    max-height: calc(var(--spacing) * 120);
+  .max-h-150 {
+    max-height: calc(var(--spacing) * 150);
   }
   .min-h-\[50px\] {
     min-height: 50px;
@@ -579,6 +578,9 @@
   .px-6 {
     padding-inline: calc(var(--spacing) * 6);
   }
+  .px-8 {
+    padding-inline: calc(var(--spacing) * 8);
+  }
   .py-0\.5 {
     padding-block: calc(var(--spacing) * 0.5);
   }
@@ -602,6 +604,9 @@
   }
   .py-16 {
     padding-block: calc(var(--spacing) * 16);
+  }
+  .py-32 {
+    padding-block: calc(var(--spacing) * 32);
   }
   .pt-10 {
     padding-top: calc(var(--spacing) * 10);
@@ -697,9 +702,6 @@
   }
   .text-indigo-400 {
     color: var(--color-indigo-400);
-  }
-  .text-red-400 {
-    color: var(--color-red-400);
   }
   .text-white {
     color: var(--color-white);
@@ -857,6 +859,17 @@
       grid-template-columns: repeat(2, minmax(0, 1fr));
     }
   }
+}
+::-webkit-scrollbar {
+  width: 7px;
+  height: 7px;
+}
+::-webkit-scrollbar-thumb {
+  background: #888;
+  border-radius: 5px;
+}
+::-webkit-scrollbar-track {
+  background: #242525;
 }
 @property --tw-space-y-reverse {
   syntax: "*";

@@ -2,7 +2,7 @@
 @inject HttpClient Http
 @implements IAsyncDisposable
 
-<section class="max-w-5xl mx-auto px-6 py-16 flex flex-col items-center text-center">
+<section class="max-w-5xl mx-auto px-6 py-32 flex flex-col items-center text-center">
     <div class="flex items-center gap-3 mb-4">
         <img src="/linqraft.png" alt="Linqraft logo" class="w-10 h-10" />
         <h1 class="font-display tracking-wide text-4xl sm:text-5xl font-bold tracking-tight text-white" translate="no">
@@ -124,7 +124,6 @@
         try
         {
             using var request = new HttpRequestMessage(HttpMethod.Get, "https://api.github.com/repos/arika0093/Linqraft");
-            request.Headers.Add("User-Agent", "Linqraft-Playground");
             
             var response = await Http.SendAsync(request);
             if (response.IsSuccessStatusCode)

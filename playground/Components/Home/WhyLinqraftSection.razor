@@ -1,7 +1,7 @@
 @inject IJSRuntime JS
 
 <section id="why-section" class="bg-gradient-to-b from-gray-950 to-gray-900 border-y border-gray-800">
-    <div class="max-w-5xl mx-auto px-6 py-12">
+    <div class="max-w-5xl mx-auto px-6 py-16">
         <h2 class="text-2xl font-bold text-white mb-4 text-center">Why Linqraft?</h2>
         <p class="text-gray-400 text-center mb-8 max-w-3xl mx-auto">
             Consider a case where you need to fetch data from a database with many related tables.
@@ -102,8 +102,8 @@ var orders = await dbContext.Orders
     .ToListAsync();
 
 // if you forget an Include, you may get runtime NullReferenceExceptions
-var invalidAccess = orders.FirstOrDefault()?.Customer.Profile.EmailAddress;
-// -> crash: Profile is not included !";
+var invalidAccess = orders[0].Customer.Profile.EmailAddress;
+// -> crash!";
 
     // Code from README - Manual DTO with null checks (full version)
     private const string manualDtoCode = @"// too ugly code with lots of null checks
