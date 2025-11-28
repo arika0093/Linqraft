@@ -5,7 +5,12 @@
     <div class="absolute right-2 top-2 z-10 flex h-6 w-6 cursor-pointer items-center justify-center rounded bg-gray-700 text-gray-400 hover:bg-gray-600" @onclick="OnToggle">
         <span class="text-xs">@(Collapsed ? "▶" : "◀")</span>
     </div>
-    <div class="flex h-full flex-col overflow-y-auto pt-10 @(Collapsed ? "hidden" : "")">
+    <div class="flex h-full flex-col overflow-y-auto @(Collapsed ? "hidden" : "")">
+        <!-- Linqraft Version -->
+        <div class="border-b border-gray-700 px-3 py-3 font-mono text-sm text-gray-400">
+            <span class="text-xs">Ver @ThisAssembly.AssemblyInformationalVersion.Split("+")[0]</span>
+        </div>
+
         <!-- Templates Section -->
         <div class="border-b border-gray-700">
             <div class="flex cursor-pointer select-none items-center gap-2 px-3 py-2 text-gray-300 hover:bg-gray-800" @onclick="OnToggleTemplates">

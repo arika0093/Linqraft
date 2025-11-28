@@ -662,9 +662,6 @@
   .pt-9 {
     padding-top: calc(var(--spacing) * 9);
   }
-  .pt-10 {
-    padding-top: calc(var(--spacing) * 10);
-  }
   .pt-16 {
     padding-top: calc(var(--spacing) * 16);
   }
@@ -682,6 +679,9 @@
   }
   .font-display {
     font-family: var(--font-display);
+  }
+  .font-mono {
+    font-family: var(--font-mono);
   }
   .text-3xl {
     font-size: var(--text-3xl);
