@@ -1,10 +1,12 @@
 @inject IJSRuntime JS
 
 <div class="code-block @(Highlight ? "border-green-800" : "")">
-    <div class="code-block-header @(Highlight ? "bg-green-950/50" : "")">
-        <span class="text-gray-400 text-xs">@Title</span>
+    <div class="code-block-header @(Highlight ? "bg-green-800/50" : "")">
+        <span class="text-xs @(Highlight ? "text-green-400" : "text-gray-400")">@Title</span>
     </div>
-    <pre class="code-content line-numbers"><code class="language-csharp">@Code</code></pre>
+    <div class="max-h-150 overflow-y-auto">
+        <pre class="code-content line-numbers text-sm"><code class="language-csharp">@Code</code></pre>
+    </div>
 </div>
 
 @code {

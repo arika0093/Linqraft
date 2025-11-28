@@ -35,12 +35,7 @@
                     <span>Fetching entire object graphs is often wasteful and hurts performance.</span>
                 </li>
             </ul>
-            <div class="code-block">
-                <div class="code-block-header">
-                    <span class="text-gray-400 text-xs">Include Pattern</span>
-                </div>
-                <pre class="code-content line-numbers"><code class="language-csharp">@includeCode</code></pre>
-            </div>
+            <CodeBlock Title="Include Pattern" Code="@includeCode" />
         </div>
 
         <!-- Manual DTO Section -->
@@ -64,12 +59,7 @@
                     <span>The deeper the child elements become, the more complex null checks are required.</span>
                 </li>
             </ul>
-            <div class="code-block">
-                <div class="code-block-header">
-                    <span class="text-gray-400 text-xs">Manual DTO Pattern</span>
-                </div>
-                <pre class="code-content line-numbers"><code class="language-csharp">@manualDtoCode</code></pre>
-            </div>
+            <CodeBlock Title="Manual DTO Pattern" Code="@manualDtoCode" />
         </div>
 
         <!-- Linqraft Solution Section -->
@@ -97,12 +87,7 @@
                     <span>Zero dependencies - only a source generator, no runtime library needed</span>
                 </li>
             </ul>
-            <div class="code-block border-green-800">
-                <div class="code-block-header bg-green-950/50">
-                    <span class="text-green-400 text-xs">Linqraft Pattern</span>
-                </div>
-                <pre class="code-content line-numbers"><code class="language-csharp">@linqraftCode</code></pre>
-            </div>
+            <CodeBlock Title="Linqraft Pattern" Code="@linqraftCode" Highlight />
         </div>
     </div>
 </section>
@@ -114,7 +99,11 @@ var orders = await dbContext.Orders
     .Include(o => o.Customer).ThenInclude(c => c.Address).ThenInclude(a => a.Country)
     .Include(o => o.Customer).ThenInclude(c => c.Address).ThenInclude(a => a.City)
     .Include(o => o.OrderItems).ThenInclude(oi => oi.Product)
-    .ToListAsync();";
+    .ToListAsync();
+
+// if you forget an Include, you may get runtime NullReferenceExceptions
+var invalidAccess = orders.FirstOrDefault()?.Customer.Profile.EmailAddress;
+// -> crash: Profile is not included !";
 
     // Code from README - Manual DTO with null checks (full version)
     private const string manualDtoCode = @"// too ugly code with lots of null checks

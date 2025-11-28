@@ -1,24 +1,19 @@
 @inject IJSRuntime JS
 
-<section class="max-w-5xl mx-auto px-6 py-12">
+<section class="max-w-7xl mx-auto px-6 py-12">
     <h2 class="text-2xl font-bold text-white mb-4 text-center">Side-by-Side Comparison</h2>
     <p class="text-gray-400 text-center mb-8 max-w-3xl mx-auto">
         See the difference between traditional manual DTO projection and Linqraft's clean approach
     </p>
     
-    <div class="grid gap-6 lg:grid-cols-2 max-h-screen overflow-auto">
+    <div class="grid gap-6 lg:grid-cols-2 lg:max-h-screen overflow-auto">
         <!-- Manual DTO Side -->
         <div class="flex flex-col">
             <div class="flex items-center gap-2 mb-3">
                 <span class="text-red-400">✗</span>
                 <h3 class="text-lg font-semibold text-gray-300">Traditional Manual DTO</h3>
             </div>
-            <div class="code-block flex-1 overflow-auto">
-                <div class="code-block-header">
-                    <span class="text-gray-400 text-xs">Before</span>
-                </div>
-                <pre class="code-content line-numbers text-xs"><code class="language-csharp">@manualCode</code></pre>
-            </div>
+            <CodeBlock Title="Before" Code="@manualCode" />
         </div>
         
         <!-- Linqraft Side -->
@@ -27,12 +22,7 @@
                 <span class="text-green-400">✓</span>
                 <h3 class="text-lg font-semibold text-gray-300">With Linqraft</h3>
             </div>
-            <div class="code-block flex-1 overflow-auto border-green-800">
-                <div class="code-block-header bg-green-950/50">
-                    <span class="text-green-400 text-xs">After</span>
-                </div>
-                <pre class="code-content line-numbers text-xs"><code class="language-csharp">@linqraftCode</code></pre>
-            </div>
+            <CodeBlock Title="After" Code="@linqraftCode" Highlight />
         </div>
     </div>
 </section>
