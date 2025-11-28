@@ -552,22 +552,48 @@
 <span class=""comment"">// automatically translated to expression-tree</span>
 <span class=""comment"">// compatible null checks.</span>";
 
+    private CancellationTokenSource? _cts;
+    
     protected override async Task OnInitializedAsync()
     {
+        _cts = new CancellationTokenSource();
         featureRotationTimer = new System.Timers.Timer(3000);
-        featureRotationTimer.Elapsed += async (sender, e) => await RotateFeature();
+        featureRotationTimer.Elapsed += OnTimerElapsed;
         featureRotationTimer.AutoReset = true;
         featureRotationTimer.Start();
         
         await FetchGitHubStars();
     }
     
+    private async void OnTimerElapsed(object? sender, System.Timers.ElapsedEventArgs e)
+    {
+        try
+        {
+            await RotateFeature();
+        }
+        catch (ObjectDisposedException)
+        {
+            // Component was disposed during the operation - ignore
+        }
+    }
+    
     private async Task RotateFeature()
     {
+        if (_cts?.Token.IsCancellationRequested == true) return;
+        
         isTransitioning = true;
         await InvokeAsync(StateHasChanged);
         
-        await Task.Delay(300);
+        try
+        {
+            await Task.Delay(300, _cts?.Token ?? CancellationToken.None);
+        }
+        catch (TaskCanceledException)
+        {
+            return; // Component is being disposed
+        }
+        
+        if (_cts?.Token.IsCancellationRequested == true) return;
         
         currentFeatureIndex = (currentFeatureIndex + 1) % rotatingFeatures.Length;
         isTransitioning = false;
@@ -608,10 +634,16 @@
     
     public async ValueTask DisposeAsync()
     {
+        _cts?.Cancel();
+        _cts?.Dispose();
+        _cts = null;
+        
         if (featureRotationTimer != null)
         {
+            featureRotationTimer.Elapsed -= OnTimerElapsed;
             featureRotationTimer.Stop();
             featureRotationTimer.Dispose();
+            featureRotationTimer = null;
         }
     }
     
