@@ -117,7 +117,6 @@ public abstract record SelectExprInfo
         return $"global::{dtoNamespace}.{nestedClassName}";
     }
 
-
     /// <summary>
     /// Generates the SelectExpr method code
     /// </summary>
