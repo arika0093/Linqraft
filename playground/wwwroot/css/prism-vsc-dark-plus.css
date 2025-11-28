@@ -1,0 +1,181 @@
+/* Prism.js theme - VS Code Dark Plus */
+/* Based on Visual Studio Dark+ theme */
+
+code[class*="language-"],
+pre[class*="language-"] {
+    color: #d4d4d4;
+    background: none;
+    font-family: 'JetBrains Mono', Consolas, Monaco, 'Andale Mono', 'Ubuntu Mono', monospace;
+    font-size: 0.875rem;
+    text-align: left;
+    white-space: pre;
+    word-spacing: normal;
+    word-break: normal;
+    word-wrap: normal;
+    line-height: 1.5;
+    tab-size: 4;
+    hyphens: none;
+}
+
+pre[class*="language-"] {
+    padding: 1rem;
+    margin: 0;
+    overflow: auto;
+    background: #1e1e1e;
+}
+
+:not(pre) > code[class*="language-"] {
+    padding: 0.1em 0.3em;
+    border-radius: 0.3em;
+    background: #1e1e1e;
+}
+
+/* Line numbers */
+pre[class*="language-"].line-numbers {
+    position: relative;
+    padding-left: 3.5em;
+    counter-reset: linenumber;
+}
+
+pre[class*="language-"].line-numbers > code {
+    position: relative;
+    white-space: inherit;
+}
+
+.line-numbers .line-numbers-rows {
+    position: absolute;
+    pointer-events: none;
+    top: 1rem;
+    font-size: 100%;
+    left: -3.5em;
+    width: 3em;
+    letter-spacing: -1px;
+    border-right: 1px solid #404040;
+    user-select: none;
+}
+
+.line-numbers-rows > span {
+    display: block;
+    counter-increment: linenumber;
+}
+
+.line-numbers-rows > span:before {
+    content: counter(linenumber);
+    color: #858585;
+    display: block;
+    padding-right: 0.8em;
+    text-align: right;
+}
+
+/* Tokens */
+.token.comment,
+.token.prolog,
+.token.doctype,
+.token.cdata {
+    color: #6a9955;
+}
+
+.token.punctuation {
+    color: #d4d4d4;
+}
+
+.token.namespace {
+    opacity: 0.7;
+}
+
+.token.property,
+.token.tag,
+.token.boolean,
+.token.number,
+.token.constant,
+.token.symbol,
+.token.deleted {
+    color: #b5cea8;
+}
+
+.token.selector,
+.token.attr-name,
+.token.string,
+.token.char,
+.token.builtin,
+.token.inserted {
+    color: #ce9178;
+}
+
+.token.operator,
+.token.entity,
+.token.url,
+.language-css .token.string,
+.style .token.string {
+    color: #d4d4d4;
+}
+
+.token.atrule,
+.token.attr-value,
+.token.keyword {
+    color: #569cd6;
+}
+
+.token.function,
+.token.class-name {
+    color: #dcdcaa;
+}
+
+.token.regex,
+.token.important,
+.token.variable {
+    color: #d16969;
+}
+
+.token.important,
+.token.bold {
+    font-weight: bold;
+}
+
+.token.italic {
+    font-style: italic;
+}
+
+.token.entity {
+    cursor: help;
+}
+
+/* C# specific */
+.token.type-name,
+.token.return-type {
+    color: #4ec9b0;
+}
+
+.token.method {
+    color: #dcdcaa;
+}
+
+/* Code block styling */
+.code-block {
+    background-color: rgb(17 24 39);
+    border-radius: 0.75rem;
+    border: 1px solid rgb(31 41 55);
+    overflow: hidden;
+    box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.3);
+}
+
+.code-block-header {
+    display: flex;
+    align-items: center;
+    gap: 0.375rem;
+    padding: 0.5rem 1rem;
+    background-color: rgba(31, 41, 55, 0.5);
+    border-bottom: 1px solid rgb(55 65 81);
+}
+
+.code-content {
+    margin: 0;
+}
+
+.code-inline {
+    padding: 0.125rem 0.375rem;
+    border-radius: 0.25rem;
+    background-color: rgb(31 41 55);
+    color: rgb(147 197 253);
+    font-size: 0.875em;
+}

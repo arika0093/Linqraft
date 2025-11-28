@@ -1,5 +1,4 @@
 using Linqraft.Playground;
-using Linqraft.Playground.Services;
 using Microsoft.AspNetCore.Components.Web;
 using Microsoft.AspNetCore.Components.WebAssembly.Hosting;
 
@@ -10,12 +9,7 @@ builder.RootComponents.Add<HeadOutlet>("head::after");
 // Register HttpClient for API calls (GitHub stars, etc.)
 builder.Services.AddScoped(sp => new HttpClient { BaseAddress = new Uri(builder.HostEnvironment.BaseAddress) });
 
-// Register shared compilation service first (singleton)
-builder.Services.AddSingleton<SharedCompilationService>();
-
-// Register services that depend on shared compilation
-builder.Services.AddSingleton<TemplateService>();
-builder.Services.AddSingleton<CodeGenerationService>();
-builder.Services.AddSingleton<SemanticHighlightingService>();
+// Compilation services are registered lazily when the Playground page is accessed
+// This allows the heavy CodeAnalysis assemblies to be loaded on demand
 
 await builder.Build().RunAsync();

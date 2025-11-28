@@ -1,0 +1,107 @@
+@inject IJSRuntime JS
+
+<section class="max-w-5xl mx-auto px-6 py-12">
+    <h2 class="text-2xl font-bold text-white mb-4 text-center">Side-by-Side Comparison</h2>
+    <p class="text-gray-400 text-center mb-8 max-w-3xl mx-auto">
+        See the difference between traditional manual DTO projection and Linqraft's clean approach
+    </p>
+    
+    <div class="grid gap-6 lg:grid-cols-2 max-h-screen overflow-auto">
+        <!-- Manual DTO Side -->
+        <div class="flex flex-col">
+            <div class="flex items-center gap-2 mb-3">
+                <span class="text-red-400">✗</span>
+                <h3 class="text-lg font-semibold text-gray-300">Traditional Manual DTO</h3>
+            </div>
+            <div class="code-block flex-1 overflow-auto">
+                <div class="code-block-header">
+                    <span class="text-gray-400 text-xs">Before</span>
+                </div>
+                <pre class="code-content line-numbers text-xs"><code class="language-csharp">@manualCode</code></pre>
+            </div>
+        </div>
+        
+        <!-- Linqraft Side -->
+        <div class="flex flex-col">
+            <div class="flex items-center gap-2 mb-3">
+                <span class="text-green-400">✓</span>
+                <h3 class="text-lg font-semibold text-gray-300">With Linqraft</h3>
+            </div>
+            <div class="code-block flex-1 overflow-auto border-green-800">
+                <div class="code-block-header bg-green-950/50">
+                    <span class="text-green-400 text-xs">After</span>
+                </div>
+                <pre class="code-content line-numbers text-xs"><code class="language-csharp">@linqraftCode</code></pre>
+            </div>
+        </div>
+    </div>
+</section>
+
+@code {
+    // Code from README - Manual DTO with null checks (matching README formatting)
+    private const string manualCode = @"// too ugly code with lots of null checks
+var orders = await dbContext.Orders
+    .Select(o => new OrderDto
+    {
+        Id = o.Id,
+        // in expression trees, ?. is not supported
+        CustomerName = o.Customer != null ? o.Customer.Name : null,
+        // nested null checks get worse
+        CustomerCountry = o.Customer != null && o.Customer.Address != null && o.Customer.Address.Country != null
+            ? o.Customer.Address.Country.Name
+            : null,
+        CustomerCity = o.Customer != null && o.Customer.Address != null && o.Customer.Address.City != null
+            ? o.Customer.Address.City.Name
+            : null,
+        Items = o.OrderItems.Select(oi => new OrderItemDto
+        {
+            // more null checks
+            ProductName = oi.Product != null ? oi.Product.Name : null,
+            Quantity = oi.Quantity
+        })
+    })
+    .ToListAsync();
+
+// you must define DTO classes manually
+public class OrderDto
+{
+    public int Id { get; set; }
+    public string? CustomerName { get; set; }
+    public string? CustomerCountry { get; set; }
+    public string? CustomerCity { get; set; }
+    public List<OrderItemDto> Items { get; set; } = [];
+}
+// When child DTOs are deep, the problem worsens
+public class OrderItemDto
+{
+    public string? ProductName { get; set; }
+    public int Quantity { get; set; }
+}";
+
+    // Code from README - Linqraft Solution
+    private const string linqraftCode = @"// usable null-propagation operators
+var orders = await dbContext.Orders
+    .SelectExpr<Order, OrderDto>(o => new
+    {
+        o.Id,
+        CustomerName = o.Customer?.Name,
+        CustomerCountry = o.Customer?.Address?.Country?.Name,
+        CustomerCity = o.Customer?.Address?.City?.Name,
+        Items = o.OrderItems.Select(oi => new OrderItemDto
+        {
+            ProductName = oi.Product?.Name,
+            oi.Quantity
+        })
+    })
+    .ToListAsync();
+
+// The definition of the DTO class is no longer necessary";
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            await JS.InvokeVoidAsync("Prism.highlightAll");
+        }
+    }
+}

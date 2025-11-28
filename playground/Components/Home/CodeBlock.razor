@@ -1,0 +1,22 @@
+@inject IJSRuntime JS
+
+<div class="code-block @(Highlight ? "border-green-800" : "")">
+    <div class="code-block-header @(Highlight ? "bg-green-950/50" : "")">
+        <span class="text-gray-400 text-xs">@Title</span>
+    </div>
+    <pre class="code-content line-numbers"><code class="language-csharp">@Code</code></pre>
+</div>
+
+@code {
+    [Parameter] public string Title { get; set; } = "";
+    [Parameter] public string Code { get; set; } = "";
+    [Parameter] public bool Highlight { get; set; } = false;
+    
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            await JS.InvokeVoidAsync("Prism.highlightAll");
+        }
+    }
+}
