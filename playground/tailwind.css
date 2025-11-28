@@ -6,3 +6,16 @@
 	--font-mono: 'JetBrains Mono', ui-monospace, 'Monaco', 'Consolas', 'Courier New', monospace;
 	--font-display: 'Orbitron', ui-sans-serif, sans-serif;
 }
+
+/* scrollbar styles */
+::-webkit-scrollbar {
+  width: 7px;
+  height: 7px;
+}
+::-webkit-scrollbar-thumb {
+  background: #888;
+  border-radius: 5px;
+}
+::-webkit-scrollbar-track {
+  background: #242525;
+}

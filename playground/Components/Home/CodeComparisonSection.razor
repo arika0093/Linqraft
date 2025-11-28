@@ -1,0 +1,104 @@
+@inject IJSRuntime JS
+
+<section class="max-w-7xl mx-auto px-8 py-16">
+    <h2 class="text-2xl font-bold text-white mb-4 text-center">Side-by-Side Comparison</h2>
+    <p class="text-gray-400 text-center mb-8 max-w-3xl mx-auto">
+        See the difference between traditional manual DTO projection and Linqraft's clean approach
+    </p>
+    
+    <div class="lg:grid gap-6 lg:grid-cols-2 lg:max-h-screen overflow-auto">
+        <!-- Manual DTO Side -->
+        <div class="flex flex-col p-4 border-1 border-solid rounded-md border-gray-700">
+            <div class="flex items-center gap-2 mb-3">
+                <h3 class="text-lg font-semibold text-gray-300">Traditional Manual DTO</h3>
+            </div>
+            <CodeBlock Title="Before" Code="@manualCode" />
+        </div>
+        
+        <!-- Linqraft Side -->
+        <div class="flex flex-col p-4 border-1 border-solid rounded-md border-green-500">
+            <div class="flex items-center gap-2 mb-3">
+                <span class="text-green-400">✓</span>
+                <h3 class="text-lg font-semibold text-gray-300">With Linqraft</h3>
+            </div>
+            <CodeBlock Title="After" Code="@linqraftCode" Highlight />
+            <div class="flex-grow"></div>
+            <div class="mt-4 p-2 text-sm text-gray-400 bg-cyan-800/20">
+                <a href="https://github.com/arika0093/Linqraft" target="_blank">
+                    Did you like this library? Please give us a
+                    <span class="text-yellow-400 font-semibold px-1">⭐star</span>
+                    on GitHub!
+                </a>
+            </div>
+        </div>
+    </div>
+</section>
+
+@code {
+    // Code from README - Manual DTO with null checks (matching README formatting)
+    private const string manualCode = @"// too ugly code with lots of null checks
+var orders = await dbContext.Orders
+    .Select(o => new OrderDto
+    {
+        Id = o.Id,
+        // in expression trees, ?. is not supported
+        CustomerName = o.Customer != null ? o.Customer.Name : null,
+        // nested null checks get worse
+        CustomerCountry = o.Customer != null && o.Customer.Address != null && o.Customer.Address.Country != null
+            ? o.Customer.Address.Country.Name
+            : null,
+        CustomerCity = o.Customer != null && o.Customer.Address != null && o.Customer.Address.City != null
+            ? o.Customer.Address.City.Name
+            : null,
+        Items = o.OrderItems.Select(oi => new OrderItemDto
+        {
+            // more null checks
+            ProductName = oi.Product != null ? oi.Product.Name : null,
+            Quantity = oi.Quantity
+        })
+    })
+    .ToListAsync();
+
+// you must define DTO classes manually
+public class OrderDto
+{
+    public int Id { get; set; }
+    public string? CustomerName { get; set; }
+    public string? CustomerCountry { get; set; }
+    public string? CustomerCity { get; set; }
+    public List<OrderItemDto> Items { get; set; } = [];
+}
+// When child DTOs are deep, the problem worsens
+public class OrderItemDto
+{
+    public string? ProductName { get; set; }
+    public int Quantity { get; set; }
+}";
+
+    // Code from README - Linqraft Solution
+    private const string linqraftCode = @"// usable null-propagation operators
+var orders = await dbContext.Orders
+    .SelectExpr<Order, OrderDto>(o => new
+    {
+        o.Id,
+        CustomerName = o.Customer?.Name,
+        CustomerCountry = o.Customer?.Address?.Country?.Name,
+        CustomerCity = o.Customer?.Address?.City?.Name,
+        Items = o.OrderItems.Select(oi => new
+        {
+            ProductName = oi.Product?.Name,
+            oi.Quantity
+        })
+    })
+    .ToListAsync();
+
+// OrderDto and OrderItemDto classes are auto-generated";
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            await JS.InvokeVoidAsync("Prism.highlightAll");
+        }
+    }
+}
