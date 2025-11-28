@@ -23,8 +23,6 @@
   <ItemGroup>
     <BlazorWebAssemblyLazyLoad Include="BlazorMonaco.dll" />
     <BlazorWebAssemblyLazyLoad Include="Basic.Reference.Assemblies.Net90.dll" />
-    <BlazorWebAssemblyLazyLoad Include="Microsoft.CodeAnalysis.dll" />
-    <BlazorWebAssemblyLazyLoad Include="Microsoft.CodeAnalysis.CSharp.dll" />
   </ItemGroup>
   <!-- tailwind setting -->
   <ItemGroup>
