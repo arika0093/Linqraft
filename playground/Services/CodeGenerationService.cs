@@ -82,13 +82,18 @@ public class CodeGenerationService
                     var location = semanticModel.GetInterceptableLocation(info.Invocation);
                     var selectExprCodes = info.GenerateSelectExprCodes(location!);
                     var dtoClasses = info.GenerateDtoClasses()
-                        .Select(c => c.BuildCode(config))
+                        .GroupBy(c => c.FullName)
+                        .Select(g => g.First())
                         .ToList();
+
                     queryExpressionBuilder.AppendLine(
                         GenerateSourceCodeSnippets.BuildExprCodeSnippets(selectExprCodes)
                     );
                     dtoClassBuilder.AppendLine(
-                        GenerateSourceCodeSnippets.BuildDtoCodeSnippets(dtoClasses, targetNamespace)
+                        GenerateSourceCodeSnippets.BuildDtoCodeSnippetsGroupedByNamespace(
+                            dtoClasses,
+                            config
+                        )
                     );
                 }
                 catch (Exception ex)

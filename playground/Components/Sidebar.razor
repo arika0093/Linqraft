@@ -117,6 +117,16 @@
                                @onchange="@(e => UpdateConfig(c => c with { ArrayNullabilityRemoval = (bool)(e.Value ?? false) }))" />
                         <label for="arrayNullabilityRemoval" class="text-xs text-gray-300">Array Nullability Removal</label>
                     </div>
+                    
+                    <!-- NestedDtoUseHashNamespace -->
+                    <div class="flex items-center gap-2">
+                        <input type="checkbox" 
+                               id="nestedDtoUseHashNamespace"
+                               class="w-3 h-3"
+                               checked="@Configuration.NestedDtoUseHashNamespace"
+                               @onchange="@(e => UpdateConfig(c => c with { NestedDtoUseHashNamespace = (bool)(e.Value ?? false) }))" />
+                        <label for="nestedDtoUseHashNamespace" class="text-xs text-gray-300">Nested DTO Use Hash Namespace</label>
+                    </div>
                 </div>
             }
         </div>

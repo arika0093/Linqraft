@@ -65,15 +65,12 @@ internal class SelectExprGroups
                 .GroupBy(c => c.FullName)
                 .Select(g => g.First())
                 .ToList();
-            var dtoClassesCode = dtoClassesDistinct
-                .Select(c => c.BuildCode(Configuration))
-                .ToList();
 
-            // Build final source code
+            // Build final source code using the new method that groups DTOs by namespace
             var sourceCode = GenerateSourceCodeSnippets.BuildCodeSnippetAll(
                 selectExprMethods,
-                dtoClassesCode,
-                TargetNamespace
+                dtoClassesDistinct,
+                Configuration
             );
 
             // Register with Source Generator
