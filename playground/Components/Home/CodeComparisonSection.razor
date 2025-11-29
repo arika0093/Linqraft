@@ -111,12 +111,4 @@ var orders = await dbContext.Orders
     .ToListAsync();
 
 // OrderDto and OrderItemDto classes are auto-generated";
-
-    protected override async Task OnAfterRenderAsync(bool firstRender)
-    {
-        if (firstRender)
-        {
-            await JS.InvokeVoidAsync("Prism.highlightAll");
-        }
-    }
 }
