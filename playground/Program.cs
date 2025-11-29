@@ -20,5 +20,6 @@ builder.Services.AddSingleton<SharedCompilationService>();
 builder.Services.AddSingleton<TemplateService>();
 builder.Services.AddSingleton<CodeGenerationService>();
 builder.Services.AddSingleton<SemanticHighlightingService>();
+builder.Services.AddSingleton<CSharpSyntaxHighlighter>();
 
 await builder.Build().RunAsync();
