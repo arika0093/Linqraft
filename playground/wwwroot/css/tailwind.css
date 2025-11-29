@@ -980,6 +980,11 @@
       gap: calc(var(--spacing) * 3);
     }
   }
+  .lg\:gap-6 {
+    @media (width >= 64rem) {
+      gap: calc(var(--spacing) * 6);
+    }
+  }
   .lg\:text-left {
     @media (width >= 64rem) {
       text-align: left;
