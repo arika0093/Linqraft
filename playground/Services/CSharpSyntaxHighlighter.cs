@@ -322,6 +322,23 @@ public partial class CSharpSyntaxHighlighter
                 var beforeEquals =
                     nextNonWhitespace < code.Length && code[nextNonWhitespace] == '=';
 
+                // Check previous token (for detecting type declarations vs property declarations)
+                var prevTokenEnd = start - 1;
+                while (prevTokenEnd >= 0 && char.IsWhiteSpace(code[prevTokenEnd]))
+                    prevTokenEnd--;
+                var prevTokenStart = prevTokenEnd;
+                while (
+                    prevTokenStart >= 0
+                    && (char.IsLetterOrDigit(code[prevTokenStart]) || code[prevTokenStart] == '_')
+                )
+                    prevTokenStart--;
+                var prevToken =
+                    prevTokenStart >= 0 && prevTokenEnd >= prevTokenStart + 1
+                        ? code[(prevTokenStart + 1)..(prevTokenEnd + 1)]
+                        : "";
+                var isAfterTypeDeclarationKeyword =
+                    prevToken is "class" or "interface" or "struct" or "enum" or "record" or "new";
+
                 if (Keywords.Contains(identifier))
                 {
                     result.Append($"<span class=\"token-keyword\">{encoded}</span>");
@@ -345,12 +362,14 @@ public partial class CSharpSyntaxHighlighter
                 }
                 else if (
                     !afterDot
+                    && !isAfterTypeDeclarationKeyword
                     && char.IsUpper(identifier[identifier.StartsWith('@') ? 1 : 0])
                     && nextNonWhitespace < code.Length
                     && (code[nextNonWhitespace] == '{' || code[nextNonWhitespace] == ';')
                 )
                 {
                     // Property or field declaration (e.g., private int Foo { get; set; } or private int Bar;)
+                    // Excludes type declarations like class Foo, new Foo, etc.
                     result.Append($"<span class=\"token-property\">{encoded}</span>");
                 }
                 else if (
