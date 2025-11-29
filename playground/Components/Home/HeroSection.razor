@@ -4,7 +4,7 @@
 @implements IAsyncDisposable
 
 <section class="hero">
-    <div class="mx-auto max-w-5xl px-6 py-32 lg:grid lg:grid-cols-12">
+    <div class="mx-auto max-w-5xl px-6 py-8 md:py-32 lg:grid lg:grid-cols-12 lg:gap-3">
         <div class="mb-4 flex items-center justify-center gap-3 lg:col-span-12 lg:justify-start">
             <img src="./linqraft.png" alt="Linqraft logo" class="h-10 w-10" />
             <h1 class="font-display text-4xl font-bold tracking-wide text-white sm:text-5xl" translate="no">
@@ -74,9 +74,10 @@ var orderDto = await dbContext.Orders
     .SelectExpr<Order, OrderDto>(o => new {
         o.Id,
         CustomerName = o.Customer?.Name,
-        CustomerCountry = o.Customer?.Address?.Name,
-        ItemNames = o.OrderItems.Select(oi => new {
+        AddressName = o.Customer?.Address?.Name,
+        ItemDatas = o.OrderItems.Select(oi => new {
             ProductName = oi.Product?.Name,
+            oi.Quantity
         })
     })
     .ToList();
