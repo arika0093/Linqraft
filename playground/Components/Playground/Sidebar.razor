@@ -158,9 +158,10 @@
     private string GetSidebarClasses()
     {
         var baseClasses = "flex flex-col relative bg-gray-800 border-r border-gray-700 transition-all duration-300";
-        return Collapsed 
-            ? $"{baseClasses} w-10 min-w-[2.5rem]" 
-            : $"{baseClasses} w-60 min-w-[15rem]";
+        var mobileClasses = "md:relative fixed left-0 top-0 bottom-0 z-40";
+        return Collapsed
+            ? $"{baseClasses} {mobileClasses} w-10 min-w-[2.5rem]"
+            : $"{baseClasses} {mobileClasses} w-60 min-w-[15rem]";
     }
 
     private string GetTemplateItemClasses(Template template)
