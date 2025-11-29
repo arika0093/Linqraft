@@ -653,11 +653,11 @@
   .py-6 {
     padding-block: calc(var(--spacing) * 6);
   }
+  .py-8 {
+    padding-block: calc(var(--spacing) * 8);
+  }
   .py-12 {
     padding-block: calc(var(--spacing) * 12);
-  }
-  .py-32 {
-    padding-block: calc(var(--spacing) * 32);
   }
   .pt-6 {
     padding-top: calc(var(--spacing) * 6);
@@ -915,6 +915,11 @@
       grid-template-columns: repeat(2, minmax(0, 1fr));
     }
   }
+  .md\:py-32 {
+    @media (width >= 48rem) {
+      padding-block: calc(var(--spacing) * 32);
+    }
+  }
   .md\:text-right {
     @media (width >= 48rem) {
       text-align: right;
@@ -980,9 +985,9 @@
       gap: calc(var(--spacing) * 3);
     }
   }
-  .lg\:gap-6 {
+  .lg\:py-20 {
     @media (width >= 64rem) {
-      gap: calc(var(--spacing) * 6);
+      padding-block: calc(var(--spacing) * 20);
     }
   }
   .lg\:text-left {
