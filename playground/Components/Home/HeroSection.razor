@@ -72,12 +72,10 @@
     private string SelectExprCodeSample = @"// write query you want to generate
 var orderDto = await dbContext.Orders
     .SelectExpr<Order, OrderDto>(o => new {
-        o.Id,
         CustomerName = o.Customer?.Name,
         AddressName = o.Customer?.Address?.Name,
-        ItemDatas = o.OrderItems.Select(oi => new {
+        Items = o.OrderItems.Select(oi => new {
             ProductName = oi.Product?.Name,
-            oi.Quantity
         })
     })
     .ToList();
