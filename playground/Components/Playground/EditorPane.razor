@@ -4,12 +4,15 @@
 @inject IJSRuntime JSRuntime
 @inject SemanticHighlightingService SemanticHighlightingService
 
-<div class="flex h-full min-w-[200px] flex-col overflow-hidden">
-    <div class="flex items-center gap-2 border-b border-gray-700 bg-gray-800 px-3 py-2 text-gray-300">
+<div class="flex min-h-[50px] flex-col overflow-hidden @(IsCollapsed ? "h-10" : "h-full")">
+    <div class="flex cursor-pointer select-none items-center gap-2 border-b border-gray-700 bg-gray-800 px-3 py-2 text-gray-300 hover:bg-gray-700" @onclick="ToggleCollapse">
         <span class="text-sm">✏️</span>
-        <span class="text-xs font-medium">Editor - @(FileName ?? "Select a file")</span>
+        <span class="flex-1 text-xs font-medium">Editor - @(FileName ?? "Select a file")</span>
+        <span class="text-xs text-gray-500 opacity-50">
+            @(IsCollapsed ? "▼" : "▲")
+        </span>
     </div>
-    <div class="relative flex-1 overflow-hidden">
+    <div class="relative flex-1 overflow-hidden" style="@(IsCollapsed ? "display: none;" : "")">
         <StandaloneCodeEditor @ref="Editor"
             Id="@EditorId"
             ConstructionOptions="GetConstructionOptions"
@@ -20,14 +23,22 @@
 @code {
     private const int HighlightDebounceMs = 200;
     private const int InitialHighlightDelayMs = 100;
-    
+
     [Parameter] public string EditorId { get; set; } = "editor";
     [Parameter] public string? FileName { get; set; }
     [Parameter] public string InitialContent { get; set; } = "";
+    [Parameter] public bool IsCollapsed { get; set; } = false;
+    [Parameter] public EventCallback<bool> IsCollapsedChanged { get; set; }
     [Parameter] public EventCallback OnContentChanged { get; set; }
 
     public StandaloneCodeEditor? Editor { get; private set; }
     private CancellationTokenSource? highlightCts;
+
+    private async Task ToggleCollapse()
+    {
+        IsCollapsed = !IsCollapsed;
+        await IsCollapsedChanged.InvokeAsync(IsCollapsed);
+    }
 
     private StandaloneEditorConstructionOptions GetConstructionOptions(StandaloneCodeEditor editor)
     {
