@@ -344,6 +344,16 @@ public partial class CSharpSyntaxHighlighter
                     result.Append($"<span class=\"token-property\">{encoded}</span>");
                 }
                 else if (
+                    !afterDot
+                    && char.IsUpper(identifier[identifier.StartsWith('@') ? 1 : 0])
+                    && nextNonWhitespace < code.Length
+                    && (code[nextNonWhitespace] == '{' || code[nextNonWhitespace] == ';')
+                )
+                {
+                    // Property or field declaration (e.g., private int Foo { get; set; } or private int Bar;)
+                    result.Append($"<span class=\"token-property\">{encoded}</span>");
+                }
+                else if (
                     CommonTypes.Contains(identifier)
                     || (nextNonWhitespace < code.Length && code[nextNonWhitespace] == '<')
                 )
