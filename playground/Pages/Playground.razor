@@ -8,14 +8,8 @@
 <PageTitle>Linqraft Playground</PageTitle>
 
 <div class="flex h-full w-full overflow-hidden">
-    <!-- Overlay for mobile sidebar -->
-    @if (!sidebarCollapsed)
-    {
-        <div class="fixed inset-0 z-30 bg-black bg-opacity-50 md:hidden" @onclick="ToggleSidebar"></div>
-    }
-
     <!-- Collapsible Sidebar -->
-    <Sidebar
+    <Sidebar 
         Collapsed="sidebarCollapsed"
         TemplatesExpanded="templatesExpanded"
         FilesExpanded="filesExpanded"
@@ -31,23 +25,21 @@
         OnConfigurationChanged="OnConfigurationChanged" />
 
     <!-- Main Content Area -->
-    <div class="flex flex-1 flex-col overflow-hidden md:flex-row">
+    <div class="flex flex-1 overflow-hidden">
         <!-- Editor Pane (Left) -->
-        <div class="flex min-h-[200px] w-full flex-1 flex-col overflow-hidden md:min-h-0 md:min-w-[200px] md:w-auto">
-            <EditorPane
+        <div class="flex min-w-[200px] flex-1 flex-col overflow-hidden">
+            <EditorPane 
                 @ref="editorPane"
                 EditorId="editor"
                 FileName="@selectedFile?.Name"
                 InitialContent="@(selectedFile?.Content ?? "// Select a file to edit")"
-                IsCollapsed="editorPaneCollapsed"
-                IsCollapsedChanged="@(collapsed => { editorPaneCollapsed = collapsed; StateHasChanged(); })"
                 OnContentChanged="OnEditorContentChanged" />
         </div>
 
-        <div class="flex h-1 w-auto items-center justify-center bg-gray-700 md:h-auto md:w-1"></div>
+        <div class="flex w-1 items-center justify-center bg-gray-700"></div>
 
         <!-- Preview Panes (Right) -->
-        <div class="flex min-h-[200px] w-full flex-1 flex-col overflow-hidden md:min-h-0 md:min-w-[200px] md:w-auto">
+        <div class="flex min-w-[200px] flex-1 flex-col overflow-hidden">
             <!-- Query Expression Preview -->
             <div class="@(queryPaneCollapsed ? "" : "flex-1") min-h-[50px] overflow-hidden">
                 <PreviewPane 
@@ -94,7 +86,6 @@
     private bool sidebarCollapsed = false;
     private bool templatesExpanded = true;
     private bool filesExpanded = true;
-    private bool editorPaneCollapsed = false;
     private bool queryPaneCollapsed = false;
     private bool dtoPaneCollapsed = false;
     
@@ -120,29 +111,11 @@
 
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
-        if (firstRender)
+        if (firstRender && selectedTemplate != null)
         {
-            // Check if on mobile and collapse sidebar by default
-            try
-            {
-                var width = await JSRuntime.InvokeAsync<int>("eval", "window.innerWidth");
-                if (width < 768) // md breakpoint
-                {
-                    sidebarCollapsed = true;
-                    StateHasChanged();
-                }
-            }
-            catch
-            {
-                // Ignore errors
-            }
-
-            if (selectedTemplate != null)
-            {
-                // Wait a bit for the editor to be fully initialized
-                await Task.Delay(100);
-                await GeneratePreviewForTemplate();
-            }
+            // Wait a bit for the editor to be fully initialized
+            await Task.Delay(100);
+            await GeneratePreviewForTemplate();
         }
     }
 

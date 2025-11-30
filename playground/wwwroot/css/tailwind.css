@@ -218,9 +218,6 @@
   }
 }
 @layer utilities {
-  .collapse {
-    visibility: collapse;
-  }
   .visible {
     visibility: visible;
   }
@@ -235,9 +232,6 @@
   }
   .static {
     position: static;
-  }
-  .inset-0 {
-    inset: calc(var(--spacing) * 0);
   }
   .top-0 {
     top: calc(var(--spacing) * 0);
@@ -256,9 +250,6 @@
   }
   .z-10 {
     z-index: 10;
-  }
-  .z-30 {
-    z-index: 30;
   }
   .z-40 {
     z-index: 40;
@@ -350,11 +341,11 @@
   .min-h-\[50px\] {
     min-height: 50px;
   }
-  .min-h-\[200px\] {
-    min-height: 200px;
-  }
   .min-h-dvh {
     min-height: 100dvh;
+  }
+  .w-1 {
+    width: calc(var(--spacing) * 1);
   }
   .w-3 {
     width: calc(var(--spacing) * 3);
@@ -373,9 +364,6 @@
   }
   .w-60 {
     width: calc(var(--spacing) * 60);
-  }
-  .w-auto {
-    width: auto;
   }
   .w-full {
     width: 100%;
@@ -400,6 +388,9 @@
   }
   .min-w-\[15rem\] {
     min-width: 15rem;
+  }
+  .min-w-\[200px\] {
+    min-width: 200px;
   }
   .min-w-\[300px\] {
     min-width: 300px;
@@ -560,9 +551,6 @@
   }
   .border-t-blue-500 {
     border-top-color: var(--color-blue-500);
-  }
-  .bg-black {
-    background-color: var(--color-black);
   }
   .bg-blue-600 {
     background-color: var(--color-blue-600);
@@ -940,44 +928,9 @@
       position: relative;
     }
   }
-  .md\:hidden {
-    @media (width >= 48rem) {
-      display: none;
-    }
-  }
-  .md\:h-auto {
-    @media (width >= 48rem) {
-      height: auto;
-    }
-  }
-  .md\:min-h-0 {
-    @media (width >= 48rem) {
-      min-height: calc(var(--spacing) * 0);
-    }
-  }
-  .md\:w-1 {
-    @media (width >= 48rem) {
-      width: calc(var(--spacing) * 1);
-    }
-  }
-  .md\:w-auto {
-    @media (width >= 48rem) {
-      width: auto;
-    }
-  }
-  .md\:min-w-\[200px\] {
-    @media (width >= 48rem) {
-      min-width: 200px;
-    }
-  }
   .md\:grid-cols-2 {
     @media (width >= 48rem) {
       grid-template-columns: repeat(2, minmax(0, 1fr));
-    }
-  }
-  .md\:flex-row {
-    @media (width >= 48rem) {
-      flex-direction: row;
     }
   }
   .md\:py-32 {
