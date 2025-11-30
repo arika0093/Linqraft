@@ -12,7 +12,7 @@
             @(IsCollapsed ? "▼" : "▲")
         </span>
     </div>
-    <div class="relative flex-1 overflow-hidden" style="@(IsCollapsed ? "display: none;" : "")">
+    <div class="relative flex-1 overflow-hidden" style="@(IsCollapsed ? "display: none;" : "")" translate="no">
         <StandaloneCodeEditor @ref="Editor"
             Id="@EditorId"
             ConstructionOptions="GetConstructionOptions"
