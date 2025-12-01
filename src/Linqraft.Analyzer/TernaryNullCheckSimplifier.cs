@@ -135,9 +135,7 @@ internal static class TernaryNullCheckSimplifier
             return simplified ?? node;
         }
 
-        private ExpressionSyntax? TrySimplifyTernaryNullCheck(
-            ConditionalExpressionSyntax ternary
-        )
+        private ExpressionSyntax? TrySimplifyTernaryNullCheck(ConditionalExpressionSyntax ternary)
         {
             // Check if the condition is a null check (simple or complex with &&)
             var nullChecks = NullConditionalHelper.ExtractNullChecks(ternary.Condition);
