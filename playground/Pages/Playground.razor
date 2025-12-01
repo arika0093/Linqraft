@@ -3,6 +3,7 @@
 @using Linqraft.Core
 @inject TemplateService TemplateService
 @inject CodeGenerationService CodeGenerationService
+@inject UrlStateService UrlStateService
 @inject IJSRuntime JSRuntime
 
 <PageTitle>Linqraft Playground</PageTitle>
@@ -22,7 +23,9 @@
         OnToggleFiles="ToggleFilesSection"
         OnSelectTemplate="SelectTemplate"
         OnSelectFile="SelectFile"
-        OnConfigurationChanged="OnConfigurationChanged" />
+        OnConfigurationChanged="OnConfigurationChanged"
+        OnCopyShareUrlRequest="CopyShareUrlToClipboard"
+        OnCreateGitHubIssueRequest="OpenGitHubIssue" />
 
     <!-- Main Content Area -->
     <div class="flex flex-1 overflow-hidden">
@@ -95,7 +98,35 @@
     protected override void OnInitialized()
     {
         templates = TemplateService.GetTemplates();
-        if (templates.Count > 0)
+        
+        // Try to restore state from URL first
+        var urlState = UrlStateService.TryRestoreFromUrl();
+        if (urlState != null)
+        {
+            // Create a custom template from the restored state
+            selectedTemplate = new Models.Template
+            {
+                Name = "Shared Code",
+                Description = "Restored from shared URL",
+                Files = urlState.Files.Select(f => new Models.ProjectFile
+                {
+                    Name = f.Name,
+                    Path = f.Path,
+                    Content = f.Content,
+                    IsHidden = f.IsHidden,
+                }).ToList(),
+            };
+            configuration = urlState.Configuration;
+            
+            var visibleFiles = selectedTemplate.VisibleFiles.ToList();
+            if (visibleFiles.Count > 0)
+            {
+                selectedFile = visibleFiles.FirstOrDefault(f => 
+                    f.Content.Contains("SelectExpr")) 
+                    ?? visibleFiles[0];
+            }
+        }
+        else if (templates.Count > 0)
         {
             selectedTemplate = templates[0];
             var visibleFiles = selectedTemplate.VisibleFiles.ToList();
@@ -203,6 +234,36 @@
         catch (Exception)
         {
             // Editor not yet initialized, ignore
+        }
+    }
+    
+    private async Task CopyShareUrlToClipboard()
+    {
+        if (selectedTemplate == null) return;
+        
+        try
+        {
+            var shareUrl = UrlStateService.GenerateShareableUrl(selectedTemplate.Files, configuration);
+            await JSRuntime.InvokeVoidAsync("navigator.clipboard.writeText", shareUrl);
+        }
+        catch (JSException)
+        {
+            // Clipboard API not available in this browser context
+        }
+    }
+    
+    private async Task OpenGitHubIssue()
+    {
+        if (selectedTemplate == null) return;
+        
+        try
+        {
+            var issueUrl = UrlStateService.GenerateGitHubIssueUrl(selectedTemplate.Files, configuration);
+            await JSRuntime.InvokeVoidAsync("window.open", issueUrl, "_blank");
+        }
+        catch (JSException)
+        {
+            // Window.open not available in this browser context
         }
     }
 }
