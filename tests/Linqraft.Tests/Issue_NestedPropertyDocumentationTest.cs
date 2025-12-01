@@ -6,7 +6,7 @@ namespace Linqraft.Tests;
 /// <summary>
 /// Test case for issue: The reference location for the generated comment is incorrect
 /// See: https://github.com/arika0093/Linqraft/issues/xxx
-/// 
+///
 /// Problem:
 /// 1. ProductName = oi.Product?.Name should get comment from Product.Name, not OrderItem.Product
 /// 2. Items = s.OrderItems.Select(...) should get comment from Order.OrderItems, but has no summary
@@ -67,6 +67,7 @@ internal class OrderItem
 {
     // product data
     public Product? Product { get; set; }
+
     // sample quantity
     public int Quantity { get; set; }
 }
