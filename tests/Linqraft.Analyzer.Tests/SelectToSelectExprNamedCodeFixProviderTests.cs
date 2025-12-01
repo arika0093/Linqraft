@@ -622,7 +622,8 @@ class Test
     }
 }";
 
-        // The Struct option preserves ternary patterns - no simplification to ?.
+        // The Struct option now simplifies simple ternary patterns (like s.Child?.Id)
+        // but preserves object creation patterns (like condition ? new{} : null)
         var fixedCode =
             @"
 using System.Linq;
@@ -664,8 +665,8 @@ class Test
             {
                 Id = s.Id,
                 Foo = s.Foo,
-                Child2Id = s.Child2 != null ? s.Child2.Id : null,
-                Child2Quux = s.Child2 != null ? s.Child2.Quux : null,
+                Child2Id = s.Child2?.Id,
+                Child2Quux = s.Child2?.Quux,
             });
     }
 }";
@@ -675,7 +676,7 @@ class Test
             DiagnosticSeverity.Info
         ).WithLocation(0);
 
-        // Index 1 = struct conversion (no ternary simplification)
+        // Index 1 = struct conversion (simplifies simple ternary patterns only)
         await RunCodeFixTestAsync(test, expected, fixedCode, 1);
     }
 
@@ -875,17 +876,17 @@ class Test
                 {
                     Id = c.Id,
                     Baz = c.Baz,
-                    ChildId = c.Child != null ? c.Child.Id : null,
-                    ChildQux = c.Child != null ? c.Child.Qux : null,
+                    ChildId = c.Child?.Id,
+                    ChildQux = c.Child?.Qux,
                 }),
-                Child2Id = s.Child2 != null ? s.Child2.Id : null,
-                Child2Quux = s.Child2 != null ? s.Child2.Quux : null,
+                Child2Id = s.Child2?.Id,
+                Child2Quux = s.Child2?.Quux,
                 Child3Id = s.Child3.Id,
                 Child3Corge = s.Child3.Corge,
                 Child3ChildId =
-                    s.Child3 != null && s.Child3.Child != null ? s.Child3.Child.Id : null,
+                    s.Child3?.Child?.Id,
                 Child3ChildGrault =
-                    s.Child3 != null && s.Child3.Child != null ? s.Child3.Child.Grault : null,
+                    s.Child3?.Child?.Grault,
             });
     }
 }";
@@ -895,7 +896,7 @@ class Test
             DiagnosticSeverity.Info
         ).WithLocation(0);
 
-        // Index 2 = use predefined classes
+        // Index 2 = use predefined classes (simplifies simple ternary patterns)
         await RunCodeFixTestAsync(test, expected, fixedCode, 2);
     }
 

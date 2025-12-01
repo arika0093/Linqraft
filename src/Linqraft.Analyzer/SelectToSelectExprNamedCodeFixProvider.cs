@@ -165,8 +165,9 @@ public class SelectToSelectExprNamedCodeFixProvider : CodeFixProvider
     }
 
     /// <summary>
-    /// Converts to SelectExpr with explicit DTO but WITHOUT ternary null check simplification.
-    /// This maintains the traditional struct-like behavior where ternary patterns are preserved.
+    /// Converts to SelectExpr with explicit DTO with simple ternary null check simplification only.
+    /// Object creation patterns (like condition ? new{} : null) are preserved, but simple member
+    /// access patterns (like s.Child != null ? s.Child.Id : null) are simplified to s.Child?.Id.
     /// </summary>
     private static async Task<Document> ConvertToSelectExprExplicitDtoStructAsync(
         Document document,
@@ -210,8 +211,13 @@ public class SelectToSelectExprNamedCodeFixProvider : CodeFixProvider
             return document;
 
         // Convert the named object creation to anonymous type (including nested)
-        // NOTE: No ternary simplification is applied here - this preserves the original structure
         var anonymousCreation = ConvertToAnonymousTypeRecursive(objectCreation);
+
+        // Simplify only simple ternary null checks (excludes object creation patterns)
+        // This transforms s.Child != null ? s.Child.Id : null -> s.Child?.Id
+        // But preserves s.Child != null ? new { s.Child.Id } : null
+        anonymousCreation = (AnonymousObjectCreationExpressionSyntax)
+            TernaryNullCheckSimplifier.SimplifySimpleTernaryNullChecks(anonymousCreation);
 
         // Replace both nodes in one operation using a dictionary
         var replacements = new Dictionary<SyntaxNode, SyntaxNode>
@@ -274,9 +280,12 @@ public class SelectToSelectExprNamedCodeFixProvider : CodeFixProvider
         if (newExpression == null)
             return document;
 
-        // For Predefined pattern, we do NOT simplify ternary null checks
-        // Users can manually apply LQRS004 afterward if they want the simplified form
-        var newInvocation = invocation.WithExpression(newExpression);
+        // For Predefined pattern, we simplify only simple ternary null checks
+        // Object creation patterns are preserved, but simple member access patterns are simplified
+        var newInvocation = TernaryNullCheckSimplifier.SimplifyTernaryNullChecksInInvocation(
+            invocation.WithExpression(newExpression),
+            simplifyObjectCreations: false
+        );
 
         // Add capture parameter if needed
         if (variablesToCapture.Count > 0)

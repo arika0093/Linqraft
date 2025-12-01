@@ -14,10 +14,21 @@ internal static class TernaryNullCheckSimplifier
 {
     /// <summary>
     /// Simplifies all ternary null checks in the given expression to use ?. and ?? operators.
+    /// This includes both simple member access patterns and object creation patterns.
     /// </summary>
     public static ExpressionSyntax SimplifyTernaryNullChecks(ExpressionSyntax expression)
     {
-        var rewriter = new TernaryNullCheckRewriter();
+        var rewriter = new TernaryNullCheckRewriter(simplifyObjectCreations: true);
+        return (ExpressionSyntax)rewriter.Visit(expression);
+    }
+
+    /// <summary>
+    /// Simplifies only simple member access ternary null checks (excludes object creation patterns).
+    /// Use this for strict/predefined modes where object creation patterns should be preserved.
+    /// </summary>
+    public static ExpressionSyntax SimplifySimpleTernaryNullChecks(ExpressionSyntax expression)
+    {
+        var rewriter = new TernaryNullCheckRewriter(simplifyObjectCreations: false);
         return (ExpressionSyntax)rewriter.Visit(expression);
     }
 
@@ -27,6 +38,21 @@ internal static class TernaryNullCheckSimplifier
     /// </summary>
     public static InvocationExpressionSyntax SimplifyTernaryNullChecksInInvocation(
         InvocationExpressionSyntax invocation
+    )
+    {
+        return SimplifyTernaryNullChecksInInvocation(invocation, simplifyObjectCreations: true);
+    }
+
+    /// <summary>
+    /// Simplifies ternary null checks in lambda expressions within an invocation.
+    /// Processes all lambda arguments and applies null-conditional operator simplifications.
+    /// </summary>
+    /// <param name="invocation">The invocation expression to process</param>
+    /// <param name="simplifyObjectCreations">If true, simplifies object creation patterns.
+    /// If false, only simplifies simple member access patterns.</param>
+    public static InvocationExpressionSyntax SimplifyTernaryNullChecksInInvocation(
+        InvocationExpressionSyntax invocation,
+        bool simplifyObjectCreations
     )
     {
         // Find and simplify ternary null checks in lambda body
@@ -39,7 +65,9 @@ internal static class TernaryNullCheckSimplifier
                 && simpleLambda.Body is ExpressionSyntax bodyExpr
             )
             {
-                var simplifiedBody = SimplifyTernaryNullChecks(bodyExpr);
+                var simplifiedBody = simplifyObjectCreations
+                    ? SimplifyTernaryNullChecks(bodyExpr)
+                    : SimplifySimpleTernaryNullChecks(bodyExpr);
                 if (simplifiedBody != bodyExpr)
                 {
                     hasChanges = true;
@@ -52,7 +80,9 @@ internal static class TernaryNullCheckSimplifier
                 && parenLambda.Body is ExpressionSyntax parenBodyExpr
             )
             {
-                var simplifiedBody = SimplifyTernaryNullChecks(parenBodyExpr);
+                var simplifiedBody = simplifyObjectCreations
+                    ? SimplifyTernaryNullChecks(parenBodyExpr)
+                    : SimplifySimpleTernaryNullChecks(parenBodyExpr);
                 if (simplifiedBody != parenBodyExpr)
                 {
                     hasChanges = true;
@@ -88,6 +118,13 @@ internal static class TernaryNullCheckSimplifier
 
     private class TernaryNullCheckRewriter : CSharpSyntaxRewriter
     {
+        private readonly bool _simplifyObjectCreations;
+
+        public TernaryNullCheckRewriter(bool simplifyObjectCreations)
+        {
+            _simplifyObjectCreations = simplifyObjectCreations;
+        }
+
         public override SyntaxNode? VisitConditionalExpression(ConditionalExpressionSyntax node)
         {
             // First, visit children to handle nested ternaries
@@ -98,7 +135,7 @@ internal static class TernaryNullCheckSimplifier
             return simplified ?? node;
         }
 
-        private static ExpressionSyntax? TrySimplifyTernaryNullCheck(
+        private ExpressionSyntax? TrySimplifyTernaryNullCheck(
             ConditionalExpressionSyntax ternary
         )
         {
@@ -119,9 +156,13 @@ internal static class TernaryNullCheckSimplifier
 
             // Handle object creation patterns (previously LQRS004):
             // condition ? new{} : null  OR  condition ? null : new{}
-            // These are now automatically simplified
+            // These are only simplified when _simplifyObjectCreations is true
             if ((whenTrueIsNull && whenFalseHasObject) || (whenFalseIsNull && whenTrueHasObject))
             {
+                // Skip object creation simplification if not enabled
+                if (!_simplifyObjectCreations)
+                    return null;
+
                 var objectExpr = whenFalseIsNull ? whenTrueExpr : whenFalseExpr;
                 var effectiveNullChecks = whenTrueIsNull
                     ? InvertNullChecks(nullChecks)
@@ -170,11 +211,15 @@ internal static class TernaryNullCheckSimplifier
             return nullConditionalExpr;
         }
 
+        /// <summary>
+        /// Handles inverted null check conditions (e.g., p.Child == null ? null : expr).
+        /// This method intentionally returns the same list because the null-checked paths
+        /// are the same regardless of whether the condition is "!= null" or "== null".
+        /// The only difference is which branch has the object/expression, which is handled
+        /// by the caller when determining effectiveNullChecks vs objectExpr.
+        /// </summary>
         private static List<ExpressionSyntax> InvertNullChecks(List<ExpressionSyntax> nullChecks)
         {
-            // When the condition is inverted (e.g., p.Child == null instead of p.Child != null),
-            // the null checks extracted should work the same way for our purposes,
-            // since we're converting member accesses to null-conditional anyway.
             return nullChecks;
         }
 
