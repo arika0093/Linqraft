@@ -84,7 +84,7 @@ namespace Linqraft
                 CustomerName = o.Customer != null ? (string?)o.Customer.Name : null,
                 CustomerCountry = o.Customer != null && o.Customer.Address != null && o.Customer.Address.Country != null ? (string?)o.Customer.Address.Country.Name : null,
                 CustomerCity = o.Customer != null && o.Customer.Address != null && o.Customer.Address.City != null ? (string?)o.Customer.Address.City.Name : null,
-                CustomerInfo = new global::Tutorial.Dto_F1A64BF4
+                CustomerInfo = new global::Tutorial.CustomerInfoDto_F1A64BF4
                 {
                     Email = o.Customer != null ? (string?)o.Customer.EmailAddress : null,
                     Phone = o.Customer != null ? (string?)o.Customer.PhoneNumber : null
@@ -102,7 +102,7 @@ namespace Linqraft
 
 namespace Tutorial
 {
-    public partial class Dto_F1A64BF4
+    public partial class CustomerInfoDto_F1A64BF4
     {
         public required string? Email { get; set; }
         public required string? Phone { get; set; }
@@ -120,7 +120,7 @@ namespace Tutorial
         public required string? CustomerName { get; set; }
         public required string? CustomerCountry { get; set; }
         public required string? CustomerCity { get; set; }
-        public required global::Tutorial.Dto_F1A64BF4? CustomerInfo { get; set; }
+        public required global::Tutorial.CustomerInfoDto_F1A64BF4? CustomerInfo { get; set; }
         public required global::System.Collections.Generic.List<Tutorial.OrderItemDto_DE33EA40> Items { get; set; }
     }
 }
