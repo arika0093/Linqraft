@@ -44,11 +44,11 @@
     <TailwindInputCssFile>tailwind.css</TailwindInputCssFile>
     <TailwindOutputCssFile>wwwroot/css/tailwind.css</TailwindOutputCssFile>
   </PropertyGroup>
-  <!-- cleanup only use Debug build -->
+  <!-- cleanup only use Windows build -->
   <Target
     Name="CleanUpTailwindStaticCache"
     BeforeTargets="PrepareForBuild"
-    Condition="'$(Configuration)' == 'Debug'"
+    Condition="'$(OS)' == 'Windows_NT'"
   >
     <ItemGroup>
       <Content Remove="$(TailwindOutputCssFile)" />

@@ -1,13 +1,11 @@
-@if (IS_USE_TAILWIND_CDN)
-{
-	<script src="@("https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4")"></script>
-}
+@TAILWIND_CDN_FRAGMENT
 
 @code {
 #if DEBUG
-		private const bool IS_USE_TAILWIND_CDN = true;
+	private static RenderFragment? TAILWIND_CDN_FRAGMENT = @<script src="@TAILWIND_CDN_URL"></script>;
+	private const string TAILWIND_CDN_URL = "https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4";
 #else
-		private const bool IS_USE_TAILWIND_CDN = false;
+	private static RenderFragment? TAILWIND_CDN_FRAGMENT = null;
 #endif
 }
 
