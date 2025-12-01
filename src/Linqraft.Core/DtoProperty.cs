@@ -690,15 +690,40 @@ public record DtoProperty(
         // Build source reference from expression (converting lambda param to source type name)
         var sourceReference = BuildSourceReference(expression, semanticModel);
 
-        // Only extract symbol documentation for simple member access expressions
-        // For complex expressions (binary, invocations with nested selects, etc.), just use source reference
-        var isSimpleMemberAccess = IsSimpleMemberAccessExpression(expression);
-
         DocumentationCommentHelper.DocumentationInfo? baseDocumentation = null;
 
-        if (isSimpleMemberAccess)
+        // Check if this is an invocation expression containing Select/SelectMany
+        // For these cases, extract documentation from the collection property
+        var selectInvocation = FindSelectInvocation(expression);
+        var selectManyInvocation = FindSelectManyInvocation(expression);
+
+        if (selectInvocation is not null || selectManyInvocation is not null)
         {
-            // Try to get the source symbol from the expression
+            // For Select/SelectMany expressions, get documentation from the collection property
+            var (sourceSymbol, containingTypeName) = GetSourceSymbolFromSelectExpression(
+                selectInvocation ?? selectManyInvocation!,
+                semanticModel
+            );
+
+            if (sourceSymbol is IPropertySymbol propertySymbol)
+            {
+                baseDocumentation = DocumentationCommentHelper.GetPropertyDocumentation(
+                    propertySymbol,
+                    containingTypeName
+                );
+            }
+            else if (sourceSymbol is IFieldSymbol fieldSymbol)
+            {
+                baseDocumentation = DocumentationCommentHelper.GetFieldDocumentation(
+                    fieldSymbol,
+                    containingTypeName
+                );
+            }
+        }
+        else if (IsSimpleMemberAccessExpression(expression))
+        {
+            // Only extract symbol documentation for simple member access expressions
+            // For complex expressions (binary, invocations with nested selects, etc.), just use source reference
             var (sourceSymbol, containingTypeName) = GetSourceSymbolFromExpression(
                 expression,
                 semanticModel
@@ -768,7 +793,31 @@ public record DtoProperty(
         SemanticModel semanticModel
     )
     {
-        // For direct member access (e.g., s.Name or s.Child?.Name)
+        // Check for conditional access first (e.g., s.Child?.Name, oi.Product?.Name)
+        // For conditional access, we need to get the last MemberBindingExpressionSyntax (the .Name part)
+        // NOT the MemberAccessExpressionSyntax which would give us the wrong property (s.Child or oi.Product)
+        var conditionalAccess = expression
+            .DescendantNodesAndSelf()
+            .OfType<ConditionalAccessExpressionSyntax>()
+            .LastOrDefault();
+
+        if (conditionalAccess != null)
+        {
+            // Get the last member binding expression (the part after ?.)
+            // For oi.Product?.Name, this gives us .Name
+            var memberBinding = conditionalAccess
+                .DescendantNodes()
+                .OfType<MemberBindingExpressionSyntax>()
+                .LastOrDefault();
+
+            if (memberBinding != null)
+            {
+                var symbolInfo = semanticModel.GetSymbolInfo(memberBinding);
+                return (symbolInfo.Symbol, symbolInfo.Symbol?.ContainingType?.Name);
+            }
+        }
+
+        // For direct member access (e.g., s.Name)
         // Navigate through the expression to find the leaf member access
         var leafMemberAccess = expression
             .DescendantNodesAndSelf()
@@ -781,30 +830,72 @@ public record DtoProperty(
             var symbol = symbolInfo.Symbol;
             var containingTypeName = symbol?.ContainingType?.Name;
 
-            // For chained access like s.Child?.Name, we want the type name to be the full path
-            // Build the containing type name from the expression path
+            // For chained access, we want the type name to be the containing type of the accessed member
             var fullContainingTypeName = GetFullContainingTypeName(leafMemberAccess, semanticModel);
 
             return (symbol, fullContainingTypeName ?? containingTypeName);
         }
 
-        // For conditional access (e.g., s.Child?.Name)
-        var conditionalAccess = expression
-            .DescendantNodesAndSelf()
-            .OfType<ConditionalAccessExpressionSyntax>()
-            .LastOrDefault();
+        return (null, null);
+    }
 
-        if (conditionalAccess != null)
+    /// <summary>
+    /// Gets the source symbol from a Select/SelectMany invocation expression
+    /// Extracts documentation from the collection property that is being selected from
+    /// </summary>
+    private static (ISymbol? Symbol, string? ContainingTypeName) GetSourceSymbolFromSelectExpression(
+        InvocationExpressionSyntax selectInvocation,
+        SemanticModel semanticModel
+    )
+    {
+        // For s.OrderItems.Select(...), we want to get documentation from OrderItems property
+        // The selectInvocation.Expression is: s.OrderItems.Select
+        // We need to find the member access before the .Select call
+        if (selectInvocation.Expression is MemberAccessExpressionSyntax selectMemberAccess)
         {
-            // Get the member binding expression (the part after ?.)
-            var memberBinding = conditionalAccess
-                .DescendantNodes()
-                .OfType<MemberBindingExpressionSyntax>()
-                .LastOrDefault();
-
-            if (memberBinding != null)
+            // selectMemberAccess.Expression is: s.OrderItems
+            // This could be a simple member access or a chained access
+            if (selectMemberAccess.Expression is MemberAccessExpressionSyntax collectionAccess)
             {
-                var symbolInfo = semanticModel.GetSymbolInfo(memberBinding);
+                var symbolInfo = semanticModel.GetSymbolInfo(collectionAccess);
+                return (symbolInfo.Symbol, symbolInfo.Symbol?.ContainingType?.Name);
+            }
+
+            // For nullable access like s.Items?.Select(...)
+            // selectMemberAccess.Expression would be s.Items
+            if (selectMemberAccess.Expression is ConditionalAccessExpressionSyntax)
+            {
+                // The collection is before the ?.
+                var conditionalAccess = (ConditionalAccessExpressionSyntax)selectMemberAccess.Expression;
+                if (conditionalAccess.Expression is MemberAccessExpressionSyntax nullableCollectionAccess)
+                {
+                    var symbolInfo = semanticModel.GetSymbolInfo(nullableCollectionAccess);
+                    return (symbolInfo.Symbol, symbolInfo.Symbol?.ContainingType?.Name);
+                }
+            }
+
+            // For cases like items.Select(...) where items is an identifier
+            if (selectMemberAccess.Expression is IdentifierNameSyntax)
+            {
+                // This is a variable like items.Select(...), not a property access
+                // We can't get meaningful documentation from a local variable
+                return (null, null);
+            }
+        }
+
+        // For conditional access like s.Items?.Select(...)
+        // The WhenNotNull part contains the .Select call via MemberBinding
+        if (selectInvocation.Expression is MemberBindingExpressionSyntax)
+        {
+            // We need to look at the parent conditional access to find the collection
+            var parentConditionalAccess = selectInvocation
+                .Ancestors()
+                .OfType<ConditionalAccessExpressionSyntax>()
+                .FirstOrDefault();
+
+            if (parentConditionalAccess?.Expression is MemberAccessExpressionSyntax collectionAccess)
+            {
+                var symbolInfo = semanticModel.GetSymbolInfo(collectionAccess);
                 return (symbolInfo.Symbol, symbolInfo.Symbol?.ContainingType?.Name);
             }
         }
