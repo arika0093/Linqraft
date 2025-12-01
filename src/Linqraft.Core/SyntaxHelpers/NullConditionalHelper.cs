@@ -590,6 +590,21 @@ public static class NullConditionalHelper
             }
         }
 
+        // Check for "x == null" pattern (inverted condition)
+        if (binary.Kind() == SyntaxKind.EqualsExpression)
+        {
+            if (IsNullLiteral(binary.Right))
+            {
+                checkedExpression = binary.Left;
+                return true;
+            }
+            if (IsNullLiteral(binary.Left))
+            {
+                checkedExpression = binary.Right;
+                return true;
+            }
+        }
+
         return false;
     }
 
