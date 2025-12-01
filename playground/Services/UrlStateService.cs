@@ -11,15 +11,12 @@ namespace Linqraft.Playground.Services;
 /// Service for managing URL state for sharing playground code.
 /// Handles serialization, compression, and URL encoding of the current codebase.
 /// </summary>
-public class UrlStateService
+public class UrlStateService(NavigationManager navigationManager)
 {
-    private readonly NavigationManager _navigationManager;
-    private const string StateParameterName = "state";
+    private static JsonSerializerOptions JsonSerializeOptions =>
+        new() { PropertyNamingPolicy = JsonNamingPolicy.CamelCase };
 
-    public UrlStateService(NavigationManager navigationManager)
-    {
-        _navigationManager = navigationManager;
-    }
+    private const string StateParameterName = "state";
 
     /// <summary>
     /// Serializable state object for URL sharing
@@ -48,37 +45,42 @@ public class UrlStateService
     {
         var state = new PlaygroundState
         {
-            Files = files.Select(f => new FileState
-            {
-                Name = f.Name,
-                Path = f.Path,
-                Content = f.Content,
-                IsHidden = f.IsHidden,
-            }).ToList(),
+            Files = files
+                .Select(f => new FileState
+                {
+                    Name = f.Name,
+                    Path = f.Path,
+                    Content = f.Content,
+                    IsHidden = f.IsHidden,
+                })
+                .ToList(),
             Configuration = configuration,
         };
 
-        var json = JsonSerializer.Serialize(state, new JsonSerializerOptions
-        {
-            PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
-        });
+        var json = JsonSerializer.Serialize(state, JsonSerializeOptions);
 
         var compressed = CompressString(json);
         var encoded = Base64UrlEncode(compressed);
 
-        var baseUri = _navigationManager.BaseUri;
+        var baseUri = navigationManager.BaseUri;
         return $"{baseUri}playground?{StateParameterName}={encoded}";
     }
 
     /// <summary>
     /// Generates a URL for creating a GitHub issue with the current state
     /// </summary>
-    public string GenerateGitHubIssueUrl(List<ProjectFile> files, LinqraftConfiguration configuration, string issueTitle = "")
+    public string GenerateGitHubIssueUrl(
+        List<ProjectFile> files,
+        LinqraftConfiguration configuration,
+        string issueTitle = ""
+    )
     {
         var shareableUrl = GenerateShareableUrl(files, configuration);
         var issueBody = GenerateIssueBody(files, shareableUrl);
 
-        var encodedTitle = Uri.EscapeDataString(issueTitle.Length > 0 ? issueTitle : "Issue from Playground");
+        var encodedTitle = Uri.EscapeDataString(
+            issueTitle.Length > 0 ? issueTitle : "Issue from Playground"
+        );
         var encodedBody = Uri.EscapeDataString(issueBody);
 
         return $"https://github.com/arika0093/Linqraft/issues/new?title={encodedTitle}&body={encodedBody}";
@@ -89,7 +91,7 @@ public class UrlStateService
     /// </summary>
     public PlaygroundState? TryRestoreFromUrl()
     {
-        var uri = new Uri(_navigationManager.Uri);
+        var uri = new Uri(navigationManager.Uri);
         var stateParam = GetQueryParameter(uri.Query, StateParameterName);
 
         if (string.IsNullOrEmpty(stateParam))
@@ -101,10 +103,7 @@ public class UrlStateService
         {
             var compressed = Base64UrlDecode(stateParam);
             var json = DecompressString(compressed);
-            return JsonSerializer.Deserialize<PlaygroundState>(json, new JsonSerializerOptions
-            {
-                PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
-            });
+            return JsonSerializer.Deserialize<PlaygroundState>(json, JsonSerializeOptions);
         }
         catch (Exception ex) when (ex is FormatException or JsonException or InvalidDataException)
         {
@@ -118,7 +117,7 @@ public class UrlStateService
     /// </summary>
     public bool HasStateInUrl()
     {
-        var uri = new Uri(_navigationManager.Uri);
+        var uri = new Uri(navigationManager.Uri);
         return !string.IsNullOrEmpty(GetQueryParameter(uri.Query, StateParameterName));
     }
 
@@ -134,7 +133,7 @@ public class UrlStateService
 
         // Remove leading '?' if present
         var queryString = query.StartsWith("?") ? query.Substring(1) : query;
-        
+
         foreach (var pair in queryString.Split('&'))
         {
             var parts = pair.Split('=', 2);
@@ -143,7 +142,7 @@ public class UrlStateService
                 return Uri.UnescapeDataString(parts[1]);
             }
         }
-        
+
         return null;
     }
 
@@ -207,10 +206,7 @@ public class UrlStateService
 
     private static string Base64UrlEncode(byte[] data)
     {
-        return Convert.ToBase64String(data)
-            .Replace('+', '-')
-            .Replace('/', '_')
-            .TrimEnd('=');
+        return Convert.ToBase64String(data).Replace('+', '-').Replace('/', '_').TrimEnd('=');
     }
 
     private static byte[] Base64UrlDecode(string encoded)
@@ -219,8 +215,12 @@ public class UrlStateService
         var padded = encoded.Replace('-', '+').Replace('_', '/');
         switch (padded.Length % 4)
         {
-            case 2: padded += "=="; break;
-            case 3: padded += "="; break;
+            case 2:
+                padded += "==";
+                break;
+            case 3:
+                padded += "=";
+                break;
         }
         return Convert.FromBase64String(padded);
     }
