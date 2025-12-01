@@ -1080,7 +1080,7 @@ class Test
     [Fact]
     public async Task CodeFix_Explicit_AddsCapture_WhenLocalVariableIsUsed_WithChainedMethod_Struct()
     {
-        // This test case reproduces the bug for Index=1 (struct):
+        // This test case reproduces the bug for Index=1 (strict):
         // When converting .Select(...).FirstOrDefault() to SelectExpr<T, TDto>,
         // the capture parameter should be added to SelectExpr, not to FirstOrDefault.
         var test =

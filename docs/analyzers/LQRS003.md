@@ -23,7 +23,7 @@ Detects `System.Linq` `Select` invocations on `IQueryable<T>` whose selector cre
 - **Convert to SelectExpr<T, TDto>**
   - Converts the `Select` method to a generic `SelectExpr<TSource, TDto>` and **converts the named object creation into an anonymous object**. This variant recursively converts nested object creations as well (deep conversion). It also runs the ternary-null simplifier on the generated anonymous structures, converting patterns like `x.A != null ? x.A.B : null` to `x.A?.B`.
 
-- **Convert to SelectExpr<T, TDto> (struct)**
+- **Convert to SelectExpr<T, TDto> (strict)**
   - Similar to the above, but **does NOT apply ternary null check simplification**. This preserves the original ternary patterns (e.g., `x.A != null ? x.A.B : null` remains unchanged). Useful when you want to maintain the exact nullability structure of the original code.
 
 - **Convert to SelectExpr (use predefined classes)**
@@ -42,7 +42,7 @@ are automatically converted to:
 prop = x.A?.B
 ```
 
-This provides more concise code using null-conditional operators. The second option (struct) intentionally preserves the original ternary patterns. See [LQRS004](LQRS004.md) for details on this transformation.
+This provides more concise code using null-conditional operators. The second option (strict) intentionally preserves the original ternary patterns. See [LQRS004](LQRS004.md) for details on this transformation.
 
 These three options map directly to the code-fix implementations: `ConvertToSelectExprExplicitDtoAsync`, `ConvertToSelectExprExplicitDtoStructAsync`, and `ConvertToSelectExprPredefinedDtoAsync`.
 

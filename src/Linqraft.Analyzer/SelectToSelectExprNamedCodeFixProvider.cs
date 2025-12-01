@@ -60,7 +60,7 @@ public class SelectToSelectExprNamedCodeFixProvider : CodeFixProvider
 
         context.RegisterCodeFix(
             CodeAction.Create(
-                title: "Convert to SelectExpr<T, TDto> (struct)",
+                title: "Convert to SelectExpr<T, TDto> (strict)",
                 createChangedDocument: c =>
                     ConvertToSelectExprExplicitDtoStructAsync(context.Document, invocation, c),
                 equivalenceKey: "ConvertToSelectExprExplicitDtoStruct"
