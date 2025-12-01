@@ -14,12 +14,13 @@
     --color-cyan-400: oklch(78.9% 0.154 211.53);
     --color-cyan-600: oklch(60.9% 0.126 221.723);
     --color-cyan-700: oklch(52% 0.105 223.128);
+    --color-cyan-800: oklch(45% 0.085 224.283);
     --color-cyan-950: oklch(30.2% 0.056 229.695);
     --color-blue-300: oklch(80.9% 0.105 251.813);
     --color-blue-400: oklch(70.7% 0.165 254.624);
     --color-blue-500: oklch(62.3% 0.214 259.815);
     --color-blue-600: oklch(54.6% 0.245 262.881);
-    --color-blue-700: oklch(48.8% 0.243 264.376);
+    --color-blue-800: oklch(42.4% 0.199 265.638);
     --color-blue-900: oklch(37.9% 0.146 265.522);
     --color-indigo-400: oklch(67.3% 0.182 276.935);
     --color-gray-100: oklch(96.7% 0.003 264.542);
@@ -535,6 +536,9 @@
     --tw-border-style: solid;
     border-style: solid;
   }
+  .border-cyan-600 {
+    border-color: var(--color-cyan-600);
+  }
   .border-gray-200 {
     border-color: var(--color-gray-200);
   }
@@ -556,11 +560,11 @@
   .bg-blue-600 {
     background-color: var(--color-blue-600);
   }
+  .bg-blue-800 {
+    background-color: var(--color-blue-800);
+  }
   .bg-blue-900 {
     background-color: var(--color-blue-900);
-  }
-  .bg-cyan-700 {
-    background-color: var(--color-cyan-700);
   }
   .bg-gray-700 {
     background-color: var(--color-gray-700);
@@ -837,6 +841,13 @@
     -webkit-user-select: none;
     user-select: none;
   }
+  .hover\:border-cyan-400 {
+    &:hover {
+      @media (hover: hover) {
+        border-color: var(--color-cyan-400);
+      }
+    }
+  }
   .hover\:border-gray-500 {
     &:hover {
       @media (hover: hover) {
@@ -851,17 +862,17 @@
       }
     }
   }
-  .hover\:bg-blue-700 {
+  .hover\:bg-blue-600 {
     &:hover {
       @media (hover: hover) {
-        background-color: var(--color-blue-700);
+        background-color: var(--color-blue-600);
       }
     }
   }
-  .hover\:bg-cyan-600 {
+  .hover\:bg-cyan-800 {
     &:hover {
       @media (hover: hover) {
-        background-color: var(--color-cyan-600);
+        background-color: var(--color-cyan-800);
       }
     }
   }

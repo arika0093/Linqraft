@@ -8,7 +8,7 @@
     <div class="flex h-full flex-col overflow-y-auto @(Collapsed ? "hidden" : "")">
         <!-- Linqraft Version -->
         <div class="border-b border-gray-700 px-3 py-3 font-mono text-sm text-gray-400">
-            <span class="text-xs">Ver @ThisAssembly.AssemblyInformationalVersion.Split("+")[0]</span>
+            <span class="text-xs">Ver: @VersionName</span>
         </div>
 
         <!-- Templates Section -->
@@ -68,11 +68,11 @@
             @if (shareExpanded)
             {
                 <div class="space-y-2 px-3 py-2">
-                    <button class="flex w-full cursor-pointer items-center gap-2 rounded bg-blue-600 px-3 py-1.5 text-xs text-white hover:bg-blue-700"
+                    <button class="flex w-full cursor-pointer items-center gap-2 rounded bg-blue-800 px-3 py-1.5 text-xs text-white hover:bg-blue-600"
                             @onclick="OnCopyShareUrl">
                         <span>@(copyButtonText)</span>
                     </button>
-                    <button class="flex w-full cursor-pointer items-center gap-2 rounded bg-cyan-700 px-3 py-1.5 text-xs text-white hover:bg-cyan-600"
+                    <button class="flex w-full cursor-pointer items-center gap-2 rounded px-3 py-1.5 text-xs text-white border border-cyan-600 hover:border-cyan-400 hover:bg-cyan-800"
                             @onclick="OnCreateGitHubIssue">
                         <span>Create GitHub Issue</span>
                     </button>
@@ -97,9 +97,9 @@
                                 value="@((int)Configuration.PropertyAccessor)"
                                 @onchange="@(e => UpdateConfig(c => c with { PropertyAccessor = (PropertyAccessor)int.Parse(e.Value?.ToString() ?? "0") }))">
                             <option value="@((int)PropertyAccessor.Default)">Default</option>
-                            <option value="@((int)PropertyAccessor.GetAndSet)">get; set;</option>
-                            <option value="@((int)PropertyAccessor.GetAndInit)">get; init;</option>
-                            <option value="@((int)PropertyAccessor.GetAndInternalSet)">get; internal set;</option>
+                            <option value="@((int)PropertyAccessor.GetAndSet)">GetAndSet</option>
+                            <option value="@((int)PropertyAccessor.GetAndInit)">GetAndInit</option>
+                            <option value="@((int)PropertyAccessor.GetAndInternalSet)">GetAndInternalSet</option>
                         </select>
                     </div>
                     
@@ -161,6 +161,8 @@
 </div>
 
 @code {
+    private static string VersionName => ThisAssembly.AssemblyInformationalVersion.Split("+")[0];
+
     [Parameter] public bool Collapsed { get; set; }
     [Parameter] public bool TemplatesExpanded { get; set; } = true;
     [Parameter] public bool FilesExpanded { get; set; } = true;
@@ -177,8 +179,8 @@
     [Parameter] public EventCallback OnCopyShareUrlRequest { get; set; }
     [Parameter] public EventCallback OnCreateGitHubIssueRequest { get; set; }
     
-    private bool settingsExpanded = false;
-    private bool shareExpanded = false;
+    private bool settingsExpanded = true;
+    private bool shareExpanded = true;
     private string copyButtonText = "Copy Share URL";
 
     private string GetSidebarClasses()
