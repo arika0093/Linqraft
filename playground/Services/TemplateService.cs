@@ -74,11 +74,30 @@ public class TemplateService
 
                             namespace MinRepro;
 
+                            public class Program
+                            {
+                                public void Execute()
+                                {
+                                    var data = new List<Entity>();
+                                    var query = data.AsQueryable();
+                                    // Reproduce your issue here
+                                    var result = query.SelectExpr<Entity, EntityDto>(x => new
+                                    {
+                                        x.Id,
+                                        x.Name,
+                                        ChildDescription = x.Child?.Description,
+                                        ItemTitles = x.Items.Select(i => i.Title),
+                                    });
+                                }
+                            }
+
+                            // here are some sample classes to work with 
                             public class Entity
                             {
                                 public int Id { get; set; }
                                 public string Name { get; set; } = "";
                                 public Child? Child { get; set; }
+                                public List<Item> Items { get; set; } = [];
                             }
 
                             public class Child
@@ -86,21 +105,9 @@ public class TemplateService
                                 public string Description { get; set; } = "";
                             }
 
-                            public class Program
+                            public class Item
                             {
-                                public void Execute()
-                                {
-                                    var data = new List<Entity>();
-                                    var query = data.AsQueryable();
-
-                                    // Reproduce your issue here
-                                    var result = query.SelectExpr(x => new
-                                    {
-                                        x.Id,
-                                        x.Name,
-                                        ChildDescription = x.Child?.Description,
-                                    });
-                                }
+                                public string Title { get; set; } = "";
                             }
                             """,
                 },
