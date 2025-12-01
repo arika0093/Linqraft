@@ -123,8 +123,9 @@ internal static class TernaryNullCheckSimplifier
             if ((whenTrueIsNull && whenFalseHasObject) || (whenFalseIsNull && whenTrueHasObject))
             {
                 var objectExpr = whenFalseIsNull ? whenTrueExpr : whenFalseExpr;
-                var effectiveNullChecks =
-                    whenTrueIsNull ? InvertNullChecks(nullChecks) : nullChecks;
+                var effectiveNullChecks = whenTrueIsNull
+                    ? InvertNullChecks(nullChecks)
+                    : nullChecks;
 
                 // Convert the object creation to use null-conditional operators inside
                 var converted = ConvertObjectCreationToNullConditional(
