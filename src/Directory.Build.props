@@ -6,7 +6,7 @@
     <Nullable>enable</Nullable>
     <RestorePackagesWithLockFile>true</RestorePackagesWithLockFile>
     <PackageDescription>Write Select queries easily with on-demand DTO generation and null-coalescing operators.</PackageDescription>
-    <PackageProjectUrl>https://github.com/arika0093/Linqraft</PackageProjectUrl>
+    <PackageProjectUrl>https://arika0093.github.io/Linqraft/</PackageProjectUrl>
     <RepositoryUrl>https://github.com/arika0093/Linqraft</RepositoryUrl>
     <PackageLicenseExpression>Apache-2.0</PackageLicenseExpression>
     <Authors>arika0093</Authors>
