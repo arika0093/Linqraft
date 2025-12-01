@@ -786,7 +786,18 @@ public record DtoProperty(
     }
 
     /// <summary>
-    /// Gets the source symbol from an expression (the property or field being accessed)
+    /// Gets the source symbol from an expression (the property or field being accessed).
+    /// 
+    /// IMPORTANT: The order of checks matters for correct documentation extraction:
+    /// 
+    /// 1. Conditional access expressions (e.g., oi.Product?.Name) must be checked FIRST because:
+    ///    - The syntax tree for "oi.Product?.Name" is: ConditionalAccessExpression containing:
+    ///      - MemberAccessExpression: oi.Product
+    ///      - MemberBindingExpression: .Name
+    ///    - If we check MemberAccessExpression first, we'd get "oi.Product" which is WRONG
+    ///    - We need to get MemberBindingExpression ".Name" to get the correct documentation
+    /// 
+    /// 2. Direct member access (e.g., s.Name) is checked second for non-conditional cases
     /// </summary>
     private static (ISymbol? Symbol, string? ContainingTypeName) GetSourceSymbolFromExpression(
         ExpressionSyntax expression,
@@ -840,8 +851,14 @@ public record DtoProperty(
     }
 
     /// <summary>
-    /// Gets the source symbol from a Select/SelectMany invocation expression
-    /// Extracts documentation from the collection property that is being selected from
+    /// Gets the source symbol from a Select/SelectMany invocation expression.
+    /// Extracts documentation from the collection property that is being selected from.
+    /// 
+    /// Handles the following patterns:
+    /// - s.OrderItems.Select(...)           -> gets documentation from s.OrderItems
+    /// - s.Items?.Select(...)               -> gets documentation from s.Items
+    /// - s.Parent.Children.Select(...)      -> gets documentation from s.Parent.Children
+    /// - items.Select(...) (local variable) -> returns null (no meaningful documentation)
     /// </summary>
     private static (ISymbol? Symbol, string? ContainingTypeName) GetSourceSymbolFromSelectExpression(
         InvocationExpressionSyntax selectInvocation,
