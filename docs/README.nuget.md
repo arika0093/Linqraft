@@ -2,7 +2,7 @@
 
 [![NuGet Version](https://img.shields.io/nuget/v/Linqraft?style=flat-square&logo=NuGet&color=0080CC)](https://www.nuget.org/packages/Linqraft/) ![GitHub Actions Workflow Status](https://img.shields.io/github/actions/workflow/status/arika0093/Linqraft/test.yaml?branch=main&label=Test&style=flat-square) [![DeepWiki](https://img.shields.io/badge/DeepWiki-arika0093%2FLinqraft-blue.svg?logo=data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACwAAAAyCAYAAAAnWDnqAAAAAXNSR0IArs4c6QAAA05JREFUaEPtmUtyEzEQhtWTQyQLHNak2AB7ZnyXZMEjXMGeK/AIi+QuHrMnbChYY7MIh8g01fJoopFb0uhhEqqcbWTp06/uv1saEDv4O3n3dV60RfP947Mm9/SQc0ICFQgzfc4CYZoTPAswgSJCCUJUnAAoRHOAUOcATwbmVLWdGoH//PB8mnKqScAhsD0kYP3j/Yt5LPQe2KvcXmGvRHcDnpxfL2zOYJ1mFwrryWTz0advv1Ut4CJgf5uhDuDj5eUcAUoahrdY/56ebRWeraTjMt/00Sh3UDtjgHtQNHwcRGOC98BJEAEymycmYcWwOprTgcB6VZ5JK5TAJ+fXGLBm3FDAmn6oPPjR4rKCAoJCal2eAiQp2x0vxTPB3ALO2CRkwmDy5WohzBDwSEFKRwPbknEggCPB/imwrycgxX2NzoMCHhPkDwqYMr9tRcP5qNrMZHkVnOjRMWwLCcr8ohBVb1OMjxLwGCvjTikrsBOiA6fNyCrm8V1rP93iVPpwaE+gO0SsWmPiXB+jikdf6SizrT5qKasx5j8ABbHpFTx+vFXp9EnYQmLx02h1QTTrl6eDqxLnGjporxl3NL3agEvXdT0WmEost648sQOYAeJS9Q7bfUVoMGnjo4AZdUMQku50McDcMWcBPvr0SzbTAFDfvJqwLzgxwATnCgnp4wDl6Aa+Ax283gghmj+vj7feE2KBBRMW3FzOpLOADl0Isb5587h/U4gGvkt5v60Z1VLG8BhYjbzRwyQZemwAd6cCR5/XFWLYZRIMpX39AR0tjaGGiGzLVyhse5C9RKC6ai42ppWPKiBagOvaYk8lO7DajerabOZP46Lby5wKjw1HCRx7p9sVMOWGzb/vA1hwiWc6jm3MvQDTogQkiqIhJV0nBQBTU+3okKCFDy9WwferkHjtxib7t3xIUQtHxnIwtx4mpg26/HfwVNVDb4oI9RHmx5WGelRVlrtiw43zboCLaxv46AZeB3IlTkwouebTr1y2NjSpHz68WNFjHvupy3q8TFn3Hos2IAk4Ju5dCo8B3wP7VPr/FGaKiG+T+v+TQqIrOqMTL1VdWV1DdmcbO8KXBz6esmYWYKPwDL5b5FA1a0hwapHiom0r/cKaoqr+27/XcrS5UwSMbQAAAABJRU5ErkJggg==)](https://deepwiki.com/arika0093/Linqraft)
 
-Simplifies Select query expressions for EntityFrameworkCore (EF Core) by providing automatic DTO generation and support for null-propagating expressions.
+Write Select queries easily with on-demand DTO generation and null-coalescing operators. No depedendencies.
 
 For Example:
 
@@ -12,18 +12,26 @@ var orders = await dbContext.Orders
     // OrderDto: output DTO type (auto-generated)
     .SelectExpr<Order, OrderDto>(o => new
     {
-        Id = o.Id,
-        // you can use null-propagating operator (?.)
+        // can use inferred member names
+        o.Id,
+        // null-propagation supported
         CustomerName = o.Customer?.Name,
+        // also works for nested objects
         CustomerCountry = o.Customer?.Address?.Country?.Name,
         CustomerCity = o.Customer?.Address?.City?.Name,
-        // Items type will be also auto-generated
+        // you can use anonymous types inside
+        CustomerInfo = new
+        {
+            Email = o.Customer?.EmailAddress,
+            Phone = o.Customer?.PhoneNumber,
+        },
+        // collections available
         Items = o.OrderItems.Select(oi => new
         {
-            // you can nested Select with null-propagating operator
+            // of course, features work here too
             ProductName = oi.Product?.Name,
-            Quantity = oi.Quantity
-        }).ToList(),
+            oi.Quantity
+        }),
     })
     .ToListAsync();
 ```
@@ -43,7 +51,6 @@ will be generated as:
 using System;
 using System.Linq;
 using System.Collections.Generic;
-using Tutorial;
 
 namespace Linqraft
 {
@@ -51,32 +58,43 @@ namespace Linqraft
     {
         /// <summary>
         /// generated select expression method OrderDto (explicit) <br/>
-        /// at TutorialCaseTest.cs(40,14)
+        /// at TutorialCaseTest.cs(17,14)
         /// </summary>
-        [global::System.Runtime.CompilerServices.InterceptsLocationAttribute(1, "9IBuY2cLVnfIVhZ8DH1V8UkEAABUdXRvcmlhbENhc2VUZXN0LmNz")]
-        public static IQueryable<TResult> SelectExpr_E6B721AD_FA0FABCE<TIn, TResult>(
+        [global::System.Runtime.CompilerServices.InterceptsLocationAttribute(1, "1rTP47TjaPKlTizGJTAHaXsBAABUdXRvcmlhbENhc2VUZXN0LmNz")]
+        public static IQueryable<TResult> SelectExpr_54EA5DDB_8D42F5FB<TIn, TResult>(
             this IQueryable<TIn> query, Func<TIn, object> selector)
         {
             var matchedQuery = query as object as IQueryable<global::Tutorial.Order>;
-            var converted = matchedQuery.Select(s => new global::Tutorial.OrderDto
+            var converted = matchedQuery.Select(o => new global::Tutorial.OrderDto
             {
-                Id = s.Id,
-                CustomerName = s.Customer != null ? (string?)s.Customer.Name : null,
-                CustomerCountry = s.Customer != null && s.Customer.Address != null && s.Customer.Address.Country != null ? (string?)s.Customer.Address.Country.Name : null,
-                CustomerCity = s.Customer != null && s.Customer.Address != null && s.Customer.Address.City != null ? (string?)s.Customer.Address.City.Name : null,
-                Items = s.OrderItems.Select(oi => new global::Tutorial.OrderItemDto_DE33EA40 {
+                Id = o.Id,
+                CustomerName = o.Customer != null ? (string?)o.Customer.Name : null,
+                CustomerCountry = o.Customer != null && o.Customer.Address != null && o.Customer.Address.Country != null ? (string?)o.Customer.Address.Country.Name : null,
+                CustomerCity = o.Customer != null && o.Customer.Address != null && o.Customer.Address.City != null ? (string?)o.Customer.Address.City.Name : null,
+                CustomerInfo = new global::Tutorial.CustomerInfoDto_F1A64BF4
+                {
+                    Email = o.Customer != null ? (string?)o.Customer.EmailAddress : null,
+                    Phone = o.Customer != null ? (string?)o.Customer.PhoneNumber : null
+                },
+                Items = o.OrderItems.Select(oi => new global::Tutorial.OrderItemDto_DE33EA40
+                {
                     ProductName = oi.Product != null ? (string?)oi.Product.Name : null,
-                    Quantity = oi.Quantity,
-                }).ToList()
+                    Quantity = oi.Quantity
+                })
             });
             return converted as object as IQueryable<TResult>;
         }
-
     }
 }
 
 namespace Tutorial
 {
+    public partial class CustomerInfoDto_F1A64BF4
+    {
+        public required string? Email { get; set; }
+        public required string? Phone { get; set; }
+    }
+
     public partial class OrderItemDto_DE33EA40
     {
         public required string? ProductName { get; set; }
@@ -89,9 +107,9 @@ namespace Tutorial
         public required string? CustomerName { get; set; }
         public required string? CustomerCountry { get; set; }
         public required string? CustomerCity { get; set; }
+        public required global::Tutorial.CustomerInfoDto_F1A64BF4? CustomerInfo { get; set; }
         public required global::System.Collections.Generic.List<Tutorial.OrderItemDto_DE33EA40> Items { get; set; }
     }
-    
 }
 ```
 
