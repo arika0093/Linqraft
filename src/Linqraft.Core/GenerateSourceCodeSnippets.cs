@@ -27,7 +27,7 @@ public static class GenerateSourceCodeSnippets
         var dtoPart = BuildDtoCodeSnippetsGroupedByNamespace(dtoClassInfos, configuration);
         return $$"""
             {{GenerateCommentHeaderPart()}}
-            {{GenerateHeaderFlagsPart()}}
+            {{GenerateHeaderFlagsPart}}
             {{exprPart}}
             {{dtoPart}}
             """;
@@ -41,7 +41,7 @@ public static class GenerateSourceCodeSnippets
             CodeFormatter.IndentSize * 2
         );
         return $$"""
-            {{GenerateHeaderUsingPart()}}
+            {{GenerateHeaderUsingPart}}
             namespace Linqraft
             {
                 file static partial class GeneratedExpression
@@ -168,6 +168,7 @@ public static class GenerateSourceCodeSnippets
             /// <summary>
             /// Create select expression method, usable nullable operators, and generate instance DTOs.
             /// </summary>
+        {{OverloadPriorityAttribute}}
             public static IQueryable<TResult> SelectExpr<TIn, TResult>(this IQueryable<TIn> query, Func<TIn, object> selector)
                 where TIn : class => throw InvalidException;
 
@@ -182,6 +183,7 @@ public static class GenerateSourceCodeSnippets
             /// Create select expression method, with generate instance DTOs.
             /// Works with IEnumerable where nullable operators are supported natively.
             /// </summary>
+        {{OverloadPriorityAttribute}}
             public static IEnumerable<TResult> SelectExpr<TIn, TResult>(this IEnumerable<TIn> query, Func<TIn, object> selector)
                 where TIn : class => throw InvalidException;
 
@@ -196,6 +198,7 @@ public static class GenerateSourceCodeSnippets
             /// Create select expression method with captured local variables, usable nullable operators, and generate instance DTOs.
             /// Pass local variables as an anonymous object: new { var1, var2, ... }
             /// </summary>
+        {{OverloadPriorityAttribute}}
             public static IQueryable<TResult> SelectExpr<TIn, TResult>(this IQueryable<TIn> query, Func<TIn, object> selector, object capture)
                 where TIn : class => throw InvalidException;
 
@@ -212,26 +215,22 @@ public static class GenerateSourceCodeSnippets
             /// Works with IEnumerable where nullable operators are supported natively.
             /// Pass local variables as an anonymous object: new { var1, var2, ... }
             /// </summary>
+        {{OverloadPriorityAttribute}}
             public static IEnumerable<TResult> SelectExpr<TIn, TResult>(this IEnumerable<TIn> query, Func<TIn, object> selector, object capture)
                 where TIn : class => throw InvalidException;
 
-            private static Exception InvalidException
-            {
-                get => new System.InvalidOperationException("""
+            private static Exception InvalidException => new System.InvalidOperationException(SelectExprErrorMessage); 
+
+            private const string SelectExprErrorMessage = """
         {{SelectExprErrorMessage}}
-        """); 
-            }
+        """;
         }
         """";
 
     private const string SelectExprErrorMessage = """
         This is a dummy method for Linqraft source generator and should not be called directly.
-        If you see this message, it may be due to one of the following reasons:
-        (1) You are calling SelectExpr in a razor file. Linqraft source generator does not work in razor files due to Source Generator limitations.
-            Please separate the method into a razor.cs file or use Linqraft in a regular .cs file.
-        (2) The Linqraft source generator is not functioning correctly. If this is the case, it is likely due to a bug.
-            Please contact us via the Linqraft Issue page.
-            https://github.com/arika0093/Linqraft/issues
+        If you see this message, it is likely due to a bug. Please contact us via the Linqraft Issue page.
+        https://github.com/arika0093/Linqraft/issues
         """;
 
     private const string CommonHeader = """
@@ -262,25 +261,28 @@ public static class GenerateSourceCodeSnippets
 #endif
     }
 
-    private static string GenerateHeaderFlagsPart()
-    {
-        return """
-            #nullable enable
-            #pragma warning disable IDE0060
-            #pragma warning disable CS8601
-            #pragma warning disable CS8602
-            #pragma warning disable CS8603
-            #pragma warning disable CS8604
-            #pragma warning disable CS8618
-            """;
-    }
+    private const string GenerateHeaderFlagsPart = """
+        #nullable enable
+        #pragma warning disable IDE0060
+        #pragma warning disable CS8601
+        #pragma warning disable CS8602
+        #pragma warning disable CS8603
+        #pragma warning disable CS8604
+        #pragma warning disable CS8618
+        """;
 
-    private static string GenerateHeaderUsingPart()
-    {
-        return $"""
-            using System;
-            using System.Linq;
-            using System.Collections.Generic;
-            """;
-    }
+    private const string GenerateHeaderUsingPart = """
+        using System;
+        using System.Linq;
+        using System.Collections.Generic;
+        """;
+
+    // OverloadPriorityAttribute is usable C# 13 or later.
+    // but we cannot detect C# language version in source generator,
+    // so we use .NET version as a proxy here.
+    private const string OverloadPriorityAttribute = """
+        #if NET9_0_OR_GREATER
+            [System.Runtime.CompilerServices.OverloadResolutionPriorityAttribute(-1)]
+        #endif
+        """;
 }
