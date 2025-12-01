@@ -875,17 +875,17 @@ class Test
                 {
                     Id = c.Id,
                     Baz = c.Baz,
-                    ChildId = c.Child?.Id,
-                    ChildQux = c.Child?.Qux,
+                    ChildId = c.Child != null ? c.Child.Id : null,
+                    ChildQux = c.Child != null ? c.Child.Qux : null,
                 }),
-                Child2Id = s.Child2?.Id,
-                Child2Quux = s.Child2?.Quux,
+                Child2Id = s.Child2 != null ? s.Child2.Id : null,
+                Child2Quux = s.Child2 != null ? s.Child2.Quux : null,
                 Child3Id = s.Child3.Id,
                 Child3Corge = s.Child3.Corge,
                 Child3ChildId =
-                    s.Child3?.Child?.Id,
+                    s.Child3 != null && s.Child3.Child != null ? s.Child3.Child.Id : null,
                 Child3ChildGrault =
-                    s.Child3?.Child?.Grault,
+                    s.Child3 != null && s.Child3.Child != null ? s.Child3.Child.Grault : null,
             });
     }
 }";

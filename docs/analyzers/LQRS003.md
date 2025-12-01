@@ -24,13 +24,13 @@ Detects `System.Linq` `Select` invocations on `IQueryable<T>` whose selector cre
   - Converts the `Select` method to a generic `SelectExpr<TSource, TDto>` and **converts the named object creation into an anonymous object**. This variant recursively converts nested object creations as well (deep conversion). It also runs the ternary-null simplifier on the generated anonymous structures, converting patterns like `x.A != null ? x.A.B : null` to `x.A?.B`.
 
 - **Convert to SelectExpr<T, TDto> (strict)**
-  - Similar to the above, but **does NOT apply ternary null check simplification**. This preserves the original ternary patterns (e.g., `x.A != null ? x.A.B : null` remains unchanged). Useful when you want to maintain the exact nullability structure of the original code.
+  - Similar to the above, but **does NOT apply ternary null check simplification**. This preserves the original ternary patterns (e.g., `x.A != null ? x.A.B : null` remains unchanged). Useful when you want to maintain the exact nullability structure of the original code. You can apply [LQRS004](LQRS004.md) manually afterward if needed.
 
 - **Convert to SelectExpr (use predefined classes)**
-  - Replaces the method name `Select` with `SelectExpr` (no generic type arguments) and preserves the existing named DTO type in the selector. This variant also simplifies ternary-null checks inside the selector lambda.
+  - Replaces the method name `Select` with `SelectExpr` (no generic type arguments) and preserves the existing named DTO type in the selector. This variant **does NOT apply ternary null check simplification**, preserving the original ternary patterns. You can apply [LQRS004](LQRS004.md) manually afterward if needed.
 
 ### Automatic Ternary Null Check Simplification
-As of version 0.5.0, the first and third code fix options **automatically simplify ternary null check patterns** (previously handled by LQRS004). When converting `Select` to `SelectExpr`, patterns like:
+The first code fix option **automatically simplifies ternary null check patterns**. When converting `Select` to `SelectExpr`, patterns like:
 
 ```csharp
 prop = x.A != null ? x.A.B : null
@@ -42,7 +42,7 @@ are automatically converted to:
 prop = x.A?.B
 ```
 
-This provides more concise code using null-conditional operators. The second option (strict) intentionally preserves the original ternary patterns. See [LQRS004](LQRS004.md) for details on this transformation.
+This provides more concise code using null-conditional operators. The second option (strict) and third option (predefined) intentionally preserve the original ternary patterns. You can use [LQRS004](LQRS004.md) to manually apply the transformation afterward.
 
 These three options map directly to the code-fix implementations: `ConvertToSelectExprExplicitDtoAsync`, `ConvertToSelectExprExplicitDtoStructAsync`, and `ConvertToSelectExprPredefinedDtoAsync`.
 
@@ -134,10 +134,11 @@ var result = query.SelectExpr(x => new ProductDto // named DTO preserved
 {
     Id = x.Id,
     Name = x.Name,
-    DetailDesc = x.Detail?.Desc // ternary simplified
+    DetailDesc = x.Detail != null ? x.Detail.Desc : null // ternary preserved
 });
 ```
 
 Notes:
 - This variant preserves the named DTO (`ProductDto`) and only changes the method to `SelectExpr`.
-- Ternary-null simplifications inside the lambda are applied.
+- Ternary null check patterns are **preserved** - no simplification is applied.
+- You can apply [LQRS004](LQRS004.md) manually afterward if you want the simplified form.

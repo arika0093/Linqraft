@@ -274,10 +274,9 @@ public class SelectToSelectExprNamedCodeFixProvider : CodeFixProvider
         if (newExpression == null)
             return document;
 
-        // Simplify ternary null checks in the lambda body
-        var newInvocation = TernaryNullCheckSimplifier.SimplifyTernaryNullChecksInInvocation(
-            invocation.WithExpression(newExpression)
-        );
+        // For Predefined pattern, we do NOT simplify ternary null checks
+        // Users can manually apply LQRS004 afterward if they want the simplified form
+        var newInvocation = invocation.WithExpression(newExpression);
 
         // Add capture parameter if needed
         if (variablesToCapture.Count > 0)
