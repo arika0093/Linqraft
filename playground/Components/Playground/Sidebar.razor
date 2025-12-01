@@ -58,6 +58,30 @@
 
         <div class="flex-1"></div>
         
+        <!-- Share Section -->
+        <div class="border-b border-gray-700">
+            <div class="flex cursor-pointer select-none items-center gap-2 px-3 py-2 text-gray-300 hover:bg-gray-800" @onclick="ToggleShare">
+                <span class="text-sm">🔗</span>
+                <span class="flex-1 text-xs font-semibold uppercase">Share</span>
+                <span class="text-xs text-gray-500">@(shareExpanded ? "▼" : "▶")</span>
+            </div>
+            @if (shareExpanded)
+            {
+                <div class="space-y-2 px-3 py-2">
+                    <button class="flex w-full cursor-pointer items-center gap-2 rounded bg-blue-600 px-3 py-1.5 text-xs text-white hover:bg-blue-700"
+                            @onclick="OnCopyShareUrl">
+                        <span>📋</span>
+                        <span>@(copyButtonText)</span>
+                    </button>
+                    <button class="flex w-full cursor-pointer items-center gap-2 rounded bg-gray-600 px-3 py-1.5 text-xs text-white hover:bg-gray-500"
+                            @onclick="OnCreateGitHubIssue">
+                        <span>🐛</span>
+                        <span>Create GitHub Issue</span>
+                    </button>
+                </div>
+            }
+        </div>
+        
         <!-- Settings Section (Collapsible like Templates/Files) -->
         <div class="border-b border-gray-700">
             <div class="flex cursor-pointer select-none items-center gap-2 px-3 py-2 text-gray-300 hover:bg-gray-800" @onclick="ToggleSettings">
@@ -152,8 +176,12 @@
     [Parameter] public EventCallback<Template> OnSelectTemplate { get; set; }
     [Parameter] public EventCallback<ProjectFile> OnSelectFile { get; set; }
     [Parameter] public EventCallback<LinqraftConfiguration> OnConfigurationChanged { get; set; }
+    [Parameter] public EventCallback OnCopyShareUrlRequest { get; set; }
+    [Parameter] public EventCallback OnCreateGitHubIssueRequest { get; set; }
     
     private bool settingsExpanded = false;
+    private bool shareExpanded = false;
+    private string copyButtonText = "Copy Share URL";
 
     private string GetSidebarClasses()
     {
@@ -183,6 +211,26 @@
     private void ToggleSettings()
     {
         settingsExpanded = !settingsExpanded;
+    }
+    
+    private void ToggleShare()
+    {
+        shareExpanded = !shareExpanded;
+    }
+    
+    private async Task OnCopyShareUrl()
+    {
+        await OnCopyShareUrlRequest.InvokeAsync();
+        copyButtonText = "Copied!";
+        StateHasChanged();
+        await Task.Delay(2000);
+        copyButtonText = "Copy Share URL";
+        StateHasChanged();
+    }
+    
+    private async Task OnCreateGitHubIssue()
+    {
+        await OnCreateGitHubIssueRequest.InvokeAsync();
     }
     
     private async Task UpdateConfig(Func<LinqraftConfiguration, LinqraftConfiguration> update)

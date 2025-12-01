@@ -41,11 +41,78 @@ public class TemplateService
     {
         return
         [
+            CreateMinReproTemplate(),
             CreateSimpleSampleTemplate(),
             CreateAnonymousTypeTemplate(),
             CreateExplicitDtoTemplate(),
             CreateNestedObjectTemplate(),
         ];
+    }
+
+    /// <summary>
+    /// Minimal reproduction template for issue reporting
+    /// Single Program.cs with simplified code using namespace MinRepro
+    /// </summary>
+    private static Template CreateMinReproTemplate()
+    {
+        return new Template
+        {
+            Name = "Min Repro",
+            Description = "Minimal reproduction template for issue reporting",
+            Files =
+            [
+                new ProjectFile
+                {
+                    Name = "Program.cs",
+                    Path = "Program.cs",
+                    IsHidden = false,
+                    Content =
+                        CommonUsings
+                        + """
+
+                            using Linqraft;
+
+                            namespace MinRepro;
+
+                            public class Entity
+                            {
+                                public int Id { get; set; }
+                                public string Name { get; set; } = "";
+                                public Child? Child { get; set; }
+                            }
+
+                            public class Child
+                            {
+                                public string Description { get; set; } = "";
+                            }
+
+                            public class Program
+                            {
+                                public void Execute()
+                                {
+                                    var data = new List<Entity>();
+                                    var query = data.AsQueryable();
+
+                                    // Reproduce your issue here
+                                    var result = query.SelectExpr(x => new
+                                    {
+                                        x.Id,
+                                        x.Name,
+                                        ChildDescription = x.Child?.Description,
+                                    });
+                                }
+                            }
+                            """,
+                },
+                new ProjectFile
+                {
+                    Name = "_LinqraftStub.cs",
+                    Path = "_LinqraftStub.cs",
+                    IsHidden = true,
+                    Content = CommonUsings + "\n" + SelectExprStub,
+                },
+            ],
+        };
     }
 
     /// <summary>
