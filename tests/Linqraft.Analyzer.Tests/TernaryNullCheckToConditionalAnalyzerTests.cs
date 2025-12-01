@@ -1,98 +1,36 @@
 using System.Threading.Tasks;
-using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp.Testing;
 using Microsoft.CodeAnalysis.Testing;
 
 namespace Linqraft.Analyzer.Tests;
 
+/// <summary>
+/// Tests for TernaryNullCheckToConditionalAnalyzer (LQRS004).
+/// NOTE: LQRS004 is now disabled by default because this transformation is automatically
+/// applied during LQRS002/LQRS003 code fixes. 
+/// 
+/// The tests that previously verified LQRS004 behavior are now skipped.
+/// The transformation logic is tested through LQRS002/LQRS003 code fix tests instead.
+/// </summary>
 public class TernaryNullCheckToConditionalAnalyzerTests
 {
-    [Fact]
-    public async Task Analyzer_DetectsTernaryNullCheckWithObjectCreation_InsideSelectExpr()
+    // Tests for LQRS004 are skipped because:
+    // 1. The transformation is now automatically applied by LQRS002/LQRS003 code fixes
+    // 2. The analyzer is disabled by default (isEnabledByDefault: false)
+    // 3. The functionality is tested through:
+    //    - SelectToSelectExprAnonymousCodeFixProviderTests.CodeFix_SimplifiesTernaryNullCheck_WhenReturningObject
+    //    - SelectToSelectExprNamedCodeFixProviderTests.CodeFix_Case1_AllExplicitConvert_PreservesFormatting
+
+    [Fact(Skip = "LQRS004 is disabled - transformation is now handled by LQRS002/LQRS003")]
+    public async Task Analyzer_Disabled_NoLongerDetectsTernaryNullCheckWithObjectCreation_InsideSelectExpr()
     {
-        var test = $$"""
-            using System.Collections.Generic;
-            using System.Linq;
-            using Linqraft;
-
-            {{TestSourceCodes.SelectExprWithFuncInLinqraftNamespace}}
-
-            class Sample
-            {
-                public Nest? Nest { get; set; }
-            }
-
-            class Nest
-            {
-                public int Id { get; set; }
-                public string Name { get; set; }
-            }
-
-            class Test
-            {
-                void Method()
-                {
-                    var data = new List<Sample>();
-                    var result = data.AsQueryable().SelectExpr(s => new
-                    {
-                        NestedData = {|#0:s.Nest != null
-                            ? new {
-                                Id = s.Nest.Id,
-                                Name = s.Nest.Name
-                            }
-                            : null|}
-                    });
-                }
-            }
-            """;
-
-        var expected = new DiagnosticResult(
-            TernaryNullCheckToConditionalAnalyzer.AnalyzerId,
-            DiagnosticSeverity.Info
-        ).WithLocation(0);
-
-        await RunAnalyzerTestAsync(test, expected);
+        await Task.CompletedTask;
     }
 
-    [Fact]
-    public async Task Analyzer_DetectsTernaryNullCheckWithAnonymousObjectCreation_InsideSelectExpr()
+    [Fact(Skip = "LQRS004 is disabled - transformation is now handled by LQRS002/LQRS003")]
+    public async Task Analyzer_Disabled_NoLongerDetectsTernaryNullCheckWithAnonymousObjectCreation_InsideSelectExpr()
     {
-        var test = $$"""
-            using System.Collections.Generic;
-            using System.Linq;
-            using Linqraft;
-
-            {{TestSourceCodes.SelectExprWithFuncInLinqraftNamespace}}
-
-            class Sample
-            {
-                public Nest? Nest { get; set; }
-            }
-
-            class Nest
-            {
-                public int Id { get; set; }
-            }
-
-            class Test
-            {
-                void Method()
-                {
-                    var data = new List<Sample>();
-                    var result = data.AsQueryable().SelectExpr(s => new
-                    {
-                        NestedData = {|#0:s.Nest != null ? new { s.Nest.Id } : null|}
-                    });
-                }
-            }
-            """;
-
-        var expected = new DiagnosticResult(
-            TernaryNullCheckToConditionalAnalyzer.AnalyzerId,
-            DiagnosticSeverity.Info
-        ).WithLocation(0);
-
-        await RunAnalyzerTestAsync(test, expected);
+        await Task.CompletedTask;
     }
 
     [Fact]
@@ -146,97 +84,16 @@ class Test
         await RunAnalyzerTestAsync(test);
     }
 
-    [Fact]
-    public async Task Analyzer_DetectsTernaryNullCheckWithInvertedCondition_InsideSelectExpr()
+    [Fact(Skip = "LQRS004 is disabled - transformation is now handled by LQRS002/LQRS003")]
+    public async Task Analyzer_Disabled_NoLongerDetectsTernaryNullCheckWithInvertedCondition_InsideSelectExpr()
     {
-        // Test inverted condition: x == null ? null : new{}
-        var test = $$"""
-            using System.Collections.Generic;
-            using System.Linq;
-            using Linqraft;
-
-            {{TestSourceCodes.SelectExprWithFuncInLinqraftNamespace}}
-
-            class Parent
-            {
-                public Child? Child { get; set; }
-            }
-
-            class Child
-            {
-                public string Name { get; set; }
-            }
-
-            class ChildDto
-            {
-                public string Name { get; set; }
-            }
-
-            class Test
-            {
-                void Method()
-                {
-                    var data = new List<Parent>();
-                    var result = data.AsQueryable().SelectExpr(p => new
-                    {
-                        ChildInfo = {|#0:p.Child == null ? null : new ChildDto { Name = p.Child.Name }|}
-                    });
-                }
-            }
-            """;
-
-        var expected = new DiagnosticResult(
-            TernaryNullCheckToConditionalAnalyzer.AnalyzerId,
-            DiagnosticSeverity.Info
-        ).WithLocation(0);
-
-        await RunAnalyzerTestAsync(test, expected);
+        await Task.CompletedTask;
     }
 
-    [Fact]
-    public async Task Analyzer_DetectsTernaryNullCheckWithInvertedCondition_InsideSelectExprWithSelect()
+    [Fact(Skip = "LQRS004 is disabled - transformation is now handled by LQRS002/LQRS003")]
+    public async Task Analyzer_Disabled_NoLongerDetectsTernaryNullCheckWithInvertedCondition_InsideSelectExprWithSelect()
     {
-        // Test inverted condition: x == null ? null : new{}
-        var test = $$"""
-            using System.Collections.Generic;
-            using System.Linq;
-            using Linqraft;
-
-            {{TestSourceCodes.SelectExprWithFuncObjectInLinqraftNamespace}}
-
-            class Parent
-            {
-                public List<Child> Childs { get; set; }
-            }
-
-            class Child
-            {
-                public string? Name { get; set; }
-            }
-
-            partial class ParentDto {}
-
-            class Test
-            {
-                void Method()
-                {
-                    var data = new List<Parent>();
-                    var result = data.AsQueryable().SelectExpr<Parent, ParentDto>(p => new
-                    {
-                        ChildInfos = p.Childs.Select(c => new {
-                            NameObject = {|#0:c.Name == null ? null : new { c.Name }|}
-                        })
-                    });
-                }
-            }
-            """;
-
-        var expected = new DiagnosticResult(
-            TernaryNullCheckToConditionalAnalyzer.AnalyzerId,
-            DiagnosticSeverity.Info
-        ).WithLocation(0);
-
-        await RunAnalyzerTestAsync(test, expected);
+        await Task.CompletedTask;
     }
 
     [Fact]

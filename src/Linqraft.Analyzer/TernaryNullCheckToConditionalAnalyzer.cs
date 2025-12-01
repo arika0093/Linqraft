@@ -25,7 +25,7 @@ public class TernaryNullCheckToConditionalAnalyzer : BaseLinqraftAnalyzer
         "Ternary null check returning object can be simplified to use null-conditional operators",
         "Design",
         DiagnosticSeverity.Info,
-        isEnabledByDefault: true,
+        isEnabledByDefault: false, // Disabled: this transformation is now automatically applied by LQRS002/LQRS003
         description: "This ternary operator with null check can be simplified to use null-conditional operators (?.) for better readability and to avoid CS8602 warnings.",
         helpLinkUri: $"https://github.com/arika0093/Linqraft/blob/main/docs/analyzer/{AnalyzerId}.md"
     );

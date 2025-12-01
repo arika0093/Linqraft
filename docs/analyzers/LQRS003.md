@@ -29,6 +29,21 @@ Detects `System.Linq` `Select` invocations on `IQueryable<T>` whose selector cre
 - **Convert to SelectExpr (use predefined classes)**
   - Replaces the method name `Select` with `SelectExpr` (no generic type arguments) and preserves the existing named DTO type in the selector. This variant also simplifies ternary-null checks inside the selector lambda but does not convert named object creation into anonymous objects.
 
+### Automatic Ternary Null Check Simplification
+As of version 0.5.0, all three code fix options **automatically simplify ternary null check patterns** (previously handled by LQRS004). When converting `Select` to `SelectExpr`, patterns like:
+
+```csharp
+prop = x.A != null ? new { x.A.B } : null
+```
+
+are automatically converted to:
+
+```csharp
+prop = new { B = x.A?.B }
+```
+
+This provides more concise code using null-conditional operators. See [LQRS004](LQRS004.md) for details on this transformation.
+
 These three options map directly to the code-fix implementations: `ConvertToSelectExprExplicitDtoAllAsync`, `ConvertToSelectExprExplicitDtoRootOnlyAsync`, and `ConvertToSelectExprPredefinedDtoAsync`.
 
 ## Examples
@@ -124,3 +139,23 @@ var result = query.SelectExpr(x => new ProductDto // named DTO preserved
 Notes:
 - This variant preserves the named DTO (`ProductDto`) and only changes the method to `SelectExpr`.
 - Ternary-null simplifications inside the lambda are still applied where the simplifier can transform patterns safely.
+
+### With Ternary Null Check Simplification
+
+Before:
+```csharp
+var result = query.Select(x => new ProductDto
+{
+    Id = x.Id,
+    ChildData = x.Child != null ? x.Child.Name : null
+});
+```
+
+After (with automatic simplification):
+```csharp
+var result = query.SelectExpr(x => new ProductDto
+{
+    Id = x.Id,
+    ChildData = x.Child?.Name
+});
+```

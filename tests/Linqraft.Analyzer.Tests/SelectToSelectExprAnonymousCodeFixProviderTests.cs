@@ -468,7 +468,7 @@ class Test
     }
 
     [Fact]
-    public async Task CodeFix_DoesNotSimplifyTernaryNullCheck_WhenReturningObject()
+    public async Task CodeFix_SimplifiesTernaryNullCheck_WhenReturningObject()
     {
         var test =
             @"
@@ -527,13 +527,11 @@ class Test
         var list = new List<Sample>();
         var result = list.AsQueryable().SelectExpr(s => new
         {
-            NestField = s.Nest != null
-                ? new
-                {
-                    Id = s.Nest.Id,
-                    Name = s.Nest.Name
-                }
-                : null,
+            NestField = new
+            {
+                Id = s.Nest?.Id,
+                Name = s.Nest?.Name
+            },
         });
     }
 }";
