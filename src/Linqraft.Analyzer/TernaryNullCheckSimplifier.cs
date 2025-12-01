@@ -211,11 +211,15 @@ internal static class TernaryNullCheckSimplifier
             return nullConditionalExpr;
         }
 
+        /// <summary>
+        /// Handles inverted null check conditions (e.g., p.Child == null ? null : expr).
+        /// This method intentionally returns the same list because the null-checked paths
+        /// are the same regardless of whether the condition is "!= null" or "== null".
+        /// The only difference is which branch has the object/expression, which is handled
+        /// by the caller when determining effectiveNullChecks vs objectExpr.
+        /// </summary>
         private static List<ExpressionSyntax> InvertNullChecks(List<ExpressionSyntax> nullChecks)
         {
-            // When the condition is inverted (e.g., p.Child == null instead of p.Child != null),
-            // the null checks extracted should work the same way for our purposes,
-            // since we're converting member accesses to null-conditional anyway.
             return nullChecks;
         }
 
