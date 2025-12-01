@@ -1,5 +1,4 @@
 using System.Collections.Generic;
-using System.Linq;
 using Linqraft.Core.SyntaxHelpers;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
@@ -112,31 +111,17 @@ internal static class TernaryNullCheckSimplifier
             var whenFalseExpr = NullConditionalHelper.RemoveNullableCast(ternary.WhenFalse);
 
             // Check if one branch is null and the other contains an object creation
+            // If so, don't simplify - this should be handled by LRQS004
             var whenTrueIsNull = NullConditionalHelper.IsNullOrNullCast(ternary.WhenTrue);
             var whenFalseIsNull = NullConditionalHelper.IsNullOrNullCast(ternary.WhenFalse);
             var whenTrueHasObject = IsObjectCreation(whenTrueExpr);
             var whenFalseHasObject = IsObjectCreation(whenFalseExpr);
 
-            // Handle object creation patterns (previously LQRS004):
-            // condition ? new{} : null  OR  condition ? null : new{}
-            // These are now automatically simplified
+            // If one branch is null and the other has an object creation, skip simplification
+            // This handles both: condition ? new{} : null  AND  condition ? null : new{}
             if ((whenTrueIsNull && whenFalseHasObject) || (whenFalseIsNull && whenTrueHasObject))
             {
-                var objectExpr = whenFalseIsNull ? whenTrueExpr : whenFalseExpr;
-                var effectiveNullChecks = whenTrueIsNull
-                    ? InvertNullChecks(nullChecks)
-                    : nullChecks;
-
-                // Convert the object creation to use null-conditional operators inside
-                var converted = ConvertObjectCreationToNullConditional(
-                    objectExpr,
-                    effectiveNullChecks
-                );
-                if (converted == null)
-                    return null;
-
-                // Preserve trivia from the conditional expression
-                return TriviaHelper.PreserveTrivia(ternary, converted);
+                return null;
             }
 
             // Only proceed if the else clause is null (standard pattern)
@@ -168,246 +153,6 @@ internal static class TernaryNullCheckSimplifier
             }
 
             return nullConditionalExpr;
-        }
-
-        private static List<ExpressionSyntax> InvertNullChecks(List<ExpressionSyntax> nullChecks)
-        {
-            // When the condition is inverted (e.g., p.Child == null instead of p.Child != null),
-            // the null checks extracted should work the same way for our purposes,
-            // since we're converting member accesses to null-conditional anyway.
-            return nullChecks;
-        }
-
-        private static ExpressionSyntax? ConvertObjectCreationToNullConditional(
-            ExpressionSyntax objectCreation,
-            List<ExpressionSyntax> nullChecks
-        )
-        {
-            // Create a rewriter to replace member accesses with null-conditional versions
-            var rewriter = new ObjectCreationNullConditionalRewriter(nullChecks);
-            return (ExpressionSyntax)rewriter.Visit(objectCreation);
-        }
-
-        /// <summary>
-        /// Rewriter that converts member accesses inside object creations to use null-conditional operators.
-        /// </summary>
-        private class ObjectCreationNullConditionalRewriter : CSharpSyntaxRewriter
-        {
-            private readonly HashSet<string> _nullCheckedPaths;
-
-            public ObjectCreationNullConditionalRewriter(List<ExpressionSyntax> nullChecks)
-            {
-                _nullCheckedPaths = new HashSet<string>(nullChecks.Select(nc => nc.ToString()));
-            }
-
-            public override SyntaxNode? VisitAnonymousObjectCreationExpression(
-                AnonymousObjectCreationExpressionSyntax node
-            )
-            {
-                // Transform each initializer while preserving the structure
-                var newInitializers = new List<AnonymousObjectMemberDeclaratorSyntax>();
-
-                foreach (var initializer in node.Initializers)
-                {
-                    // Visit the expression to convert member accesses to null-conditional
-                    var newExpression = (ExpressionSyntax)Visit(initializer.Expression)!;
-
-                    // Create new initializer preserving the original trivia
-                    AnonymousObjectMemberDeclaratorSyntax newInitializer;
-                    if (initializer.NameEquals != null)
-                    {
-                        // Explicit name: preserve it with trivia
-                        newInitializer = SyntaxFactory
-                            .AnonymousObjectMemberDeclarator(initializer.NameEquals, newExpression)
-                            .WithLeadingTrivia(initializer.GetLeadingTrivia())
-                            .WithTrailingTrivia(initializer.GetTrailingTrivia());
-                    }
-                    else
-                    {
-                        // Implicit name: create a declarator preserving trivia
-                        newInitializer = SyntaxFactory
-                            .AnonymousObjectMemberDeclarator(newExpression)
-                            .WithLeadingTrivia(initializer.GetLeadingTrivia())
-                            .WithTrailingTrivia(initializer.GetTrailingTrivia());
-                    }
-
-                    newInitializers.Add(newInitializer);
-                }
-
-                // Preserve the original separators (commas with their trivia)
-                var originalSeparators = node.Initializers.GetSeparators().ToList();
-                var newSeparatedList = SyntaxFactory.SeparatedList(
-                    newInitializers,
-                    originalSeparators
-                );
-
-                // Create new anonymous object creation preserving brace trivia
-                var result = SyntaxFactory.AnonymousObjectCreationExpression(
-                    node.NewKeyword, // Preserve new keyword with its trivia
-                    node.OpenBraceToken, // Preserve open brace with its trivia
-                    newSeparatedList,
-                    node.CloseBraceToken // Preserve close brace with its trivia
-                );
-
-                // Preserve overall trivia from the original node
-                return result
-                    .WithLeadingTrivia(node.GetLeadingTrivia())
-                    .WithTrailingTrivia(node.GetTrailingTrivia());
-            }
-
-            public override SyntaxNode? VisitObjectCreationExpression(
-                ObjectCreationExpressionSyntax node
-            )
-            {
-                // Handle named object creation similar to anonymous
-                if (node.Initializer == null)
-                    return base.VisitObjectCreationExpression(node);
-
-                // Transform each initializer expression while preserving structure and trivia
-                var newExpressions = new List<ExpressionSyntax>();
-
-                foreach (var expression in node.Initializer.Expressions)
-                {
-                    // Visit to convert member accesses, preserving trivia
-                    var visitedExpression = (ExpressionSyntax)Visit(expression)!;
-
-                    // Preserve the trivia from the original expression
-                    var newExpression = visitedExpression
-                        .WithLeadingTrivia(expression.GetLeadingTrivia())
-                        .WithTrailingTrivia(expression.GetTrailingTrivia());
-
-                    newExpressions.Add(newExpression);
-                }
-
-                // Preserve the original separators (commas with their trivia)
-                var originalSeparators = node.Initializer.Expressions.GetSeparators().ToList();
-                var newSeparatedList = SyntaxFactory.SeparatedList(
-                    newExpressions,
-                    originalSeparators
-                );
-
-                // Create new initializer preserving brace trivia
-                var newInitializer = SyntaxFactory.InitializerExpression(
-                    node.Initializer.Kind(),
-                    node.Initializer.OpenBraceToken,
-                    newSeparatedList,
-                    node.Initializer.CloseBraceToken
-                );
-
-                // Create new object creation with the new initializer
-                return node.WithInitializer(newInitializer);
-            }
-
-            public override SyntaxNode? VisitMemberAccessExpression(
-                MemberAccessExpressionSyntax node
-            )
-            {
-                // Decompose the member access chain
-                var parts = DecomposeMemberAccessChain(node);
-                if (parts.Count == 0)
-                    return node;
-
-                // Build the expression with conditional accesses where needed
-                ExpressionSyntax result = SyntaxFactory.IdentifierName(parts[0]);
-
-                for (int i = 1; i < parts.Count; i++)
-                {
-                    // Build the path up to the previous part
-                    var previousPath = string.Join(".", parts.Take(i));
-
-                    // Check if the previous path was null-checked
-                    if (_nullCheckedPaths.Contains(previousPath))
-                    {
-                        // We need to start or continue a conditional access chain
-                        // Check if result is already a conditional access
-                        if (result is ConditionalAccessExpressionSyntax existingConditional)
-                        {
-                            // Continue the conditional chain by updating the WhenNotNull part
-                            var newWhenNotNull = AppendMemberBinding(
-                                existingConditional.WhenNotNull,
-                                parts[i]
-                            );
-                            result = existingConditional.WithWhenNotNull(newWhenNotNull);
-                        }
-                        else
-                        {
-                            // Start a new conditional access
-                            result = SyntaxFactory.ConditionalAccessExpression(
-                                result,
-                                SyntaxFactory.MemberBindingExpression(
-                                    SyntaxFactory.IdentifierName(parts[i])
-                                )
-                            );
-                        }
-                    }
-                    else
-                    {
-                        // Regular member access
-                        result = SyntaxFactory.MemberAccessExpression(
-                            SyntaxKind.SimpleMemberAccessExpression,
-                            result,
-                            SyntaxFactory.IdentifierName(parts[i])
-                        );
-                    }
-                }
-
-                // Preserve the trivia from the original node
-                return TriviaHelper.PreserveTrivia(node, result);
-            }
-
-            private ExpressionSyntax AppendMemberBinding(
-                ExpressionSyntax whenNotNull,
-                string memberName
-            )
-            {
-                // Append another member binding to the WhenNotNull part
-                var newBinding = SyntaxFactory.MemberBindingExpression(
-                    SyntaxFactory.IdentifierName(memberName)
-                );
-
-                // If whenNotNull is already a conditional access, we need to nest
-                if (whenNotNull is ConditionalAccessExpressionSyntax nested)
-                {
-                    return nested.WithWhenNotNull(
-                        AppendMemberBinding(nested.WhenNotNull, memberName)
-                    );
-                }
-
-                // If it's a member binding, create a conditional access
-                if (whenNotNull is MemberBindingExpressionSyntax)
-                {
-                    return SyntaxFactory.ConditionalAccessExpression(whenNotNull, newBinding);
-                }
-
-                // Fallback: just return the new binding
-                return newBinding;
-            }
-
-            private List<string> DecomposeMemberAccessChain(MemberAccessExpressionSyntax node)
-            {
-                var parts = new List<string>();
-                var current = (ExpressionSyntax?)node;
-
-                while (current != null)
-                {
-                    switch (current)
-                    {
-                        case MemberAccessExpressionSyntax memberAccess:
-                            parts.Insert(0, memberAccess.Name.Identifier.Text);
-                            current = memberAccess.Expression;
-                            break;
-                        case IdentifierNameSyntax identifier:
-                            parts.Insert(0, identifier.Identifier.Text);
-                            current = null;
-                            break;
-                        default:
-                            // Unsupported expression type, return empty to skip rewriting
-                            return [];
-                    }
-                }
-
-                return parts;
-            }
         }
 
         private static bool IsEmptyCollectionInitializer(ExpressionSyntax expr)
