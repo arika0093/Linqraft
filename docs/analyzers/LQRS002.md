@@ -22,21 +22,6 @@ Detects `System.Linq` `Select` calls performed on `IQueryable<T>` whose selector
 - Convert `Select(...)` → `SelectExpr(...)` preserving the anonymous projection.
 - Convert `Select(...)` → `SelectExpr<TSource, TDto>(...)` with a generated DTO type when that is preferable.
 
-### Automatic Ternary Null Check Simplification
-As of version 0.5.0, the code fix also **automatically simplifies ternary null check patterns** (previously handled by LQRS004). When converting `Select` to `SelectExpr`, patterns like:
-
-```csharp
-prop = x.A != null ? new { x.A.B } : null
-```
-
-are automatically converted to:
-
-```csharp
-prop = new { B = x.A?.B }
-```
-
-This provides more concise code using null-conditional operators. See [LQRS004](LQRS004.md) for details on this transformation.
-
 ## Example
 Before:
 ```csharp
@@ -65,22 +50,5 @@ var result = query.SelectExpr<Product, ResultDto_XXXXXXXX>(x => new
     x.Id,
     x.Name,
     x.Price
-});
-```
-
-### With Ternary Null Check Simplification
-Before:
-```csharp
-var result = query.Select(x => new
-{
-    ChildData = x.Child != null ? new { x.Child.Name } : null
-});
-```
-
-After (with automatic simplification):
-```csharp
-var result = query.SelectExpr(x => new
-{
-    ChildData = new { Name = x.Child?.Name }
 });
 ```

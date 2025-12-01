@@ -50,20 +50,20 @@ public class SelectToSelectExprNamedCodeFixProvider : CodeFixProvider
         // Register three code fixes
         context.RegisterCodeFix(
             CodeAction.Create(
-                title: "Convert to SelectExpr<T, TDto>",
+                title: "Convert to SelectExpr<T, TDto> (convert all to anonymous)",
                 createChangedDocument: c =>
-                    ConvertToSelectExprExplicitDtoAsync(context.Document, invocation, c),
-                equivalenceKey: "ConvertToSelectExprExplicitDto"
+                    ConvertToSelectExprExplicitDtoAllAsync(context.Document, invocation, c),
+                equivalenceKey: "ConvertToSelectExprExplicitDtoAll"
             ),
             diagnostic
         );
 
         context.RegisterCodeFix(
             CodeAction.Create(
-                title: "Convert to SelectExpr<T, TDto> (strict)",
+                title: "Convert to SelectExpr<T, TDto> (convert root only to anonymous)",
                 createChangedDocument: c =>
-                    ConvertToSelectExprExplicitDtoStructAsync(context.Document, invocation, c),
-                equivalenceKey: "ConvertToSelectExprExplicitDtoStruct"
+                    ConvertToSelectExprExplicitDtoRootOnlyAsync(context.Document, invocation, c),
+                equivalenceKey: "ConvertToSelectExprExplicitDtoRootOnly"
             ),
             diagnostic
         );
@@ -79,7 +79,7 @@ public class SelectToSelectExprNamedCodeFixProvider : CodeFixProvider
         );
     }
 
-    private static async Task<Document> ConvertToSelectExprExplicitDtoAsync(
+    private static async Task<Document> ConvertToSelectExprExplicitDtoAllAsync(
         Document document,
         InvocationExpressionSyntax invocation,
         CancellationToken cancellationToken
@@ -164,11 +164,7 @@ public class SelectToSelectExprNamedCodeFixProvider : CodeFixProvider
             .ConfigureAwait(false);
     }
 
-    /// <summary>
-    /// Converts to SelectExpr with explicit DTO but WITHOUT ternary null check simplification.
-    /// This maintains the traditional struct-like behavior where ternary patterns are preserved.
-    /// </summary>
-    private static async Task<Document> ConvertToSelectExprExplicitDtoStructAsync(
+    private static async Task<Document> ConvertToSelectExprExplicitDtoRootOnlyAsync(
         Document document,
         InvocationExpressionSyntax invocation,
         CancellationToken cancellationToken
@@ -209,9 +205,12 @@ public class SelectToSelectExprNamedCodeFixProvider : CodeFixProvider
         if (newExpression == null)
             return document;
 
-        // Convert the named object creation to anonymous type (including nested)
-        // NOTE: No ternary simplification is applied here - this preserves the original structure
-        var anonymousCreation = ConvertToAnonymousTypeRecursive(objectCreation);
+        // Convert the named object creation to anonymous type (root only)
+        var anonymousCreation = ConvertToAnonymousType(objectCreation, semanticModel);
+
+        // Simplify ternary null checks in the anonymous creation
+        anonymousCreation = (AnonymousObjectCreationExpressionSyntax)
+            TernaryNullCheckSimplifier.SimplifyTernaryNullChecks(anonymousCreation);
 
         // Replace both nodes in one operation using a dictionary
         var replacements = new Dictionary<SyntaxNode, SyntaxNode>
@@ -274,9 +273,10 @@ public class SelectToSelectExprNamedCodeFixProvider : CodeFixProvider
         if (newExpression == null)
             return document;
 
-        // For Predefined pattern, we do NOT simplify ternary null checks
-        // Users can manually apply LQRS004 afterward if they want the simplified form
-        var newInvocation = invocation.WithExpression(newExpression);
+        // Simplify ternary null checks in the lambda body
+        var newInvocation = TernaryNullCheckSimplifier.SimplifyTernaryNullChecksInInvocation(
+            invocation.WithExpression(newExpression)
+        );
 
         // Add capture parameter if needed
         if (variablesToCapture.Count > 0)

@@ -20,36 +20,21 @@ Detects `System.Linq` `Select` invocations on `IQueryable<T>` whose selector cre
 ## Code Fixes
 `SelectToSelectExprNamedCodeFixProvider` registers three distinct fixes (titles shown are from the provider):
 
-- **Convert to SelectExpr<T, TDto>**
-  - Converts the `Select` method to a generic `SelectExpr<TSource, TDto>` and **converts the named object creation into an anonymous object**. This variant recursively converts nested object creations as well (deep conversion). It also runs the ternary-null simplifier on the generated anonymous structures, converting patterns like `x.A != null ? x.A.B : null` to `x.A?.B`.
+- **Convert to SelectExpr<T, TDto> (convert all to anonymous)**
+  - Converts the `Select` method to a generic `SelectExpr<TSource, TDto>` and **converts the named object creation into an anonymous object**. This variant recursively converts nested object creations as well (deep conversion). It also runs the ternary-null simplifier on the generated anonymous structures.
 
-- **Convert to SelectExpr<T, TDto> (strict)**
-  - Similar to the above, but **does NOT apply ternary null check simplification**. This preserves the original ternary patterns (e.g., `x.A != null ? x.A.B : null` remains unchanged). Useful when you want to maintain the exact nullability structure of the original code. You can apply [LQRS004](LQRS004.md) manually afterward if needed.
+- **Convert to SelectExpr<T, TDto> (convert root only to anonymous)**
+  - Similar to the above, but converts only the reported (root) object creation to an anonymous object; nested object creations are left as-is. Produces a generic `SelectExpr<TSource, TDto>` and applies the ternary-null simplifier to the root anonymous creation.
 
 - **Convert to SelectExpr (use predefined classes)**
-  - Replaces the method name `Select` with `SelectExpr` (no generic type arguments) and preserves the existing named DTO type in the selector. This variant **does NOT apply ternary null check simplification**, preserving the original ternary patterns. You can apply [LQRS004](LQRS004.md) manually afterward if needed.
+  - Replaces the method name `Select` with `SelectExpr` (no generic type arguments) and preserves the existing named DTO type in the selector. This variant also simplifies ternary-null checks inside the selector lambda but does not convert named object creation into anonymous objects.
 
-### Automatic Ternary Null Check Simplification
-The first code fix option **automatically simplifies ternary null check patterns**. When converting `Select` to `SelectExpr`, patterns like:
-
-```csharp
-prop = x.A != null ? x.A.B : null
-```
-
-are automatically converted to:
-
-```csharp
-prop = x.A?.B
-```
-
-This provides more concise code using null-conditional operators. The second option (strict) and third option (predefined) intentionally preserve the original ternary patterns. You can use [LQRS004](LQRS004.md) to manually apply the transformation afterward.
-
-These three options map directly to the code-fix implementations: `ConvertToSelectExprExplicitDtoAsync`, `ConvertToSelectExprExplicitDtoStructAsync`, and `ConvertToSelectExprPredefinedDtoAsync`.
+These three options map directly to the code-fix implementations: `ConvertToSelectExprExplicitDtoAllAsync`, `ConvertToSelectExprExplicitDtoRootOnlyAsync`, and `ConvertToSelectExprPredefinedDtoAsync`.
 
 ## Examples
 The examples below show the concrete transformations performed by each fix.
 
-1) Convert to `SelectExpr<T, TDto>` (with ternary simplification)
+1) Convert to `SelectExpr<T, TDto>` (all)
 
 Before:
 ```csharp
@@ -59,12 +44,12 @@ var result = query
     {
         Id = x.Id,
         Name = x.Name,
-        DetailDesc = x.Detail != null ? x.Detail.Desc : null
+        Details = new ProductDetailDto { Desc = x.Detail.Desc }
     })
-    .ToList();
+    .Select(p => new WrapperDto { Item = p });
 ```
 
-After:
+After (all fix):
 ```csharp
 var result = query
     .SelectMany(g => g.Items)
@@ -72,17 +57,16 @@ var result = query
     {
         Id = x.Id,
         Name = x.Name,
-        DetailDesc = x.Detail?.Desc // ternary simplified to null-conditional
+        Details = new { Desc = x.Detail.Desc } // nested also converted to anonymous
     })
-    .ToList();
+    .SelectExpr(p => new WrapperDto { Item = p });
 ```
 
 Notes:
-- The named `ProductDto` initializer is converted to an anonymous initializer.
-- Ternary null check patterns are simplified to null-conditional operators.
-- A DTO name (e.g. `ResultDto_HASH`) is generated for the generic type argument.
+- Both the root `ProductDto` and the nested `ProductDetailDto` are converted to anonymous initializers (deep conversion).
+- The fixer inserts generic type arguments on the `SelectExpr` call using a generated DTO name.
 
-2) Convert to `SelectExpr<T, TDto>` (struct - no ternary simplification)
+2) Convert to `SelectExpr<T, TDto>` (root-only)
 
 Before:
 ```csharp
@@ -92,12 +76,12 @@ var result = query
     {
         Id = x.Id,
         Name = x.Name,
-        DetailDesc = x.Detail != null ? x.Detail.Desc : null
+        Details = new ProductDetailDto { Desc = x.Detail.Desc }
     })
     .ToList();
 ```
 
-After (struct fix):
+After (root-only fix):
 ```csharp
 var result = query
     .Where(p => p.IsActive)
@@ -105,15 +89,14 @@ var result = query
     {
         Id = x.Id,
         Name = x.Name,
-        DetailDesc = x.Detail != null ? x.Detail.Desc : null // ternary preserved
+        Details = new ProductDetailDto { Desc = x.Detail.Desc } // nested remains named
     })
     .ToList();
 ```
 
 Notes:
-- The named `ProductDto` initializer is converted to an anonymous initializer.
-- Ternary null check patterns are **preserved** - no simplification is applied.
-- Use this option when you need to maintain the exact nullability structure.
+- The named `ProductDto` initializer is converted to an anonymous initializer at the root only.
+- A DTO name (e.g. `ResultDto_HASH`) is generated for the generic type argument; the code-fix inserts type arguments but replaces the selector body with an anonymous object.
 
 3) Convert to `SelectExpr` (predefined)
 
@@ -124,7 +107,7 @@ var result = query.Select(x => new ProductDto
 {
     Id = x.Id,
     Name = x.Name,
-    DetailDesc = x.Detail != null ? x.Detail.Desc : null
+    Details = new ProductDetailDto { Desc = x.Detail.Desc }
 });
 ```
 
@@ -134,11 +117,10 @@ var result = query.SelectExpr(x => new ProductDto // named DTO preserved
 {
     Id = x.Id,
     Name = x.Name,
-    DetailDesc = x.Detail != null ? x.Detail.Desc : null // ternary preserved
+    Details = new ProductDetailDto { Desc = x.Detail.Desc }
 });
 ```
 
 Notes:
 - This variant preserves the named DTO (`ProductDto`) and only changes the method to `SelectExpr`.
-- Ternary null check patterns are **preserved** - no simplification is applied.
-- You can apply [LQRS004](LQRS004.md) manually afterward if you want the simplified form.
+- Ternary-null simplifications inside the lambda are still applied where the simplifier can transform patterns safely.
