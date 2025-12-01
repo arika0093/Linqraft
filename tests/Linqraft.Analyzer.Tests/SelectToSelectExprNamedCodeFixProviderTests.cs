@@ -67,8 +67,8 @@ class Test
             DiagnosticSeverity.Info
         ).WithLocation(0);
 
-        // Index 1 = root only conversion
-        await RunCodeFixTestAsync(test, expected, fixedCode, 1);
+        // Index 0 = explicit conversion with ternary simplification
+        await RunCodeFixTestAsync(test, expected, fixedCode, 0);
     }
 
     [Fact]
@@ -191,8 +191,8 @@ class Test
             DiagnosticSeverity.Info
         ).WithLocation(0);
 
-        // Index 1 = root only conversion
-        await RunCodeFixTestAsync(test, expected, fixedCode, 1);
+        // Index 0 = explicit conversion with ternary simplification
+        await RunCodeFixTestAsync(test, expected, fixedCode, 0);
     }
 
     [Fact]
@@ -567,8 +567,116 @@ class Test
             DiagnosticSeverity.Info
         ).WithLocation(0);
 
-        // Index 0 = convert all (including nested)
+        // Index 0 = convert all (including nested) with ternary simplification
         await RunCodeFixTestAsync(test, expected, fixedCode, 0);
+    }
+
+    [Fact]
+    public async Task CodeFix_Case1Struct_ExplicitConvert_PreservesTernaryPatterns()
+    {
+        // The Struct option converts to anonymous but does NOT simplify ternary patterns
+        var test =
+            @"
+using System.Linq;
+using System.Collections.Generic;
+
+class SampleClass
+{
+    public int Id { get; set; }
+    public string Foo { get; set; }
+    public SampleChild2 Child2 { get; set; }
+}
+
+class SampleChild2
+{
+    public int? Id { get; set; }
+    public string Quux { get; set; }
+}
+
+class ManualSampleClassDto
+{
+    public int Id { get; set; }
+    public string Foo { get; set; }
+    public int? Child2Id { get; set; }
+    public string Child2Quux { get; set; }
+}
+
+class DbContext
+{
+    public List<SampleClass> SampleClasses { get; set; }
+}
+
+class Test
+{
+    void Method()
+    {
+        var _dbContext = new DbContext();
+        var results = _dbContext
+            .SampleClasses.AsQueryable().{|#0:Select|}(s => new ManualSampleClassDto
+            {
+                Id = s.Id,
+                Foo = s.Foo,
+                Child2Id = s.Child2 != null ? s.Child2.Id : null,
+                Child2Quux = s.Child2 != null ? s.Child2.Quux : null,
+            });
+    }
+}";
+
+        // The Struct option preserves ternary patterns - no simplification to ?.
+        var fixedCode =
+            @"
+using System.Linq;
+using System.Collections.Generic;
+
+class SampleClass
+{
+    public int Id { get; set; }
+    public string Foo { get; set; }
+    public SampleChild2 Child2 { get; set; }
+}
+
+class SampleChild2
+{
+    public int? Id { get; set; }
+    public string Quux { get; set; }
+}
+
+class ManualSampleClassDto
+{
+    public int Id { get; set; }
+    public string Foo { get; set; }
+    public int? Child2Id { get; set; }
+    public string Child2Quux { get; set; }
+}
+
+class DbContext
+{
+    public List<SampleClass> SampleClasses { get; set; }
+}
+
+class Test
+{
+    void Method()
+    {
+        var _dbContext = new DbContext();
+        var results = _dbContext
+            .SampleClasses.AsQueryable().SelectExpr<SampleClass, ResultsDto_4U2HQBAA>(s => new
+            {
+                Id = s.Id,
+                Foo = s.Foo,
+                Child2Id = s.Child2 != null ? s.Child2.Id : null,
+                Child2Quux = s.Child2 != null ? s.Child2.Quux : null,
+            });
+    }
+}";
+
+        var expected = new DiagnosticResult(
+            SelectToSelectExprNamedAnalyzer.AnalyzerId,
+            DiagnosticSeverity.Info
+        ).WithLocation(0);
+
+        // Index 1 = struct conversion (no ternary simplification)
+        await RunCodeFixTestAsync(test, expected, fixedCode, 1);
     }
 
     [Fact]
@@ -970,9 +1078,9 @@ class Test
     }
 
     [Fact]
-    public async Task CodeFix_Explicit_AddsCapture_WhenLocalVariableIsUsed_WithChainedMethod_RootOnly()
+    public async Task CodeFix_Explicit_AddsCapture_WhenLocalVariableIsUsed_WithChainedMethod_Struct()
     {
-        // This test case reproduces the bug for Index=1 (root-only):
+        // This test case reproduces the bug for Index=1 (struct):
         // When converting .Select(...).FirstOrDefault() to SelectExpr<T, TDto>,
         // the capture parameter should be added to SelectExpr, not to FirstOrDefault.
         var test =
@@ -1054,7 +1162,7 @@ class Test
             DiagnosticSeverity.Info
         ).WithLocation(0);
 
-        // Index 1 = convert root only
+        // Index 1 = struct conversion (no ternary simplification)
         await RunCodeFixTestAsync(test, expected, fixedCode, 1);
     }
 
