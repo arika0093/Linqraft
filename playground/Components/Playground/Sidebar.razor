@@ -1,0 +1,241 @@
+@using Linqraft.Playground.Models
+@using Linqraft.Core
+
+<div class="@GetSidebarClasses()">
+    <div class="absolute right-2 top-2 z-10 flex h-6 w-6 cursor-pointer items-center justify-center rounded bg-gray-700 text-gray-400 hover:bg-gray-600" @onclick="OnToggle">
+        <span class="text-xs">@(Collapsed ? "▶" : "◀")</span>
+    </div>
+    <div class="flex h-full flex-col overflow-y-auto @(Collapsed ? "hidden" : "")">
+        <!-- Linqraft Version -->
+        <div class="border-b border-gray-700 px-3 py-3 font-mono text-sm text-gray-400">
+            <span class="text-xs">Ver: @VersionName</span>
+        </div>
+
+        <!-- Templates Section -->
+        <div class="border-b border-gray-700">
+            <div class="flex cursor-pointer select-none items-center gap-2 px-3 py-2 text-gray-300 hover:bg-gray-800" @onclick="OnToggleTemplates">
+                <span class="text-sm">📋</span>
+                <span class="flex-1 text-xs font-semibold uppercase">Templates</span>
+                <span class="text-xs text-gray-500">@(TemplatesExpanded ? "▼" : "▶")</span>
+            </div>
+            @if (TemplatesExpanded)
+            {
+                <div class="py-1">
+                    @foreach (var template in Templates)
+                    {
+                        <div class="@GetTemplateItemClasses(template)"
+                             @onclick="() => OnSelectTemplate.InvokeAsync(template)"
+                             title="@template.Description">
+                            <span class="text-xs">📄</span>
+                            <span class="text-sm">@template.Name</span>
+                        </div>
+                    }
+                </div>
+            }
+        </div>
+
+        <!-- Files Section -->
+        <div class="border-b border-gray-700">
+            <div class="flex cursor-pointer select-none items-center gap-2 px-3 py-2 text-gray-300 hover:bg-gray-800" @onclick="OnToggleFiles">
+                <span class="text-sm">📁</span>
+                <span class="flex-1 text-xs font-semibold uppercase">Files</span>
+                <span class="text-xs text-gray-500">@(FilesExpanded ? "▼" : "▶")</span>
+            </div>
+            @if (FilesExpanded && SelectedTemplate != null)
+            {
+                <div class="py-1">
+                    @foreach (var file in SelectedTemplate.VisibleFiles)
+                    {
+                        <div class="@GetFileItemClasses(file)"
+                             @onclick="() => OnSelectFile.InvokeAsync(file)">
+                            <span class="text-xs">📄</span>
+                            <span class="text-sm">@file.Name</span>
+                        </div>
+                    }
+                </div>
+            }
+        </div>
+
+        <div class="flex-1"></div>
+        
+        <!-- Share Section -->
+        <div class="border-b border-gray-700">
+            <div class="flex cursor-pointer select-none items-center gap-2 px-3 py-2 text-gray-300 hover:bg-gray-800" @onclick="ToggleShare">
+                <span class="text-sm">🔗</span>
+                <span class="flex-1 text-xs font-semibold uppercase">Share</span>
+                <span class="text-xs text-gray-500">@(shareExpanded ? "▼" : "▶")</span>
+            </div>
+            @if (shareExpanded)
+            {
+                <div class="space-y-2 px-3 py-2">
+                    <button class="flex w-full cursor-pointer items-center gap-2 rounded bg-blue-800 px-3 py-1.5 text-xs text-white hover:bg-blue-600"
+                            @onclick="OnCopyShareUrl">
+                        <span>@(copyButtonText)</span>
+                    </button>
+                    <button class="flex w-full cursor-pointer items-center gap-2 rounded px-3 py-1.5 text-xs text-white border border-cyan-600 hover:border-cyan-400 hover:bg-cyan-800"
+                            @onclick="OnCreateGitHubIssue">
+                        <span>Create GitHub Issue</span>
+                    </button>
+                </div>
+            }
+        </div>
+        
+        <!-- Settings Section (Collapsible like Templates/Files) -->
+        <div class="border-b border-gray-700">
+            <div class="flex cursor-pointer select-none items-center gap-2 px-3 py-2 text-gray-300 hover:bg-gray-800" @onclick="ToggleSettings">
+                <span class="text-sm">⚙️</span>
+                <span class="flex-1 text-xs font-semibold uppercase">Settings</span>
+                <span class="text-xs text-gray-500">@(settingsExpanded ? "▼" : "▶")</span>
+            </div>
+            @if (settingsExpanded)
+            {
+                <div class="space-y-3 px-3 py-2 text-sm">
+                    <!-- Property Accessor -->
+                    <div>
+                        <label class="text-xs text-gray-400">Property Accessor</label>
+                        <select class="mt-1 w-full cursor-pointer rounded border border-gray-600 bg-gray-700 px-2 py-1 text-xs text-gray-100"
+                                value="@((int)Configuration.PropertyAccessor)"
+                                @onchange="@(e => UpdateConfig(c => c with { PropertyAccessor = (PropertyAccessor)int.Parse(e.Value?.ToString() ?? "0") }))">
+                            <option value="@((int)PropertyAccessor.Default)">Default</option>
+                            <option value="@((int)PropertyAccessor.GetAndSet)">GetAndSet</option>
+                            <option value="@((int)PropertyAccessor.GetAndInit)">GetAndInit</option>
+                            <option value="@((int)PropertyAccessor.GetAndInternalSet)">GetAndInternalSet</option>
+                        </select>
+                    </div>
+                    
+                    <!-- Comment Output -->
+                    <div>
+                        <label class="text-xs text-gray-400">Comment Output</label>
+                        <select class="mt-1 w-full cursor-pointer rounded border border-gray-600 bg-gray-700 px-2 py-1 text-xs text-gray-100"
+                                value="@((int)Configuration.CommentOutput)"
+                                @onchange="@(e => UpdateConfig(c => c with { CommentOutput = (CommentOutputMode)int.Parse(e.Value?.ToString() ?? "0") }))">
+                            <option value="@((int)CommentOutputMode.None)">None</option>
+                            <option value="@((int)CommentOutputMode.SummaryOnly)">Summary Only</option>
+                            <option value="@((int)CommentOutputMode.All)">All</option>
+                        </select>
+                    </div>
+                    
+                    <!-- Has Required -->
+                    <div class="flex cursor-pointer items-center gap-2">
+                        <input type="checkbox" 
+                               id="hasRequired"
+                               class="h-3 w-3"
+                               checked="@Configuration.HasRequired"
+                               @onchange="@(e => UpdateConfig(c => c with { HasRequired = (bool)(e.Value ?? false) }))" />
+                        <label for="hasRequired" class="cursor-pointer text-xs text-gray-300">Use 'required' keyword</label>
+                    </div>
+                    
+                    <!-- Record Generate -->
+                    <div class="flex cursor-pointer items-center gap-2">
+                        <input type="checkbox" 
+                               id="recordGenerate"
+                               class="h-3 w-3"
+                               checked="@Configuration.RecordGenerate"
+                               @onchange="@(e => UpdateConfig(c => c with { RecordGenerate = (bool)(e.Value ?? false) }))" />
+                        <label for="recordGenerate" class="cursor-pointer text-xs text-gray-300">Generate Records</label>
+                    </div>
+                    
+                    <!-- Array Nullability Removal -->
+                    <div class="flex cursor-pointer items-center gap-2">
+                        <input type="checkbox" 
+                               id="arrayNullabilityRemoval"
+                               class="h-3 w-3"
+                               checked="@Configuration.ArrayNullabilityRemoval"
+                               @onchange="@(e => UpdateConfig(c => c with { ArrayNullabilityRemoval = (bool)(e.Value ?? false) }))" />
+                        <label for="arrayNullabilityRemoval" class="cursor-pointer text-xs text-gray-300">Array Nullability Removal</label>
+                    </div>
+                    
+                    <!-- NestedDtoUseHashNamespace -->
+                    <div class="flex cursor-pointer items-center gap-2">
+                        <input type="checkbox" 
+                               id="nestedDtoUseHashNamespace"
+                               class="h-3 w-3"
+                               checked="@Configuration.NestedDtoUseHashNamespace"
+                               @onchange="@(e => UpdateConfig(c => c with { NestedDtoUseHashNamespace = (bool)(e.Value ?? false) }))" />
+                        <label for="nestedDtoUseHashNamespace" class="cursor-pointer text-xs text-gray-300">Nested DTO Use Hash Namespace</label>
+                    </div>
+                </div>
+            }
+        </div>
+    </div>
+</div>
+
+@code {
+    private static string VersionName => ThisAssembly.AssemblyInformationalVersion.Split("+")[0];
+
+    [Parameter] public bool Collapsed { get; set; }
+    [Parameter] public bool TemplatesExpanded { get; set; } = true;
+    [Parameter] public bool FilesExpanded { get; set; } = true;
+    [Parameter] public List<Template> Templates { get; set; } = new();
+    [Parameter] public Template? SelectedTemplate { get; set; }
+    [Parameter] public ProjectFile? SelectedFile { get; set; }
+    [Parameter] public LinqraftConfiguration Configuration { get; set; } = new() { CommentOutput = CommentOutputMode.None };
+    [Parameter] public EventCallback OnToggle { get; set; }
+    [Parameter] public EventCallback OnToggleTemplates { get; set; }
+    [Parameter] public EventCallback OnToggleFiles { get; set; }
+    [Parameter] public EventCallback<Template> OnSelectTemplate { get; set; }
+    [Parameter] public EventCallback<ProjectFile> OnSelectFile { get; set; }
+    [Parameter] public EventCallback<LinqraftConfiguration> OnConfigurationChanged { get; set; }
+    [Parameter] public EventCallback OnCopyShareUrlRequest { get; set; }
+    [Parameter] public EventCallback OnCreateGitHubIssueRequest { get; set; }
+    
+    private bool settingsExpanded = true;
+    private bool shareExpanded = true;
+    private string copyButtonText = "Copy Share URL";
+
+    private string GetSidebarClasses()
+    {
+        var baseClasses = "flex flex-col relative bg-gray-800 border-r border-gray-700 transition-all duration-300";
+        var mobileClasses = "md:relative fixed left-0 top-0 bottom-0 z-40";
+        return Collapsed
+            ? $"{baseClasses} {mobileClasses} w-10 min-w-[2.5rem]"
+            : $"{baseClasses} {mobileClasses} w-60 min-w-[15rem]";
+    }
+
+    private string GetTemplateItemClasses(Template template)
+    {
+        var baseClasses = "flex items-center gap-2 px-3 py-1.5 pl-6 cursor-pointer text-gray-300 text-sm hover:bg-gray-700";
+        return template == SelectedTemplate 
+            ? $"{baseClasses} bg-blue-900" 
+            : baseClasses;
+    }
+
+    private string GetFileItemClasses(ProjectFile file)
+    {
+        var baseClasses = "flex items-center gap-2 px-3 py-1.5 pl-6 cursor-pointer text-gray-300 text-sm hover:bg-gray-700";
+        return file == SelectedFile 
+            ? $"{baseClasses} bg-blue-900" 
+            : baseClasses;
+    }
+    
+    private void ToggleSettings()
+    {
+        settingsExpanded = !settingsExpanded;
+    }
+    
+    private void ToggleShare()
+    {
+        shareExpanded = !shareExpanded;
+    }
+    
+    private async Task OnCopyShareUrl()
+    {
+        await OnCopyShareUrlRequest.InvokeAsync();
+        copyButtonText = "Copied!";
+        StateHasChanged();
+        await Task.Delay(2000);
+        copyButtonText = "Copy Share URL";
+        StateHasChanged();
+    }
+    
+    private async Task OnCreateGitHubIssue()
+    {
+        await OnCreateGitHubIssueRequest.InvokeAsync();
+    }
+    
+    private async Task UpdateConfig(Func<LinqraftConfiguration, LinqraftConfiguration> update)
+    {
+        Configuration = update(Configuration);
+        await OnConfigurationChanged.InvokeAsync(Configuration);
+    }
+}

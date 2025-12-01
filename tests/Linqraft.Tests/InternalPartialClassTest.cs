@@ -35,11 +35,11 @@ public class InternalPartialClassTest
             new()
             {
                 Id = 1,
-                Children = new List<ChildEntity>
-                {
+                Children =
+                [
                     new() { Name = "Child1", Value = 10 },
                     new() { Name = "Child2", Value = 20 },
-                },
+                ],
             },
         };
 
@@ -68,7 +68,7 @@ public class InternalPartialClassTest
     public class ParentEntity
     {
         public int Id { get; set; }
-        public List<ChildEntity> Children { get; set; } = new();
+        public List<ChildEntity> Children { get; set; } = [];
     }
 
     public class ChildEntity

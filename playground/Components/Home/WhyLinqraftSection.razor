@@ -1,0 +1,162 @@
+@inject IJSRuntime JS
+
+<section id="why-section" class="bg-gradient-to-b from-gray-950 to-gray-900 border-y border-gray-800">
+    <div class="max-w-6xl mx-auto px-6 pt-16 pb-9">
+        <SectionTitle>Why Linqraft?</SectionTitle>
+        <p class="text-gray-400 text-center mb-8 max-w-3xl mx-auto">
+            Consider a case where you need to fetch data from a database with many related tables.
+        </p>
+        
+        <!-- Include Problem Section -->
+        <div id="include-problem" class="mb-16">
+            <div class="lg:grid lg:grid-cols-2 lg:gap-3 mb-6">
+                <div class=" mb-4 lg:mb-0">
+                    <h3 class="text-xl font-semibold text-white mb-4">The Include / ThenInclude Problem</h3>
+                    <p class="text-gray-300 mb-4">
+                        Writing it naively would involve heavy use of <InlineCode>Include</InlineCode> / <InlineCode>ThenInclude</InlineCode>, 
+                        resulting in code that is hard to read and maintain.
+                    </p>
+                    <ul class="space-y-2 text-gray-300 mb-6">
+                        <li class="flex items-start gap-2">
+                            <span class="text-gray-500">•</span>
+                            <span>The Include-based style becomes verbose and hard to follow.</span>
+                        </li>
+                        <li class="flex items-start gap-2">
+                            <span class="text-gray-500">•</span>
+                            <span>Forgetting an <InlineCode>Include</InlineCode> can lead to runtime <InlineCode>NullReferenceException</InlineCode>s that are hard to detect at compile time.</span>
+                        </li>
+                        <li class="flex items-start gap-2">
+                            <span class="text-gray-500">•</span>
+                            <span>Fetching entire object graphs is often wasteful and hurts performance.</span>
+                        </li>
+                    </ul>
+                </div>
+                <div>
+                    <CodeBlock Title="Include Pattern" Code="@includeCode" />
+                </div>
+            </div>
+        </div>
+
+        <!-- Manual DTO Section -->
+        <div id="manual-dto" class="mb-16">
+            <h3 class="text-xl font-semibold text-white mb-4">Manual DTO Projection</h3>
+            <p class="text-gray-300 mb-4">
+                A better approach is to project into DTOs and select only the fields you need. 
+                This yields better performance because only the required data is fetched. But this style has drawbacks:
+            </p>
+            <ul class="space-y-2 text-gray-300 mb-6">
+                <li class="flex items-start gap-2">
+                    <span class="text-gray-500">•</span>
+                    <span>If you want to pass the result to other methods or return it from APIs, you usually must define DTO classes manually.</span>
+                </li>
+                <li class="flex items-start gap-2">
+                    <span class="text-gray-500">•</span>
+                    <span>The expression APIs don't support the <InlineCode>?.</InlineCode> operator directly, forcing verbose null checks using ternary operators.</span>
+                </li>
+                <li class="flex items-start gap-2">
+                    <span class="text-gray-500">•</span>
+                    <span>The deeper the child elements become, the more complex null checks are required.</span>
+                </li>
+            </ul>
+            <div class="lg:grid lg:grid-cols-2 lg:gap-3 mb-6">
+                <div class=" mb-4 lg:mb-0">
+                    <CodeBlock Title="Manual DTO / Select Query" Code="@manualDtoCodeSelectPart" />
+                </div>
+                <div class="">
+                    <CodeBlock Title="Manual DTO / Definition" Code="@manualDtoCodeDefinition" />
+                </div>
+            </div>
+        </div>
+
+        <!-- Linqraft Solution Section -->
+        <div id="linqraft-solution">
+            <h3 class="text-xl font-semibold text-white mb-4">The Linqraft Solution</h3>
+            <p class="text-gray-300 mb-4">
+                Linqraft solves these problems by providing <InlineCode>SelectExpr</InlineCode>, 
+                which supports null-propagation operators and automatic DTO generation.
+            </p>
+            <ul class="space-y-2 text-gray-300 mb-6">
+                <li class="flex items-start gap-2">
+                    <span class="text-green-500">✓</span>
+                    <span>Use <InlineCode>?.</InlineCode> naturally - Linqraft translates it for you</span>
+                </li>
+                <li class="flex items-start gap-2">
+                    <span class="text-green-500">✓</span>
+                    <span>No manual DTO definitions - auto-generated from anonymous types</span>
+                </li>
+                <li class="flex items-start gap-2">
+                    <span class="text-green-500">✓</span>
+                    <span>No runtime overhead - compile time generation via source generators</span>
+                </li>
+                <li class="flex items-start gap-2">
+                    <span class="text-green-500">✓</span>
+                    <span>Zero dependencies - only a source generator, no runtime library needed</span>
+                </li>
+            </ul>
+
+            <div class="flex flex-col text-lg text-cyan-300/80 pt-6 text-center">
+                <p>See the comparison section below to see what it looks like in practice!</p>
+                <div class="mt-4 animate-bounce">
+                    <svg class="w-6 h-6 mx-auto" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/>
+                    </svg>
+                </div> 
+            </div>
+        </div>
+    </div>
+</section>
+
+@code {
+    // Code from README - Include Pattern
+    private const string includeCode = @"// unreadable, inefficient, and error-prone
+var orders = await dbContext.Orders
+    .Include(o => o.Customer).ThenInclude(c => c.Address).ThenInclude(a => a.Country)
+    .Include(o => o.Customer).ThenInclude(c => c.Address).ThenInclude(a => a.City)
+    .Include(o => o.OrderItems).ThenInclude(oi => oi.Product)
+    .ToListAsync();
+
+// if you forget an Include, you may get runtime NullReferenceExceptions
+var invalidAccess = orders[0].Customer.Profile.EmailAddress;
+// -> crash!";
+
+    // Code from README - Manual DTO with null checks (full version)
+    private const string manualDtoCodeSelectPart = @"// too ugly code with lots of null checks
+var orders = await dbContext.Orders
+    .Select(o => new OrderDto
+    {
+        Id = o.Id,
+        // in expression trees, ?. is not supported
+        CustomerName = o.Customer != null ? o.Customer.Name : null,
+        // nested null checks get worse
+        CustomerCountry = o.Customer != null && o.Customer.Address != null && o.Customer.Address.Country != null
+            ? o.Customer.Address.Country.Name
+            : null,
+        CustomerCity = o.Customer != null && o.Customer.Address != null && o.Customer.Address.City != null
+            ? o.Customer.Address.City.Name
+            : null,
+        Items = o.OrderItems.Select(oi => new OrderItemDto
+        {
+            // more null checks
+            ProductName = oi.Product != null ? oi.Product.Name : null,
+            Quantity = oi.Quantity
+        })
+    })
+    .ToListAsync();";
+
+    private const string manualDtoCodeDefinition = @"// you must define DTO classes manually
+public class OrderDto
+{
+    public int Id { get; set; }
+    public string? CustomerName { get; set; }
+    public string? CustomerCountry { get; set; }
+    public string? CustomerCity { get; set; }
+    public List<OrderItemDto> Items { get; set; } = [];
+}
+
+// When child DTOs are deep, the problem worsens
+public class OrderItemDto
+{
+    public string? ProductName { get; set; }
+    public int Quantity { get; set; }
+}";
+}

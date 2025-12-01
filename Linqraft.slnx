@@ -12,6 +12,9 @@
     <Project Path="examples/Linqraft.MinimumSample/Linqraft.MinimumSample.csproj" />
     <Project Path="examples/Linqraft.Sample/Linqraft.Sample.csproj" />
   </Folder>
+  <Folder Name="/playground/">
+    <Project Path="playground/Linqraft.Playground.csproj" />
+  </Folder>
   <Folder Name="/src/">
     <File Path="src/Directory.Build.props" />
     <Project Path="src/Linqraft.Analyzer/Linqraft.Analyzer.csproj" />

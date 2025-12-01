@@ -1,0 +1,269 @@
+@page "/playground"
+@using Linqraft.Playground.Components.Playground
+@using Linqraft.Core
+@inject TemplateService TemplateService
+@inject CodeGenerationService CodeGenerationService
+@inject UrlStateService UrlStateService
+@inject IJSRuntime JSRuntime
+
+<PageTitle>Linqraft Playground</PageTitle>
+
+<div class="flex h-full w-full overflow-hidden">
+    <!-- Collapsible Sidebar -->
+    <Sidebar 
+        Collapsed="sidebarCollapsed"
+        TemplatesExpanded="templatesExpanded"
+        FilesExpanded="filesExpanded"
+        Templates="templates"
+        SelectedTemplate="selectedTemplate"
+        SelectedFile="selectedFile"
+        Configuration="configuration"
+        OnToggle="ToggleSidebar"
+        OnToggleTemplates="ToggleTemplatesSection"
+        OnToggleFiles="ToggleFilesSection"
+        OnSelectTemplate="SelectTemplate"
+        OnSelectFile="SelectFile"
+        OnConfigurationChanged="OnConfigurationChanged"
+        OnCopyShareUrlRequest="CopyShareUrlToClipboard"
+        OnCreateGitHubIssueRequest="OpenGitHubIssue" />
+
+    <!-- Main Content Area -->
+    <div class="flex flex-1 overflow-hidden">
+        <!-- Editor Pane (Left) -->
+        <div class="flex min-w-[200px] flex-1 flex-col overflow-hidden">
+            <EditorPane 
+                @ref="editorPane"
+                EditorId="editor"
+                FileName="@selectedFile?.Name"
+                InitialContent="@(selectedFile?.Content ?? "// Select a file to edit")"
+                OnContentChanged="OnEditorContentChanged" />
+        </div>
+
+        <div class="flex w-1 items-center justify-center bg-gray-700"></div>
+
+        <!-- Preview Panes (Right) -->
+        <div class="flex min-w-[200px] flex-1 flex-col overflow-hidden">
+            <!-- Query Expression Preview -->
+            <div class="@(queryPaneCollapsed ? "" : "flex-1") min-h-[50px] overflow-hidden">
+                <PreviewPane 
+                    @ref="queryPreviewPane"
+                    EditorId="queryPreview"
+                    Title="Generated Expression"
+                    Icon="🔍"
+                    InitialContent="// Generated expression will appear here"
+                    IsCollapsed="queryPaneCollapsed"
+                    IsExpressionPane="true"
+                    IsCollapsedChanged="@(collapsed => { queryPaneCollapsed = collapsed; StateHasChanged(); })" />
+            </div>
+
+            @if (!queryPaneCollapsed && !dtoPaneCollapsed)
+            {
+                <div class="flex h-1 items-center justify-center bg-gray-700"></div>
+            }
+
+            <!-- DTO Class Preview -->
+            <div class="@(dtoPaneCollapsed ? "" : "flex-1") min-h-[50px] overflow-hidden">
+                <PreviewPane 
+                    @ref="dtoPreviewPane"
+                    EditorId="dtoPreview"
+                    Title="Generated DTO Class"
+                    Icon="📦"
+                    InitialContent="// Generated DTO class will appear here"
+                    IsCollapsed="dtoPaneCollapsed"
+                    IsExpressionPane="false"
+                    IsCollapsedChanged="@(collapsed => { dtoPaneCollapsed = collapsed; StateHasChanged(); })" />
+            </div>
+        </div>
+    </div>
+</div>
+
+@code {
+    private EditorPane? editorPane;
+    private PreviewPane? queryPreviewPane;
+    private PreviewPane? dtoPreviewPane;
+
+    private List<Models.Template> templates = new();
+    private Models.Template? selectedTemplate;
+    private Models.ProjectFile? selectedFile;
+
+    private bool sidebarCollapsed = false;
+    private bool templatesExpanded = true;
+    private bool filesExpanded = true;
+    private bool queryPaneCollapsed = false;
+    private bool dtoPaneCollapsed = false;
+    
+    // Configuration with CommentOutput set to None by default
+    private LinqraftConfiguration configuration = new() { CommentOutput = CommentOutputMode.None };
+
+    protected override void OnInitialized()
+    {
+        templates = TemplateService.GetTemplates();
+        
+        // Try to restore state from URL first
+        var urlState = UrlStateService.TryRestoreFromUrl();
+        if (urlState != null)
+        {
+            // Create a custom template from the restored state
+            selectedTemplate = new Models.Template
+            {
+                Name = "Shared Code",
+                Description = "Restored from shared URL",
+                Files = urlState.Files.Select(f => new Models.ProjectFile
+                {
+                    Name = f.Name,
+                    Path = f.Path,
+                    Content = f.Content,
+                    IsHidden = f.IsHidden,
+                }).ToList(),
+            };
+            configuration = urlState.Configuration;
+            
+            var visibleFiles = selectedTemplate.VisibleFiles.ToList();
+            if (visibleFiles.Count > 0)
+            {
+                selectedFile = visibleFiles.FirstOrDefault(f => 
+                    f.Content.Contains("SelectExpr")) 
+                    ?? visibleFiles[0];
+            }
+        }
+        else if (templates.Count > 0)
+        {
+            selectedTemplate = templates[0];
+            var visibleFiles = selectedTemplate.VisibleFiles.ToList();
+            if (visibleFiles.Count > 0)
+            {
+                // Default to the file containing SelectExpr
+                selectedFile = visibleFiles.FirstOrDefault(f => 
+                    f.Content.Contains("SelectExpr")) 
+                    ?? visibleFiles[0];
+            }
+        }
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender && selectedTemplate != null)
+        {
+            // Wait a bit for the editor to be fully initialized
+            await Task.Delay(100);
+            await GeneratePreviewForTemplate();
+        }
+    }
+
+    private void ToggleSidebar()
+    {
+        sidebarCollapsed = !sidebarCollapsed;
+    }
+
+    private void ToggleTemplatesSection()
+    {
+        templatesExpanded = !templatesExpanded;
+    }
+
+    private void ToggleFilesSection()
+    {
+        filesExpanded = !filesExpanded;
+    }
+    
+    private async Task OnConfigurationChanged(LinqraftConfiguration config)
+    {
+        configuration = config;
+        // Regenerate preview with new settings
+        await GeneratePreviewForTemplate();
+    }
+
+    private async Task SelectTemplate(Models.Template template)
+    {
+        selectedTemplate = template;
+        var visibleFiles = template.VisibleFiles.ToList();
+        if (visibleFiles.Count > 0)
+        {
+            // Default to the file containing SelectExpr
+            selectedFile = visibleFiles.FirstOrDefault(f => f.Content.Contains("SelectExpr")) 
+                ?? visibleFiles[0];
+            if (editorPane != null)
+            {
+                await editorPane.SetValueAsync(selectedFile.Content);
+            }
+        }
+        // Generate preview for the entire template
+        await GeneratePreviewForTemplate();
+    }
+
+    private async Task SelectFile(Models.ProjectFile file)
+    {
+        selectedFile = file;
+        if (editorPane != null)
+        {
+            await editorPane.SetValueAsync(file.Content);
+        }
+        // Note: Preview is generated per template, not per file
+    }
+
+    private async Task OnEditorContentChanged()
+    {
+        // Update the selected file content
+        if (selectedFile != null && editorPane != null)
+        {
+            selectedFile.Content = await editorPane.GetValueAsync();
+        }
+
+        // Debounce the preview generation
+        await GeneratePreviewForTemplate();
+    }
+
+    private async Task GeneratePreviewForTemplate()
+    {
+        if (selectedTemplate == null) return;
+
+        try
+        {
+            // Pass all files to the code generation service
+            var output = CodeGenerationService.GenerateOutput(selectedTemplate.Files, configuration);
+
+            if(queryPreviewPane != null)
+            {
+                await queryPreviewPane.SetValueAsync(output.HasError ? $"// Error: {output.ErrorMessage}" : output.QueryExpression);
+            }
+
+            if(dtoPreviewPane != null)
+            {
+                await dtoPreviewPane.SetValueAsync(output.HasError ? $"// Error: {output.ErrorMessage}" : output.DtoClass);
+            }
+        }
+        catch (Exception)
+        {
+            // Editor not yet initialized, ignore
+        }
+    }
+    
+    private async Task CopyShareUrlToClipboard()
+    {
+        if (selectedTemplate == null) return;
+        
+        try
+        {
+            var shareUrl = UrlStateService.GenerateShareableUrl(selectedTemplate.Files, configuration);
+            await JSRuntime.InvokeVoidAsync("navigator.clipboard.writeText", shareUrl);
+        }
+        catch (JSException)
+        {
+            // Clipboard API not available in this browser context
+        }
+    }
+    
+    private async Task OpenGitHubIssue()
+    {
+        if (selectedTemplate == null) return;
+        
+        try
+        {
+            var issueUrl = UrlStateService.GenerateGitHubIssueUrl(selectedTemplate.Files, configuration);
+            await JSRuntime.InvokeVoidAsync("window.open", issueUrl, "_blank");
+        }
+        catch (JSException)
+        {
+            // Window.open not available in this browser context
+        }
+    }
+}

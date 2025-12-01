@@ -11,14 +11,14 @@ public class SelectManyCaseTest
         {
             Id = 1,
             Name = "Parent1",
-            Children = new List<ChildEntity>
-            {
+            Children =
+            [
                 new ChildEntity
                 {
                     ChildId = 101,
                     ChildName = "Child1-1",
-                    GrandChildren = new List<GrandChildEntity>
-                    {
+                    GrandChildren =
+                    [
                         new GrandChildEntity
                         {
                             GrandChildId = 1001,
@@ -29,43 +29,43 @@ public class SelectManyCaseTest
                             GrandChildId = 1002,
                             Description = "GrandChild1-1-2",
                         },
-                    },
+                    ],
                 },
                 new ChildEntity
                 {
                     ChildId = 102,
                     ChildName = "Child1-2",
-                    GrandChildren = new List<GrandChildEntity>
-                    {
+                    GrandChildren =
+                    [
                         new GrandChildEntity
                         {
                             GrandChildId = 1003,
                             Description = "GrandChild1-2-1",
                         },
-                    },
+                    ],
                 },
-            },
+            ],
         },
         new ParentEntity
         {
             Id = 2,
             Name = "Parent2",
-            Children = new List<ChildEntity>
-            {
+            Children =
+            [
                 new ChildEntity
                 {
                     ChildId = 201,
                     ChildName = "Child2-1",
-                    GrandChildren = new List<GrandChildEntity>
-                    {
+                    GrandChildren =
+                    [
                         new GrandChildEntity
                         {
                             GrandChildId = 2001,
                             Description = "GrandChild2-1-1",
                         },
-                    },
+                    ],
                 },
-            },
+            ],
         },
     ];
 
@@ -162,21 +162,21 @@ public class SelectManyCaseTest
             {
                 Id = 1,
                 Name = "Parent1",
-                Children = new List<ChildEntity>
-                {
+                Children =
+                [
                     new ChildEntity
                     {
                         ChildId = 101,
                         ChildName = "Child1",
-                        GrandChildren = new List<GrandChildEntity>(), // Empty collection
+                        GrandChildren = [], // Empty collection
                     },
-                },
+                ],
             },
             new ParentEntity
             {
                 Id = 2,
                 Name = "Parent2",
-                Children = new List<ChildEntity>(), // Empty collection
+                Children = [], // Empty collection
             },
         };
 

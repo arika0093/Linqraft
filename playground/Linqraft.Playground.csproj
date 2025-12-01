@@ -1,0 +1,57 @@
+﻿<Project Sdk="Microsoft.NET.Sdk.BlazorWebAssembly">
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <OverrideHtmlAssetPlaceholders>true</OverrideHtmlAssetPlaceholders>
+  </PropertyGroup>
+  <ItemGroup>
+    <PackageReference Include="BlazorMonaco" Version="3.4.0" />
+    <PackageReference Include="Microsoft.AspNetCore.Components.WebAssembly" Version="10.0.0" />
+    <PackageReference Include="Microsoft.CodeAnalysis.CSharp" Version="5.0.0" />
+    <PackageReference Include="Basic.Reference.Assemblies.Net90" Version="1.8.0" />
+    <PackageReference Include="PublishSPAforGitHubPages.Build" Version="3.0.3" />
+    <PackageReference
+      Include="Microsoft.AspNetCore.Components.WebAssembly.DevServer"
+      Version="10.0.0"
+      PrivateAssets="all"
+    />
+    <PackageReference
+      Include="Nerdbank.GitVersioning"
+      Version="3.*"
+      Condition="!Exists('packages.config')"
+    >
+      <PrivateAssets>all</PrivateAssets>
+      <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+    </PackageReference>
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="../src/Linqraft.Core/Linqraft.Core.csproj" />
+  </ItemGroup>
+  <!-- heavy library lazy loading -->
+  <ItemGroup>
+    <BlazorWebAssemblyLazyLoad Include="BlazorMonaco.dll" />
+    <BlazorWebAssemblyLazyLoad Include="Basic.Reference.Assemblies.Net90.dll" />
+  </ItemGroup>
+  <!-- tailwind setting -->
+  <ItemGroup>
+    <PackageReference Include="Tailwind.Hosting" Version="*" />
+    <PackageReference Include="Tailwind.Hosting.Build" Version="*" />
+  </ItemGroup>
+  <PropertyGroup Label="Tailwind.Hosting.Build Props">
+    <TailwindVersion>latest</TailwindVersion>
+    <TailwindWatch>true</TailwindWatch>
+    <TailwindInputCssFile>tailwind.css</TailwindInputCssFile>
+    <TailwindOutputCssFile>wwwroot/css/tailwind.css</TailwindOutputCssFile>
+  </PropertyGroup>
+  <!-- cleanup only use Debug build -->
+  <Target
+    Name="CleanUpTailwindStaticCache"
+    BeforeTargets="PrepareForBuild"
+    Condition="'$(Configuration)' == 'Debug'"
+  >
+    <ItemGroup>
+      <Content Remove="$(TailwindOutputCssFile)" />
+    </ItemGroup>
+  </Target>
+</Project>

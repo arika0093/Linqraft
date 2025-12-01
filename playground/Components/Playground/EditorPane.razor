@@ -1,0 +1,180 @@
+@using BlazorMonaco
+@using BlazorMonaco.Editor
+@using Linqraft.Playground.Services
+@inject IJSRuntime JSRuntime
+@inject SemanticHighlightingService SemanticHighlightingService
+
+<div class="flex min-h-[50px] flex-col overflow-hidden @(IsCollapsed ? "h-10" : "h-full")">
+    <div class="flex cursor-pointer select-none items-center gap-2 border-b border-gray-700 bg-gray-800 px-3 py-2 text-gray-300 hover:bg-gray-700" @onclick="ToggleCollapse">
+        <span class="text-sm">✏️</span>
+        <span class="flex-1 text-xs font-medium">Editor - @(FileName ?? "Select a file")</span>
+        <span class="text-xs text-gray-500 opacity-50">
+            @(IsCollapsed ? "▼" : "▲")
+        </span>
+    </div>
+    <div class="relative flex-1 overflow-hidden" style="@(IsCollapsed ? "display: none;" : "")" translate="no">
+        <StandaloneCodeEditor @ref="Editor"
+            Id="@EditorId"
+            ConstructionOptions="GetConstructionOptions"
+            OnDidChangeModelContent="HandleContentChanged" />
+    </div>
+</div>
+
+@code {
+    private const int HighlightDebounceMs = 200;
+    private const int InitialHighlightDelayMs = 100;
+
+    [Parameter] public string EditorId { get; set; } = "editor";
+    [Parameter] public string? FileName { get; set; }
+    [Parameter] public string InitialContent { get; set; } = "";
+    [Parameter] public bool IsCollapsed { get; set; } = false;
+    [Parameter] public EventCallback<bool> IsCollapsedChanged { get; set; }
+    [Parameter] public EventCallback OnContentChanged { get; set; }
+
+    public StandaloneCodeEditor? Editor { get; private set; }
+    private CancellationTokenSource? highlightCts;
+
+    private async Task ToggleCollapse()
+    {
+        IsCollapsed = !IsCollapsed;
+        await IsCollapsedChanged.InvokeAsync(IsCollapsed);
+    }
+
+    private StandaloneEditorConstructionOptions GetConstructionOptions(StandaloneCodeEditor editor)
+    {
+        return new StandaloneEditorConstructionOptions
+        {
+            AutomaticLayout = true,
+            Language = "csharp",
+            Theme = "vs-dark",
+            Value = InitialContent,
+            FontSize = 14,
+            FontFamily = "'JetBrains Mono', monospace",
+            Minimap = new EditorMinimapOptions { Enabled = false },
+            ScrollBeyondLastLine = false,
+            RenderLineHighlight = "all",
+            TabSize = 4,
+            BracketPairColorization = new BracketPairColorizationOptions { Enabled = true },
+            MatchBrackets = "always",
+        };
+    }
+
+    private Timer? debounceTimer;
+    private const int DebounceDelayMs = 500;
+
+    private async Task HandleContentChanged(ModelContentChangedEvent e)
+    {
+        // debounce waiting
+        debounceTimer?.Dispose();
+        debounceTimer = new Timer(
+            async _ =>
+            {
+                await InvokeAsync(async () =>
+                {
+                    // Notify parent of content change
+                    await OnContentChanged.InvokeAsync();
+
+                    // Debounce semantic highlighting
+                    ScheduleSemanticHighlighting();
+                });
+            },
+            null,
+            DebounceDelayMs,
+            Timeout.Infinite
+        );
+    }
+
+    private void ScheduleSemanticHighlighting()
+    {
+        // Cancel any pending highlighting
+        highlightCts?.Cancel();
+        highlightCts = new CancellationTokenSource();
+        var token = highlightCts.Token;
+        
+        _ = Task.Run(async () =>
+        {
+            try
+            {
+                await Task.Delay(HighlightDebounceMs, token);
+                if (!token.IsCancellationRequested)
+                {
+                    await InvokeAsync(ApplySemanticHighlighting);
+                }
+            }
+            catch (TaskCanceledException)
+            {
+                // Expected when cancelled
+            }
+        });
+    }
+
+    public async Task SetValueAsync(string content)
+    {
+        if (Editor != null)
+        {
+            try
+            {
+                await Editor.SetValue(content);
+                // Apply semantic highlighting after content change
+                await ApplySemanticHighlighting();
+            }
+            catch
+            {
+                // Editor not yet initialized
+            }
+        }
+    }
+
+    public async Task<string> GetValueAsync()
+    {
+        if (Editor != null)
+        {
+            try
+            {
+                return await Editor.GetValue();
+            }
+            catch
+            {
+                // Editor not yet initialized
+            }
+        }
+        return "";
+    }
+
+    private async Task ApplySemanticHighlighting()
+    {
+        if (Editor == null) return;
+        
+        try
+        {
+            var content = await Editor.GetValue();
+            var tokens = SemanticHighlightingService.GetSemanticTokens(content, FileName);
+            
+            // Convert to JS-compatible format
+            var jsTokens = tokens.Select(t => new
+            {
+                startLine = t.StartLine,
+                startColumn = t.StartColumn,
+                endLine = t.EndLine,
+                endColumn = t.EndColumn,
+                type = (int)t.Type
+            }).ToArray();
+            
+            await JSRuntime.InvokeVoidAsync("monacoSemanticHighlighting.applySemanticTokens", EditorId, jsTokens);
+        }
+        catch
+        {
+            // Ignore errors during highlighting
+        }
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender && Editor != null)
+        {
+            // Wait for editor to be fully initialized
+            await Task.Delay(InitialHighlightDelayMs);
+            await ApplySemanticHighlighting();
+        }
+    }
+}

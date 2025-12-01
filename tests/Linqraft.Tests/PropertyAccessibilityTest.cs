@@ -124,11 +124,11 @@ public class PropertyAccessibilityTest
             new()
             {
                 Id = 1,
-                Children = new List<ChildEntity>
-                {
+                Children =
+                [
                     new() { Name = "Child1", InternalValue = 10 },
                     new() { Name = "Child2", InternalValue = 20 },
-                },
+                ],
             },
         };
 
@@ -195,7 +195,7 @@ public class PropertyAccessibilityTest
     public class ParentEntity
     {
         public int Id { get; set; }
-        public List<ChildEntity> Children { get; set; } = new();
+        public List<ChildEntity> Children { get; set; } = [];
     }
 
     public class ChildEntity

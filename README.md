@@ -1,9 +1,11 @@
 
 # <img width="24" src="./assets/linqraft.png" /> Linqraft 
 
-[![NuGet Version](https://img.shields.io/nuget/v/Linqraft?style=flat-square&logo=NuGet&color=0080CC)](https://www.nuget.org/packages/Linqraft/) ![GitHub Actions Workflow Status](https://img.shields.io/github/actions/workflow/status/arika0093/Linqraft/test.yaml?branch=main&label=Test&style=flat-square) [![DeepWiki](https://img.shields.io/badge/DeepWiki-arika0093%2FLinqraft-blue.svg?logo=data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACwAAAAyCAYAAAAnWDnqAAAAAXNSR0IArs4c6QAAA05JREFUaEPtmUtyEzEQhtWTQyQLHNak2AB7ZnyXZMEjXMGeK/AIi+QuHrMnbChYY7MIh8g01fJoopFb0uhhEqqcbWTp06/uv1saEDv4O3n3dV60RfP947Mm9/SQc0ICFQgzfc4CYZoTPAswgSJCCUJUnAAoRHOAUOcATwbmVLWdGoH//PB8mnKqScAhsD0kYP3j/Yt5LPQe2KvcXmGvRHcDnpxfL2zOYJ1mFwrryWTz0advv1Ut4CJgf5uhDuDj5eUcAUoahrdY/56ebRWeraTjMt/00Sh3UDtjgHtQNHwcRGOC98BJEAEymycmYcWwOprTgcB6VZ5JK5TAJ+fXGLBm3FDAmn6oPPjR4rKCAoJCal2eAiQp2x0vxTPB3ALO2CRkwmDy5WohzBDwSEFKRwPbknEggCPB/imwrycgxX2NzoMCHhPkDwqYMr9tRcP5qNrMZHkVnOjRMWwLCcr8ohBVb1OMjxLwGCvjTikrsBOiA6fNyCrm8V1rP93iVPpwaE+gO0SsWmPiXB+jikdf6SizrT5qKasx5j8ABbHpFTx+vFXp9EnYQmLx02h1QTTrl6eDqxLnGjporxl3NL3agEvXdT0WmEost648sQOYAeJS9Q7bfUVoMGnjo4AZdUMQku50McDcMWcBPvr0SzbTAFDfvJqwLzgxwATnCgnp4wDl6Aa+Ax283gghmj+vj7feE2KBBRMW3FzOpLOADl0Isb5587h/U4gGvkt5v60Z1VLG8BhYjbzRwyQZemwAd6cCR5/XFWLYZRIMpX39AR0tjaGGiGzLVyhse5C9RKC6ai42ppWPKiBagOvaYk8lO7DajerabOZP46Lby5wKjw1HCRx7p9sVMOWGzb/vA1hwiWc6jm3MvQDTogQkiqIhJV0nBQBTU+3okKCFDy9WwferkHjtxib7t3xIUQtHxnIwtx4mpg26/HfwVNVDb4oI9RHmx5WGelRVlrtiw43zboCLaxv46AZeB3IlTkwouebTr1y2NjSpHz68WNFjHvupy3q8TFn3Hos2IAk4Ju5dCo8B3wP7VPr/FGaKiG+T+v+TQqIrOqMTL1VdWV1DdmcbO8KXBz6esmYWYKPwDL5b5FA1a0hwapHiom0r/cKaoqr+27/XcrS5UwSMbQAAAABJRU5ErkJggg==)](https://deepwiki.com/arika0093/Linqraft)
+[![NuGet Version](https://img.shields.io/nuget/v/Linqraft?style=flat-square&logo=NuGet&color=0080CC)](https://www.nuget.org/packages/Linqraft/) ![GitHub Actions Workflow Status](https://img.shields.io/github/actions/workflow/status/arika0093/Linqraft/test.yaml?branch=main&label=Test&style=flat-square) [![DeepWiki](https://img.shields.io/badge/DeepWiki-Linqraft-blue.svg?logo=data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACwAAAAyCAYAAAAnWDnqAAAAAXNSR0IArs4c6QAAA05JREFUaEPtmUtyEzEQhtWTQyQLHNak2AB7ZnyXZMEjXMGeK/AIi+QuHrMnbChYY7MIh8g01fJoopFb0uhhEqqcbWTp06/uv1saEDv4O3n3dV60RfP947Mm9/SQc0ICFQgzfc4CYZoTPAswgSJCCUJUnAAoRHOAUOcATwbmVLWdGoH//PB8mnKqScAhsD0kYP3j/Yt5LPQe2KvcXmGvRHcDnpxfL2zOYJ1mFwrryWTz0advv1Ut4CJgf5uhDuDj5eUcAUoahrdY/56ebRWeraTjMt/00Sh3UDtjgHtQNHwcRGOC98BJEAEymycmYcWwOprTgcB6VZ5JK5TAJ+fXGLBm3FDAmn6oPPjR4rKCAoJCal2eAiQp2x0vxTPB3ALO2CRkwmDy5WohzBDwSEFKRwPbknEggCPB/imwrycgxX2NzoMCHhPkDwqYMr9tRcP5qNrMZHkVnOjRMWwLCcr8ohBVb1OMjxLwGCvjTikrsBOiA6fNyCrm8V1rP93iVPpwaE+gO0SsWmPiXB+jikdf6SizrT5qKasx5j8ABbHpFTx+vFXp9EnYQmLx02h1QTTrl6eDqxLnGjporxl3NL3agEvXdT0WmEost648sQOYAeJS9Q7bfUVoMGnjo4AZdUMQku50McDcMWcBPvr0SzbTAFDfvJqwLzgxwATnCgnp4wDl6Aa+Ax283gghmj+vj7feE2KBBRMW3FzOpLOADl0Isb5587h/U4gGvkt5v60Z1VLG8BhYjbzRwyQZemwAd6cCR5/XFWLYZRIMpX39AR0tjaGGiGzLVyhse5C9RKC6ai42ppWPKiBagOvaYk8lO7DajerabOZP46Lby5wKjw1HCRx7p9sVMOWGzb/vA1hwiWc6jm3MvQDTogQkiqIhJV0nBQBTU+3okKCFDy9WwferkHjtxib7t3xIUQtHxnIwtx4mpg26/HfwVNVDb4oI9RHmx5WGelRVlrtiw43zboCLaxv46AZeB3IlTkwouebTr1y2NjSpHz68WNFjHvupy3q8TFn3Hos2IAk4Ju5dCo8B3wP7VPr/FGaKiG+T+v+TQqIrOqMTL1VdWV1DdmcbO8KXBz6esmYWYKPwDL5b5FA1a0hwapHiom0r/cKaoqr+27/XcrS5UwSMbQAAAABJRU5ErkJggg==)](https://deepwiki.com/arika0093/Linqraft)
 
 Write Select queries easily with on-demand DTO generation and null-coalescing operators. No depedendencies.
+
+[Web Page](https://arika0093.github.io/Linqraft/) | [Online Playground](https://arika0093.github.io/Linqraft/playground/)
 
 ## Features
 ### Overview
@@ -82,7 +84,7 @@ namespace Linqraft
                 CustomerName = o.Customer != null ? (string?)o.Customer.Name : null,
                 CustomerCountry = o.Customer != null && o.Customer.Address != null && o.Customer.Address.Country != null ? (string?)o.Customer.Address.Country.Name : null,
                 CustomerCity = o.Customer != null && o.Customer.Address != null && o.Customer.Address.City != null ? (string?)o.Customer.Address.City.Name : null,
-                CustomerInfo = new global::Tutorial.Dto_F1A64BF4
+                CustomerInfo = new global::Tutorial.CustomerInfoDto_F1A64BF4
                 {
                     Email = o.Customer != null ? (string?)o.Customer.EmailAddress : null,
                     Phone = o.Customer != null ? (string?)o.Customer.PhoneNumber : null
@@ -100,7 +102,7 @@ namespace Linqraft
 
 namespace Tutorial
 {
-    public partial class Dto_F1A64BF4
+    public partial class CustomerInfoDto_F1A64BF4
     {
         public required string? Email { get; set; }
         public required string? Phone { get; set; }
@@ -118,7 +120,7 @@ namespace Tutorial
         public required string? CustomerName { get; set; }
         public required string? CustomerCountry { get; set; }
         public required string? CustomerCity { get; set; }
-        public required global::Tutorial.Dto_F1A64BF4? CustomerInfo { get; set; }
+        public required global::Tutorial.CustomerInfoDto_F1A64BF4? CustomerInfo { get; set; }
         public required global::System.Collections.Generic.List<Tutorial.OrderItemDto_DE33EA40> Items { get; set; }
     }
 }
@@ -496,6 +498,53 @@ public partial class ParentDto
 }
 ```
 
+### Remove Hash from Generated Class Names
+ By default, nested DTO classes are generated with hash-suffixed class names (e.g., `ItemsDto_HASH1234`).
+This behavior is necessary to avoid class name collisions, but in some cases, the hash name can be inconvenient (for example, in OpenAPI/Swagger where class names are displayed).
+In such cases, you can change the behavior to generate nested DTO classes in hash-named namespaces (e.g., `Generated_HASH1234.ItemsDto`) instead.
+This option can be controlled using the `LinqraftNestedDtoUseHashNamespace` property.
+
+<details>
+<summary>Generated code example</summary>
+
+**LinqraftNestedDtoUseHashNamespace = false (default)**
+
+```csharp
+namespace Tutorial
+{
+    public partial class OrderDto
+    {
+        public required System.Collections.Generic.List<global::Tutorial.OrderItemDto_DE33EA40> Items { get; set; }
+    }
+
+    public partial class OrderItemDto_DE33EA40
+    {
+        public required string? ProductName { get; set; }
+    }
+}
+```
+
+**LinqraftNestedDtoUseHashNamespace = true**
+
+```csharp
+namespace Tutorial
+{
+    public partial class OrderDto
+    {
+        public required System.Collections.Generic.List<global::Tutorial.Generated_DE33EA40.ItemsDto> Items { get; set; }
+    }
+}
+namespace Tutorial.Generated_DE33EA40
+{
+    public partial class ItemsDto
+    {
+        public required string? ProductName { get; set; }
+    }
+}
+```
+
+</details>
+
 ### Auto generated comments
 Linqraft attempts to retrieve comments attached to the original properties as much as possible and attach them as XML documentation comments to the properties of the DTO class.
 In addition, reference information indicating what kind of query the DTO class was generated from is also attached.
@@ -607,6 +656,9 @@ Linqraft supports several MSBuild properties to customize the generated code:
     <LinqraftCommentOutput>All</LinqraftCommentOutput>
     <!-- remove nullability from array-type properties -->
     <LinqraftArrayNullabilityRemoval>true</LinqraftArrayNullabilityRemoval>
+    <!-- generate nested DTOs in hash-named namespace (e.g., Generated_HASH.ItemsDto) -->
+    <!-- instead of hash-suffixed class names (e.g., ItemsDto_HASH) -->
+    <LinqraftNestedDtoUseHashNamespace>false</LinqraftNestedDtoUseHashNamespace>
   </PropertyGroup>
 </Project>
 ```

@@ -11,6 +11,9 @@ on:
       - '**./Directories.Build.props'
       - '.github/workflows/test.yaml'
 
+env:
+  DOTNET_VERSION: '10.0.x'
+
 jobs:
   build:
     strategy:
@@ -28,10 +31,7 @@ jobs:
       - name: Setup .NET
         uses: actions/setup-dotnet@v4
         with:
-          dotnet-version: |
-            6.0.x
-            8.0.x
-            10.0.x
+          dotnet-version: ${{ env.DOTNET_VERSION }}
           cache: true
           cache-dependency-path: '**/packages.lock.json'
 
