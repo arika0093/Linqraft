@@ -169,7 +169,7 @@ public record SelectExprInfoAnonymous : SelectExprInfo
     /// <summary>
     /// Generates SelectExpr method specifically for IGrouping with anonymous key types.
     /// Uses generic TKey and TElement type parameters instead of expanding the anonymous type.
-    /// For IGrouping, we pass through the selector directly without transformation.
+    /// Uses dynamic to access anonymous key properties in the Select.
     /// </summary>
     private string GenerateSelectExprMethodForIGrouping(
         string dtoName,
@@ -182,6 +182,10 @@ public record SelectExprInfoAnonymous : SelectExprInfo
 
         var id = GetUniqueId();
         sb.AppendLine(GenerateMethodHeaderPart("anonymous type (IGrouping)", location));
+
+        // Get the element type from IGrouping<TKey, TElement>
+        var elementType = RoslynTypeHelper.GetIGroupingElementType(SourceType);
+        var elementTypeName = elementType?.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat) ?? "object";
 
         // Determine if we have capture parameters
         var hasCapture = CaptureArgumentExpression != null && CaptureArgumentType != null;
@@ -220,9 +224,11 @@ public record SelectExprInfoAnonymous : SelectExprInfo
                 sb.AppendLine($"    var capture = ({captureTypeName})captureParam;");
             }
 
-            // For IGrouping, pass through the selector directly - no need to transform
-            // Use Select on the query and convert back to IQueryable
-            sb.AppendLine("    return query.Select(selector).AsQueryable();");
+            // Use AsEnumerable to allow dynamic access, then Select with cast for each grouping element
+            sb.AppendLine($"    var converted = query.AsEnumerable().Select({LambdaParameterName} =>");
+            sb.AppendLine("    {");
+            sb.AppendLine($"        var groupingElements = {LambdaParameterName}.Cast<{elementTypeName}>();");
+            sb.AppendLine("        return new");
         }
         else
         {
@@ -232,13 +238,80 @@ public record SelectExprInfoAnonymous : SelectExprInfo
             );
             sb.AppendLine($"    this {returnTypePrefix}<global::System.Linq.IGrouping<TKey, TElement>> query, Func<global::System.Linq.IGrouping<TKey, TElement>, TResult> selector)");
             sb.AppendLine("{");
-            // For IGrouping, pass through the selector directly - no need to transform
-            // Use Select on the query and convert back to IQueryable
-            sb.AppendLine("    return query.Select(selector).AsQueryable();");
+            // Use AsEnumerable to allow dynamic access, then Select with cast for each grouping element
+            sb.AppendLine($"    var converted = query.AsEnumerable().Select({LambdaParameterName} =>");
+            sb.AppendLine("    {");
+            sb.AppendLine($"        var groupingElements = {LambdaParameterName}.Cast<{elementTypeName}>();");
+            sb.AppendLine("        return new");
         }
 
+        sb.AppendLine("        {");
+
+        // Generate property assignments with dynamic access for Key properties
+        // but use groupingElements for element access
+        var propertyAssignments = structure
+            .Properties.Select(prop =>
+            {
+                var assignment = GeneratePropertyAssignmentForIGroupingWithCast(prop, CodeFormatter.IndentSize * 3);
+                return $"{CodeFormatter.Indent(3)}{prop.Name} = {assignment}";
+            })
+            .ToList();
+        sb.AppendLine(string.Join($",{CodeFormatter.DefaultNewLine}", propertyAssignments));
+        sb.AppendLine("        };");
+        sb.AppendLine("    }).AsQueryable();");
+        sb.AppendLine($"    return converted as object as {returnTypePrefix}<TResult>;");
         sb.AppendLine("}");
         sb.AppendLine();
         return sb.ToString();
+    }
+
+    /// <summary>
+    /// Generates property assignment code for IGrouping with anonymous key and element cast.
+    /// Converts x.Key.PropertyName to (PropertyType)((dynamic)x.Key).PropertyName for anonymous key properties.
+    /// Converts x.Sum(e => e.Value) to groupingElements.Sum(e => e.Value) for element aggregations.
+    /// </summary>
+    private string GeneratePropertyAssignmentForIGroupingWithCast(DtoProperty property, int indents)
+    {
+        // Get the base assignment using the standard method
+        var assignment = GeneratePropertyAssignment(property, indents);
+
+        // Check if assignment accesses Key properties and needs dynamic cast
+        var keyAccessPattern = $"{LambdaParameterName}.Key.";
+        var needsDynamicCast = assignment.Contains(keyAccessPattern);
+
+        if (needsDynamicCast)
+        {
+            // Replace x.Key.PropertyName patterns with ((dynamic)x.Key).PropertyName
+            // This handles the case where TKey is an anonymous type
+            assignment = assignment.Replace(
+                keyAccessPattern,
+                $"((dynamic){LambdaParameterName}.Key)."
+            );
+
+            // Cast the result back to the expected type to ensure anonymous type compatibility
+            // Dynamic access returns object, but we need the original type for anonymous type matching
+            var propertyTypeName = property.TypeSymbol.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat);
+            assignment = $"({propertyTypeName}){assignment}";
+        }
+
+        // Replace direct calls on the grouping (like g.Sum, g.Count, g.FirstOrDefault)
+        // with calls on groupingElements
+        var groupingMethodPatterns = new[] { ".Sum(", ".Count(", ".FirstOrDefault(", ".LastOrDefault(", ".First(", ".Last(", ".Any(", ".All(", ".Average(", ".Min(", ".Max(" };
+        foreach (var pattern in groupingMethodPatterns)
+        {
+            var fullPattern = $"{LambdaParameterName}{pattern}";
+            if (assignment.Contains(fullPattern))
+            {
+                assignment = assignment.Replace(fullPattern, $"groupingElements{pattern}");
+            }
+        }
+
+        // Handle Count() without arguments - it could be g.Count() 
+        if (assignment.Contains($"{LambdaParameterName}.Count()"))
+        {
+            assignment = assignment.Replace($"{LambdaParameterName}.Count()", "groupingElements.Count()");
+        }
+
+        return assignment;
     }
 }

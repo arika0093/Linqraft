@@ -86,6 +86,37 @@ public class Issue_GroupByAnonymousKeyTest
         phones.Count.ShouldBe(1);
     }
 
+    [Fact]
+    public void GroupByAnonymousKey_WithNullConditional_TransformsCorrectly()
+    {
+        // Test that null-conditional operators are properly transformed
+        // when used with GroupBy on anonymous key
+        var dataWithChild = new List<TestItemWithChild>
+        {
+            new() { Id = 1, Category = "A", Child = new ChildItem { Description = "Desc1" } },
+            new() { Id = 2, Category = "A", Child = null },
+            new() { Id = 3, Category = "B", Child = new ChildItem { Description = "Desc3" } },
+        };
+
+        var grouped = dataWithChild
+            .AsQueryable()
+            .GroupBy(x => new { x.Category })
+            .SelectExpr(g => new
+            {
+                Category = g.Key.Category,
+                Count = g.Count(),
+                // Test null-conditional operator on element properties (not Key)
+                FirstDescription = g.FirstOrDefault()!.Child?.Description,
+            })
+            .ToList();
+
+        grouped.Count.ShouldBe(2);
+        var groupA = grouped.FirstOrDefault(x => x.Category == "A");
+        groupA.ShouldNotBeNull();
+        groupA.Count.ShouldBe(2);
+        groupA.FirstDescription.ShouldBe("Desc1");
+    }
+
     private static readonly List<TestItem> SampleData =
     [
         new() { Id = 1, Name = "Phone", Category = "Electronics", SubCategory = "Phones", Value = 100 },
@@ -101,6 +132,18 @@ public class Issue_GroupByAnonymousKeyTest
         public string Category { get; set; } = "";
         public string SubCategory { get; set; } = "";
         public int Value { get; set; }
+    }
+
+    internal class TestItemWithChild
+    {
+        public int Id { get; set; }
+        public string Category { get; set; } = "";
+        public ChildItem? Child { get; set; }
+    }
+
+    internal class ChildItem
+    {
+        public string Description { get; set; } = "";
     }
 
     internal class GroupedResultDto
