@@ -15,7 +15,14 @@ jobs:
       - name: Generate a changelog
         uses: orhun/git-cliff-action@v4
         with:
+          config: .github/git-cliff.toml
           args: --verbose
         env:
           OUTPUT: CHANGELOG.md
           GITHUB_REPO: ${{ github.repository }}
+
+      - name: Commit and Push changelog
+        uses: stefanzweifel/git-auto-commit-action@v4
+        with:
+          commit_message: "chore: update changelog for release ${{ github.event.release.tag_name }}"
+          file_pattern: CHANGELOG.md
