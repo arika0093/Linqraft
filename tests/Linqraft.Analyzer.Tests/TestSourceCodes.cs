@@ -180,4 +180,32 @@ internal static class TestSourceCodes
                 => source.Select(x => selector(x));
         }
         """;
+
+    /// <summary>
+    /// SelectExpr extension method in the Linqraft namespace with multiple overloads for GroupBy tests
+    /// </summary>
+    public const string LinqraftPackageSourceCode = """
+        namespace Linqraft
+        {
+            using System.Linq;
+
+            public static class LinqraftExtensions
+            {
+                public static IQueryable<TResult> SelectExpr<TSource, TResult>(
+                    this IQueryable<TSource> source,
+                    System.Func<TSource, TResult> selector)
+                    => source.Select(x => selector(x));
+
+                public static IQueryable<TResult> SelectExpr<TSource, TResult>(
+                    this IQueryable<TSource> source,
+                    System.Func<TSource, object> selector)
+                    => throw new System.NotImplementedException();
+
+                public static IQueryable<TResult> SelectExpr<TSource, TDto, TResult>(
+                    this IQueryable<TSource> source,
+                    System.Func<TSource, TResult> selector)
+                    => source.Select(x => selector(x));
+            }
+        }
+        """;
 }

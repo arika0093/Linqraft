@@ -229,6 +229,84 @@ public static class RoslynTypeHelper
     }
 
     /// <summary>
+    /// Determines whether a type is IGrouping&lt;TKey, TElement&gt;.
+    /// </summary>
+    /// <param name="typeSymbol">The type symbol to check</param>
+    /// <returns>True if the type is IGrouping</returns>
+    public static bool IsIGroupingType(ITypeSymbol? typeSymbol)
+    {
+        if (typeSymbol is not INamedTypeSymbol namedType)
+            return false;
+
+        return namedType.Name == "IGrouping"
+            && namedType.TypeArguments.Length == 2
+            && namedType.ContainingNamespace?.ToDisplayString() == "System.Linq";
+    }
+
+    /// <summary>
+    /// Gets the key type (TKey) from IGrouping&lt;TKey, TElement&gt;.
+    /// </summary>
+    /// <param name="typeSymbol">The IGrouping type symbol</param>
+    /// <returns>The key type, or null if not an IGrouping type</returns>
+    public static ITypeSymbol? GetGroupingKeyType(ITypeSymbol? typeSymbol)
+    {
+        if (!IsIGroupingType(typeSymbol))
+            return null;
+
+        return GetGenericTypeArgument(typeSymbol!, 0);
+    }
+
+    /// <summary>
+    /// Gets the element type (TElement) from IGrouping&lt;TKey, TElement&gt;.
+    /// </summary>
+    /// <param name="typeSymbol">The IGrouping type symbol</param>
+    /// <returns>The element type, or null if not an IGrouping type</returns>
+    public static ITypeSymbol? GetGroupingElementType(ITypeSymbol? typeSymbol)
+    {
+        if (!IsIGroupingType(typeSymbol))
+            return null;
+
+        return GetGenericTypeArgument(typeSymbol!, 1);
+    }
+
+    /// <summary>
+    /// Determines whether a type is IQueryable&lt;IGrouping&lt;TKey, TElement&gt;&gt;
+    /// where TKey is an anonymous type.
+    /// </summary>
+    /// <param name="typeSymbol">The type symbol to check</param>
+    /// <param name="compilation">The compilation</param>
+    /// <returns>True if the type is IQueryable with IGrouping having an anonymous key type</returns>
+    public static bool IsQueryableWithAnonymousGroupingKey(
+        ITypeSymbol? typeSymbol,
+        Compilation compilation
+    )
+    {
+        if (typeSymbol == null || compilation == null)
+            return false;
+
+        // Check if it implements IQueryable<T>
+        if (!ImplementsIQueryable(typeSymbol, compilation))
+            return false;
+
+        // Get the element type T from IQueryable<T>
+        var elementType = GetGenericTypeArgument(typeSymbol, 0);
+        if (elementType == null)
+            return false;
+
+        // Check if element type is IGrouping<TKey, TElement>
+        if (!IsIGroupingType(elementType))
+            return false;
+
+        // Get the key type TKey from IGrouping<TKey, TElement>
+        var keyType = GetGroupingKeyType(elementType);
+        if (keyType == null)
+            return false;
+
+        // Check if the key type is anonymous
+        return IsAnonymousType(keyType);
+    }
+
+    /// <summary>
     /// Determines whether a namespace is the global namespace.
     /// </summary>
     /// <param name="namespaceSymbol">The namespace symbol</param>
