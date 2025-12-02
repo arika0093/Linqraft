@@ -208,7 +208,6 @@ class Test
 
         var fixedCode =
             @"namespace TestNamespace;
-
 class Test
 {
     void Method()
