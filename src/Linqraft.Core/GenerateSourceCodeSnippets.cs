@@ -219,6 +219,38 @@ public static class GenerateSourceCodeSnippets
             public static IEnumerable<TResult> SelectExpr<TIn, TResult>(this IEnumerable<TIn> query, Func<TIn, object> selector, object capture)
                 where TIn : class => throw InvalidException;
 
+            /// <summary>
+            /// Create select expression method for IGrouping, usable nullable operators, and generate instance DTOs.
+            /// This overload specifically handles GroupBy results where TKey may be an anonymous type.
+            /// </summary>
+            public static IQueryable<TResult> SelectExpr<TKey, TElement, TResult>(this IQueryable<IGrouping<TKey, TElement>> query, Func<IGrouping<TKey, TElement>, TResult> selector)
+                => throw InvalidException;
+
+            /// <summary>
+            /// Create select expression method for IGrouping with captured local variables, usable nullable operators, and generate instance DTOs.
+            /// This overload specifically handles GroupBy results where TKey may be an anonymous type.
+            /// Pass local variables as an anonymous object: new { var1, var2, ... }
+            /// </summary>
+            public static IQueryable<TResult> SelectExpr<TKey, TElement, TResult>(this IQueryable<IGrouping<TKey, TElement>> query, Func<IGrouping<TKey, TElement>, TResult> selector, object capture)
+                => throw InvalidException;
+
+            /// <summary>
+            /// Create select expression method for IGrouping, with generate instance DTOs.
+            /// Works with IEnumerable where nullable operators are supported natively.
+            /// This overload specifically handles GroupBy results where TKey may be an anonymous type.
+            /// </summary>
+            public static IEnumerable<TResult> SelectExpr<TKey, TElement, TResult>(this IEnumerable<IGrouping<TKey, TElement>> query, Func<IGrouping<TKey, TElement>, TResult> selector)
+                => throw InvalidException;
+
+            /// <summary>
+            /// Create select expression method for IGrouping with captured local variables, with generate instance DTOs.
+            /// Works with IEnumerable where nullable operators are supported natively.
+            /// This overload specifically handles GroupBy results where TKey may be an anonymous type.
+            /// Pass local variables as an anonymous object: new { var1, var2, ... }
+            /// </summary>
+            public static IEnumerable<TResult> SelectExpr<TKey, TElement, TResult>(this IEnumerable<IGrouping<TKey, TElement>> query, Func<IGrouping<TKey, TElement>, TResult> selector, object capture)
+                => throw InvalidException;
+
             private static Exception InvalidException => new System.InvalidOperationException(SelectExprErrorMessage); 
 
             private const string SelectExprErrorMessage = """

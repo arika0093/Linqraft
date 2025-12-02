@@ -2,6 +2,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using Linqraft.Core.Formatting;
+using Linqraft.Core.RoslynHelpers;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
@@ -61,6 +62,24 @@ public record SelectExprInfoNamed : SelectExprInfo
     /// Generates the SelectExpr method code
     /// </summary>
     protected override string GenerateSelectExprMethod(
+        string dtoName,
+        DtoStructure structure,
+        InterceptableLocation location
+    )
+    {
+        // Check if we need IGrouping-specific handling
+        if (IsIGroupingWithAnonymousKey())
+        {
+            return GenerateSelectExprMethodForIGrouping(dtoName, structure, location);
+        }
+
+        return GenerateSelectExprMethodStandard(dtoName, structure, location);
+    }
+
+    /// <summary>
+    /// Generates SelectExpr method for standard cases (non-IGrouping with anonymous key)
+    /// </summary>
+    private string GenerateSelectExprMethodStandard(
         string dtoName,
         DtoStructure structure,
         InterceptableLocation location
@@ -152,6 +171,81 @@ public record SelectExprInfoNamed : SelectExprInfo
 
         sb.AppendLine($"    }});");
         sb.AppendLine($"    return converted as object as {returnTypePrefix}<TResult>;");
+        sb.AppendLine("}");
+        return sb.ToString();
+    }
+
+    /// <summary>
+    /// Generates SelectExpr method specifically for IGrouping with anonymous key types.
+    /// Uses generic TKey and TElement type parameters instead of expanding the anonymous type.
+    /// For IGrouping, we pass through the selector directly without transformation.
+    /// </summary>
+    private string GenerateSelectExprMethodForIGrouping(
+        string dtoName,
+        DtoStructure structure,
+        InterceptableLocation location
+    )
+    {
+        var returnTypePrefix = GetReturnTypePrefix();
+        var sb = new StringBuilder();
+
+        var id = GetUniqueId();
+        sb.AppendLine(GenerateMethodHeaderPart($"{dtoName} (IGrouping)", location));
+
+        // Determine if we have capture parameters
+        var hasCapture = CaptureArgumentExpression != null && CaptureArgumentType != null;
+
+        if (hasCapture)
+        {
+            // Generate method with capture parameter using generic IGrouping signature
+            sb.AppendLine(
+                $"public static {returnTypePrefix}<TResult> SelectExpr_{id}<TKey, TElement, TResult>("
+            );
+            sb.AppendLine(
+                $"    this {returnTypePrefix}<global::System.Linq.IGrouping<TKey, TElement>> query, Func<global::System.Linq.IGrouping<TKey, TElement>, TResult> selector, object captureParam)"
+            );
+            sb.AppendLine("{");
+
+            // For anonymous capture types, use dynamic to extract properties as closure variables
+            var isAnonymousType =
+                CaptureArgumentType != null && CaptureArgumentType.IsAnonymousType;
+            if (isAnonymousType && CaptureArgumentType != null)
+            {
+                var properties = CaptureArgumentType.GetMembers().OfType<IPropertySymbol>();
+                sb.AppendLine($"    dynamic captureObj = captureParam;");
+                foreach (var prop in properties)
+                {
+                    var propTypeName = prop.Type.ToDisplayString(
+                        SymbolDisplayFormat.FullyQualifiedFormat
+                    );
+                    sb.AppendLine($"    {propTypeName} {prop.Name} = captureObj.{prop.Name};");
+                }
+            }
+            else
+            {
+                var captureTypeName =
+                    CaptureArgumentType?.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat)
+                    ?? "object";
+                sb.AppendLine($"    var capture = ({captureTypeName})captureParam;");
+            }
+
+            // For IGrouping, pass through the selector directly - no need to transform
+            // Use Select on the query and convert back to IQueryable
+            sb.AppendLine($"    return query.Select(selector).AsQueryable();");
+        }
+        else
+        {
+            // Generate method without capture parameter using generic IGrouping signature
+            sb.AppendLine(
+                $"public static {returnTypePrefix}<TResult> SelectExpr_{id}<TKey, TElement, TResult>("
+            );
+            sb.AppendLine($"    this {returnTypePrefix}<global::System.Linq.IGrouping<TKey, TElement>> query, Func<global::System.Linq.IGrouping<TKey, TElement>, TResult> selector)");
+            sb.AppendLine("{");
+            // For IGrouping, pass through the selector directly - no need to transform
+            // Use Select on the query and convert back to IQueryable
+            sb.AppendLine($"    return query.Select(selector).AsQueryable();");
+        }
+
         sb.AppendLine("}");
         return sb.ToString();
     }

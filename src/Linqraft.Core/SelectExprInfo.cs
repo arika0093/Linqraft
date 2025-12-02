@@ -192,6 +192,16 @@ public abstract record SelectExprInfo
     }
 
     /// <summary>
+    /// Checks if the source type is IGrouping with an anonymous key type.
+    /// This requires special handling in code generation because anonymous types
+    /// cannot be represented as generic type arguments in the generated code.
+    /// </summary>
+    protected bool IsIGroupingWithAnonymousKey()
+    {
+        return RoslynTypeHelper.IsIGroupingWithAnonymousKey(SourceType);
+    }
+
+    /// <summary>
     /// Gets the return type prefix based on whether it's IQueryable or IEnumerable
     /// </summary>
     protected string GetReturnTypePrefix()

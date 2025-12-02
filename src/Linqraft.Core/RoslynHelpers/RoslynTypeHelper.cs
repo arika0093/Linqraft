@@ -408,4 +408,64 @@ public static class RoslynTypeHelper
 
         return namespaceDecl?.Name.ToString() ?? string.Empty;
     }
+
+    /// <summary>
+    /// Determines whether a type is IGrouping&lt;TKey, TElement&gt;.
+    /// </summary>
+    /// <param name="typeSymbol">The type symbol to check</param>
+    /// <returns>True if the type is IGrouping&lt;TKey, TElement&gt;</returns>
+    public static bool IsIGroupingType(ITypeSymbol? typeSymbol)
+    {
+        if (typeSymbol is not INamedTypeSymbol namedType)
+            return false;
+
+        // Check if it's IGrouping<TKey, TElement>
+        return namedType.Name == "IGrouping"
+            && namedType.ContainingNamespace?.ToDisplayString() == "System.Linq"
+            && namedType.TypeArguments.Length == 2;
+    }
+
+    /// <summary>
+    /// Gets the key type (TKey) from IGrouping&lt;TKey, TElement&gt;.
+    /// </summary>
+    /// <param name="typeSymbol">The IGrouping type symbol</param>
+    /// <returns>The key type, or null if not an IGrouping type</returns>
+    public static ITypeSymbol? GetIGroupingKeyType(ITypeSymbol? typeSymbol)
+    {
+        if (typeSymbol is not INamedTypeSymbol namedType)
+            return null;
+
+        if (!IsIGroupingType(namedType))
+            return null;
+
+        return namedType.TypeArguments[0];
+    }
+
+    /// <summary>
+    /// Gets the element type (TElement) from IGrouping&lt;TKey, TElement&gt;.
+    /// </summary>
+    /// <param name="typeSymbol">The IGrouping type symbol</param>
+    /// <returns>The element type, or null if not an IGrouping type</returns>
+    public static ITypeSymbol? GetIGroupingElementType(ITypeSymbol? typeSymbol)
+    {
+        if (typeSymbol is not INamedTypeSymbol namedType)
+            return null;
+
+        if (!IsIGroupingType(namedType))
+            return null;
+
+        return namedType.TypeArguments[1];
+    }
+
+    /// <summary>
+    /// Determines whether a type is IGrouping&lt;TKey, TElement&gt; where TKey is an anonymous type.
+    /// This is the problematic case that requires special handling in code generation.
+    /// </summary>
+    /// <param name="typeSymbol">The type symbol to check</param>
+    /// <returns>True if the type is IGrouping with an anonymous key type</returns>
+    public static bool IsIGroupingWithAnonymousKey(ITypeSymbol? typeSymbol)
+    {
+        var keyType = GetIGroupingKeyType(typeSymbol);
+        return keyType != null && IsAnonymousType(keyType);
+    }
 }
