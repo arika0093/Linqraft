@@ -306,12 +306,6 @@ public record SelectExprInfoAnonymous : SelectExprInfo
             }
         }
 
-        // Handle Count() without arguments - it could be g.Count() 
-        if (assignment.Contains($"{LambdaParameterName}.Count()"))
-        {
-            assignment = assignment.Replace($"{LambdaParameterName}.Count()", "groupingElements.Count()");
-        }
-
         return assignment;
     }
 }
