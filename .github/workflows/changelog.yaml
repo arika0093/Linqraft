@@ -12,10 +12,10 @@ jobs:
         with:
           fetch-depth: 0
         
-      - uses: BobAnkh/auto-generate-changelog@v1.3.0
+      - name: Generate a changelog
+        uses: orhun/git-cliff-action@v4
         with:
-          REPO_NAME: "arika0093/Linqraft"
-          ACCESS_TOKEN: ${{secrets.GITHUB_TOKEN}}
-          PATH: "CHANGELOG.md"
-          COMMIT_MESSAGE: "docs(CHANGELOG): update release notes"
-          TYPE: "feat:Feature,fix:Bug Fixes,docs:Documentation,refactor:Refactor"
+          args: --verbose
+        env:
+          OUTPUT: CHANGELOG.md
+          GITHUB_REPO: ${{ github.repository }}
