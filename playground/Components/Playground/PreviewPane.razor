@@ -82,6 +82,22 @@
         }
     }
 
+    public async Task<string> GetValueAsync()
+    {
+        if (Editor != null)
+        {
+            try
+            {
+                return await Editor.GetValue();
+            }
+            catch
+            {
+                // Editor not yet initialized
+            }
+        }
+        return currentContent;
+    }
+
     private async Task ApplySemanticHighlighting()
     {
         if (Editor == null) return;

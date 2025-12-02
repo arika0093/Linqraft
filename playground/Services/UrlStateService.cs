@@ -72,18 +72,20 @@ public class UrlStateService(NavigationManager navigationManager)
     public string GenerateGitHubIssueUrl(
         List<ProjectFile> files,
         LinqraftConfiguration configuration,
+        string generatedExpression = "",
+        string generatedDtoClass = "",
         string issueTitle = ""
     )
     {
         var shareableUrl = GenerateShareableUrl(files, configuration);
-        var issueBody = GenerateIssueBody(files, shareableUrl);
+        var issueBody = GenerateIssueBody(files, shareableUrl, generatedExpression, generatedDtoClass);
 
         var encodedTitle = Uri.EscapeDataString(
             issueTitle.Length > 0 ? issueTitle : "Issue from Playground"
         );
         var encodedBody = Uri.EscapeDataString(issueBody);
 
-        return $"https://github.com/arika0093/Linqraft/issues/new?title={encodedTitle}&body={encodedBody}";
+        return $"https://github.com/arika0093/Linqraft/issues/new?title={encodedTitle}&body={encodedBody}&labels=generator";
     }
 
     /// <summary>
@@ -146,17 +148,23 @@ public class UrlStateService(NavigationManager navigationManager)
         return null;
     }
 
-    private static string GenerateIssueBody(List<ProjectFile> files, string shareableUrl)
+    private static string GenerateIssueBody(
+        List<ProjectFile> files,
+        string shareableUrl,
+        string generatedExpression,
+        string generatedDtoClass
+    )
     {
         var sb = new StringBuilder();
 
+        // Description section
         sb.AppendLine("## Description");
         sb.AppendLine("");
         sb.AppendLine("<!-- Describe your issue here -->");
         sb.AppendLine("");
+
+        // Reproduction section (without playground link)
         sb.AppendLine("## Reproduction");
-        sb.AppendLine("");
-        sb.AppendLine($"[Open in Playground]({shareableUrl})");
         sb.AppendLine("");
         sb.AppendLine("<details>");
         sb.AppendLine("<summary>Code</summary>");
@@ -173,13 +181,45 @@ public class UrlStateService(NavigationManager navigationManager)
 
         sb.AppendLine("</details>");
         sb.AppendLine("");
+
+        // Result section (new section with generated output)
+        sb.AppendLine("## Result");
+        sb.AppendLine("");
+        sb.AppendLine("<details>");
+        sb.AppendLine("<summary>Generated Expression</summary>");
+        sb.AppendLine("");
+        sb.AppendLine("```csharp");
+        sb.AppendLine(string.IsNullOrWhiteSpace(generatedExpression) ? "// No expression generated" : generatedExpression);
+        sb.AppendLine("```");
+        sb.AppendLine("");
+        sb.AppendLine("</details>");
+        sb.AppendLine("");
+        sb.AppendLine("<details>");
+        sb.AppendLine("<summary>Generated DTO Class</summary>");
+        sb.AppendLine("");
+        sb.AppendLine("```csharp");
+        sb.AppendLine(string.IsNullOrWhiteSpace(generatedDtoClass) ? "// No DTO class generated" : generatedDtoClass);
+        sb.AppendLine("```");
+        sb.AppendLine("");
+        sb.AppendLine("</details>");
+        sb.AppendLine("");
+
+        // Expected Behavior section
         sb.AppendLine("## Expected Behavior");
         sb.AppendLine("");
         sb.AppendLine("<!-- What did you expect to happen? -->");
         sb.AppendLine("");
-        sb.AppendLine("## Actual Behavior");
+
+        // Additional Context section (new placeholder section)
+        sb.AppendLine("## Additional Context");
         sb.AppendLine("");
-        sb.AppendLine("<!-- What actually happened? -->");
+        sb.AppendLine("<!-- Add any other context about the problem here -->");
+        sb.AppendLine("");
+
+        // Playground Link section (moved from Reproduction)
+        sb.AppendLine("## Playground Link");
+        sb.AppendLine("");
+        sb.AppendLine($"[Open in Playground]({shareableUrl})");
 
         return sb.ToString();
     }
