@@ -212,7 +212,7 @@ public record SelectExprInfoNamed : SelectExprInfo
             if (isAnonymousType && CaptureArgumentType != null)
             {
                 var properties = CaptureArgumentType.GetMembers().OfType<IPropertySymbol>();
-                sb.AppendLine($"    dynamic captureObj = captureParam;");
+                sb.AppendLine("    dynamic captureObj = captureParam;");
                 foreach (var prop in properties)
                 {
                     var propTypeName = prop.Type.ToDisplayString(
@@ -231,7 +231,7 @@ public record SelectExprInfoNamed : SelectExprInfo
 
             // For IGrouping, pass through the selector directly - no need to transform
             // Use Select on the query and convert back to IQueryable
-            sb.AppendLine($"    return query.Select(selector).AsQueryable();");
+            sb.AppendLine("    return query.Select(selector).AsQueryable();");
         }
         else
         {
@@ -243,7 +243,7 @@ public record SelectExprInfoNamed : SelectExprInfo
             sb.AppendLine("{");
             // For IGrouping, pass through the selector directly - no need to transform
             // Use Select on the query and convert back to IQueryable
-            sb.AppendLine($"    return query.Select(selector).AsQueryable();");
+            sb.AppendLine("    return query.Select(selector).AsQueryable();");
         }
 
         sb.AppendLine("}");

@@ -5,7 +5,6 @@ namespace Linqraft.Tests;
 
 /// <summary>
 /// Tests for GroupBy with anonymous type key followed by SelectExpr.
-/// See: https://github.com/arika0093/Linqraft/issues/{issue_number}
 /// </summary>
 public class Issue_GroupByAnonymousKeyTest
 {

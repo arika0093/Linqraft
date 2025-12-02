@@ -101,7 +101,7 @@ public record SelectExprInfoAnonymous : SelectExprInfo
             sb.AppendLine(
                 $"    this {returnTypePrefix}<TIn> query, Func<TIn, TResult> selector, object captureParam)"
             );
-            sb.AppendLine($"{{");
+            sb.AppendLine("{");
             sb.AppendLine(
                 $"    var matchedQuery = query as object as {returnTypePrefix}<{sourceTypeFullName}>;"
             );
@@ -114,7 +114,7 @@ public record SelectExprInfoAnonymous : SelectExprInfo
             {
                 // For anonymous types, get the properties and create closure variables using dynamic
                 var properties = CaptureArgumentType.GetMembers().OfType<IPropertySymbol>();
-                sb.AppendLine($"    dynamic captureObj = captureParam;");
+                sb.AppendLine("    dynamic captureObj = captureParam;");
                 foreach (var prop in properties)
                 {
                     var propTypeName = prop.Type.ToDisplayString(
@@ -141,14 +141,14 @@ public record SelectExprInfoAnonymous : SelectExprInfo
                 $"public static {returnTypePrefix}<TResult> SelectExpr_{id}<TIn, TResult>("
             );
             sb.AppendLine($"    this {returnTypePrefix}<TIn> query, Func<TIn, TResult> selector)");
-            sb.AppendLine($"{{");
+            sb.AppendLine("{");
             sb.AppendLine(
                 $"    var matchedQuery = query as object as {returnTypePrefix}<{sourceTypeFullName}>;"
             );
             sb.AppendLine($"    var converted = matchedQuery.Select({LambdaParameterName} => new");
         }
 
-        sb.AppendLine($"    {{");
+        sb.AppendLine("    {");
 
         // Generate property assignments
         var propertyAssignments = structure
@@ -195,7 +195,7 @@ public record SelectExprInfoAnonymous : SelectExprInfo
             sb.AppendLine(
                 $"    this {returnTypePrefix}<global::System.Linq.IGrouping<TKey, TElement>> query, Func<global::System.Linq.IGrouping<TKey, TElement>, TResult> selector, object captureParam)"
             );
-            sb.AppendLine($"{{");
+            sb.AppendLine("{");
 
             // For anonymous capture types, use dynamic to extract properties as closure variables
             var isAnonymousType =
@@ -203,7 +203,7 @@ public record SelectExprInfoAnonymous : SelectExprInfo
             if (isAnonymousType && CaptureArgumentType != null)
             {
                 var properties = CaptureArgumentType.GetMembers().OfType<IPropertySymbol>();
-                sb.AppendLine($"    dynamic captureObj = captureParam;");
+                sb.AppendLine("    dynamic captureObj = captureParam;");
                 foreach (var prop in properties)
                 {
                     var propTypeName = prop.Type.ToDisplayString(
@@ -222,7 +222,7 @@ public record SelectExprInfoAnonymous : SelectExprInfo
 
             // For IGrouping, pass through the selector directly - no need to transform
             // Use Select on the query and convert back to IQueryable
-            sb.AppendLine($"    return query.Select(selector).AsQueryable();");
+            sb.AppendLine("    return query.Select(selector).AsQueryable();");
         }
         else
         {
@@ -231,10 +231,10 @@ public record SelectExprInfoAnonymous : SelectExprInfo
                 $"public static {returnTypePrefix}<TResult> SelectExpr_{id}<TKey, TElement, TResult>("
             );
             sb.AppendLine($"    this {returnTypePrefix}<global::System.Linq.IGrouping<TKey, TElement>> query, Func<global::System.Linq.IGrouping<TKey, TElement>, TResult> selector)");
-            sb.AppendLine($"{{");
+            sb.AppendLine("{");
             // For IGrouping, pass through the selector directly - no need to transform
             // Use Select on the query and convert back to IQueryable
-            sb.AppendLine($"    return query.Select(selector).AsQueryable();");
+            sb.AppendLine("    return query.Select(selector).AsQueryable();");
         }
 
         sb.AppendLine("}");
