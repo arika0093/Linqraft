@@ -78,7 +78,12 @@ public class UrlStateService(NavigationManager navigationManager)
     )
     {
         var shareableUrl = GenerateShareableUrl(files, configuration);
-        var issueBody = GenerateIssueBody(files, shareableUrl, generatedExpression, generatedDtoClass);
+        var issueBody = GenerateIssueBody(
+            files,
+            shareableUrl,
+            generatedExpression,
+            generatedDtoClass
+        );
 
         var encodedTitle = Uri.EscapeDataString(
             issueTitle.Length > 0 ? issueTitle : "Issue from Playground"
@@ -189,7 +194,11 @@ public class UrlStateService(NavigationManager navigationManager)
         sb.AppendLine("<summary>Generated Expression</summary>");
         sb.AppendLine("");
         sb.AppendLine("```csharp");
-        sb.AppendLine(string.IsNullOrWhiteSpace(generatedExpression) ? "// No expression generated" : generatedExpression);
+        sb.AppendLine(
+            string.IsNullOrWhiteSpace(generatedExpression)
+                ? "// No expression generated"
+                : generatedExpression
+        );
         sb.AppendLine("```");
         sb.AppendLine("");
         sb.AppendLine("</details>");
@@ -198,7 +207,11 @@ public class UrlStateService(NavigationManager navigationManager)
         sb.AppendLine("<summary>Generated DTO Class</summary>");
         sb.AppendLine("");
         sb.AppendLine("```csharp");
-        sb.AppendLine(string.IsNullOrWhiteSpace(generatedDtoClass) ? "// No DTO class generated" : generatedDtoClass);
+        sb.AppendLine(
+            string.IsNullOrWhiteSpace(generatedDtoClass)
+                ? "// No DTO class generated"
+                : generatedDtoClass
+        );
         sb.AppendLine("```");
         sb.AppendLine("");
         sb.AppendLine("</details>");
