@@ -4,6 +4,12 @@ updates:
     directory: "/"
     schedule:
       interval: "weekly"
+    ignore:
+      # This package is closely related to the .NET version on the user's side,
+      # and if it is too high, the number of environments that do not work will increase.
+      # Therefore, we want to keep it at the lowest possible version.
+      - dependency-name: "Microsoft.CodeAnalysis.*"
+      
   - package-ecosystem: "github-actions"
     directory: "/"
     schedule:
