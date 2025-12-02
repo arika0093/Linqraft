@@ -13,6 +13,7 @@
     <PackageReadmeFile>README.nuget.md</PackageReadmeFile>
     <PackageIcon>linqraft.png</PackageIcon>
     <GenerateDocumentationFile>false</GenerateDocumentationFile>
+    <NoWarn>$(NoWarn);RSEXPERIMENTAL002</NoWarn>
   </PropertyGroup>
   <ItemGroup>
     <PackageReference
