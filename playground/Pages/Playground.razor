@@ -4,6 +4,7 @@
 @inject TemplateService TemplateService
 @inject CodeGenerationService CodeGenerationService
 @inject UrlStateService UrlStateService
+@inject NavigationManager NavigationManager
 @inject IJSRuntime JSRuntime
 
 <PageTitle>Linqraft Playground</PageTitle>
@@ -244,6 +245,11 @@
         try
         {
             var shareUrl = UrlStateService.GenerateShareableUrl(selectedTemplate.Files, configuration);
+            
+            // Update the browser's URL bar with the share URL
+            NavigationManager.NavigateTo(shareUrl, forceLoad: false, replace: true);
+            
+            // Copy the URL to clipboard
             await JSRuntime.InvokeVoidAsync("navigator.clipboard.writeText", shareUrl);
         }
         catch (JSException)
@@ -258,7 +264,16 @@
         
         try
         {
-            var issueUrl = UrlStateService.GenerateGitHubIssueUrl(selectedTemplate.Files, configuration);
+            // Get the current generated output
+            var generatedExpression = queryPreviewPane != null ? await queryPreviewPane.GetValueAsync() : "";
+            var generatedDtoClass = dtoPreviewPane != null ? await dtoPreviewPane.GetValueAsync() : "";
+            
+            var issueUrl = UrlStateService.GenerateGitHubIssueUrl(
+                selectedTemplate.Files,
+                configuration,
+                generatedExpression,
+                generatedDtoClass
+            );
             await JSRuntime.InvokeVoidAsync("window.open", issueUrl, "_blank");
         }
         catch (JSException)
