@@ -249,6 +249,7 @@ This feature helps keep your codebase clean and significantly reduces cognitive 
 ### Prerequisites
 This library requirements **C# 12.0 or later** because it uses the [interceptor](https://learn.microsoft.com/en-us/dotnet/csharp/whats-new/csharp-12#interceptors) feature.  
 
+
 <details>
 <summary>.NET 7 or below setup</summary>
 
@@ -266,6 +267,14 @@ Set the `LangVersion` property to `12.0` or later and use [Polysharp](https://gi
 ```
 
 </details>
+
+Also, due to the constraints of `Microsoft.CodeAnalysis.CSharp`, One of the following environment is [required](https://andrewlock.net/supporting-multiple-sdk-versions-in-analyzers-and-source-generators/):
+
+* .NET 8.0.400 or later **SDK**
+* Visual Studio 2022 version 17.11 or later
+
+> [!NOTE]
+> This is only a constraint on the SDK side, so the runtime(target framework) can be older versions.
 
 ### Installation
 
