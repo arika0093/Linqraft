@@ -102,13 +102,13 @@ public record SelectExprInfoExplicitDto : SelectExprInfo
         var actualNamespace = GetActualDtoNamespace();
 
         // When NestedDtoUseHashNamespace option is enabled, child DTOs are placed in
-        // a hash-named sub-namespace (e.g., Generated_{Hash}.ClassName)
+        // a hash-named sub-namespace (e.g., LinqraftGenerated_{Hash}.ClassName)
         if (!isMainDto && Configuration?.NestedDtoUseHashNamespace == true)
         {
             var hash = structure.GetUniqueId();
             actualNamespace = string.IsNullOrEmpty(actualNamespace)
-                ? $"Generated_{hash}"
-                : $"{actualNamespace}.Generated_{hash}";
+                ? $"LinqraftGenerated_{hash}"
+                : $"{actualNamespace}.LinqraftGenerated_{hash}";
         }
 
         var dtoClassInfo = new GenerateDtoClassInfo
@@ -224,7 +224,7 @@ public record SelectExprInfoExplicitDto : SelectExprInfo
 
     /// <summary>
     /// Gets the full name for a nested DTO class using the structure.
-    /// When NestedDtoUseHashNamespace is enabled, includes the Generated_{hash} namespace.
+    /// When NestedDtoUseHashNamespace is enabled, includes the LinqraftGenerated_{hash} namespace.
     /// </summary>
     protected override string GetNestedDtoFullNameFromStructure(DtoStructure nestedStructure)
     {
@@ -234,13 +234,13 @@ public record SelectExprInfoExplicitDto : SelectExprInfo
 
         var actualNamespace = GetActualDtoNamespace();
 
-        // When NestedDtoUseHashNamespace option is enabled, include Generated_{hash} in namespace
+        // When NestedDtoUseHashNamespace option is enabled, include LinqraftGenerated_{hash} in namespace
         if (Configuration?.NestedDtoUseHashNamespace == true)
         {
             var hash = nestedStructure.GetUniqueId();
             var generatedNamespace = string.IsNullOrEmpty(actualNamespace)
-                ? $"Generated_{hash}"
-                : $"{actualNamespace}.Generated_{hash}";
+                ? $"LinqraftGenerated_{hash}"
+                : $"{actualNamespace}.LinqraftGenerated_{hash}";
 
             // Handle parent classes
             if (ParentClasses.Count > 0)

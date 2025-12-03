@@ -192,13 +192,13 @@ public class GenerateDtoClassInfo
                 else
                 {
                     // Fallback: construct the full name based on the current namespace
-                    // When NestedDtoUseHashNamespace is enabled, include Generated_{hash} namespace
+                    // When NestedDtoUseHashNamespace is enabled, include LinqraftGenerated_{hash} namespace
                     if (configuration.NestedDtoUseHashNamespace)
                     {
                         var hash = nestStructure.GetUniqueId();
                         var generatedNamespace = string.IsNullOrEmpty(Namespace)
-                            ? $"Generated_{hash}"
-                            : $"{Namespace}.Generated_{hash}";
+                            ? $"LinqraftGenerated_{hash}"
+                            : $"{Namespace}.LinqraftGenerated_{hash}";
                         nestedDtoFullName = $"{generatedNamespace}.{nestedClassName}";
                     }
                     else

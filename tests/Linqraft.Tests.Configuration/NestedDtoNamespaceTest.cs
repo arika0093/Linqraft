@@ -30,7 +30,7 @@ public class NestedDtoUseHashNamespaceTest
     [Fact]
     public void NestedDtoUseHashNamespace_ShouldGenerateChildDtoInHashNamespace()
     {
-        // Test that nested DTOs are generated in Generated_{hash} namespace
+        // Test that nested DTOs are generated in LinqraftGenerated_{hash} namespace
         var results = Orders
             .AsQueryable()
             .SelectExpr<OrderNS, OrderDto>(s => new

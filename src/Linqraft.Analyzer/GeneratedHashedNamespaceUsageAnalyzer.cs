@@ -8,7 +8,7 @@ using Microsoft.CodeAnalysis.Diagnostics;
 namespace Linqraft.Analyzer;
 
 /// <summary>
-/// Analyzer that detects and warns when using hash-based auto-generated namespace patterns like "using Foo.Bar.Generated_HashValue".
+/// Analyzer that detects and warns when using hash-based auto-generated namespace patterns like "using Foo.Bar.LinqraftGenerated_HashValue".
 /// This helps prevent users from explicitly depending on auto-generated DTOs which may change on regeneration.
 /// </summary>
 [DiagnosticAnalyzer(LanguageNames.CSharp)]
@@ -17,11 +17,11 @@ public class GeneratedHashedNamespaceUsageAnalyzer : BaseLinqraftAnalyzer
     public const string AnalyzerId = "LQRW001";
 
     /// <summary>
-    /// Pattern to match Generated_XXXXXXXX where XXXXXXXX is an alphanumeric hash (at least 8 characters).
+    /// Pattern to match LinqraftGenerated_XXXXXXXX where XXXXXXXX is an alphanumeric hash (at least 8 characters).
     /// This matches the format used when LinqraftNestedDtoUseHashNamespace is enabled.
     /// </summary>
     private static readonly Regex GeneratedHashPattern = new(
-        @"Generated_[A-Z0-9]{8,}",
+        @"LinqraftGenerated_[A-Z0-9]{8,}",
         RegexOptions.Compiled
     );
 
@@ -32,7 +32,7 @@ public class GeneratedHashedNamespaceUsageAnalyzer : BaseLinqraftAnalyzer
         "Usage",
         DiagnosticSeverity.Warning,
         isEnabledByDefault: true,
-        description: "Using directives that reference hash-based auto-generated namespaces (Generated_XXXXXXXX) may lead to compilation errors when DTOs are regenerated. Consider using explicit DTO types instead.",
+        description: "Using directives that reference hash-based auto-generated namespaces (LinqraftGenerated_XXXXXXXX) may lead to compilation errors when DTOs are regenerated. Consider using explicit DTO types instead.",
         helpLinkUri: $"https://github.com/arika0093/Linqraft/blob/main/docs/analyzer/{AnalyzerId}.md"
     );
 
@@ -60,7 +60,7 @@ public class GeneratedHashedNamespaceUsageAnalyzer : BaseLinqraftAnalyzer
             return;
         }
 
-        // Check if the namespace contains the Generated_XXXXXXXX pattern
+        // Check if the namespace contains the LinqraftGenerated_XXXXXXXX pattern
         var match = GeneratedHashPattern.Match(namespaceName);
         if (match.Success)
         {
