@@ -58,9 +58,9 @@ public record LinqraftConfiguration
     /// Whether to generate nested DTOs in a hash-named namespace instead of using hash suffix on the class name.
     /// When true: Generated_(Hash).ClassName format (e.g., Generated_A1470000.ItemsDto)
     /// When false: ClassName_Hash format (e.g., ItemsDto_A1470000)
-    /// Default is false (use hash suffix on class name)
+    /// Default is true (use hash-named namespace)
     /// </summary>
-    public bool NestedDtoUseHashNamespace { get; init; } = false;
+    public bool NestedDtoUseHashNamespace { get; init; } = true;
 
     /// <summary>
     /// Gets the actual property accessor to use based on configuration
