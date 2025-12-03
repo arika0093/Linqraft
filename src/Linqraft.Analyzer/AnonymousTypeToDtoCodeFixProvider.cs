@@ -124,6 +124,7 @@ public class AnonymousTypeToDtoCodeFixProvider : CodeFixProvider
             ClassName = dtoClassName,
             Namespace = namespaceName,
             NestedClasses = [.. nestedDtoClasses],
+            IsExplicitRootDto = true, // Code fix generated DTOs are user-requested, not auto-generated
         };
         allDtoClasses.Add(dtoClassInfo);
 
@@ -248,6 +249,7 @@ public class AnonymousTypeToDtoCodeFixProvider : CodeFixProvider
             ClassName = dtoClassName,
             Namespace = namespaceName,
             NestedClasses = [.. nestedDtoClasses],
+            IsExplicitRootDto = true, // Code fix generated DTOs are user-requested, not auto-generated
         };
 
         // Generate configuration (use None for comment output since these are not SelectExpr DTOs)
@@ -495,6 +497,7 @@ public class AnonymousTypeToDtoCodeFixProvider : CodeFixProvider
                     ClassName = nestedClassName,
                     Structure = prop.NestedStructure,
                     NestedClasses = [.. nestedClasses],
+                    IsExplicitRootDto = true, // Code fix generated DTOs are user-requested, not auto-generated
                 };
                 result.Add(nestedDtoInfo);
             }

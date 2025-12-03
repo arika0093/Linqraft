@@ -121,6 +121,7 @@ public record SelectExprInfoExplicitDto : SelectExprInfo
             ParentClasses = currentParentClasses,
             ParentAccessibilities = currentParentAccessibilities,
             ExistingProperties = existingProperties,
+            IsExplicitRootDto = isMainDto, // Mark explicit root DTOs to avoid adding the attribute
         };
         result.Add(dtoClassInfo);
         return result;
