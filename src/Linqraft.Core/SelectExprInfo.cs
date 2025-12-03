@@ -1128,8 +1128,8 @@ public abstract record SelectExprInfo
 
     /// <summary>
     /// Gets the appropriate empty collection expression based on the target type.
-    /// For List types, returns "new List&lt;T&gt;()" to match the expected type.
-    /// For IEnumerable types, returns "System.Linq.Enumerable.Empty&lt;T&gt;()".
+    /// For List types, returns "new global::System.Collections.Generic.List&lt;T&gt;()" to match the expected type.
+    /// For IEnumerable types, returns "global::System.Linq.Enumerable.Empty&lt;T&gt;()".
     /// </summary>
     private static string GetEmptyCollectionExpression(
         ITypeSymbol? typeSymbol,
@@ -1141,17 +1141,17 @@ public abstract record SelectExprInfo
         var isListType = IsListType(typeSymbol) || chainedMethods.Contains(".ToList()");
         if (isListType)
         {
-            return $"new System.Collections.Generic.List<{elementTypeName}>()";
+            return $"new global::System.Collections.Generic.List<{elementTypeName}>()";
         }
 
         // Check if the target type is an array (via ToArray())
         if (chainedMethods.Contains(".ToArray()"))
         {
-            return $"System.Array.Empty<{elementTypeName}>()";
+            return $"global::System.Array.Empty<{elementTypeName}>()";
         }
 
         // Default to Enumerable.Empty for IEnumerable<T> types
-        return $"System.Linq.Enumerable.Empty<{elementTypeName}>()";
+        return $"global::System.Linq.Enumerable.Empty<{elementTypeName}>()";
     }
 
     /// <summary>
@@ -1371,7 +1371,20 @@ public abstract record SelectExprInfo
             // This handles cases like: c => c.GrandChildren (simple member access)
             if (hasNullableAccess)
             {
-                var defaultValue = coalescingDefaultValue ?? "System.Linq.Enumerable.Empty()";
+                // Try to get the proper empty collection type from the property
+                string defaultValue;
+                if (coalescingDefaultValue is not null)
+                {
+                    defaultValue = coalescingDefaultValue;
+                }
+                else if (property is not null && RoslynTypeHelper.IsCollectionType(property.TypeSymbol))
+                {
+                    defaultValue = GetEmptyCollectionExpressionForType(property.TypeSymbol, syntax.ToString());
+                }
+                else
+                {
+                    defaultValue = "global::System.Linq.Enumerable.Empty<object>()";
+                }
                 return $"{baseExpression} != null ? {syntax} : {defaultValue}";
             }
             else
@@ -1704,9 +1717,9 @@ public abstract record SelectExprInfo
 
     /// <summary>
     /// Gets the appropriate empty collection expression for a collection type symbol.
-    /// For List types, returns "new System.Collections.Generic.List&lt;T&gt;()".
-    /// For Array types (via ToArray()), returns "System.Array.Empty&lt;T&gt;()".
-    /// For IEnumerable types, returns "System.Linq.Enumerable.Empty&lt;T&gt;()".
+    /// For List types, returns "new global::System.Collections.Generic.List&lt;T&gt;()".
+    /// For Array types (via ToArray()), returns "global::System.Array.Empty&lt;T&gt;()".
+    /// For IEnumerable types, returns "global::System.Linq.Enumerable.Empty&lt;T&gt;()".
     /// </summary>
     private static string GetEmptyCollectionExpressionForType(
         ITypeSymbol typeSymbol,
