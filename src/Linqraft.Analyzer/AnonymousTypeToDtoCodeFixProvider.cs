@@ -128,14 +128,7 @@ public class AnonymousTypeToDtoCodeFixProvider : CodeFixProvider
         };
         allDtoClasses.Add(dtoClassInfo);
 
-        // Generate configuration
-        // * disable NestedDtoUseHashNamespace to keep nested DTOs in the same namespace
-        // * use None for comment output since these are not SelectExpr DTOs
-        var configuration = new LinqraftConfiguration
-        {
-            NestedDtoUseHashNamespace = false,
-            CommentOutput = CommentOutputMode.None,
-        };
+        var configuration = GetDefaultConfiguration();
 
         // Replace anonymous object with DTO instantiation
         var newRoot = ReplaceAnonymousWithDtoSync(
@@ -258,8 +251,8 @@ public class AnonymousTypeToDtoCodeFixProvider : CodeFixProvider
             IsExplicitRootDto = true, // Code fix generated DTOs are user-requested, not auto-generated
         };
 
-        // Generate configuration (use None for comment output since these are not SelectExpr DTOs)
-        var configuration = new LinqraftConfiguration { CommentOutput = CommentOutputMode.None };
+        // Generate configuration
+        var configuration = GetDefaultConfiguration();
 
         // Build DTO code
         var dtoCode = BuildDtoFile(dtoClassInfo, nestedDtoClasses, configuration);
@@ -643,5 +636,17 @@ public class AnonymousTypeToDtoCodeFixProvider : CodeFixProvider
     private static string GetPropertyNameFromExpression(ExpressionSyntax expression)
     {
         return ExpressionHelper.GetPropertyNameOrDefault(expression, "Property");
+    }
+
+    private static LinqraftConfiguration GetDefaultConfiguration()
+    {
+        // Generate configuration
+        // * disable NestedDtoUseHashNamespace to keep nested DTOs in the same namespace
+        // * use None for comment output since these are not SelectExpr DTOs
+        return new LinqraftConfiguration
+        {
+            NestedDtoUseHashNamespace = false,
+            CommentOutput = CommentOutputMode.None,
+        };
     }
 }
