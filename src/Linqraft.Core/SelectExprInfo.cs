@@ -315,6 +315,18 @@ public abstract record SelectExprInfo
             // Fallback: return the original expression
             return expression;
         }
+
+        // If object creation expression, convert type names to fully qualified names.
+        // This must be checked BEFORE the nullable/conditional access check because:
+        // When we have: new SomeDto { Test = i?.Title }
+        // The object creation contains conditional access inside its initializer,
+        // but we should NOT wrap the entire object creation in a null check.
+        // Instead, the internal expressions will be handled when converting the initializer.
+        if (syntax is ObjectCreationExpressionSyntax objectCreation)
+        {
+            return ConvertObjectCreationToFullyQualified(objectCreation);
+        }
+
         // If nullable operator is used, convert to explicit null check
         // This also applies to collection types with Select/SelectMany that are now non-nullable
         // but still need the null-conditional access converted to explicit null check with empty collection fallback
@@ -442,25 +454,295 @@ public abstract record SelectExprInfo
             }
         }
 
-        // if object creation expression, convert type names to fully qualified names
-        if (syntax is ObjectCreationExpressionSyntax objectCreation)
+        // For any other expression (including invocations like FirstOrDefault, Where, etc.),
+        // ensure all static/enum/const references and object creations are fully qualified
+        return FullyQualifyAllReferences(syntax);
+    }
+
+    /// <summary>
+    /// Fully qualifies all references within an expression, including:
+    /// - Static, const, and enum member references
+    /// - Object creation expressions (new ClassName { ... })
+    /// This handles nested expressions like lambdas inside FirstOrDefault, Where, Select, etc.
+    /// </summary>
+    protected string FullyQualifyAllReferences(ExpressionSyntax syntax)
+    {
+        // Build a list of replacements (from original text to fully qualified text)
+        var replacements = new List<(string Original, string Replacement, int Start)>();
+
+        // Find all object creation expressions that need qualification
+        var objectCreations = syntax
+            .DescendantNodesAndSelf()
+            .OfType<ObjectCreationExpressionSyntax>()
+            .ToList();
+
+        foreach (var objectCreation in objectCreations)
         {
-            return ConvertObjectCreationToFullyQualified(objectCreation);
+            var typeInfo = SemanticModel.GetTypeInfo(objectCreation);
+            if (typeInfo.Type is not INamedTypeSymbol typeSymbol)
+                continue;
+
+            // Get the fully qualified type name
+            var fullyQualifiedTypeName = typeSymbol.ToDisplayString(
+                SymbolDisplayFormat.FullyQualifiedFormat
+            );
+
+            // Get the original type syntax (the type name after 'new')
+            var originalTypeSyntax = objectCreation.Type;
+            if (originalTypeSyntax is null)
+                continue;
+
+            var originalTypeName = originalTypeSyntax.ToString();
+
+            // Only add replacement if not already fully qualified
+            if (!originalTypeName.StartsWith("global::"))
+            {
+                replacements.Add(
+                    (originalTypeName, fullyQualifiedTypeName, originalTypeSyntax.SpanStart)
+                );
+            }
         }
 
-        // For any other expression (including invocations like FirstOrDefault, Where, etc.),
-        // ensure all static/enum/const references are fully qualified (issue #157)
-        // Quick check: if there are no member accesses or identifiers, skip the expensive semantic analysis
-        if (
-            !syntax
-                .DescendantNodesAndSelf()
-                .Any(n => n is MemberAccessExpressionSyntax || n is IdentifierNameSyntax)
-        )
+        // Find all invocation expressions with generic type arguments that need qualification
+        // This handles cases like: Enumerable.Empty<ItemChildDto>() -> global::System.Linq.Enumerable.Empty<global::Namespace.ItemChildDto>()
+        var invocations = syntax
+            .DescendantNodesAndSelf()
+            .OfType<InvocationExpressionSyntax>()
+            .ToList();
+
+        foreach (var invocation in invocations)
+        {
+            // Get the method symbol
+            var symbolInfo = SemanticModel.GetSymbolInfo(invocation);
+            if (symbolInfo.Symbol is not IMethodSymbol methodSymbol)
+                continue;
+
+            // Check if it's a static method (like Enumerable.Empty)
+            if (!methodSymbol.IsStatic)
+                continue;
+
+            // Get the expression that might need qualification
+            var expression = invocation.Expression;
+            if (expression is MemberAccessExpressionSyntax memberAccess)
+            {
+                // Check if the left side (e.g., "Enumerable") needs qualification
+                var containingType = methodSymbol.ContainingType;
+                if (containingType is null)
+                    continue;
+
+                // Build the fully qualified invocation
+                var fullTypeName = containingType.ToDisplayString(
+                    SymbolDisplayFormat.FullyQualifiedFormat
+                );
+                var methodName = methodSymbol.Name;
+
+                // Check for generic type arguments
+                if (
+                    memberAccess.Name is GenericNameSyntax genericName
+                    && methodSymbol.IsGenericMethod
+                )
+                {
+                    var typeArgs = new List<string>();
+                    foreach (var typeArg in methodSymbol.TypeArguments)
+                    {
+                        typeArgs.Add(
+                            typeArg.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat)
+                        );
+                    }
+                    var fullyQualifiedInvocation =
+                        $"{fullTypeName}.{methodName}<{string.Join(", ", typeArgs)}>";
+                    var original = memberAccess.ToString();
+
+                    // Only add replacement if not already fully qualified
+                    if (!original.StartsWith("global::"))
+                    {
+                        replacements.Add(
+                            (original, fullyQualifiedInvocation, memberAccess.SpanStart)
+                        );
+                    }
+                }
+                else
+                {
+                    // Non-generic static method
+                    var fullyQualifiedMethod = $"{fullTypeName}.{methodName}";
+                    var original = memberAccess.ToString();
+
+                    // Only add replacement if not already fully qualified
+                    if (!original.StartsWith("global::"))
+                    {
+                        replacements.Add((original, fullyQualifiedMethod, memberAccess.SpanStart));
+                    }
+                }
+            }
+        }
+
+        // Handle empty collection expressions (C# 12 collection literals like `[]`)
+        // These need to be converted to Enumerable.Empty<T>() with fully qualified names
+        var collectionExpressions = syntax
+            .DescendantNodesAndSelf()
+            .OfType<CollectionExpressionSyntax>()
+            .ToList();
+
+        foreach (var collectionExpr in collectionExpressions)
+        {
+            // Only handle empty collection expressions
+            if (collectionExpr.Elements.Count != 0)
+                continue;
+
+            // Get the type info for the collection expression
+            var typeInfo = SemanticModel.GetTypeInfo(collectionExpr);
+            if (typeInfo.ConvertedType is not INamedTypeSymbol targetType)
+                continue;
+
+            // Get the element type from the collection
+            var elementType = RoslynTypeHelper.GetGenericTypeArgument(targetType, 0);
+            if (elementType is null)
+                continue;
+
+            var fullyQualifiedElementType = elementType.ToDisplayString(
+                SymbolDisplayFormat.FullyQualifiedFormat
+            );
+            var emptyExpression =
+                $"global::System.Linq.Enumerable.Empty<{fullyQualifiedElementType}>()";
+            var original = collectionExpr.ToString();
+
+            replacements.Add((original, emptyExpression, collectionExpr.SpanStart));
+        }
+
+        // Find all member access expressions that might need qualification (static/const/enum)
+        var memberAccesses = syntax
+            .DescendantNodesAndSelf()
+            .OfType<MemberAccessExpressionSyntax>()
+            .ToList();
+
+        // Also find all identifier names (for unqualified enum values)
+        var identifiers = syntax.DescendantNodesAndSelf().OfType<IdentifierNameSyntax>().ToList();
+
+        foreach (var memberAccess in memberAccesses)
+        {
+            if (memberAccess.Kind() != SyntaxKind.SimpleMemberAccessExpression)
+                continue;
+
+            var symbolInfo = SemanticModel.GetSymbolInfo(memberAccess);
+
+            // Check if it's a static field, const field, or enum value
+            if (
+                symbolInfo.Symbol is IFieldSymbol fieldSymbol
+                && (fieldSymbol.IsStatic || fieldSymbol.IsConst)
+            )
+            {
+                var containingType = fieldSymbol.ContainingType;
+                if (containingType is not null)
+                {
+                    var fullTypeName = containingType.ToDisplayString(
+                        SymbolDisplayFormat.FullyQualifiedFormat
+                    );
+                    var memberName = fieldSymbol.Name;
+                    var fullyQualified = $"{fullTypeName}.{memberName}";
+                    var original = memberAccess.ToString();
+
+                    // Only add if not already fully qualified
+                    if (!original.StartsWith("global::"))
+                    {
+                        replacements.Add((original, fullyQualified, memberAccess.SpanStart));
+                    }
+                }
+            }
+            else if (symbolInfo.Symbol is IPropertySymbol propertySymbol && propertySymbol.IsStatic)
+            {
+                var containingType = propertySymbol.ContainingType;
+                if (containingType is not null)
+                {
+                    var fullTypeName = containingType.ToDisplayString(
+                        SymbolDisplayFormat.FullyQualifiedFormat
+                    );
+                    var memberName = propertySymbol.Name;
+                    var fullyQualified = $"{fullTypeName}.{memberName}";
+                    var original = memberAccess.ToString();
+
+                    // Only add if not already fully qualified
+                    if (!original.StartsWith("global::"))
+                    {
+                        replacements.Add((original, fullyQualified, memberAccess.SpanStart));
+                    }
+                }
+            }
+        }
+
+        // Check identifiers for unqualified enum values
+        foreach (var identifier in identifiers)
+        {
+            // Skip if this identifier is part of a member access expression (already handled above)
+            if (identifier.Parent is MemberAccessExpressionSyntax)
+                continue;
+
+            var symbolInfo = SemanticModel.GetSymbolInfo(identifier);
+
+            if (symbolInfo.Symbol is IFieldSymbol fieldSymbol)
+            {
+                // Check if it's an enum value
+                if (fieldSymbol.ContainingType?.TypeKind == TypeKind.Enum)
+                {
+                    var containingType = fieldSymbol.ContainingType;
+                    var fullTypeName = containingType.ToDisplayString(
+                        SymbolDisplayFormat.FullyQualifiedFormat
+                    );
+                    var memberName = fieldSymbol.Name;
+                    var fullyQualified = $"{fullTypeName}.{memberName}";
+                    var original = identifier.ToString();
+
+                    replacements.Add((original, fullyQualified, identifier.SpanStart));
+                }
+                // Check if it's a static const field
+                else if (
+                    (fieldSymbol.IsStatic || fieldSymbol.IsConst)
+                    && fieldSymbol.ContainingType is not null
+                )
+                {
+                    var containingType = fieldSymbol.ContainingType;
+                    var fullTypeName = containingType.ToDisplayString(
+                        SymbolDisplayFormat.FullyQualifiedFormat
+                    );
+                    var memberName = fieldSymbol.Name;
+                    var fullyQualified = $"{fullTypeName}.{memberName}";
+                    var original = identifier.ToString();
+
+                    replacements.Add((original, fullyQualified, identifier.SpanStart));
+                }
+            }
+        }
+
+        // If no replacements needed, return original expression
+        if (replacements.Count == 0)
         {
             return syntax.ToString();
         }
 
-        return FullyQualifyAllStaticReferences(syntax);
+        // Sort replacements by start position in descending order to avoid offset issues
+        replacements.Sort((a, b) => b.Start.CompareTo(a.Start));
+
+        // Apply replacements
+        var result = syntax.ToString();
+        foreach (var (original, replacement, start) in replacements)
+        {
+            // Calculate the offset relative to the syntax start
+            var offset = start - syntax.SpanStart;
+
+            // Verify that the original text is at the expected position
+            if (offset >= 0 && offset + original.Length <= result.Length)
+            {
+                var substring = result.Substring(offset, original.Length);
+                if (substring == original)
+                {
+                    result =
+                        result.Substring(0, offset)
+                        + replacement
+                        + result.Substring(offset + original.Length);
+                }
+            }
+        }
+
+        return result;
     }
 
     /// <summary>
@@ -612,6 +894,8 @@ public abstract record SelectExprInfo
     /// Converts any expression containing an anonymous type to use the generated DTO instead.
     /// This is a general approach that works for direct anonymous types, ternary operators,
     /// method calls, and any other expression structure.
+    /// Also handles:
+    /// - Collection expressions ([]) by converting them to Enumerable.Empty{T}()
     /// </summary>
     protected string ConvertExpressionWithAnonymousTypeToDto(
         ExpressionSyntax syntax,
@@ -651,6 +935,25 @@ public abstract record SelectExprInfo
 
         // Simple string replacement approach
         var convertedText = originalText.Replace(anonymousText, dtoCreation);
+
+        // Handle collection expressions (C# 12 collection literals like [])
+        // These need to be converted to Enumerable.Empty<T>() with the generated DTO type
+        var collectionExpressions = cleanSyntax
+            .DescendantNodesAndSelf()
+            .OfType<CollectionExpressionSyntax>()
+            .ToList();
+
+        foreach (var collectionExpr in collectionExpressions)
+        {
+            // Only handle empty collection expressions
+            if (collectionExpr.Elements.Count != 0)
+                continue;
+
+            // Replace [] with Enumerable.Empty<NestedDtoType>()
+            var original = collectionExpr.ToString();
+            var emptyExpression = $"global::System.Linq.Enumerable.Empty<{nestedDtoName}>()";
+            convertedText = convertedText.Replace(original, emptyExpression);
+        }
 
         return convertedText;
     }
@@ -952,12 +1255,15 @@ public abstract record SelectExprInfo
 
     /// <summary>
     /// Gets the appropriate empty collection expression based on the target type.
-    /// For List types, returns "new List&lt;T&gt;()" to match the expected type.
-    /// For IEnumerable types, returns "System.Linq.Enumerable.Empty&lt;T&gt;()".
+    /// For List types, returns "new global::System.Collections.Generic.List&lt;T&gt;()" to match the expected type.
+    /// For IEnumerable types, returns "global::System.Linq.Enumerable.Empty&lt;T&gt;()".
     /// </summary>
+    /// <param name="typeSymbol">The target type symbol.</param>
+    /// <param name="fullyQualifiedElementTypeName">The fully qualified element type name (must start with "global::").</param>
+    /// <param name="chainedMethods">The chained methods string to detect ToList/ToArray.</param>
     private static string GetEmptyCollectionExpression(
         ITypeSymbol? typeSymbol,
-        string elementTypeName,
+        string fullyQualifiedElementTypeName,
         string chainedMethods
     )
     {
@@ -965,17 +1271,17 @@ public abstract record SelectExprInfo
         var isListType = IsListType(typeSymbol) || chainedMethods.Contains(".ToList()");
         if (isListType)
         {
-            return $"new System.Collections.Generic.List<{elementTypeName}>()";
+            return $"new global::System.Collections.Generic.List<{fullyQualifiedElementTypeName}>()";
         }
 
         // Check if the target type is an array (via ToArray())
         if (chainedMethods.Contains(".ToArray()"))
         {
-            return $"System.Array.Empty<{elementTypeName}>()";
+            return $"global::System.Array.Empty<{fullyQualifiedElementTypeName}>()";
         }
 
         // Default to Enumerable.Empty for IEnumerable<T> types
-        return $"System.Linq.Enumerable.Empty<{elementTypeName}>()";
+        return $"global::System.Linq.Enumerable.Empty<{fullyQualifiedElementTypeName}>()";
     }
 
     /// <summary>
@@ -1195,7 +1501,20 @@ public abstract record SelectExprInfo
             // This handles cases like: c => c.GrandChildren (simple member access)
             if (hasNullableAccess)
             {
-                var defaultValue = coalescingDefaultValue ?? "System.Linq.Enumerable.Empty()";
+                // Try to get the proper empty collection type from the property
+                string defaultValue;
+                if (coalescingDefaultValue is not null)
+                {
+                    defaultValue = coalescingDefaultValue;
+                }
+                else if (property is not null && RoslynTypeHelper.IsCollectionType(property.TypeSymbol))
+                {
+                    defaultValue = GetEmptyCollectionExpressionForType(property.TypeSymbol, syntax.ToString());
+                }
+                else
+                {
+                    defaultValue = "global::System.Linq.Enumerable.Empty<object>()";
+                }
                 return $"{baseExpression} != null ? {syntax} : {defaultValue}";
             }
             else
@@ -1528,9 +1847,9 @@ public abstract record SelectExprInfo
 
     /// <summary>
     /// Gets the appropriate empty collection expression for a collection type symbol.
-    /// For List types, returns "new System.Collections.Generic.List&lt;T&gt;()".
-    /// For Array types (via ToArray()), returns "System.Array.Empty&lt;T&gt;()".
-    /// For IEnumerable types, returns "System.Linq.Enumerable.Empty&lt;T&gt;()".
+    /// For List types, returns "new global::System.Collections.Generic.List&lt;T&gt;()".
+    /// For Array types (via ToArray()), returns "global::System.Array.Empty&lt;T&gt;()".
+    /// For IEnumerable types, returns "global::System.Linq.Enumerable.Empty&lt;T&gt;()".
     /// </summary>
     private static string GetEmptyCollectionExpressionForType(
         ITypeSymbol typeSymbol,
@@ -1688,7 +2007,8 @@ public abstract record SelectExprInfo
     }
 
     /// <summary>
-    /// Converts an expression to use fully qualified type names for any object creations
+    /// Converts an expression to use fully qualified type names for any object creations.
+    /// Also handles null-conditional operators by converting them to explicit null checks.
     /// </summary>
     protected string ConvertExpressionToFullyQualified(ExpressionSyntax expression)
     {
@@ -1698,8 +2018,25 @@ public abstract record SelectExprInfo
             return ConvertObjectCreationToFullyQualified(nestedObjectCreation);
         }
 
+        // Check if the expression contains null-conditional access (e.g., i?.Title)
+        // Convert to explicit null check: i != null ? i.Title : null
+        var hasConditionalAccess = expression
+            .DescendantNodesAndSelf()
+            .OfType<ConditionalAccessExpressionSyntax>()
+            .Any();
+
+        if (hasConditionalAccess)
+        {
+            // Get the type of the expression
+            var typeInfo = SemanticModel.GetTypeInfo(expression);
+            var typeSymbol = typeInfo.Type ?? typeInfo.ConvertedType;
+            if (typeSymbol != null)
+            {
+                return ConvertNullableAccessToExplicitCheckWithRoslyn(expression, typeSymbol);
+            }
+        }
+
         // For other expression types, return as-is
-        // This could be extended to handle nested expressions like method calls, etc.
         return expression.ToString();
     }
 }
