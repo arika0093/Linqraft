@@ -128,22 +128,8 @@ public class GroupByAnonymousKeyCodeFixProvider : CodeFixProvider
             case IdentifierNameSyntax identifier:
                 // e.g., entities.GroupBy(...)
                 var name = identifier.Identifier.Text;
-                // Try to convert plural to singular (simple heuristic)
-                string result;
-                if (name.EndsWith("ies", System.StringComparison.Ordinal))
-                {
-                    result = name.Substring(0, name.Length - 3) + "y";
-                }
-                else if (name.EndsWith("s", System.StringComparison.Ordinal) && name.Length > 1)
-                {
-                    result = name.Substring(0, name.Length - 1);
-                }
-                else
-                {
-                    result = name;
-                }
                 // Capitalize the first letter
-                return CapitalizeFirstLetter(result);
+                return CapitalizeFirstLetter(name);
 
             case MemberAccessExpressionSyntax memberAccess:
                 // e.g., dbContext.Entities.GroupBy(...)
