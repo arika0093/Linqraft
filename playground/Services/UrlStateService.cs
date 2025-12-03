@@ -18,6 +18,9 @@ public class UrlStateService(NavigationManager navigationManager)
 
     private const string StateParameterName = "state";
 
+    // Maximum URL length for GitHub issue creation (GitHub's limit is around 8192, but browsers have lower limits)
+    private const int MaxUrlLength = 8000;
+
     /// <summary>
     /// Serializable state object for URL sharing
     /// </summary>
@@ -67,7 +70,8 @@ public class UrlStateService(NavigationManager navigationManager)
     }
 
     /// <summary>
-    /// Generates a URL for creating a GitHub issue with the current state
+    /// Generates a URL for creating a GitHub issue with the current state.
+    /// If the URL would be too long, a simplified version with only the Playground link is generated.
     /// </summary>
     public string GenerateGitHubIssueUrl(
         List<ProjectFile> files,
@@ -78,19 +82,32 @@ public class UrlStateService(NavigationManager navigationManager)
     )
     {
         var shareableUrl = GenerateShareableUrl(files, configuration);
-        var issueBody = GenerateIssueBody(
+        var encodedTitle = Uri.EscapeDataString(
+            issueTitle.Length > 0 ? issueTitle : "Issue from Playground"
+        );
+
+        // Try to generate full issue body first
+        var fullIssueBody = GenerateIssueBody(
             files,
             shareableUrl,
             generatedExpression,
             generatedDtoClass
         );
+        var fullEncodedBody = Uri.EscapeDataString(fullIssueBody);
+        var fullUrl =
+            $"https://github.com/arika0093/Linqraft/issues/new?title={encodedTitle}&body={fullEncodedBody}&labels=generator";
 
-        var encodedTitle = Uri.EscapeDataString(
-            issueTitle.Length > 0 ? issueTitle : "Issue from Playground"
-        );
-        var encodedBody = Uri.EscapeDataString(issueBody);
+        // If URL is within limits, return the full version
+        if (fullUrl.Length <= MaxUrlLength)
+        {
+            return fullUrl;
+        }
 
-        return $"https://github.com/arika0093/Linqraft/issues/new?title={encodedTitle}&body={encodedBody}&labels=generator";
+        // URL is too long, generate simplified version with only Playground link
+        var simplifiedIssueBody = GenerateSimplifiedIssueBody(shareableUrl);
+        var simplifiedEncodedBody = Uri.EscapeDataString(simplifiedIssueBody);
+
+        return $"https://github.com/arika0093/Linqraft/issues/new?title={encodedTitle}&body={simplifiedEncodedBody}&labels=generator";
     }
 
     /// <summary>
@@ -230,6 +247,64 @@ public class UrlStateService(NavigationManager navigationManager)
         sb.AppendLine("");
 
         // Playground Link section (moved from Reproduction)
+        sb.AppendLine("## Playground Link");
+        sb.AppendLine("");
+        sb.AppendLine($"[Open in Playground]({shareableUrl})");
+
+        return sb.ToString();
+    }
+
+    /// <summary>
+    /// Generates a simplified issue body when the code is too large for URL inclusion.
+    /// Only includes the Playground link with instructions to paste code manually.
+    /// </summary>
+    private static string GenerateSimplifiedIssueBody(string shareableUrl)
+    {
+        var sb = new StringBuilder();
+
+        // Description section
+        sb.AppendLine("## Description");
+        sb.AppendLine("");
+        sb.AppendLine("<!-- Describe your issue here -->");
+        sb.AppendLine("");
+
+        // Reproduction section with instructions
+        sb.AppendLine("## Reproduction");
+        sb.AppendLine("");
+        sb.AppendLine(
+            "The code is too large to include directly in this issue. "
+                + "Please copy and paste the code from the Playground link below into this section."
+        );
+        sb.AppendLine("");
+        sb.AppendLine("<details>");
+        sb.AppendLine("<summary>Code</summary>");
+        sb.AppendLine("");
+        sb.AppendLine("<!-- Paste your code here from the Playground -->");
+        sb.AppendLine("");
+        sb.AppendLine("</details>");
+        sb.AppendLine("");
+
+        // Result section with instructions
+        sb.AppendLine("## Result");
+        sb.AppendLine("");
+        sb.AppendLine(
+            "Please copy the generated output from the Playground if needed."
+        );
+        sb.AppendLine("");
+
+        // Expected Behavior section
+        sb.AppendLine("## Expected Behavior");
+        sb.AppendLine("");
+        sb.AppendLine("<!-- What did you expect to happen? -->");
+        sb.AppendLine("");
+
+        // Additional Context section
+        sb.AppendLine("## Additional Context");
+        sb.AppendLine("");
+        sb.AppendLine("<!-- Add any other context about the problem here -->");
+        sb.AppendLine("");
+
+        // Playground Link section
         sb.AppendLine("## Playground Link");
         sb.AppendLine("");
         sb.AppendLine($"[Open in Playground]({shareableUrl})");
