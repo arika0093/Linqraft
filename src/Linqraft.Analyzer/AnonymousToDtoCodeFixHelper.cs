@@ -75,7 +75,7 @@ internal static class AnonymousToDtoCodeFixHelper
         };
 
         // Generate configuration (use None for comment output since these are not SelectExpr DTOs)
-        var configuration = new LinqraftConfiguration { CommentOutput = CommentOutputMode.None };
+        var configuration = GetAnonymousToDtoConfiguration();
 
         // Replace anonymous object with DTO instantiation
         var newRoot = ReplaceAnonymousWithDtoSync(
@@ -264,5 +264,18 @@ internal static class AnonymousToDtoCodeFixHelper
         }
 
         return document;
+    }
+
+    // Configuration for anonymous to DTO conversion
+    public static LinqraftConfiguration GetAnonymousToDtoConfiguration()
+    {
+        // Generate configuration
+        // * disable NestedDtoUseHashNamespace to keep nested DTOs in the same namespace
+        // * use None for comment output since these are not SelectExpr DTOs
+        return new LinqraftConfiguration
+        {
+            NestedDtoUseHashNamespace = false,
+            CommentOutput = CommentOutputMode.None,
+        };
     }
 }
