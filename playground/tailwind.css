@@ -19,3 +19,6 @@
 ::-webkit-scrollbar-track {
   background: #242525;
 }
+::-webkit-scrollbar-corner {
+  background: transparent;
+}

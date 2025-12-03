@@ -1054,6 +1054,9 @@
 ::-webkit-scrollbar-track {
   background: #242525;
 }
+::-webkit-scrollbar-corner {
+  background: transparent;
+}
 @property --tw-space-y-reverse {
   syntax: "*";
   inherits: false;
