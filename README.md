@@ -696,53 +696,6 @@ Intel Core i7-14700F 2.10GHz, 1 CPU, 28 logical and 20 physical cores
 Compared to the manual approach, the performance is nearly identical.
 for more details, see [Linqraft.Benchmark](./examples/Linqraft.Benchmark) for details.
 
-## Known Issues
-### `GroupBy(x => new { ... }).SelectExpr(...)` is not working
-Currently, using an anonymous type in `GroupBy` and then immediately applying `SelectExpr` does not work correctly.
-This is because the input type itself contains an anonymous type, which prevents the generated code from converting types properly.
-
-<details>
-<summary>More details</summary>
-
-For example, given the following code:
-
-```csharp
-var result = dbContext.Entities
-    .GroupBy(e => new { e.CategoryId, e.CategoryType })
-    .SelectExpr(g => new
-    {
-        CategoryId = g.Key.CategoryId,
-        CategoryType = g.Key.CategoryType,
-        Count = g.Count(),
-    })
-    .ToList();
-```
-
-Generated code looks like this:
-
-```csharp
-public static IQueryable<TResult> SelectExpr_265EC291_20E613F7<TIn, TResult>(
-    this IQueryable<TIn> query, Func<TIn, TResult> selector)
-{
-    // TIn is inferred as anonymous type here (compile error)
-    var matchedQuery = query as object as IQueryable<global::System.Linq.IGrouping<global::<anonymous type: int CategoryId, string CategoryType>, global::Entity>>;
-    var converted = matchedQuery.Select(g => new
-    {
-        // ...
-    });
-    return converted as object as IQueryable<TResult>;
-}
-```
-
-As you can see, in the line `var matchedQuery = ...`, the anonymous type inside `TIn` causes a compile error because the type conversion cannot be performed correctly.  
-If you try to use `TIn` as-is, you won't be able to access properties like `g.Key.CategoryId` inside `matchedQuery.Select(...)`.  
-Due to the limitations of expression trees, you can't cast to `dynamic`, and you also can't use a `Tuple` inside `GroupBy`, so there is no simple workaround.  
-The only solution is to avoid using anonymous types in `GroupBy` and use explicit classes instead.
-
-</details>
-
-Currently, the workaround is to avoid using anonymous types in `GroupBy` and use explicit classes instead.
-
 ## Frequently Asked Questions
 ### Can I use Linqraft with EF Core only?
 No. It can be used with any LINQ provider that supports `IEnumerable` and/or `IQueryable`.
