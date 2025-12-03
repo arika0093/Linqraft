@@ -505,32 +505,14 @@ public partial class ParentDto
 ```
 
 ### Remove Hash from Generated Class Names
- By default, nested DTO classes are generated with hash-suffixed class names (e.g., `ItemsDto_HASH1234`).
-This behavior is necessary to avoid class name collisions, but in some cases, the hash name can be inconvenient (for example, in OpenAPI/Swagger where class names are displayed).
-In such cases, you can change the behavior to generate nested DTO classes in hash-named namespaces (e.g., `Generated_HASH1234.ItemsDto`) instead.
-This option can be controlled using the `LinqraftNestedDtoUseHashNamespace` property.
+By default, nested DTO classes are generated with a namespace containing a hash suffix (e.g., `Generated_HASH1234.ItemsDto`) to avoid class name conflicts.
+You can change this behavior to use class names with a hash prefix (e.g., `ItemsDto_HASH1234`).
+This setting can be controlled via the `LinqraftNestedDtoUseHashNamespace` property.
 
 <details>
 <summary>Generated code example</summary>
 
-**LinqraftNestedDtoUseHashNamespace = false (default)**
-
-```csharp
-namespace Tutorial
-{
-    public partial class OrderDto
-    {
-        public required System.Collections.Generic.List<global::Tutorial.OrderItemDto_DE33EA40> Items { get; set; }
-    }
-
-    public partial class OrderItemDto_DE33EA40
-    {
-        public required string? ProductName { get; set; }
-    }
-}
-```
-
-**LinqraftNestedDtoUseHashNamespace = true**
+**LinqraftNestedDtoUseHashNamespace = true (default)**
 
 ```csharp
 namespace Tutorial
@@ -543,6 +525,23 @@ namespace Tutorial
 namespace Tutorial.Generated_DE33EA40
 {
     public partial class ItemsDto
+    {
+        public required string? ProductName { get; set; }
+    }
+}
+```
+
+**LinqraftNestedDtoUseHashNamespace = false**
+
+```csharp
+namespace Tutorial
+{
+    public partial class OrderDto
+    {
+        public required System.Collections.Generic.List<global::Tutorial.OrderItemDto_DE33EA40> Items { get; set; }
+    }
+
+    public partial class OrderItemDto_DE33EA40
     {
         public required string? ProductName { get; set; }
     }
@@ -664,7 +663,7 @@ Linqraft supports several MSBuild properties to customize the generated code:
     <LinqraftArrayNullabilityRemoval>true</LinqraftArrayNullabilityRemoval>
     <!-- generate nested DTOs in hash-named namespace (e.g., Generated_HASH.ItemsDto) -->
     <!-- instead of hash-suffixed class names (e.g., ItemsDto_HASH) -->
-    <LinqraftNestedDtoUseHashNamespace>false</LinqraftNestedDtoUseHashNamespace>
+    <LinqraftNestedDtoUseHashNamespace>true</LinqraftNestedDtoUseHashNamespace>
   </PropertyGroup>
 </Project>
 ```
