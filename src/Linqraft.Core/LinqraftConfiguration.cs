@@ -56,7 +56,7 @@ public record LinqraftConfiguration
 
     /// <summary>
     /// Whether to generate nested DTOs in a hash-named namespace instead of using hash suffix on the class name.
-    /// When true: Generated_(Hash).ClassName format (e.g., Generated_A1470000.ItemsDto)
+    /// When true: LinqraftGenerated_(Hash).ClassName format (e.g., LinqraftGenerated_A1470000.ItemsDto)
     /// When false: ClassName_Hash format (e.g., ItemsDto_A1470000)
     /// Default is true (use hash-named namespace)
     /// </summary>

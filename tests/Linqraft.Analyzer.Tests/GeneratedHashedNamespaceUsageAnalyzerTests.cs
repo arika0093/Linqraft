@@ -15,9 +15,9 @@ public class GeneratedHashedNamespaceUsageAnalyzerTests
     {
         var test =
             @"
-{|#0:using MyApp.Generated_A1470000;|}
+{|#0:using MyApp.LinqraftGenerated_A1470000;|}
 
-namespace MyApp.Generated_A1470000
+namespace MyApp.LinqraftGenerated_A1470000
 {
     public class Dto { }
 }
@@ -33,7 +33,7 @@ class Test
             .Diagnostic(GeneratedHashedNamespaceUsageAnalyzer.AnalyzerId)
             .WithLocation(0)
             .WithSeverity(DiagnosticSeverity.Warning)
-            .WithArguments("Generated_A1470000");
+            .WithArguments("LinqraftGenerated_A1470000");
 
         await VerifyCS.VerifyAnalyzerAsync(test, expected);
     }
@@ -43,9 +43,9 @@ class Test
     {
         var test =
             @"
-{|#0:using Company.Project.Generated_12345678.SubNamespace;|}
+{|#0:using Company.Project.LinqraftGenerated_12345678.SubNamespace;|}
 
-namespace Company.Project.Generated_12345678.SubNamespace
+namespace Company.Project.LinqraftGenerated_12345678.SubNamespace
 {
     public class Dto { }
 }
@@ -61,7 +61,7 @@ class Test
             .Diagnostic(GeneratedHashedNamespaceUsageAnalyzer.AnalyzerId)
             .WithLocation(0)
             .WithSeverity(DiagnosticSeverity.Warning)
-            .WithArguments("Generated_12345678");
+            .WithArguments("LinqraftGenerated_12345678");
 
         await VerifyCS.VerifyAnalyzerAsync(test, expected);
     }
@@ -122,21 +122,21 @@ class Test
     {
         var test =
             @"
-using MyApp.Generated_AB;
-using MyApp.Generated_ABCD;
-using MyApp.Generated_ABCD123;
+using MyApp.LinqraftGenerated_AB;
+using MyApp.LinqraftGenerated_ABCD;
+using MyApp.LinqraftGenerated_ABCD123;
 
-namespace MyApp.Generated_AB
+namespace MyApp.LinqraftGenerated_AB
 {
     public class Dto1 { }
 }
 
-namespace MyApp.Generated_ABCD
+namespace MyApp.LinqraftGenerated_ABCD
 {
     public class Dto2 { }
 }
 
-namespace MyApp.Generated_ABCD123
+namespace MyApp.LinqraftGenerated_ABCD123
 {
     public class Dto3 { }
 }
@@ -157,9 +157,9 @@ class Test
     {
         var test =
             @"
-using MyApp.Generated_abcd1234;
+using MyApp.LinqraftGenerated_abcd1234;
 
-namespace MyApp.Generated_abcd1234
+namespace MyApp.LinqraftGenerated_abcd1234
 {
     public class Dto { }
 }
@@ -180,15 +180,15 @@ class Test
     {
         var test =
             @"
-{|#0:using MyApp.Generated_AAAA1111;|}
-{|#1:using MyApp.Generated_BBBB2222;|}
+{|#0:using MyApp.LinqraftGenerated_AAAA1111;|}
+{|#1:using MyApp.LinqraftGenerated_BBBB2222;|}
 
-namespace MyApp.Generated_AAAA1111
+namespace MyApp.LinqraftGenerated_AAAA1111
 {
     public class Dto1 { }
 }
 
-namespace MyApp.Generated_BBBB2222
+namespace MyApp.LinqraftGenerated_BBBB2222
 {
     public class Dto2 { }
 }
@@ -204,13 +204,13 @@ class Test
             .Diagnostic(GeneratedHashedNamespaceUsageAnalyzer.AnalyzerId)
             .WithLocation(0)
             .WithSeverity(DiagnosticSeverity.Warning)
-            .WithArguments("Generated_AAAA1111");
+            .WithArguments("LinqraftGenerated_AAAA1111");
 
         var expected2 = VerifyCS
             .Diagnostic(GeneratedHashedNamespaceUsageAnalyzer.AnalyzerId)
             .WithLocation(1)
             .WithSeverity(DiagnosticSeverity.Warning)
-            .WithArguments("Generated_BBBB2222");
+            .WithArguments("LinqraftGenerated_BBBB2222");
 
         await VerifyCS.VerifyAnalyzerAsync(test, expected1, expected2);
     }
