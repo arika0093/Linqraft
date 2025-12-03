@@ -683,20 +683,20 @@ Linqraft supports several MSBuild properties to customize the generated code:
 <summary>Benchmark Results</summary>
 
 ```
-BenchmarkDotNet v0.15.7, Windows 11 (10.0.26200.7171/25H2/2025Update/HudsonValley2)
+BenchmarkDotNet v0.15.8, Windows 11 (10.0.26200.7171/25H2/2025Update/HudsonValley2)
 Intel Core i7-14700F 2.10GHz, 1 CPU, 28 logical and 20 physical cores
 .NET SDK 10.0.100
   [Host]     : .NET 10.0.0 (10.0.0, 10.0.25.52411), X64 RyuJIT x86-64-v3
   DefaultJob : .NET 10.0.0 (10.0.0, 10.0.25.52411), X64 RyuJIT x86-64-v3
 
 
-| Method                        | Mean     | Error    | StdDev   | Ratio | RatioSD | Rank | Gen0    | Gen1   | Allocated | Alloc Ratio |
-|------------------------------ |---------:|---------:|---------:|------:|--------:|-----:|--------:|-------:|----------:|------------:|
-| 'Linqraft Auto-Generated DTO' | 885.4 us | 14.05 us | 13.14 us |  0.91 |    0.01 |    1 | 13.6719 | 1.9531 | 245.61 KB |        1.00 |
-| 'Linqraft Manual DTO'         | 890.9 us | 16.45 us | 15.38 us |  0.92 |    0.02 |    1 | 13.6719 | 1.9531 | 245.75 KB |        1.00 |
-| 'Traditional Manual DTO'      | 893.1 us | 13.55 us | 12.68 us |  0.92 |    0.01 |    1 | 13.6719 | 1.9531 | 245.53 KB |        1.00 |
-| 'Linqraft Anonymous'          | 954.5 us | 12.21 us | 11.42 us |  0.98 |    0.01 |    2 | 13.6719 | 1.9531 | 245.36 KB |        0.99 |
-| 'Traditional Anonymous'       | 971.2 us |  8.55 us |  7.99 us |  1.00 |    0.01 |    2 | 13.6719 | 1.9531 |  246.7 KB |        1.00 |
+| Method                        | Mean     | Error   | StdDev  | Ratio | Rank | Gen0    | Gen1   | Allocated | Alloc Ratio |
+|------------------------------ |---------:|--------:|--------:|------:|-----:|--------:|-------:|----------:|------------:|
+| 'Linqraft Auto-Generated DTO' | 880.9 us | 5.00 us | 4.68 us |  0.91 |    1 | 13.6719 | 1.9531 | 245.69 KB |        1.00 |
+| 'Linqraft Manual DTO'         | 886.9 us | 7.25 us | 6.78 us |  0.92 |    1 | 13.6719 | 1.9531 | 245.93 KB |        1.00 |
+| 'Traditional Manual DTO'      | 898.2 us | 7.53 us | 7.04 us |  0.93 |    1 | 13.6719 | 1.9531 | 245.65 KB |        1.00 |
+| 'Linqraft Anonymous'          | 955.2 us | 6.37 us | 5.65 us |  0.99 |    2 | 13.6719 | 1.9531 |  245.2 KB |        0.99 |
+| 'Traditional Anonymous'       | 966.1 us | 6.50 us | 6.08 us |  1.00 |    2 | 13.6719 | 1.9531 | 246.73 KB |        1.00 |
 ```
 
 </details>
