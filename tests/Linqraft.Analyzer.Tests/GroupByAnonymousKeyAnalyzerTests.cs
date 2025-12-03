@@ -141,7 +141,7 @@ class Entity
     public string CategoryType {{ get; set; }}
 }}
 
-class EntitiesGroupKey
+class EntityGroupKey
 {{
     public int CategoryId {{ get; set; }}
     public string CategoryType {{ get; set; }}
@@ -153,7 +153,7 @@ class Test
     {{
         var entities = new List<Entity>().AsQueryable();
         var result = entities
-            .GroupBy(e => new EntitiesGroupKey {{ CategoryId = e.CategoryId, CategoryType = e.CategoryType }})
+            .GroupBy(e => new EntityGroupKey {{ CategoryId = e.CategoryId, CategoryType = e.CategoryType }})
             .SelectExpr(g => new
             {{
                 CategoryId = g.Key.CategoryId,
@@ -350,7 +350,7 @@ class Entity
     public string CategoryType {{ get; set; }}
 }}
 
-class EntitiesGroupKey
+class EntityGroupKey
 {{
     public int CategoryId {{ get; set; }}
     public string CategoryType {{ get; set; }}
@@ -369,7 +369,7 @@ class Test
     {{
         var entities = new List<Entity>().AsQueryable();
         var result = entities
-            .GroupBy(e => new EntitiesGroupKey {{ CategoryId = e.CategoryId, CategoryType = e.CategoryType }})
+            .GroupBy(e => new EntityGroupKey {{ CategoryId = e.CategoryId, CategoryType = e.CategoryType }})
             .SelectExpr(g => new GroupResultDto
             {{
                 CategoryId = g.Key.CategoryId,

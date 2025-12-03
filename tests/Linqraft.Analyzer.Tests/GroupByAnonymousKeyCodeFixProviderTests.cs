@@ -61,7 +61,7 @@ namespace TestNamespace
         {{
             var entities = new List<Entity>().AsQueryable();
             var result = entities
-                .GroupBy(e => new EntitiesGroupKey {{ CategoryId = e.CategoryId, CategoryType = e.CategoryType }})
+                .GroupBy(e => new EntityGroupKey {{ CategoryId = e.CategoryId, CategoryType = e.CategoryType }})
                 .SelectExpr(g => new
                 {{
                     CategoryId = g.Key.CategoryId,
@@ -72,7 +72,7 @@ namespace TestNamespace
         }}
     }}
 
-    public partial class EntitiesGroupKey
+    public partial class EntityGroupKey
     {{
         public required int CategoryId {{ get; set; }}
         public required string CategoryType {{ get; set; }}
@@ -144,7 +144,7 @@ namespace TestNamespace
         {{
             var entities = new List<Entity>().AsQueryable();
             var result = entities
-                .GroupBy(e => new EntitiesGroupKey {{ CategoryId = e.Id, CategoryType = e.Type }})
+                .GroupBy(e => new EntityGroupKey {{ CategoryId = e.Id, CategoryType = e.Type }})
                 .SelectExpr(g => new
                 {{
                     g.Key.CategoryId,
@@ -155,7 +155,7 @@ namespace TestNamespace
         }}
     }}
 
-    public partial class EntitiesGroupKey
+    public partial class EntityGroupKey
     {{
         public required int CategoryId {{ get; set; }}
         public required string CategoryType {{ get; set; }}
@@ -220,7 +220,7 @@ class Test
     {{
         var entities = new List<Entity>().AsQueryable();
         var result = entities
-            .GroupBy(e => new EntitiesGroupKey {{ CategoryId = e.CategoryId, CategoryType = e.CategoryType }})
+            .GroupBy(e => new EntityGroupKey {{ CategoryId = e.CategoryId, CategoryType = e.CategoryType }})
             .SelectExpr(g => new
             {{
                 CategoryId = g.Key.CategoryId,
@@ -232,7 +232,7 @@ class Test
 
 {TestSourceCodes.SelectExprWithExpression}
 
-public partial class EntitiesGroupKey
+public partial class EntityGroupKey
 {{
     public required int CategoryId {{ get; set; }}
     public required string CategoryType {{ get; set; }}

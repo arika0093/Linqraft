@@ -46,7 +46,7 @@ Since anonymous types cannot be referenced by name in code, this results in a co
 2. Generates the DTO class definition and adds it to the current file
 
 The code fix automatically:
-- Infers a meaningful class name based on the source entity type (e.g., `EntitiesGroupKey`)
+- Infers a meaningful class name based on the source entity type (e.g., `EntityGroupKey`)
 - Creates a partial class with all the properties from the anonymous type
 - Replaces the anonymous type instantiation with the named type
 
@@ -67,7 +67,7 @@ var result = dbContext.Entities
 After applying the code fix:
 ```csharp
 var result = dbContext.Entities
-    .GroupBy(e => new EntitiesGroupKey { CategoryId = e.CategoryId, CategoryType = e.CategoryType })
+    .GroupBy(e => new EntityGroupKey { CategoryId = e.CategoryId, CategoryType = e.CategoryType })
     .SelectExpr(g => new
     {
         CategoryId = g.Key.CategoryId,
@@ -76,7 +76,7 @@ var result = dbContext.Entities
     })
     .ToList();
 
-public partial class EntitiesGroupKey
+public partial class EntityGroupKey
 {
     public required int CategoryId { get; set; }
     public required string CategoryType { get; set; }
