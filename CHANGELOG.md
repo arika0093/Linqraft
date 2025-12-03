@@ -1,3 +1,25 @@
+## [0.6.0] - 2025-12-03
+
+### 🚀 Features
+
+- Detect and warn when using auto-generated DTO classes (#202)
+- [**breaking**] Change NestedDtoUseHashNamespace behavior (default is true) (#203)
+- [**breaking**] Update generated DTO namespaces to use Linqraft prefix instead of hash suffix (#205)
+- Add transparent background to scrollbar corner in tailwind.css
+- Enhance TAILWIND_CDN_FRAGMENT with additional styles and fonts in DevTailwindUtil.razor
+
+### 🐛 Bug Fixes
+
+- Simplify name conversion and improve consistency in GroupBy usage (#204)
+- Update BenchmarkDotNet version and refine benchmark results in README.md
+
+### 🚜 Refactor
+
+- Simplify CodeGenerationService constructor and improve internal attribute filtering
+
+### 📚 Documentation
+
+- Add known issues section for GroupBy and SelectExpr functionality
 ## [0.5.0] - 2025-12-02
 
 ### 🚀 Features
