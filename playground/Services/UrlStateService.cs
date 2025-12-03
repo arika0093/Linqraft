@@ -18,7 +18,9 @@ public class UrlStateService(NavigationManager navigationManager)
 
     private const string StateParameterName = "state";
 
-    // Maximum URL length for GitHub issue creation (GitHub's limit is around 8192, but browsers have lower limits)
+    // Maximum URL length for GitHub issue creation.
+    // GitHub's server limit is around 8192, but IE11 has a 2083 limit, and most modern browsers support 8000+.
+    // Using 8000 as a safe cross-browser limit.
     private const int MaxUrlLength = 8000;
 
     /// <summary>
@@ -272,8 +274,7 @@ public class UrlStateService(NavigationManager navigationManager)
         sb.AppendLine("## Reproduction");
         sb.AppendLine("");
         sb.AppendLine(
-            "The code is too large to include directly in this issue. "
-                + "Please copy and paste the code from the Playground link below into this section."
+            "The code is too large to include directly in this issue. Please copy and paste the code from the Playground link below into this section."
         );
         sb.AppendLine("");
         sb.AppendLine("<details>");
