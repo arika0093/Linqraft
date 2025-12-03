@@ -181,136 +181,117 @@ public class UrlStateService(NavigationManager navigationManager)
     {
         var sb = new StringBuilder();
 
-        // Description section
-        sb.AppendLine("## Description");
-        sb.AppendLine("");
-        sb.AppendLine("<!-- Describe your issue here -->");
-        sb.AppendLine("");
-
-        // Reproduction section (without playground link)
-        sb.AppendLine("## Reproduction");
-        sb.AppendLine("");
-        sb.AppendLine("<details>");
-        sb.AppendLine("<summary>Code</summary>");
-        sb.AppendLine("");
-
-        foreach (var file in files.Where(f => !f.IsHidden))
-        {
-            sb.AppendLine($"**{file.Name}**");
-            sb.AppendLine("```csharp");
-            sb.AppendLine(file.Content);
-            sb.AppendLine("```");
-            sb.AppendLine("");
-        }
-
-        sb.AppendLine("</details>");
-        sb.AppendLine("");
-
-        // Result section (new section with generated output)
-        sb.AppendLine("## Result");
-        sb.AppendLine("");
-        sb.AppendLine("<details>");
-        sb.AppendLine("<summary>Generated Expression</summary>");
-        sb.AppendLine("");
-        sb.AppendLine("```csharp");
-        sb.AppendLine(
-            string.IsNullOrWhiteSpace(generatedExpression)
-                ? "// No expression generated"
-                : generatedExpression
-        );
-        sb.AppendLine("```");
-        sb.AppendLine("");
-        sb.AppendLine("</details>");
-        sb.AppendLine("");
-        sb.AppendLine("<details>");
-        sb.AppendLine("<summary>Generated DTO Class</summary>");
-        sb.AppendLine("");
-        sb.AppendLine("```csharp");
-        sb.AppendLine(
-            string.IsNullOrWhiteSpace(generatedDtoClass)
-                ? "// No DTO class generated"
-                : generatedDtoClass
-        );
-        sb.AppendLine("```");
-        sb.AppendLine("");
-        sb.AppendLine("</details>");
-        sb.AppendLine("");
-
-        // Expected Behavior section
-        sb.AppendLine("## Expected Behavior");
-        sb.AppendLine("");
-        sb.AppendLine("<!-- What did you expect to happen? -->");
-        sb.AppendLine("");
-
         // Additional Context section (new placeholder section)
-        sb.AppendLine("## Additional Context");
-        sb.AppendLine("");
-        sb.AppendLine("<!-- Add any other context about the problem here -->");
-        sb.AppendLine("");
+        var codeSection = string.Join(
+            "\n\n",
+            files.Where(f => !f.IsHidden).Select(f => $"**{f.Name}**\n```csharp\n{f.Content}\n```")
+        );
+        var generatedExpressionSection = string.IsNullOrWhiteSpace(generatedExpression)
+            ? "// No expression generated"
+            : generatedExpression;
+        var generatedDtoClassSection = string.IsNullOrWhiteSpace(generatedDtoClass)
+            ? "// No DTO class generated"
+            : generatedDtoClass;
 
-        // Playground Link section (moved from Reproduction)
-        sb.AppendLine("## Playground Link");
-        sb.AppendLine("");
-        sb.AppendLine($"[Open in Playground]({shareableUrl})");
+        return $"""
+            ## Description
 
-        return sb.ToString();
+            <!-- Describe your issue here -->
+
+            ## Reproduction
+
+            <details>
+            <summary>Code</summary>
+
+            {codeSection}
+
+            </details>
+
+            ## Result
+
+            <details>
+            <summary>Generated Expression</summary>
+
+            ```csharp
+            {generatedExpressionSection}
+            ```
+
+            </details>
+
+            <details>
+            <summary>Generated DTO Class</summary>
+
+            ```csharp
+            {generatedDtoClassSection}
+            ```
+
+            </details>
+
+            ## Expected Behavior
+
+            <!-- What did you expect to happen? -->
+
+            ## Additional Context
+
+            <!-- Add any other context about the problem here -->
+
+            ## Playground Link
+
+            [Open in Playground]({shareableUrl})
+            """;
     }
 
-    /// <summary>
     /// Generates a simplified issue body when the code is too large for URL inclusion.
     /// Only includes the Playground link with instructions to paste code manually.
     /// </summary>
     private static string GenerateSimplifiedIssueBody(string shareableUrl)
     {
-        var sb = new StringBuilder();
+        return $"""
+            ## Description
 
-        // Description section
-        sb.AppendLine("## Description");
-        sb.AppendLine("");
-        sb.AppendLine("<!-- Describe your issue here -->");
-        sb.AppendLine("");
+            <!-- Describe your issue here -->
 
-        // Reproduction section with instructions
-        sb.AppendLine("## Reproduction");
-        sb.AppendLine("");
-        sb.AppendLine(
-            "The code is too large to include directly in this issue. Please copy and paste the code from the Playground link below into this section."
-        );
-        sb.AppendLine("");
-        sb.AppendLine("<details>");
-        sb.AppendLine("<summary>Code</summary>");
-        sb.AppendLine("");
-        sb.AppendLine("<!-- Paste your code here from the Playground -->");
-        sb.AppendLine("");
-        sb.AppendLine("</details>");
-        sb.AppendLine("");
+            ## Reproduction
 
-        // Result section with instructions
-        sb.AppendLine("## Result");
-        sb.AppendLine("");
-        sb.AppendLine(
-            "Please copy the generated output from the Playground if needed."
-        );
-        sb.AppendLine("");
+            <details>
+            <summary>Code</summary>
 
-        // Expected Behavior section
-        sb.AppendLine("## Expected Behavior");
-        sb.AppendLine("");
-        sb.AppendLine("<!-- What did you expect to happen? -->");
-        sb.AppendLine("");
+            ```csharp
+            <!-- Paste your code here from the Playground -->
+            ```
 
-        // Additional Context section
-        sb.AppendLine("## Additional Context");
-        sb.AppendLine("");
-        sb.AppendLine("<!-- Add any other context about the problem here -->");
-        sb.AppendLine("");
+            </details>
 
-        // Playground Link section
-        sb.AppendLine("## Playground Link");
-        sb.AppendLine("");
-        sb.AppendLine($"[Open in Playground]({shareableUrl})");
+            ## Result
 
-        return sb.ToString();
+            <details>
+            <summary>Generated Expression</summary>
+
+            ```csharp
+            <!-- Please paste the generated expression output from the Playground -->
+            ```
+
+            </details>
+
+            <details>
+            <summary>Generated DTO Class</summary>
+
+            ```csharp
+            <!-- Please paste the generated dto output from the Playground -->
+            ```
+
+            ## Expected Behavior
+
+            <!-- What did you expect to happen? -->
+
+            ## Additional Context
+
+            <!-- Add any other context about the problem here -->
+
+            ## Playground Link
+
+            [Open in Playground]({shareableUrl})
+            """;
     }
 
     private static byte[] CompressString(string text)
