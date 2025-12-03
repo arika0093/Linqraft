@@ -894,6 +894,8 @@ public abstract record SelectExprInfo
     /// Converts any expression containing an anonymous type to use the generated DTO instead.
     /// This is a general approach that works for direct anonymous types, ternary operators,
     /// method calls, and any other expression structure.
+    /// Also handles:
+    /// - Collection expressions ([]) by converting them to Enumerable.Empty{T}()
     /// </summary>
     protected string ConvertExpressionWithAnonymousTypeToDto(
         ExpressionSyntax syntax,
@@ -933,6 +935,25 @@ public abstract record SelectExprInfo
 
         // Simple string replacement approach
         var convertedText = originalText.Replace(anonymousText, dtoCreation);
+
+        // Handle collection expressions (C# 12 collection literals like [])
+        // These need to be converted to Enumerable.Empty<T>() with the generated DTO type
+        var collectionExpressions = cleanSyntax
+            .DescendantNodesAndSelf()
+            .OfType<CollectionExpressionSyntax>()
+            .ToList();
+
+        foreach (var collectionExpr in collectionExpressions)
+        {
+            // Only handle empty collection expressions
+            if (collectionExpr.Elements.Count != 0)
+                continue;
+
+            // Replace [] with Enumerable.Empty<NestedDtoType>()
+            var original = collectionExpr.ToString();
+            var emptyExpression = $"global::System.Linq.Enumerable.Empty<{nestedDtoName}>()";
+            convertedText = convertedText.Replace(original, emptyExpression);
+        }
 
         return convertedText;
     }

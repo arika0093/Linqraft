@@ -252,8 +252,10 @@ public static class RoslynTypeHelper
             .DescendantNodesAndSelf()
             .OfType<InvocationExpressionSyntax>()
             .Any(inv =>
-                inv.Expression is MemberAccessExpressionSyntax ma
-                && ma.Name.Identifier.Text == "Select"
+                (inv.Expression is MemberAccessExpressionSyntax ma
+                    && ma.Name.Identifier.Text == "Select")
+                || (inv.Expression is MemberBindingExpressionSyntax mb
+                    && mb.Name.Identifier.Text == "Select")
             );
     }
 
@@ -271,8 +273,10 @@ public static class RoslynTypeHelper
             .DescendantNodesAndSelf()
             .OfType<InvocationExpressionSyntax>()
             .Any(inv =>
-                inv.Expression is MemberAccessExpressionSyntax ma
-                && ma.Name.Identifier.Text == "SelectMany"
+                (inv.Expression is MemberAccessExpressionSyntax ma
+                    && ma.Name.Identifier.Text == "SelectMany")
+                || (inv.Expression is MemberBindingExpressionSyntax mb
+                    && mb.Name.Identifier.Text == "SelectMany")
             );
     }
 
