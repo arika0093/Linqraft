@@ -503,6 +503,112 @@ public abstract record SelectExprInfo
             }
         }
 
+        // Find all invocation expressions with generic type arguments that need qualification
+        // This handles cases like: Enumerable.Empty<ItemChildDto>() -> global::System.Linq.Enumerable.Empty<global::Namespace.ItemChildDto>()
+        var invocations = syntax
+            .DescendantNodesAndSelf()
+            .OfType<InvocationExpressionSyntax>()
+            .ToList();
+
+        foreach (var invocation in invocations)
+        {
+            // Get the method symbol
+            var symbolInfo = SemanticModel.GetSymbolInfo(invocation);
+            if (symbolInfo.Symbol is not IMethodSymbol methodSymbol)
+                continue;
+
+            // Check if it's a static method (like Enumerable.Empty)
+            if (!methodSymbol.IsStatic)
+                continue;
+
+            // Get the expression that might need qualification
+            var expression = invocation.Expression;
+            if (expression is MemberAccessExpressionSyntax memberAccess)
+            {
+                // Check if the left side (e.g., "Enumerable") needs qualification
+                var containingType = methodSymbol.ContainingType;
+                if (containingType is null)
+                    continue;
+
+                // Build the fully qualified invocation
+                var fullTypeName = containingType.ToDisplayString(
+                    SymbolDisplayFormat.FullyQualifiedFormat
+                );
+                var methodName = methodSymbol.Name;
+
+                // Check for generic type arguments
+                if (
+                    memberAccess.Name is GenericNameSyntax genericName
+                    && methodSymbol.IsGenericMethod
+                )
+                {
+                    var typeArgs = new List<string>();
+                    foreach (var typeArg in methodSymbol.TypeArguments)
+                    {
+                        typeArgs.Add(
+                            typeArg.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat)
+                        );
+                    }
+                    var fullyQualifiedInvocation =
+                        $"{fullTypeName}.{methodName}<{string.Join(", ", typeArgs)}>";
+                    var original = memberAccess.ToString();
+
+                    // Only add replacement if not already fully qualified
+                    if (!original.StartsWith("global::"))
+                    {
+                        replacements.Add(
+                            (original, fullyQualifiedInvocation, memberAccess.SpanStart)
+                        );
+                    }
+                }
+                else
+                {
+                    // Non-generic static method
+                    var fullyQualifiedMethod = $"{fullTypeName}.{methodName}";
+                    var original = memberAccess.ToString();
+
+                    // Only add replacement if not already fully qualified
+                    if (!original.StartsWith("global::"))
+                    {
+                        replacements.Add((original, fullyQualifiedMethod, memberAccess.SpanStart));
+                    }
+                }
+            }
+        }
+
+        // Handle empty collection expressions (C# 12 collection literals like `[]`)
+        // These need to be converted to Enumerable.Empty<T>() with fully qualified names
+        var collectionExpressions = syntax
+            .DescendantNodesAndSelf()
+            .OfType<CollectionExpressionSyntax>()
+            .ToList();
+
+        foreach (var collectionExpr in collectionExpressions)
+        {
+            // Only handle empty collection expressions
+            if (collectionExpr.Elements.Count != 0)
+                continue;
+
+            // Get the type info for the collection expression
+            var typeInfo = SemanticModel.GetTypeInfo(collectionExpr);
+            if (typeInfo.ConvertedType is not INamedTypeSymbol targetType)
+                continue;
+
+            // Get the element type from the collection
+            var elementType = RoslynTypeHelper.GetGenericTypeArgument(targetType, 0);
+            if (elementType is null)
+                continue;
+
+            var fullyQualifiedElementType = elementType.ToDisplayString(
+                SymbolDisplayFormat.FullyQualifiedFormat
+            );
+            var emptyExpression =
+                $"global::System.Linq.Enumerable.Empty<{fullyQualifiedElementType}>()";
+            var original = collectionExpr.ToString();
+
+            replacements.Add((original, emptyExpression, collectionExpr.SpanStart));
+        }
+
         // Find all member access expressions that might need qualification (static/const/enum)
         var memberAccesses = syntax
             .DescendantNodesAndSelf()
@@ -1131,9 +1237,12 @@ public abstract record SelectExprInfo
     /// For List types, returns "new global::System.Collections.Generic.List&lt;T&gt;()" to match the expected type.
     /// For IEnumerable types, returns "global::System.Linq.Enumerable.Empty&lt;T&gt;()".
     /// </summary>
+    /// <param name="typeSymbol">The target type symbol.</param>
+    /// <param name="fullyQualifiedElementTypeName">The fully qualified element type name (must start with "global::").</param>
+    /// <param name="chainedMethods">The chained methods string to detect ToList/ToArray.</param>
     private static string GetEmptyCollectionExpression(
         ITypeSymbol? typeSymbol,
-        string elementTypeName,
+        string fullyQualifiedElementTypeName,
         string chainedMethods
     )
     {
@@ -1141,17 +1250,17 @@ public abstract record SelectExprInfo
         var isListType = IsListType(typeSymbol) || chainedMethods.Contains(".ToList()");
         if (isListType)
         {
-            return $"new global::System.Collections.Generic.List<{elementTypeName}>()";
+            return $"new global::System.Collections.Generic.List<{fullyQualifiedElementTypeName}>()";
         }
 
         // Check if the target type is an array (via ToArray())
         if (chainedMethods.Contains(".ToArray()"))
         {
-            return $"global::System.Array.Empty<{elementTypeName}>()";
+            return $"global::System.Array.Empty<{fullyQualifiedElementTypeName}>()";
         }
 
         // Default to Enumerable.Empty for IEnumerable<T> types
-        return $"global::System.Linq.Enumerable.Empty<{elementTypeName}>()";
+        return $"global::System.Linq.Enumerable.Empty<{fullyQualifiedElementTypeName}>()";
     }
 
     /// <summary>
