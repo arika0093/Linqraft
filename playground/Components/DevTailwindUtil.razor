@@ -2,8 +2,21 @@
 
 @code {
 #if DEBUG
-	private static RenderFragment? TAILWIND_CDN_FRAGMENT = @<script src="@TAILWIND_CDN_URL"></script>;
+	private static RenderFragment? TAILWIND_CDN_FRAGMENT = @<div>
+		<script src="@TAILWIND_CDN_URL"></script>
+		<style type="text/tailwindcss">
+			@@import url('@GOOGLE_FONTS_CDN_URL');
+			@@import "tailwindcss";
+
+			@@theme {
+				--font-sans: 'Montserrat', ui-sans-serif, system-ui, sans-serif, 'Apple Color Emoji', 'Segoe UI Emoji', 'Segoe UI Symbol', 'Noto Color Emoji';
+				--font-mono: 'JetBrains Mono', ui-monospace, 'Monaco', 'Consolas', 'Courier New', monospace;
+				--font-display: 'Orbitron', ui-sans-serif, sans-serif;
+			}
+		</style>
+	</div>;
 	private const string TAILWIND_CDN_URL = "https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4";
+	private const string GOOGLE_FONTS_CDN_URL = "https://fonts.googleapis.com/css2?family=JetBrains+Mono:ital,wght@0,100..800;1,100..800&family=Montserrat:ital,wght@0,100..900;1,100..900&family=Orbitron:wght@400..900&display=swap";
 #else
 	private static RenderFragment? TAILWIND_CDN_FRAGMENT = null;
 #endif
