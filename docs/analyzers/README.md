@@ -11,6 +11,7 @@
 | [LQRS004](./LQRS004.md) | TernaryNullCheckToConditionalAnalyzer | Suggest simplifying ternary null/object patterns |
 | [LQRS005](./LQRS005.md) | UnnecessaryCaptureAnalyzer | Capture variables that are not referenced in SelectExpr should be removed |
 | [LQRE001](./LQRE001.md) | LocalVariableCaptureAnalyzer | Reports missing `capture:` entries for `SelectExpr` selectors |
+| [LQRE002](./LQRE002.md) | GroupByAnonymousKeyAnalyzer | Reports anonymous type keys in `GroupBy` followed by `SelectExpr` |
 
 Basically, all analyzers come with code fixes that can be automatically applied to implement the suggested changes.
 This allows you to fix the above recommendations with a single click.
