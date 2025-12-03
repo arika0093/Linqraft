@@ -71,6 +71,7 @@ internal static class AnonymousToDtoCodeFixHelper
             ClassName = dtoClassName,
             Namespace = namespaceName,
             NestedClasses = [],
+            IsExplicitRootDto = true, // Code fix generated DTOs are user-requested, not auto-generated
         };
 
         // Generate configuration (use None for comment output since these are not SelectExpr DTOs)
