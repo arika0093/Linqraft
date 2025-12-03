@@ -123,10 +123,22 @@ class Test
         var test =
             @"
 using MyApp.Generated_AB;
+using MyApp.Generated_ABCD;
+using MyApp.Generated_ABCD123;
 
 namespace MyApp.Generated_AB
 {
-    public class Dto { }
+    public class Dto1 { }
+}
+
+namespace MyApp.Generated_ABCD
+{
+    public class Dto2 { }
+}
+
+namespace MyApp.Generated_ABCD123
+{
+    public class Dto3 { }
 }
 
 class Test
@@ -136,7 +148,7 @@ class Test
     }
 }";
 
-        // Hash must be at least 4 characters to trigger the diagnostic
+        // Hash must be at least 8 characters to trigger the diagnostic
         await VerifyCS.VerifyAnalyzerAsync(test);
     }
 

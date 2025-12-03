@@ -17,11 +17,11 @@ public class GeneratedHashedNamespaceUsageAnalyzer : BaseLinqraftAnalyzer
     public const string AnalyzerId = "LQRW001";
 
     /// <summary>
-    /// Pattern to match Generated_XXXXX where XXXXX is an alphanumeric hash (at least 4 characters).
+    /// Pattern to match Generated_XXXXXXXX where XXXXXXXX is an alphanumeric hash (at least 8 characters).
     /// This matches the format used when LinqraftNestedDtoUseHashNamespace is enabled.
     /// </summary>
     private static readonly Regex GeneratedHashPattern = new(
-        @"Generated_[A-Z0-9]{4,}",
+        @"Generated_[A-Z0-9]{8,}",
         RegexOptions.Compiled
     );
 
