@@ -18,4 +18,14 @@
       <ReferenceOutputAssembly>true</ReferenceOutputAssembly>
     </ProjectReference>
   </ItemGroup>
+  <ItemGroup>
+    <CompilerVisibleProperty Include="RootNamespace" />
+    <CompilerVisibleProperty Include="LinqraftGlobalNamespace" />
+    <CompilerVisibleProperty Include="LinqraftRecordGenerate" />
+    <CompilerVisibleProperty Include="LinqraftPropertyAccessor" />
+    <CompilerVisibleProperty Include="LinqraftHasRequired" />
+    <CompilerVisibleProperty Include="LinqraftCommentOutput" />
+    <CompilerVisibleProperty Include="LinqraftArrayNullabilityRemoval" />
+    <CompilerVisibleProperty Include="LinqraftNestedDtoUseHashNamespace" />
+  </ItemGroup>
 </Project>
