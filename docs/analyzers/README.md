@@ -15,7 +15,7 @@
 | [LQRE001](./LQRE001.md) | LocalVariableCaptureAnalyzer | Reports missing `capture:` entries for `SelectExpr` selectors | Error | ✅️ |
 | [LQRE002](./LQRE002.md) | GroupByAnonymousKeyAnalyzer | Reports anonymous type keys in `GroupBy` followed by `SelectExpr` | Error | ✅️ |
 
-Basically, all analyzers come with code fixes that can be automatically applied to implement the suggested changes.
+Basically, analyzers come with code fixes that can be automatically applied to implement the suggested changes.
 This allows you to fix the above recommendations with a single click.
 
 ## Prefixes
