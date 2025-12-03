@@ -128,8 +128,7 @@ public class AnonymousTypeToDtoCodeFixProvider : CodeFixProvider
         };
         allDtoClasses.Add(dtoClassInfo);
 
-        // Generate configuration (use None for comment output since these are not SelectExpr DTOs)
-        var configuration = new LinqraftConfiguration { CommentOutput = CommentOutputMode.None };
+        var configuration = AnonymousToDtoCodeFixHelper.GetAnonymousToDtoConfiguration();
 
         // Replace anonymous object with DTO instantiation
         var newRoot = ReplaceAnonymousWithDtoSync(
@@ -252,8 +251,8 @@ public class AnonymousTypeToDtoCodeFixProvider : CodeFixProvider
             IsExplicitRootDto = true, // Code fix generated DTOs are user-requested, not auto-generated
         };
 
-        // Generate configuration (use None for comment output since these are not SelectExpr DTOs)
-        var configuration = new LinqraftConfiguration { CommentOutput = CommentOutputMode.None };
+        // Generate configuration
+        var configuration = AnonymousToDtoCodeFixHelper.GetAnonymousToDtoConfiguration();
 
         // Build DTO code
         var dtoCode = BuildDtoFile(dtoClassInfo, nestedDtoClasses, configuration);
