@@ -287,4 +287,102 @@ class Test
 
         await VerifyCS.VerifyAnalyzerAsync(test, expected);
     }
+
+    [Fact]
+    public async Task GroupByWithAnonymousKeyFollowedByPredefinedSelectExpr_ReportsDiagnostic()
+    {
+        var test =
+            $@"
+using System.Linq;
+using System.Collections.Generic;
+
+class Entity
+{{
+    public int CategoryId {{ get; set; }}
+    public string CategoryType {{ get; set; }}
+}}
+
+class GroupResultDto
+{{
+    public int CategoryId {{ get; set; }}
+    public string CategoryType {{ get; set; }}
+    public int Count {{ get; set; }}
+}}
+
+class Test
+{{
+    void Method()
+    {{
+        var entities = new List<Entity>().AsQueryable();
+        var result = entities
+            .GroupBy(e => {{|#0:new {{ e.CategoryId, e.CategoryType }}|}})
+            .SelectExpr(g => new GroupResultDto
+            {{
+                CategoryId = g.Key.CategoryId,
+                CategoryType = g.Key.CategoryType,
+                Count = g.Count(),
+            }})
+            .ToList();
+    }}
+}}
+
+{TestSourceCodes.SelectExprWithExpression}";
+
+        var expected = VerifyCS
+            .Diagnostic(GroupByAnonymousKeyAnalyzer.AnalyzerId)
+            .WithLocation(0)
+            .WithSeverity(DiagnosticSeverity.Error);
+
+        await VerifyCS.VerifyAnalyzerAsync(test, expected);
+    }
+
+    [Fact]
+    public async Task GroupByWithNamedKeyFollowedByPredefinedSelectExpr_NoDiagnostic()
+    {
+        var test =
+            $@"
+using System.Linq;
+using System.Collections.Generic;
+
+class Entity
+{{
+    public int CategoryId {{ get; set; }}
+    public string CategoryType {{ get; set; }}
+}}
+
+class EntityGroupKey
+{{
+    public int CategoryId {{ get; set; }}
+    public string CategoryType {{ get; set; }}
+}}
+
+class GroupResultDto
+{{
+    public int CategoryId {{ get; set; }}
+    public string CategoryType {{ get; set; }}
+    public int Count {{ get; set; }}
+}}
+
+class Test
+{{
+    void Method()
+    {{
+        var entities = new List<Entity>().AsQueryable();
+        var result = entities
+            .GroupBy(e => new EntityGroupKey {{ CategoryId = e.CategoryId, CategoryType = e.CategoryType }})
+            .SelectExpr(g => new GroupResultDto
+            {{
+                CategoryId = g.Key.CategoryId,
+                CategoryType = g.Key.CategoryType,
+                Count = g.Count(),
+            }})
+            .ToList();
+    }}
+}}
+
+{TestSourceCodes.SelectExprWithExpression}";
+
+        // No diagnostic because a named type is used as the key
+        await VerifyCS.VerifyAnalyzerAsync(test);
+    }
 }
