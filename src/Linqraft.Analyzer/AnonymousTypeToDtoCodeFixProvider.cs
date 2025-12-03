@@ -128,8 +128,14 @@ public class AnonymousTypeToDtoCodeFixProvider : CodeFixProvider
         };
         allDtoClasses.Add(dtoClassInfo);
 
-        // Generate configuration (use None for comment output since these are not SelectExpr DTOs)
-        var configuration = new LinqraftConfiguration { CommentOutput = CommentOutputMode.None };
+        // Generate configuration
+        // * disable NestedDtoUseHashNamespace to keep nested DTOs in the same namespace
+        // * use None for comment output since these are not SelectExpr DTOs
+        var configuration = new LinqraftConfiguration
+        {
+            NestedDtoUseHashNamespace = false,
+            CommentOutput = CommentOutputMode.None,
+        };
 
         // Replace anonymous object with DTO instantiation
         var newRoot = ReplaceAnonymousWithDtoSync(
