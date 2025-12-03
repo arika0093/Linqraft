@@ -315,6 +315,18 @@ public abstract record SelectExprInfo
             // Fallback: return the original expression
             return expression;
         }
+
+        // If object creation expression, convert type names to fully qualified names.
+        // This must be checked BEFORE the nullable/conditional access check because:
+        // When we have: new SomeDto { Test = i?.Title }
+        // The object creation contains conditional access inside its initializer,
+        // but we should NOT wrap the entire object creation in a null check.
+        // Instead, the internal expressions will be handled when converting the initializer.
+        if (syntax is ObjectCreationExpressionSyntax objectCreation)
+        {
+            return ConvertObjectCreationToFullyQualified(objectCreation);
+        }
+
         // If nullable operator is used, convert to explicit null check
         // This also applies to collection types with Select/SelectMany that are now non-nullable
         // but still need the null-conditional access converted to explicit null check with empty collection fallback
@@ -440,12 +452,6 @@ public abstract record SelectExprInfo
                     }
                 }
             }
-        }
-
-        // if object creation expression, convert type names to fully qualified names
-        if (syntax is ObjectCreationExpressionSyntax objectCreation)
-        {
-            return ConvertObjectCreationToFullyQualified(objectCreation);
         }
 
         // For any other expression (including invocations like FirstOrDefault, Where, etc.),
@@ -1858,7 +1864,8 @@ public abstract record SelectExprInfo
     }
 
     /// <summary>
-    /// Converts an expression to use fully qualified type names for any object creations
+    /// Converts an expression to use fully qualified type names for any object creations.
+    /// Also handles null-conditional operators by converting them to explicit null checks.
     /// </summary>
     protected string ConvertExpressionToFullyQualified(ExpressionSyntax expression)
     {
@@ -1868,8 +1875,25 @@ public abstract record SelectExprInfo
             return ConvertObjectCreationToFullyQualified(nestedObjectCreation);
         }
 
+        // Check if the expression contains null-conditional access (e.g., i?.Title)
+        // Convert to explicit null check: i != null ? i.Title : null
+        var hasConditionalAccess = expression
+            .DescendantNodesAndSelf()
+            .OfType<ConditionalAccessExpressionSyntax>()
+            .Any();
+
+        if (hasConditionalAccess)
+        {
+            // Get the type of the expression
+            var typeInfo = SemanticModel.GetTypeInfo(expression);
+            var typeSymbol = typeInfo.Type ?? typeInfo.ConvertedType;
+            if (typeSymbol != null)
+            {
+                return ConvertNullableAccessToExplicitCheckWithRoslyn(expression, typeSymbol);
+            }
+        }
+
         // For other expression types, return as-is
-        // This could be extended to handle nested expressions like method calls, etc.
         return expression.ToString();
     }
 }
