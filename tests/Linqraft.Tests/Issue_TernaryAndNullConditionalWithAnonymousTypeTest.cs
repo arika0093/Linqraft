@@ -11,7 +11,7 @@ namespace Linqraft.Tests;
 /// 3. Combined null-conditional with null-coalescing
 ///
 /// Expected behavior:
-/// - [] should be replaced with global::System.Linq.Enumerable.Empty&lt;GeneratedDtoType&gt;()
+/// - [] should be replaced with global::System.Linq.Enumerable.Empty{T}()
 /// - ?. should be converted to explicit null check
 /// </summary>
 public class Issue_TernaryAndNullConditionalWithAnonymousTypeTest
@@ -44,7 +44,7 @@ public class Issue_TernaryAndNullConditionalWithAnonymousTypeTest
     /// <summary>
     /// Pattern 1: Ternary with Select and empty array literal []
     /// x.Items != null ? x.Items.Select(i => new { i.Title }) : []
-    /// Expected: Replace [] with Enumerable.Empty&lt;T&gt;()
+    /// Expected: Replace [] with Enumerable.Empty{T}()
     /// </summary>
     [Fact]
     public void TernaryWithSelect_EmptyArrayLiteral_ShouldGenerateEnumerableEmpty()
@@ -76,7 +76,7 @@ public class Issue_TernaryAndNullConditionalWithAnonymousTypeTest
     /// <summary>
     /// Pattern 2: Null-conditional Select with null-coalescing []
     /// x.Items?.Select(i => new { i.Title }) ?? []
-    /// Expected: Convert ?. to explicit null check, replace [] with Enumerable.Empty&lt;T&gt;()
+    /// Expected: Convert ?. to explicit null check, replace [] with Enumerable.Empty{T}()
     /// </summary>
     [Fact]
     public void NullConditionalSelect_WithNullCoalescing_ShouldGenerateExplicitNullCheck()

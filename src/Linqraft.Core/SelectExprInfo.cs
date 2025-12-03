@@ -895,7 +895,7 @@ public abstract record SelectExprInfo
     /// This is a general approach that works for direct anonymous types, ternary operators,
     /// method calls, and any other expression structure.
     /// Also handles:
-    /// - Collection expressions ([]) by converting them to Enumerable.Empty&lt;T&gt;()
+    /// - Collection expressions ([]) by converting them to Enumerable.Empty{T}()
     /// </summary>
     protected string ConvertExpressionWithAnonymousTypeToDto(
         ExpressionSyntax syntax,
