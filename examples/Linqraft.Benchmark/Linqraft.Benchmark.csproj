@@ -8,5 +8,13 @@
   <ItemGroup>
     <PackageReference Include="BenchmarkDotNet" Version="*" />
     <PackageReference Include="Microsoft.EntityFrameworkCore.Sqlite" Version="10.*" />
+    <PackageReference Include="Microsoft.Extensions.Logging.Abstractions" Version="10.*" />
+    <!-- Mapping libraries for benchmark comparison -->
+    <PackageReference Include="AutoMapper" Version="15.*" />
+    <PackageReference Include="AutoMapper.Extensions.ExpressionMapping" Version="9.*" />
+    <PackageReference Include="Mapster" Version="7.*" />
+    <PackageReference Include="Riok.Mapperly" Version="4.*" />
+    <PackageReference Include="Facet" Version="3.*" />
+    <PackageReference Include="Facet.Extensions.EFCore" Version="3.*" />
   </ItemGroup>
 </Project>

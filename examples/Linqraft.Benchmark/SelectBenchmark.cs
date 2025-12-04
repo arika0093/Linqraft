@@ -1,5 +1,9 @@
+using AutoMapper;
+using AutoMapper.QueryableExtensions;
 using BenchmarkDotNet.Attributes;
 using BenchmarkDotNet.Order;
+using Facet.Extensions.EFCore;
+using Mapster;
 using Microsoft.EntityFrameworkCore;
 
 namespace Linqraft.Benchmark;
@@ -10,11 +14,16 @@ namespace Linqraft.Benchmark;
 public class SelectBenchmark
 {
     private BenchmarkDbContext _dbContext = null!;
+    private IConfigurationProvider _autoMapperConfig = null!;
     private const int DataCount = 100;
 
     [GlobalSetup]
     public async Task Setup()
     {
+        // Configure mapping libraries
+        _autoMapperConfig = AutoMapperConfig.Configuration;
+        MapsterConfig.Configure();
+
         var options = new DbContextOptionsBuilder<BenchmarkDbContext>()
             .UseSqlite("Data Source=benchmark.db")
             .Options;
@@ -222,6 +231,57 @@ public class SelectBenchmark
                 Child3ChildGrault = s.Child3?.Child?.Grault,
             })
             .ToListAsync();
+        return results.Count;
+    }
+
+    // ============================================================
+    // Pattern 6: AutoMapper with ProjectTo
+    // (Using AutoMapper's IQueryable projection)
+    // ============================================================
+    [Benchmark(Description = "AutoMapper ProjectTo")]
+    public async Task<int> AutoMapper_ProjectTo()
+    {
+        var results = await _dbContext
+            .SampleClasses.ProjectTo<ManualSampleClassDto>(_autoMapperConfig)
+            .ToListAsync();
+        return results.Count;
+    }
+
+    // ============================================================
+    // Pattern 7: Mapperly with IQueryable Projection
+    // (Using Mapperly's source-generated projection)
+    // ============================================================
+    [Benchmark(Description = "Mapperly Projection")]
+    public async Task<int> Mapperly_Projection()
+    {
+        var results = await _dbContext
+            .SampleClasses.ProjectToDto()
+            .ToListAsync();
+        return results.Count;
+    }
+
+    // ============================================================
+    // Pattern 8: Mapster with ProjectToType
+    // (Using Mapster's IQueryable projection)
+    // ============================================================
+    [Benchmark(Description = "Mapster ProjectToType")]
+    public async Task<int> Mapster_ProjectToType()
+    {
+        var results = await _dbContext
+            .SampleClasses.ProjectToType<ManualSampleClassDto>()
+            .ToListAsync();
+        return results.Count;
+    }
+
+    // ============================================================
+    // Pattern 9: Facet with EF Core Extension
+    // (Using Facet's source-generated DTO projection)
+    // ============================================================
+    [Benchmark(Description = "Facet ToFacetsAsync")]
+    public async Task<int> Facet_ToFacetsAsync()
+    {
+        var results = await _dbContext
+            .SampleClasses.ToFacetsAsync<FacetSampleClassDto>();
         return results.Count;
     }
 }
