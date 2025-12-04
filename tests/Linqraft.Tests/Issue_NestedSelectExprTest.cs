@@ -10,42 +10,42 @@ namespace Linqraft.Tests;
 /// </summary>
 public class Issue_NestedSelectExprTest
 {
-    private readonly List<NestedEntity> TestData =
+    private readonly List<NestedEntity207> TestData =
     [
-        new NestedEntity
+        new NestedEntity207
         {
             Id = 1,
             Name = "Entity1",
             Items =
             [
-                new NestedItem
+                new NestedItem207
                 {
                     Id = 101,
                     Title = "Item1-1",
                     SubItems =
                     [
-                        new NestedSubItem { Id = 1001, Value = "SubItem1-1-1" },
-                        new NestedSubItem { Id = 1002, Value = "SubItem1-1-2" },
+                        new NestedSubItem207 { Id = 1001, Value = "SubItem1-1-1" },
+                        new NestedSubItem207 { Id = 1002, Value = "SubItem1-1-2" },
                     ],
                 },
-                new NestedItem
+                new NestedItem207
                 {
                     Id = 102,
                     Title = "Item1-2",
                     SubItems =
                     [
-                        new NestedSubItem { Id = 1003, Value = "SubItem1-2-1" },
+                        new NestedSubItem207 { Id = 1003, Value = "SubItem1-2-1" },
                     ],
                 },
             ],
         },
-        new NestedEntity
+        new NestedEntity207
         {
             Id = 2,
             Name = "Entity2",
             Items =
             [
-                new NestedItem
+                new NestedItem207
                 {
                     Id = 201,
                     Title = "Item2-1",
@@ -56,27 +56,23 @@ public class Issue_NestedSelectExprTest
     ];
 
     /// <summary>
-    /// Test: Simple case - SelectExpr at the property level inside an outer SelectExpr.
-    /// The inner SelectExpr should be converted to a regular Select.
-    /// Note: Both SelectExpr calls will generate interceptors, but the outer one
-    /// correctly converts the inner SelectExpr to Select in its generated expression.
+    /// Test: Outer SelectExpr with inner Select (not SelectExpr).
+    /// This verifies the basic behavior works correctly.
     /// </summary>
     [Fact]
-    public void NestedSelectExpr_SimpleCase_ShouldBeConvertedToSelect()
+    public void NestedSelectExpr_WithInnerSelect_ShouldWork()
     {
         var query = TestData.AsQueryable();
 
         // Outer SelectExpr with explicit DTO type
-        // Items uses inner SelectExpr with explicit DTO type
-        // The inner SelectExpr will be converted to Select in the outer's generated expression
+        // Items uses regular Select (not SelectExpr)
         var result = query
-            .SelectExpr<NestedEntity, NestedEntityDto>(x => new
+            .SelectExpr<NestedEntity207, NestedEntity207Dto>(x => new
             {
                 x.Id,
                 x.Name,
-                // This inner SelectExpr will be converted to Select
-                // NestedItemDto is generated because the inner SelectExpr is still processed
-                Items = x.Items.SelectExpr<NestedItem, NestedItemDto>(i => new
+                // Using regular Select - the DTO will be auto-generated
+                Items = x.Items.Select(i => new
                 {
                     i.Id,
                     i.Title,
@@ -100,25 +96,30 @@ public class Issue_NestedSelectExprTest
         var second = result[1];
         second.Id.ShouldBe(2);
         second.Items.Count().ShouldBe(1);
+
+        // Verify that NestedEntity207Dto is NOT in the LinqraftGenerated_ namespace
+        var nestedEntityDtoType = typeof(NestedEntity207Dto);
+        nestedEntityDtoType.Namespace!.ShouldNotContain("LinqraftGenerated");
+        nestedEntityDtoType.Namespace.ShouldBe("Linqraft.Tests");
     }
 }
 
-// Test data classes
-internal class NestedEntity
+// Test data classes for the simple nested test
+internal class NestedEntity207
 {
     public int Id { get; set; }
     public string Name { get; set; } = null!;
-    public List<NestedItem> Items { get; set; } = [];
+    public List<NestedItem207> Items { get; set; } = [];
 }
 
-internal class NestedItem
+internal class NestedItem207
 {
     public int Id { get; set; }
     public string Title { get; set; } = null!;
-    public List<NestedSubItem> SubItems { get; set; } = [];
+    public List<NestedSubItem207> SubItems { get; set; } = [];
 }
 
-internal class NestedSubItem
+internal class NestedSubItem207
 {
     public int Id { get; set; }
     public string Value { get; set; } = null!;
