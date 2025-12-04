@@ -1014,12 +1014,6 @@ public abstract record SelectExprInfo
         int indents
     )
     {
-        var nestedStructure = property.NestedStructure!;
-        var spaces = CodeFormatter.IndentSpaces(indents);
-        var innerSpaces = CodeFormatter.IndentSpaces(indents + CodeFormatter.IndentSize);
-        // For anonymous types (empty class name), GetNestedDtoFullNameFromStructure returns empty string
-        var nestedDtoName = GetNestedDtoFullNameFromStructure(nestedStructure);
-
         // Use Roslyn to extract Select information
         var selectInfo = ExtractSelectInfoFromSyntax(syntax);
         if (selectInfo is null)
@@ -1028,115 +1022,8 @@ public abstract record SelectExprInfo
             return syntax.ToString();
         }
 
-        var (
-            baseExpression,
-            paramName,
-            chainedMethods,
-            hasNullableAccess,
-            coalescingDefaultValue,
-            nullCheckExpression
-        ) = selectInfo.Value;
-
-        // Normalize baseExpression: remove unnecessary whitespace and newlines
-        baseExpression = System.Text.RegularExpressions.Regex.Replace(
-            baseExpression.Trim(),
-            @"\s+",
-            " "
-        );
-        // Remove spaces around dots (property access)
-        baseExpression = System.Text.RegularExpressions.Regex.Replace(
-            baseExpression,
-            @"\s*\.\s*",
-            "."
-        );
-
-        // Normalize nullCheckExpression if present
-        if (nullCheckExpression is not null)
-        {
-            nullCheckExpression = System.Text.RegularExpressions.Regex.Replace(
-                nullCheckExpression.Trim(),
-                @"\s+",
-                " "
-            );
-            nullCheckExpression = System.Text.RegularExpressions.Regex.Replace(
-                nullCheckExpression,
-                @"\s*\.\s*",
-                "."
-            );
-        }
-
-        // Generate property assignments for nested DTO with proper formatting
-        // Properties should be indented two levels from the base (one for Select block, one for properties)
-        var propertyIndentSpaces = CodeFormatter.IndentSpaces(
-            indents + CodeFormatter.IndentSize * 2
-        );
-        var propertyAssignments = new List<string>();
-        foreach (var prop in nestedStructure.Properties)
-        {
-            var assignment = GeneratePropertyAssignment(
-                prop,
-                indents + CodeFormatter.IndentSize * 2
-            );
-            propertyAssignments.Add($"{propertyIndentSpaces}{prop.Name} = {assignment}");
-        }
-        var propertiesCode = string.Join($",{CodeFormatter.DefaultNewLine}", propertyAssignments);
-
-        // Format chained methods with proper indentation (one level from base)
-        var formattedChainedMethods = FormatChainedMethods(chainedMethods, innerSpaces);
-
-        // Build the Select expression with proper formatting
-        // The .Select, {, }, and chained methods should all be indented one level from the property assignment
-        if (hasNullableAccess)
-        {
-            // Use nullCheckExpression for the null check (defaults to baseExpression if not provided)
-            var checkExpr = nullCheckExpression ?? baseExpression;
-
-            // Determine default value based on the expression's type
-            // If it's a collection type, use empty enumerable/list; otherwise use null
-            string defaultValue;
-            if (coalescingDefaultValue is not null)
-            {
-                defaultValue = coalescingDefaultValue;
-            }
-            else if (
-                string.IsNullOrEmpty(nestedDtoName)
-                || !RoslynTypeHelper.IsCollectionType(property.TypeSymbol)
-            )
-            {
-                // For single element results or anonymous types, default is null
-                defaultValue = "null";
-            }
-            else
-            {
-                // For collections, determine the appropriate empty collection type
-                // Check if the result type is a List<T> (chained with ToList())
-                defaultValue = GetEmptyCollectionExpression(
-                    property.TypeSymbol,
-                    nestedDtoName,
-                    chainedMethods
-                );
-            }
-
-            var code = $$"""
-                {{checkExpr}} != null ? {{baseExpression}}
-                {{innerSpaces}}.Select({{paramName}} => new {{nestedDtoName}}
-                {{innerSpaces}}{
-                {{propertiesCode}}
-                {{innerSpaces}}}){{formattedChainedMethods}} : {{defaultValue}}
-                """;
-            return code;
-        }
-        else
-        {
-            var code = $$"""
-                {{baseExpression}}
-                {{innerSpaces}}.Select({{paramName}} => new {{nestedDtoName}}
-                {{innerSpaces}}{
-                {{propertiesCode}}
-                {{innerSpaces}}}){{formattedChainedMethods}}
-                """;
-            return code;
-        }
+        // Use shared helper for Select expression generation
+        return GenerateSelectExpression(property, indents, selectInfo.Value);
     }
 
     /// <summary>
@@ -1276,11 +1163,6 @@ public abstract record SelectExprInfo
         int indents
     )
     {
-        var nestedStructure = property.NestedStructure!;
-        var spaces = CodeFormatter.IndentSpaces(indents);
-        var innerSpaces = CodeFormatter.IndentSpaces(indents + CodeFormatter.IndentSize);
-        var nestedDtoName = GetNestedDtoFullNameFromStructure(nestedStructure);
-
         // Use Roslyn to extract SelectExpr information (treat it like Select)
         var selectExprInfo = ExtractSelectExprInfoFromSyntax(syntax);
         if (selectExprInfo is null)
@@ -1289,6 +1171,24 @@ public abstract record SelectExprInfo
             return syntax.ToString();
         }
 
+        // Reuse the common conversion logic (SelectExpr -> Select conversion uses same format)
+        return GenerateSelectExpression(property, indents, selectExprInfo.Value);
+    }
+
+    /// <summary>
+    /// Generates the Select expression code from extracted LINQ invocation info.
+    /// This is shared between ConvertNestedSelectWithRoslyn and ConvertNestedSelectExprWithRoslyn.
+    /// </summary>
+    private string GenerateSelectExpression(
+        DtoProperty property,
+        int indents,
+        (string baseExpression, string paramName, string chainedMethods, bool hasNullableAccess, string? coalescingDefaultValue, string? nullCheckExpression) info
+    )
+    {
+        var nestedStructure = property.NestedStructure!;
+        var innerSpaces = CodeFormatter.IndentSpaces(indents + CodeFormatter.IndentSize);
+        var nestedDtoName = GetNestedDtoFullNameFromStructure(nestedStructure);
+
         var (
             baseExpression,
             paramName,
@@ -1296,7 +1196,7 @@ public abstract record SelectExprInfo
             hasNullableAccess,
             coalescingDefaultValue,
             nullCheckExpression
-        ) = selectExprInfo.Value;
+        ) = info;
 
         // Normalize baseExpression: remove unnecessary whitespace and newlines
         baseExpression = System.Text.RegularExpressions.Regex.Replace(
@@ -1344,7 +1244,7 @@ public abstract record SelectExprInfo
         // Format chained methods with proper indentation
         var formattedChainedMethods = FormatChainedMethods(chainedMethods, innerSpaces);
 
-        // Build the Select expression (converting SelectExpr to Select)
+        // Build the Select expression
         if (hasNullableAccess)
         {
             var checkExpr = nullCheckExpression ?? baseExpression;

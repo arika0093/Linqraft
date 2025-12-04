@@ -58,6 +58,8 @@ public class Issue_NestedSelectExprTest
     /// <summary>
     /// Test: Simple case - SelectExpr at the property level inside an outer SelectExpr.
     /// The inner SelectExpr should be converted to a regular Select.
+    /// Note: Both SelectExpr calls will generate interceptors, but the outer one
+    /// correctly converts the inner SelectExpr to Select in its generated expression.
     /// </summary>
     [Fact]
     public void NestedSelectExpr_SimpleCase_ShouldBeConvertedToSelect()
@@ -65,13 +67,15 @@ public class Issue_NestedSelectExprTest
         var query = TestData.AsQueryable();
 
         // Outer SelectExpr with explicit DTO type
-        // Items uses inner SelectExpr (should be converted to Select)
+        // Items uses inner SelectExpr with explicit DTO type
+        // The inner SelectExpr will be converted to Select in the outer's generated expression
         var result = query
             .SelectExpr<NestedEntity, NestedEntityDto>(x => new
             {
                 x.Id,
                 x.Name,
-                // This inner SelectExpr should be converted to Select
+                // This inner SelectExpr will be converted to Select
+                // NestedItemDto is generated because the inner SelectExpr is still processed
                 Items = x.Items.SelectExpr<NestedItem, NestedItemDto>(i => new
                 {
                     i.Id,
