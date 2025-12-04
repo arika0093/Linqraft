@@ -30,6 +30,8 @@ public static partial class MapperlyMapper
     /// <summary>
     /// Maps a single SampleChildClass to ManualSampleChildDto.
     /// </summary>
+    [MapperIgnoreSource(nameof(SampleChildClass.SampleClassId))]
+    [MapperIgnoreSource(nameof(SampleChildClass.SampleClass))]
     [MapProperty(nameof(SampleChildClass.Child) + "." + nameof(SampleChildChildClass.Id), nameof(ManualSampleChildDto.ChildId))]
     [MapProperty(nameof(SampleChildClass.Child) + "." + nameof(SampleChildChildClass.Qux), nameof(ManualSampleChildDto.ChildQux))]
     private static partial ManualSampleChildDto MapSampleChild(SampleChildClass source);
