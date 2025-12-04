@@ -98,3 +98,26 @@ jobs:
         
       - name: Publish Nuget Package
         run: dotnet nuget push ./artifacts/*.nupkg --source https://api.nuget.org/v3/index.json --api-key ${{steps.login.outputs.NUGET_API_KEY}}
+
+  generate-changelog:
+    runs-on: ubuntu-latest
+    needs: package-build
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+        
+      - name: Generate a changelog
+        uses: orhun/git-cliff-action@v4
+        with:
+          config: .github/git-cliff.toml
+          args: --verbose
+        env:
+          OUTPUT: CHANGELOG.md
+          GITHUB_REPO: ${{ github.repository }}
+
+      - name: Commit and Push changelog
+        uses: stefanzweifel/git-auto-commit-action@v4
+        with:
+          commit_message: "chore: update changelog for release ${{ needs.package-build.outputs.version }}"
+          file_pattern: CHANGELOG.md
