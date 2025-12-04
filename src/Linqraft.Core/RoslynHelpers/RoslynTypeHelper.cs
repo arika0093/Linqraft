@@ -281,6 +281,50 @@ public static class RoslynTypeHelper
     }
 
     /// <summary>
+    /// Determines whether an expression contains a SelectExpr method invocation.
+    /// </summary>
+    /// <param name="expression">The expression to check</param>
+    /// <returns>True if the expression contains a SelectExpr method invocation</returns>
+    public static bool ContainsSelectExprInvocation(ExpressionSyntax expression)
+    {
+        if (expression == null)
+            return false;
+
+        return expression
+            .DescendantNodesAndSelf()
+            .OfType<InvocationExpressionSyntax>()
+            .Any(inv =>
+                (inv.Expression is MemberAccessExpressionSyntax ma
+                    && ma.Name.Identifier.Text == "SelectExpr")
+                || (inv.Expression is MemberBindingExpressionSyntax mb
+                    && mb.Name.Identifier.Text == "SelectExpr")
+            );
+    }
+
+    /// <summary>
+    /// Finds all SelectExpr invocations in an expression.
+    /// </summary>
+    /// <param name="expression">The expression to search</param>
+    /// <returns>All SelectExpr invocations found</returns>
+    public static System.Collections.Generic.IEnumerable<InvocationExpressionSyntax> FindSelectExprInvocations(
+        ExpressionSyntax expression
+    )
+    {
+        if (expression == null)
+            return System.Linq.Enumerable.Empty<InvocationExpressionSyntax>();
+
+        return expression
+            .DescendantNodesAndSelf()
+            .OfType<InvocationExpressionSyntax>()
+            .Where(inv =>
+                (inv.Expression is MemberAccessExpressionSyntax ma
+                    && ma.Name.Identifier.Text == "SelectExpr")
+                || (inv.Expression is MemberBindingExpressionSyntax mb
+                    && mb.Name.Identifier.Text == "SelectExpr")
+            );
+    }
+
+    /// <summary>
     /// Determines whether a type is generic based on the type name string (legacy - for backwards compatibility).
     /// Use INamedTypeSymbol.IsGenericType when possible.
     /// </summary>

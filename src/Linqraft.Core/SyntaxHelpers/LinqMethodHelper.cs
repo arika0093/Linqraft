@@ -98,6 +98,26 @@ public static class LinqMethodHelper
     }
 
     /// <summary>
+    /// Checks if an expression contains a SelectExpr invocation
+    /// </summary>
+    /// <param name="expression">The expression to check</param>
+    /// <returns>True if the expression contains a SelectExpr invocation</returns>
+    public static bool IsSelectExprInvocation(ExpressionSyntax expression)
+    {
+        return FindLinqMethodInvocation(expression, "SelectExpr") is not null;
+    }
+
+    /// <summary>
+    /// Finds a SelectExpr invocation in an expression
+    /// </summary>
+    /// <param name="expression">The expression to search</param>
+    /// <returns>The invocation expression, or null if not found</returns>
+    public static InvocationExpressionSyntax? FindSelectExprInvocation(ExpressionSyntax expression)
+    {
+        return FindLinqMethodInvocation(expression, "SelectExpr");
+    }
+
+    /// <summary>
     /// Information about a LINQ invocation
     /// </summary>
     public record LinqInvocationInfo(

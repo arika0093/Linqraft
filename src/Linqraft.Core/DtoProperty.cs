@@ -140,9 +140,65 @@ public record DtoProperty(
             isNullable = true;
         }
 
-        // Detect nested Select (e.g., s.Childs.Select(...) or s.Childs.Select(...).ToList())
+        // Detect nested SelectExpr first (e.g., s.Childs.SelectExpr<Item, ItemDto>(...) or nested SelectExpr calls)
+        // When SelectExpr is used inside another SelectExpr, it should be treated like Select for structure analysis
         DtoStructure? nestedStructure = null;
         bool isNestedFromNamedType = false;
+        var selectExprInvocation = FindSelectExprInvocation(expression);
+        if (selectExprInvocation is not null && selectExprInvocation.ArgumentList.Arguments.Count > 0)
+        {
+            var lambdaArg = selectExprInvocation.ArgumentList.Arguments[0].Expression;
+            if (lambdaArg is LambdaExpressionSyntax nestedLambda)
+            {
+                // Get collection element type from the SelectExpr's source
+                ITypeSymbol? collectionType = null;
+
+                if (selectExprInvocation.Expression is MemberAccessExpressionSyntax selectExprMemberAccess)
+                {
+                    // For generic SelectExpr<TIn, TResult>, get the base expression before the .SelectExpr call
+                    var baseExpr = selectExprMemberAccess.Expression;
+                    collectionType = semanticModel.GetTypeInfo(baseExpr).Type;
+                }
+
+                if (
+                    collectionType is INamedTypeSymbol namedCollectionType
+                    && namedCollectionType.TypeArguments.Length > 0
+                )
+                {
+                    var elementType = namedCollectionType.TypeArguments[0];
+
+                    // Support both anonymous types and named types in the lambda body
+                    if (
+                        nestedLambda.Body is AnonymousObjectCreationExpressionSyntax nestedAnonymous
+                    )
+                    {
+                        nestedStructure = DtoStructure.AnalyzeAnonymousType(
+                            nestedAnonymous,
+                            semanticModel,
+                            elementType,
+                            propertyName,
+                            configuration
+                        );
+                    }
+                    else if (nestedLambda.Body is ObjectCreationExpressionSyntax nestedNamed)
+                    {
+                        nestedStructure = DtoStructure.AnalyzeNamedType(
+                            nestedNamed,
+                            semanticModel,
+                            elementType,
+                            propertyName,
+                            configuration
+                        );
+                        isNestedFromNamedType = true;
+                    }
+                }
+            }
+        }
+
+        // Detect nested Select (e.g., s.Childs.Select(...) or s.Childs.Select(...).ToList())
+        // Only if we didn't find a SelectExpr
+        if (nestedStructure is null)
+        {
         // First, try to find Select invocation (handles both direct Select and chained methods like ToList)
         var selectInvocation = FindSelectInvocation(expression);
         if (selectInvocation is not null && selectInvocation.ArgumentList.Arguments.Count > 0)
@@ -266,6 +322,7 @@ public record DtoProperty(
                 }
             }
         }
+        } // Close the "if (nestedStructure is null)" block for Select detection
 
         // Detect nested SelectMany (e.g., s.Childs.SelectMany(c => c.GrandChilds))
         if (nestedStructure is null)
@@ -677,6 +734,11 @@ public record DtoProperty(
     private static InvocationExpressionSyntax? FindSelectManyInvocation(ExpressionSyntax expression)
     {
         return LinqMethodHelper.FindLinqMethodInvocation(expression, "SelectMany");
+    }
+
+    private static InvocationExpressionSyntax? FindSelectExprInvocation(ExpressionSyntax expression)
+    {
+        return LinqMethodHelper.FindLinqMethodInvocation(expression, "SelectExpr");
     }
 
     /// <summary>
