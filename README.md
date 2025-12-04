@@ -690,13 +690,17 @@ Intel Core i7-14700F 2.10GHz, 1 CPU, 28 logical and 20 physical cores
   DefaultJob : .NET 10.0.0 (10.0.0, 10.0.25.52411), X64 RyuJIT x86-64-v3
 
 
-| Method                        | Mean     | Error   | StdDev  | Ratio | Rank | Gen0    | Gen1   | Allocated | Alloc Ratio |
-|------------------------------ |---------:|--------:|--------:|------:|-----:|--------:|-------:|----------:|------------:|
-| 'Linqraft Auto-Generated DTO' | 880.9 us | 5.00 us | 4.68 us |  0.91 |    1 | 13.6719 | 1.9531 | 245.69 KB |        1.00 |
-| 'Linqraft Manual DTO'         | 886.9 us | 7.25 us | 6.78 us |  0.92 |    1 | 13.6719 | 1.9531 | 245.93 KB |        1.00 |
-| 'Traditional Manual DTO'      | 898.2 us | 7.53 us | 7.04 us |  0.93 |    1 | 13.6719 | 1.9531 | 245.65 KB |        1.00 |
-| 'Linqraft Anonymous'          | 955.2 us | 6.37 us | 5.65 us |  0.99 |    2 | 13.6719 | 1.9531 |  245.2 KB |        0.99 |
-| 'Traditional Anonymous'       | 966.1 us | 6.50 us | 6.08 us |  1.00 |    2 | 13.6719 | 1.9531 | 246.73 KB |        1.00 |
+| Method                        | Mean       | Error    | StdDev   | Ratio | RatioSD | Rank | Gen0    | Gen1   | Allocated | Alloc Ratio |
+|------------------------------ |-----------:|---------:|---------:|------:|--------:|-----:|--------:|-------:|----------:|------------:|
+| 'Mapperly Projection'         |   877.9 us |  6.96 us |  6.51 us |  0.98 |    0.01 |    1 | 13.6719 | 1.9531 | 244.69 KB |        1.00 |
+| 'Mapster ProjectToType'       |   881.6 us |  6.13 us |  5.73 us |  0.98 |    0.01 |    1 | 13.6719 | 1.9531 | 236.59 KB |        0.96 |
+| 'AutoMapper ProjectTo'        |   887.2 us |  5.97 us |  5.59 us |  0.99 |    0.01 |    1 | 13.6719 | 1.9531 | 237.38 KB |        0.97 |
+| 'Linqraft Manual DTO'         |   893.5 us |  3.05 us |  2.70 us |  0.99 |    0.01 |    1 | 13.6719 | 1.9531 | 245.97 KB |        1.00 |
+| 'Traditional Manual DTO'      |   898.2 us |  5.92 us |  5.24 us |  1.00 |    0.01 |    1 | 13.6719 | 1.9531 | 245.63 KB |        1.00 |
+| 'Linqraft Auto-Generated DTO' |   900.2 us |  7.49 us |  7.01 us |  1.00 |    0.01 |    1 | 13.6719 | 1.9531 | 245.78 KB |        1.00 |
+| 'Linqraft Anonymous'          |   971.7 us | 19.31 us | 20.67 us |  1.08 |    0.02 |    2 | 13.6719 | 1.9531 | 245.36 KB |        1.00 |
+| 'Traditional Anonymous'       |   984.4 us | 16.56 us | 19.08 us |  1.09 |    0.02 |    2 | 13.6719 | 1.9531 | 247.29 KB |        1.01 |
+| 'Facet ToFacetsAsync'         | 2,086.8 us |  9.59 us |  8.50 us |  2.32 |    0.02 |    3 | 31.2500 | 3.9063 | 541.53 KB |        2.20 |
 ```
 
 </details>
