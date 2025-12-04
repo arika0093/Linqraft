@@ -281,7 +281,7 @@ public class SelectBenchmark
     public async Task<int> Facet_ToFacetsAsync()
     {
         var results = await _dbContext
-            .SampleClasses.ToFacetsAsync<FacetSampleClassDto>();
+            .SampleClasses.ToFacetsAsync<SampleClass, FacetSampleClassDto>();
         return results.Count;
     }
 }

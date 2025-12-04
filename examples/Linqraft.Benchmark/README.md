@@ -27,7 +27,7 @@ The benchmark compares the following patterns:
 6. **AutoMapper ProjectTo** - AutoMapper's IQueryable projection with `ProjectTo<T>()`
 7. **Mapperly Projection** - Mapperly's source-generated projection with `ProjectToDto()`
 8. **Mapster ProjectToType** - Mapster's IQueryable projection with `ProjectToType<T>()`
-9. **Facet ToFacetsAsync** - Facet's source-generated DTO projection with `ToFacetsAsync<T>()`
+9. **Facet ToFacetsAsync** - Facet's source-generated DTO projection with `ToFacetsAsync<TSource, TFacet>()`
 
 ## Library Notes
 
@@ -46,7 +46,8 @@ The benchmark compares the following patterns:
 - Supports both compile-time and runtime mapping
 - Good balance between flexibility and performance
 
-### Facet (v3+)
+### Facet (v5+)
 - Source generator that creates DTOs and projections from domain models
-- Uses `[Facet]` attribute on partial record/class
+- Uses `[Facet]` attribute on partial record/class with `NestedFacets` for nested objects
 - Automatic navigation property loading with EF Core
+- Uses `ToFacetsAsync<TSource, TFacet>()` for better performance
