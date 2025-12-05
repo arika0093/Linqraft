@@ -76,7 +76,7 @@ public class Issue207_NestedSelectExprTest
                 x.Id,
                 x.Name,
                 // Using SelectExpr with explicit DTO type - NestedItem207Dto should be in user namespace
-                ItemsTest = x.Items.SelectExpr<NestedItem207, NestedItem207Dto>(i => new
+                Items = x.Items.SelectExpr<NestedItem207, NestedItem207Dto>(i => new
                 {
                     i.Id,
                     i.Title,
@@ -92,9 +92,9 @@ public class Issue207_NestedSelectExprTest
         var first = result[0];
         first.Id.ShouldBe(1);
         first.Name.ShouldBe("Entity1");
-        first.ItemsTest.Count().ShouldBe(2);
+        first.Items.Count().ShouldBe(2);
 
-        var firstItem = first.ItemsTest.First();
+        var firstItem = first.Items.First();
         firstItem.Id.ShouldBe(101);
         firstItem.Title.ShouldBe("Item1-1");
         firstItem.SubItem.Count().ShouldBe(2);
@@ -106,7 +106,7 @@ public class Issue207_NestedSelectExprTest
         // Verify second entity
         var second = result[1];
         second.Id.ShouldBe(2);
-        second.ItemsTest.Count().ShouldBe(1);
+        second.Items.Count().ShouldBe(1);
 
         // Verify that NestedEntity207Dto is NOT in the LinqraftGenerated_ namespace
         var nestedEntityDtoType = typeof(NestedEntity207Dto);
