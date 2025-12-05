@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using System.Linq;
 
@@ -25,6 +26,8 @@ public class TutorialCaseTest
                     Email = o.Customer?.EmailAddress,
                     Phone = o.Customer?.PhoneNumber,
                 },
+                LatestOrderDate = o.OrderItems.Max(oi => oi.OrderDate),
+                TotalAmount = o.OrderItems.Sum(oi => oi.Quantity * oi.UnitPrice),
                 Items = o.OrderItems.Select(oi => new
                 {
                     ProductName = oi.Product?.Name,
@@ -70,6 +73,8 @@ public class OrderItem
 {
     public Product? Product { get; set; }
     public int Quantity { get; set; }
+    public decimal UnitPrice { get; set; }
+    public DateTime OrderDate { get; set; }
 }
 
 public class Product
