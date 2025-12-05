@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using System.Linq;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
@@ -289,12 +290,12 @@ public static class RoslynTypeHelper
     /// </summary>
     /// <param name="expression">The expression to search</param>
     /// <returns>All SelectExpr invocations found</returns>
-    public static System.Collections.Generic.IEnumerable<InvocationExpressionSyntax> FindSelectExprInvocations(
+    public static IEnumerable<InvocationExpressionSyntax> FindSelectExprInvocations(
         ExpressionSyntax expression
     )
     {
         if (expression == null)
-            return System.Linq.Enumerable.Empty<InvocationExpressionSyntax>();
+            return [];
 
         return expression
             .DescendantNodesAndSelf()

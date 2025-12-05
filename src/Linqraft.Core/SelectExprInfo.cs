@@ -15,14 +15,15 @@ namespace Linqraft.Core;
 /// Information about a LINQ expression for code generation.
 /// Used to represent extracted and processed LINQ invocation data.
 /// </summary>
-public record LinqExpressionInfo(
-    string BaseExpression,
-    string ParamName,
-    string ChainedMethods,
-    bool HasNullableAccess,
-    string? CoalescingDefaultValue,
-    string? NullCheckExpression
-);
+public record LinqExpressionInfo
+{
+    public required string BaseExpression { get; init; }
+    public required string ParamName { get; init; }
+    public required string ChainedMethods { get; init; }
+    public required bool HasNullableAccess { get; init; }
+    public string? CoalescingDefaultValue { get; init; }
+    public string? NullCheckExpression { get; init; }
+}
 
 /// <summary>
 /// Base class for SelectExpr information, providing common functionality for
@@ -1653,14 +1654,15 @@ public abstract record SelectExprInfo
                 .ToString();
         }
 
-        return new LinqExpressionInfo(
-            cleanedBaseExpression,
-            info.ParameterName,
-            info.ChainedMethods,
-            info.HasNullableAccess,
-            info.CoalescingDefaultValue,
-            cleanedNullCheckExpression
-        );
+        return new LinqExpressionInfo
+        {
+            BaseExpression = cleanedBaseExpression,
+            ParamName = info.ParameterName,
+            ChainedMethods = info.ChainedMethods,
+            HasNullableAccess = info.HasNullableAccess,
+            CoalescingDefaultValue = info.CoalescingDefaultValue,
+            NullCheckExpression = cleanedNullCheckExpression
+        };
     }
 
     private LinqExpressionInfo? ExtractSelectInfoFromSyntax(ExpressionSyntax syntax)
@@ -1692,14 +1694,15 @@ public abstract record SelectExprInfo
         // Fully qualify static references in chained methods (issue #157)
         var fullyQualifiedChainedMethods = FullyQualifyChainedMethods(info);
 
-        return new LinqExpressionInfo(
-            cleanedBaseExpression,
-            info.ParameterName,
-            fullyQualifiedChainedMethods,
-            info.HasNullableAccess,
-            info.CoalescingDefaultValue,
-            cleanedNullCheckExpression
-        );
+        return new LinqExpressionInfo
+        {
+            BaseExpression = cleanedBaseExpression,
+            ParamName = info.ParameterName,
+            ChainedMethods = fullyQualifiedChainedMethods,
+            HasNullableAccess = info.HasNullableAccess,
+            CoalescingDefaultValue = info.CoalescingDefaultValue,
+            NullCheckExpression = cleanedNullCheckExpression
+        };
     }
 
     private LinqExpressionInfo? ExtractSelectExprInfoFromSyntax(ExpressionSyntax syntax)
@@ -1731,14 +1734,15 @@ public abstract record SelectExprInfo
         // Fully qualify static references in chained methods
         var fullyQualifiedChainedMethods = FullyQualifyChainedMethods(info);
 
-        return new LinqExpressionInfo(
-            cleanedBaseExpression,
-            info.ParameterName,
-            fullyQualifiedChainedMethods,
-            info.HasNullableAccess,
-            info.CoalescingDefaultValue,
-            cleanedNullCheckExpression
-        );
+        return new LinqExpressionInfo
+        {
+            BaseExpression = cleanedBaseExpression,
+            ParamName = info.ParameterName,
+            ChainedMethods = fullyQualifiedChainedMethods,
+            HasNullableAccess = info.HasNullableAccess,
+            CoalescingDefaultValue = info.CoalescingDefaultValue,
+            NullCheckExpression = cleanedNullCheckExpression
+        };
     }
 
     /// <summary>
