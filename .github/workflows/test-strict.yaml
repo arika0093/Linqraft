@@ -1,0 +1,46 @@
+﻿name: .NET Build and Test (More Platforms)
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - 'release-pr/*'
+
+jobs:
+  test:
+    strategy:
+      matrix:
+        os: [ubuntu-latest, macos-latest, windows-latest]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - name: Set Target Frameworks (Unix)
+        run: echo 'TFMS=net10.0;net8.0;net6.0' >> $GITHUB_ENV
+        if: matrix.os != 'windows-latest'
+      
+      - name: Set Target Frameworks (Windows)
+        run: echo 'TFMS=net10.0;net8.0;net6.0;net48' >> $GITHUB_ENV
+        if: matrix.os == 'windows-latest'
+
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: |
+            10.0.x
+            8.0.x
+            6.0.x
+          cache: true
+          cache-dependency-path: '**/packages.lock.json'
+
+      - name: Restore dependencies
+        run: dotnet restore --locked-mode
+
+      - name: Build
+        run: dotnet build --no-restore
+
+      - name: Run tests
+        run: dotnet test --no-build --verbosity normal --logger GitHubActions

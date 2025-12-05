@@ -15,13 +15,8 @@ env:
   DOTNET_VERSION: '10.0.x'
 
 jobs:
-  build:
-    strategy:
-      matrix:
-        # drop windows because setup-dotnet on windows has too slow performance...
-        # os: [ubuntu-latest, windows-latest]
-        os: [ubuntu-latest]
-    runs-on: ${{ matrix.os }}
+  test:
+    runs-on: ubuntu-latest
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
