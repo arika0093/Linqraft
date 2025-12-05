@@ -207,7 +207,20 @@ public class GenerateDtoClassInfo
                 }
                 else
                 {
-                    propertyType = explicitDtoName!;
+                    // When this is a nested SelectExpr result (IsNestedSelectExprResult is true),
+                    // the type should always be a collection type (IEnumerable<TResult>).
+                    // On older .NET versions, the semantic model may incorrectly return just TResult
+                    // instead of IEnumerable<TResult>. In this case, we wrap it in IEnumerable<>.
+                    if (prop.IsNestedSelectExprResult)
+                    {
+                        // The type is from a nested SelectExpr, wrap in IEnumerable<>
+                        var simpleTypeName = explicitDtoName!.Replace("global::", "");
+                        propertyType = $"global::System.Collections.Generic.IEnumerable<{simpleTypeName}>";
+                    }
+                    else
+                    {
+                        propertyType = explicitDtoName!;
+                    }
                     if (shouldReapplyNullable)
                     {
                         propertyType = $"{propertyType}?";

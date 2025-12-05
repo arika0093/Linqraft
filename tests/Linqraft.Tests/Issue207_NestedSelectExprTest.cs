@@ -52,9 +52,6 @@ public class Issue207_NestedSelectExprTest
         },
     ];
 
-    // !WARNING: This test (inside-SelectExpr) is only work above .NET 9 (reason is unknown...)
-#if NET9_0_OR_GREATER
-
     /// <summary>
     /// Test: Outer SelectExpr with inner SelectExpr for nested DTO types.
     /// This verifies the nested SelectExpr behavior where:
@@ -128,7 +125,6 @@ public class Issue207_NestedSelectExprTest
         subItemElementType.ShouldNotBeNull();
         subItemElementType!.Namespace!.ShouldContain("LinqraftGenerated");
     }
-#endif
 
     // Test data classes for the nested SelectExpr test
     internal class NestedEntity207
