@@ -95,21 +95,25 @@ public record SelectExprInfoExplicitDto : SelectExprInfo
                 bool propHasExplicitNestedSelectExpr = false;
                 if (!string.IsNullOrEmpty(prop.ExplicitNestedDtoTypeName))
                 {
+                    const string GlobalPrefix = "global::";
+
+                    // Remove "global::" prefix if present before extracting class name
+                    var typeName = prop.ExplicitNestedDtoTypeName!;
+                    if (typeName.StartsWith(GlobalPrefix))
+                    {
+                        typeName = typeName.Substring(GlobalPrefix.Length);
+                    }
+
                     // Extract just the class name from the fully qualified name
-                    // e.g., "global::Linqraft.Tests.NestedItem207Dto" -> "NestedItem207Dto"
-                    var lastDotIndex = prop.ExplicitNestedDtoTypeName!.LastIndexOf('.');
+                    // e.g., "Linqraft.Tests.NestedItem207Dto" -> "NestedItem207Dto"
+                    var lastDotIndex = typeName.LastIndexOf('.');
                     if (lastDotIndex >= 0)
                     {
-                        explicitDtoClassName = prop.ExplicitNestedDtoTypeName.Substring(lastDotIndex + 1);
+                        explicitDtoClassName = typeName.Substring(lastDotIndex + 1);
                     }
                     else
                     {
-                        explicitDtoClassName = prop.ExplicitNestedDtoTypeName;
-                    }
-                    // Remove "global::" prefix if present
-                    if (explicitDtoClassName.StartsWith("global::"))
-                    {
-                        explicitDtoClassName = explicitDtoClassName.Substring(8);
+                        explicitDtoClassName = typeName;
                     }
                     propHasExplicitNestedSelectExpr = true;
                 }
