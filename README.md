@@ -197,6 +197,16 @@ Install `Linqraft` from NuGet.
 dotnet add package Linqraft
 ```
 
+When you open your `.csproj` file, you should see the package added like below.
+The `PrivateAssets` attribute might look unfamiliar, but it indicates that this is a development-only dependency (the library will not be included in the production environment).
+
+```xml
+<PackageReference Include="Linqraft" Version="x.y.z">
+  <PrivateAssets>all</PrivateAssets>
+  <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+</PackageReference>
+```
+
 ## Examples
 ### Anonymous pattern
 
