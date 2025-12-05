@@ -251,6 +251,29 @@ var orders = await dbContext.Orders
 // ✨️ The definition of the DTO class is no longer necessary
 ```
 
+Unlike [other mapping libraries](#comparison-with-other-libraries), Linqraft's key feature is that it automatically generates DTOs **based on query definitions**.  
+This means you can freely generate DTO structures without depending on the original class structure, making it easy to flatten objects, group complex data, or add calculated fields.
+
+```csharp
+var orders = await dbContext.Orders
+    .SelectExpr<Order, OrderDto>(o => new
+    {
+        // flattened structure
+        CustomerName = o.Customer?.Name,
+        CustomerCountry = o.Customer?.Address?.Country?.Name,
+        // grouping
+        CustomerInfo = new
+        {
+            Email = o.Customer?.EmailAddress,
+            Phone = o.Customer?.PhoneNumber,
+        },
+        // calculated field? no problem.
+        LatestOrderDate = o.OrderItems.Max(oi => oi.OrderDate),
+        TotalAmount = o.OrderItems.Sum(oi => oi.Quantity * oi.UnitPrice),
+    })
+    .ToListAsync();
+```
+
 This feature helps keep your codebase clean and significantly reduces cognitive overhead.
 
 
@@ -708,6 +731,9 @@ for more details, see [Linqraft.Benchmark](./examples/Linqraft.Benchmark) for de
 Mapping is a common task, and many libraries exist.
 Here, instead of comparing performance and pros and cons in detail, we will explain the main differences.
 
+<details>
+<summary>Compared Libraries</summary>
+
 ### [AutoMapper](https://automapper.io/)
 * You need to predefine the destination DTO.
 * Mapping rules are set up in advance using `MapperConfiguration`.
@@ -747,6 +773,8 @@ Here, instead of comparing performance and pros and cons in detail, we will expl
     * You can mitigate this by generating objects separately from schemas like OpenAPI.
 * Reverse conversion from DTO to the original entity is not supported.
     * This is an intentional trade-off for the flexibility mentioned above—reverse conversion of computed fields would be ambiguous.
+
+</details>
 
 In summary (admittedly subjective!), it looks like this:
 
