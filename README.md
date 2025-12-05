@@ -655,7 +655,7 @@ Here, instead of comparing performance and pros and cons in detail, we will expl
 * Zero-dependency because it uses source generators and interceptors.
     * However, it requires a relatively recent environment (C# 12.0 or later).
 * On the other hand, since it's query-based, it's not suitable for generating shared DTOs referenced from multiple projects.
-    * You can mitigate this by generating objects separately from schemas like OpenAPI.
+    * For example, you can mitigate this by using Linqraft in the API layer and generating separate classes for shared components from the API's OpenAPI Schema.
 * Reverse conversion from DTO to the original entity is not supported.
     * This is an intentional trade-off for the flexibility mentioned above—reverse conversion of computed fields would be ambiguous.
 
