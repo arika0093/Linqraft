@@ -9,7 +9,7 @@ Write Select queries easily with on-demand DTO generation and null-propagation o
 
 ## Features
 ### Overview
-Linqraft is a Roslyn Source Generator for easily writing `IQueryable` projections with null-propagation and automatic DTO generation.
+Linqraft is a Roslyn Source Generator for easily writing `IQueryable` projections.
 
 * **Query-based** automatic DTO generation
   * You can freely define DTO structures in the query without predefining them.
@@ -18,7 +18,7 @@ Linqraft is a Roslyn Source Generator for easily writing `IQueryable` projection
 * Null-propagation operator support (`?.`) in Expression Trees
   * No more need to write `o.Customer != null ? o.Customer.Name : null`.
 * Zero-dependency
-  * No additional runtime dependencies are required since it uses Source Generators and Interceptors.
+  * No runtime dependencies are required since it uses Source Generators and Interceptors.
 
 With Linqraft, you can write queries like this:
 
@@ -57,8 +57,7 @@ var orders = await dbContext.Orders
 ```
 
 By specifying `OrderDto` as the generic parameter for `SelectExpr`, DTO types are generated **automatically** from the anonymous-type selector.
-That means **you don't need to manually declare** `OrderDto` or `OrderItemDto`.  
-Better yet, since these features are provided as a source generator, no additional dependencies are introduced.
+That means **you don't need to manually declare** `OrderDto` or `OrderItemDto`. 
 
 for example, the generated code looks like this:
 
@@ -150,6 +149,8 @@ namespace Tutorial.LinqraftGenerated_F1A64BF4
 ```
 
 </details>
+
+Interested? Try it out in the [Playground](https://arika0093.github.io/Linqraft/playground/)!
 
 ### Drop-in Replacement Analyzers
 
