@@ -214,7 +214,11 @@ public class GenerateDtoClassInfo
                     if (prop.IsNestedSelectExprResult)
                     {
                         // The type is from a nested SelectExpr, wrap in IEnumerable<>
-                        var simpleTypeName = explicitDtoName!.Replace("global::", "");
+                        // Remove "global::" prefix if present at the start of the type name
+                        const string GlobalPrefix = "global::";
+                        var simpleTypeName = explicitDtoName!.StartsWith(GlobalPrefix)
+                            ? explicitDtoName.Substring(GlobalPrefix.Length)
+                            : explicitDtoName;
                         propertyType = $"global::System.Collections.Generic.IEnumerable<{simpleTypeName}>";
                     }
                     else
