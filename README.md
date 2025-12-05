@@ -672,7 +672,7 @@ In summary (admittedly subjective!), it looks like this:
 | Linqraft   | Auto           | From query | Inline        | No      | Apache 2.0 |
 
 ## Frequently Asked Questions
-### Is Linqraft EFCore specific?
+### Only works with Entity Framework?
 No. It can be used with any LINQ provider that supports `IEnumerable` and/or `IQueryable`.
 
 ### Can the generated DTOs be used elsewhere?
