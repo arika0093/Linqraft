@@ -166,7 +166,7 @@ public class GenerateDtoClassInfo
                 }
             }
 
-            var propertyType = prop.TypeName;
+            var propertyType = prop.TypeName ?? "object";
 
             // For nested structures with explicit DTO types from SelectExpr<TIn, TResult>,
             // use the explicit DTO type name instead of auto-generating one
@@ -307,8 +307,11 @@ public class GenerateDtoClassInfo
                 }
             }
 
+            // Ensure propertyType is never null at this point for subsequent operations
+            propertyType ??= "object";
+
             // Add nullable annotation if the property is nullable and not already marked
-            if (prop.IsNullable && !RoslynTypeHelper.IsNullableTypeByString(propertyType!))
+            if (prop.IsNullable && !RoslynTypeHelper.IsNullableTypeByString(propertyType))
             {
                 propertyType = $"{propertyType}?";
             }
