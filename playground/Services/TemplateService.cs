@@ -17,7 +17,6 @@ public class TemplateService
         using System;
         using System.Linq;
         using System.Collections.Generic;
-        using System.Linq.Expressions;
         """;
 
     /// <summary>
@@ -41,12 +40,137 @@ public class TemplateService
     {
         return
         [
+            CreateReadmeTemplate(),
             CreateMinReproTemplate(),
-            CreateSimpleSampleTemplate(),
             CreateAnonymousTypeTemplate(),
             CreateExplicitDtoTemplate(),
-            CreateNestedObjectTemplate(),
         ];
+    }
+
+    /// <summary>
+    /// Template based on examples/Linqraft.MinimumSample
+    /// </summary>
+    private static Template CreateReadmeTemplate()
+    {
+        return new Template
+        {
+            Name = "Readme Sample",
+            Description =
+                "Example from Linqraft README demonstrating SelectExpr with nested properties",
+            Files =
+            [
+                new ProjectFile
+                {
+                    Name = "SampleClasses.cs",
+                    Path = "SampleClasses.cs",
+                    IsHidden = false,
+                    Content =
+                        CommonUsings
+                        + """
+
+                            namespace Tutorial;
+
+                            public class Order
+                            {
+                                public int Id { get; set; }
+                                public Customer? Customer { get; set; }
+                                public List<OrderItem> OrderItems { get; set; } = [];
+                            }
+
+                            public class Customer
+                            {
+                                public string Name { get; set; } = "";
+                                public Address? Address { get; set; }
+                                public string? EmailAddress { get; set; }
+                                public string? PhoneNumber { get; set; }
+                            }
+
+                            public class Address
+                            {
+                                public Country? Country { get; set; }
+                                public City? City { get; set; }
+                            }
+
+                            public class Country
+                            {
+                                public string Name { get; set; } = "";
+                            }
+
+                            public class City
+                            {
+                                public string Name { get; set; } = "";
+                            }
+
+                            public class OrderItem
+                            {
+                                public Product? Product { get; set; }
+                                public int Quantity { get; set; }
+                                public decimal UnitPrice { get; set; }
+                                public DateTime OrderDate { get; set; }
+                            }
+
+                            public class Product
+                            {
+                                public string Name { get; set; } = "";
+                            }
+                            """,
+                },
+                new ProjectFile
+                {
+                    Name = "Program.cs",
+                    Path = "Program.cs",
+                    IsHidden = false,
+                    // Content from: examples/Linqraft.MinimumSample/Program.cs
+                    Content =
+                        CommonUsings
+                        + """
+
+                            namespace Tutorial;
+
+                            public class TutorialCaseTest
+                            {
+                                private readonly List<Order> Orders = [];
+
+                                [Fact]
+                                public void TryTutorialCaseExplicit()
+                                {
+                                    var orders = Orders
+                                        .AsQueryable()
+                                        // Order: input entity type
+                                        // OrderDto: output DTO type (auto-generated)
+                                        .SelectExpr<Order, OrderDto>(o => new
+                                        {
+                                            o.Id,
+                                            CustomerName = o.Customer?.Name,
+                                            CustomerCountry = o.Customer?.Address?.Country?.Name,
+                                            CustomerCity = o.Customer?.Address?.City?.Name,
+                                            CustomerInfo = new
+                                            {
+                                                Email = o.Customer?.EmailAddress,
+                                                Phone = o.Customer?.PhoneNumber,
+                                            },
+                                            LatestOrderDate = o.OrderItems.Max(oi => oi.OrderDate),
+                                            TotalAmount = o.OrderItems.Sum(oi => oi.Quantity * oi.UnitPrice),
+                                            Items = o.OrderItems.Select(oi => new
+                                            {
+                                                ProductName = oi.Product?.Name,
+                                                oi.Quantity,
+                                            }),
+                                        })
+                                        .ToList();
+                                }
+                            }
+                            """,
+                },
+                new ProjectFile
+                {
+                    Name = "_LinqraftStub.cs",
+                    Path = "_LinqraftStub.cs",
+                    IsHidden = true,
+                    Content = CommonUsings + "\n" + SelectExprStub,
+                },
+            ],
+        };
     }
 
     /// <summary>
@@ -69,8 +193,6 @@ public class TemplateService
                     Content =
                         CommonUsings
                         + """
-
-                            using Linqraft;
 
                             namespace MinRepro;
 
@@ -122,120 +244,6 @@ public class TemplateService
         };
     }
 
-    /// <summary>
-    /// Template based on examples/Linqraft.MinimumSample
-    /// </summary>
-    private static Template CreateSimpleSampleTemplate()
-    {
-        return new Template
-        {
-            Name = "Simple Sample",
-            Description =
-                "Basic example showing SelectExpr with null-conditional operators (from examples/Linqraft.MinimumSample)",
-            Files =
-            [
-                new ProjectFile
-                {
-                    Name = "SampleClasses.cs",
-                    Path = "SampleClasses.cs",
-                    IsHidden = false,
-                    // Content from: examples/Linqraft.MinimumSample/SampleClasses.cs
-                    Content =
-                        CommonUsings
-                        + """
-
-                            namespace Linqraft.MinimumSample;
-
-                            public class Order
-                            {
-                                public int Id { get; set; }
-                                public Customer? Customer { get; set; }
-                                public List<OrderItem> OrderItems { get; set; } = new();
-                            }
-
-                            public class Customer
-                            {
-                                public string Name { get; set; } = "";
-                                public Address? Address { get; set; }
-                            }
-
-                            public class Address
-                            {
-                                public Country? Country { get; set; }
-                                public City? City { get; set; }
-                            }
-
-                            public class Country
-                            {
-                                public string Name { get; set; } = "";
-                            }
-
-                            public class City
-                            {
-                                public string Name { get; set; } = "";
-                            }
-
-                            public class OrderItem
-                            {
-                                public Product? Product { get; set; }
-                                public int Quantity { get; set; }
-                            }
-
-                            public class Product
-                            {
-                                public string Name { get; set; } = "";
-                            }
-                            """,
-                },
-                new ProjectFile
-                {
-                    Name = "Program.cs",
-                    Path = "Program.cs",
-                    IsHidden = false,
-                    // Content from: examples/Linqraft.MinimumSample/Program.cs
-                    Content =
-                        CommonUsings
-                        + """
-
-                            using Linqraft;
-                            using Linqraft.MinimumSample;
-
-                            public class Program
-                            {
-                                public void Execute()
-                                {
-                                    var orders = new List<Order>();
-                                    var results = orders
-                                        .AsQueryable()
-                                        .SelectExpr<Order,OrderDto>(s => new
-                                        {
-                                            Id = s.Id,
-                                            CustomerName = s.Customer?.Name,
-                                            CustomerCountry = s.Customer?.Address?.Country?.Name,
-                                            CustomerCity = s.Customer?.Address?.City?.Name,
-                                            Items = s.OrderItems.Select(oi => new
-                                            {
-                                                ProductName = oi.Product?.Name,
-                                                Quantity = oi.Quantity,
-                                            }),
-                                        })
-                                        .ToList();
-                                }
-                            }
-                            """,
-                },
-                new ProjectFile
-                {
-                    Name = "_LinqraftStub.cs",
-                    Path = "_LinqraftStub.cs",
-                    IsHidden = true,
-                    Content = CommonUsings + "\n" + SelectExprStub,
-                },
-            ],
-        };
-    }
-
-    /// <summary>
     /// Template demonstrating anonymous type pattern
     /// </summary>
     private static Template CreateAnonymousTypeTemplate()
@@ -282,8 +290,7 @@ public class TemplateService
                         CommonUsings
                         + """
 
-                            using Linqraft;
-                            using AnonymousTypeExample;
+                            namespace AnonymousTypeExample;
 
                             public class QueryExample
                             {
@@ -370,8 +377,7 @@ public class TemplateService
                         CommonUsings
                         + """
 
-                            using Linqraft;
-                            using ExplicitDtoExample;
+                            namespace ExplicitDtoExample;
 
                             public class QueryExample
                             {
@@ -420,105 +426,6 @@ public class TemplateService
                                 }
                             }
                             """,
-                },
-            ],
-        };
-    }
-
-    /// <summary>
-    /// Template demonstrating nested object selections
-    /// </summary>
-    private static Template CreateNestedObjectTemplate()
-    {
-        return new Template
-        {
-            Name = "Nested Objects",
-            Description = "Working with nested object selections and collections",
-            Files =
-            [
-                new ProjectFile
-                {
-                    Name = "Models.cs",
-                    Path = "Models.cs",
-                    IsHidden = false,
-                    Content =
-                        CommonUsings
-                        + """
-
-                            namespace NestedObjectExample;
-
-                            public class Company
-                            {
-                                public int Id { get; set; }
-                                public string Name { get; set; } = "";
-                                public Address? Headquarters { get; set; }
-                                public List<Employee> Employees { get; set; } = new();
-                            }
-
-                            public class Address
-                            {
-                                public string Street { get; set; } = "";
-                                public string City { get; set; } = "";
-                                public string Country { get; set; } = "";
-                            }
-
-                            public class Employee
-                            {
-                                public int Id { get; set; }
-                                public string Name { get; set; } = "";
-                                public Department? Department { get; set; }
-                            }
-
-                            public class Department
-                            {
-                                public string Name { get; set; } = "";
-                                public string Code { get; set; } = "";
-                            }
-                            """,
-                },
-                new ProjectFile
-                {
-                    Name = "Query.cs",
-                    Path = "Query.cs",
-                    IsHidden = false,
-                    Content =
-                        CommonUsings
-                        + """
-
-                            using Linqraft;
-                            using NestedObjectExample;
-
-                            public class QueryExample
-                            {
-                                public void Execute()
-                                {
-                                    var companies = new List<Company>();
-                                    // Nested object selection with null-conditional operators
-                                    var query = companies.AsQueryable();
-                                    var result = query.SelectExpr(c => new
-                                    {
-                                        c.Id,
-                                        c.Name,
-                                        // Nested address info
-                                        HeadquartersCity = c.Headquarters?.City,
-                                        HeadquartersCountry = c.Headquarters?.Country,
-                                        // Nested employee with department
-                                        EmployeeInfo = c.Employees.Select(e => new
-                                        {
-                                            e.Name,
-                                            DepartmentName = e.Department?.Name,
-                                        }),
-                                    });
-                                }
-                            }
-                            """,
-                },
-                new ProjectFile
-                {
-                    Name = "_LinqraftStub.cs",
-                    Path = "_LinqraftStub.cs",
-                    IsHidden = true,
-                    Content = CommonUsings + "\n" + SelectExprStub,
                 },
             ],
         };
