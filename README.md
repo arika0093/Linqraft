@@ -3,7 +3,7 @@
 
 [![NuGet Version](https://img.shields.io/nuget/v/Linqraft?style=flat-square&logo=NuGet&color=0080CC)](https://www.nuget.org/packages/Linqraft/) ![GitHub Actions Workflow Status](https://img.shields.io/github/actions/workflow/status/arika0093/Linqraft/test.yaml?branch=main&label=Test&style=flat-square) [![DeepWiki](https://img.shields.io/badge/DeepWiki-Linqraft-blue.svg?logo=data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACwAAAAyCAYAAAAnWDnqAAAAAXNSR0IArs4c6QAAA05JREFUaEPtmUtyEzEQhtWTQyQLHNak2AB7ZnyXZMEjXMGeK/AIi+QuHrMnbChYY7MIh8g01fJoopFb0uhhEqqcbWTp06/uv1saEDv4O3n3dV60RfP947Mm9/SQc0ICFQgzfc4CYZoTPAswgSJCCUJUnAAoRHOAUOcATwbmVLWdGoH//PB8mnKqScAhsD0kYP3j/Yt5LPQe2KvcXmGvRHcDnpxfL2zOYJ1mFwrryWTz0advv1Ut4CJgf5uhDuDj5eUcAUoahrdY/56ebRWeraTjMt/00Sh3UDtjgHtQNHwcRGOC98BJEAEymycmYcWwOprTgcB6VZ5JK5TAJ+fXGLBm3FDAmn6oPPjR4rKCAoJCal2eAiQp2x0vxTPB3ALO2CRkwmDy5WohzBDwSEFKRwPbknEggCPB/imwrycgxX2NzoMCHhPkDwqYMr9tRcP5qNrMZHkVnOjRMWwLCcr8ohBVb1OMjxLwGCvjTikrsBOiA6fNyCrm8V1rP93iVPpwaE+gO0SsWmPiXB+jikdf6SizrT5qKasx5j8ABbHpFTx+vFXp9EnYQmLx02h1QTTrl6eDqxLnGjporxl3NL3agEvXdT0WmEost648sQOYAeJS9Q7bfUVoMGnjo4AZdUMQku50McDcMWcBPvr0SzbTAFDfvJqwLzgxwATnCgnp4wDl6Aa+Ax283gghmj+vj7feE2KBBRMW3FzOpLOADl0Isb5587h/U4gGvkt5v60Z1VLG8BhYjbzRwyQZemwAd6cCR5/XFWLYZRIMpX39AR0tjaGGiGzLVyhse5C9RKC6ai42ppWPKiBagOvaYk8lO7DajerabOZP46Lby5wKjw1HCRx7p9sVMOWGzb/vA1hwiWc6jm3MvQDTogQkiqIhJV0nBQBTU+3okKCFDy9WwferkHjtxib7t3xIUQtHxnIwtx4mpg26/HfwVNVDb4oI9RHmx5WGelRVlrtiw43zboCLaxv46AZeB3IlTkwouebTr1y2NjSpHz68WNFjHvupy3q8TFn3Hos2IAk4Ju5dCo8B3wP7VPr/FGaKiG+T+v+TQqIrOqMTL1VdWV1DdmcbO8KXBz6esmYWYKPwDL5b5FA1a0hwapHiom0r/cKaoqr+27/XcrS5UwSMbQAAAABJRU5ErkJggg==)](https://deepwiki.com/arika0093/Linqraft)
 
-Write Select queries easily with on-demand DTO generation and null-propagation operators. No depedendencies.
+Write Select queries easily with on-demand DTO generation and null-propagation operators. No dependencies.
 
 [Web Page](https://arika0093.github.io/Linqraft/) | [Online Playground](https://arika0093.github.io/Linqraft/playground/)
 
@@ -808,22 +808,6 @@ Alternatively, you can also output the generated code to files by adding the fol
   </PropertyGroup>
 </Project>
 ```
-
-### DTO classes should be separated from query parts.
-Short answer: I have no objection to doing so, but I think it's good to have a simpler option as well.
-
-<details>
-<summary>Long answer:</summary>
-Separating DTO classes from query logic can be a good approach in some cases. However, in my opinion, it often ends up being unnecessarily verbose.
-
-For example, when retrieving moderately complex data from a database to return as an API response, the DTOs used for the result are essentially disposable (and arguably should be). In such cases, separating the query and DTO components may actually reduce code readability and maintainability rather than improve them. I've lost count of how many times I've had to modify both the query definition and the DTO definition simultaneously.
-
-Also, something often overlooked in these discussions: personally, I find creating the DTO class definition itself a hassle. Why should we have to write similar code twice (or more!) when the type is already defined on the model side?
-
-Using Linqraft to integrate queries and DTOs, and automatically generating DTOs when needed, can sometimes be more efficient. At the very least, having that option available is valuable.
-
-Furthermore, you can always copy the generated code and decouple it whenever you want. So, in practice, you can even use it just for "drafting."
-</details>
 
 ## License
 This project is licensed under the Apache License 2.0.
