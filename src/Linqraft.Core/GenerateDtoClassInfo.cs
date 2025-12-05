@@ -166,11 +166,57 @@ public class GenerateDtoClassInfo
                 }
             }
 
-            var propertyType = prop.TypeName;
+            var propertyType = prop.TypeName ?? "object";
 
+            // For nested structures with explicit DTO types from SelectExpr<TIn, TResult>,
+            // use the explicit DTO type name instead of auto-generating one
+            if (!string.IsNullOrEmpty(prop.ExplicitNestedDtoTypeName) && prop.NestedStructure is not null)
+            {
+                // Use the explicit DTO type name from SelectExpr<TIn, TResult>
+                var explicitDtoName = prop.ExplicitNestedDtoTypeName;
+
+                // Handle nullable types: temporarily remove the ? suffix if present
+                var isTypeNullable = RoslynTypeHelper.IsNullableTypeByString(propertyType);
+                var typeWithoutNullable = isTypeNullable
+                    ? RoslynTypeHelper.RemoveNullableSuffixFromString(propertyType)
+                    : propertyType;
+
+                // Determine whether to re-apply nullable marker
+                var shouldReapplyNullable = isTypeNullable && prop.IsNullable;
+
+                if (RoslynTypeHelper.IsAnonymousTypeByString(typeWithoutNullable))
+                {
+                    // Direct anonymous type
+                    propertyType = explicitDtoName;
+                    if (shouldReapplyNullable)
+                    {
+                        propertyType = $"{propertyType}?";
+                    }
+                }
+                else if (RoslynTypeHelper.IsGenericTypeByString(typeWithoutNullable))
+                {
+                    // Collection type (e.g., List<...>, IEnumerable<...>)
+                    // Extract the simple type name from the fully qualified name
+                    var simpleTypeName = explicitDtoName!.Replace("global::", "");
+                    var baseType = typeWithoutNullable[..typeWithoutNullable.IndexOf("<")];
+                    propertyType = $"{baseType}<{simpleTypeName}>";
+                    if (shouldReapplyNullable)
+                    {
+                        propertyType = $"{propertyType}?";
+                    }
+                }
+                else
+                {
+                    propertyType = explicitDtoName!;
+                    if (shouldReapplyNullable)
+                    {
+                        propertyType = $"{propertyType}?";
+                    }
+                }
+            }
             // For nested structures, recursively generate DTOs (add first)
             // But skip if IsNestedFromNamedType is true - in that case, keep the original named type
-            if (prop.NestedStructure is not null && !prop.IsNestedFromNamedType)
+            else if (prop.NestedStructure is not null && !prop.IsNestedFromNamedType)
             {
                 var nestStructure = prop.NestedStructure;
 
@@ -260,6 +306,9 @@ public class GenerateDtoClassInfo
                     }
                 }
             }
+
+            // Ensure propertyType is never null at this point for subsequent operations
+            propertyType ??= "object";
 
             // Add nullable annotation if the property is nullable and not already marked
             if (prop.IsNullable && !RoslynTypeHelper.IsNullableTypeByString(propertyType))
