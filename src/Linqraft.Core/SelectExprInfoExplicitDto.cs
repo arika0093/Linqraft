@@ -52,7 +52,8 @@ public record SelectExprInfoExplicitDto : SelectExprInfo
         DtoStructure structure,
         string? overrideClassName = null,
         List<string>? nestedParentClasses = null,
-        List<string>? nestedParentAccessibilities = null
+        List<string>? nestedParentAccessibilities = null,
+        bool isExplicitFromNestedSelectExpr = false
     )
     {
         var result = new List<GenerateDtoClassInfo>();
@@ -68,6 +69,8 @@ public record SelectExprInfoExplicitDto : SelectExprInfo
         // Get existing properties from the TResultType (only for the main DTO, not nested)
         var existingProperties = new HashSet<string>();
         var isMainDto = overrideClassName == ExplicitDtoName;
+        // DTOs from nested SelectExpr with explicit type should also be treated as explicit root DTOs
+        var isExplicitDto = isMainDto || isExplicitFromNestedSelectExpr;
         if (isMainDto)
         {
             // This is the main DTO, check for existing properties
@@ -86,13 +89,39 @@ public record SelectExprInfoExplicitDto : SelectExprInfo
             // Named types should preserve the original type, not create DTOs
             if (prop.NestedStructure is not null && !prop.IsNestedFromNamedType)
             {
+                // Check if this property has an explicit DTO type name from a nested SelectExpr
+                // If so, use that name instead of auto-generating one
+                string? explicitDtoClassName = null;
+                bool propHasExplicitNestedSelectExpr = false;
+                if (!string.IsNullOrEmpty(prop.ExplicitNestedDtoTypeName))
+                {
+                    // Extract just the class name from the fully qualified name
+                    // e.g., "global::Linqraft.Tests.NestedItem207Dto" -> "NestedItem207Dto"
+                    var lastDotIndex = prop.ExplicitNestedDtoTypeName!.LastIndexOf('.');
+                    if (lastDotIndex >= 0)
+                    {
+                        explicitDtoClassName = prop.ExplicitNestedDtoTypeName.Substring(lastDotIndex + 1);
+                    }
+                    else
+                    {
+                        explicitDtoClassName = prop.ExplicitNestedDtoTypeName;
+                    }
+                    // Remove "global::" prefix if present
+                    if (explicitDtoClassName.StartsWith("global::"))
+                    {
+                        explicitDtoClassName = explicitDtoClassName.Substring(8);
+                    }
+                    propHasExplicitNestedSelectExpr = true;
+                }
+
                 // Recursively generate nested DTO classes with the same parent info
                 result.AddRange(
                     GenerateDtoClasses(
                         prop.NestedStructure,
-                        overrideClassName: null,
+                        overrideClassName: explicitDtoClassName,
                         nestedParentClasses: currentParentClasses,
-                        nestedParentAccessibilities: currentParentAccessibilities
+                        nestedParentAccessibilities: currentParentAccessibilities,
+                        isExplicitFromNestedSelectExpr: propHasExplicitNestedSelectExpr
                     )
                 );
             }
@@ -103,7 +132,8 @@ public record SelectExprInfoExplicitDto : SelectExprInfo
 
         // When NestedDtoUseHashNamespace option is enabled, child DTOs are placed in
         // a hash-named sub-namespace (e.g., LinqraftGenerated_{Hash}.ClassName)
-        if (!isMainDto && Configuration?.NestedDtoUseHashNamespace == true)
+        // However, DTOs with explicit names from nested SelectExpr should NOT use hash namespace
+        if (!isExplicitDto && Configuration?.NestedDtoUseHashNamespace == true)
         {
             var hash = structure.GetUniqueId();
             actualNamespace = string.IsNullOrEmpty(actualNamespace)
@@ -121,7 +151,7 @@ public record SelectExprInfoExplicitDto : SelectExprInfo
             ParentClasses = currentParentClasses,
             ParentAccessibilities = currentParentAccessibilities,
             ExistingProperties = existingProperties,
-            IsExplicitRootDto = isMainDto, // Mark explicit root DTOs to avoid adding the attribute
+            IsExplicitRootDto = isExplicitDto, // Mark explicit DTOs (main or from nested SelectExpr) to avoid adding the attribute
         };
         result.Add(dtoClassInfo);
         return result;
