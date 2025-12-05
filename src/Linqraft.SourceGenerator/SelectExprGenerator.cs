@@ -97,7 +97,39 @@ public partial class SelectExprGenerator : IIncrementalGenerator
         var expression = invocation.Expression;
 
         // Use shared helper for syntax-level check
-        return SelectExprHelper.IsSelectExprInvocationSyntax(expression);
+        if (!SelectExprHelper.IsSelectExprInvocationSyntax(expression))
+            return false;
+
+        // Skip if this SelectExpr is nested inside another SelectExpr.
+        // When SelectExpr is used inside another SelectExpr (nested SelectExpr),
+        // only the outermost SelectExpr should generate an interceptor.
+        // The inner SelectExpr will be converted to a regular Select call by the outer one.
+        if (IsNestedInsideAnotherSelectExpr(invocation))
+            return false;
+
+        return true;
+    }
+
+    /// <summary>
+    /// Checks if the given SelectExpr invocation is nested inside another SelectExpr invocation.
+    /// </summary>
+    private static bool IsNestedInsideAnotherSelectExpr(InvocationExpressionSyntax invocation)
+    {
+        // Walk up the syntax tree to find any ancestor that is also a SelectExpr invocation
+        var current = invocation.Parent;
+        while (current is not null)
+        {
+            // If we find a parent InvocationExpression that is also a SelectExpr, we are nested
+            if (current is InvocationExpressionSyntax parentInvocation)
+            {
+                if (SelectExprHelper.IsSelectExprInvocationSyntax(parentInvocation.Expression))
+                {
+                    return true;
+                }
+            }
+            current = current.Parent;
+        }
+        return false;
     }
 
     private static SelectExprInfo? GetSelectExprInfo(GeneratorSyntaxContext context)
