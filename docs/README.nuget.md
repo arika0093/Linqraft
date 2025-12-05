@@ -1,8 +1,17 @@
 # Linqraft 
 
-[![NuGet Version](https://img.shields.io/nuget/v/Linqraft?style=flat-square&logo=NuGet&color=0080CC)](https://www.nuget.org/packages/Linqraft/) ![GitHub Actions Workflow Status](https://img.shields.io/github/actions/workflow/status/arika0093/Linqraft/test.yaml?branch=main&label=Test&style=flat-square) [![DeepWiki](https://img.shields.io/badge/DeepWiki-arika0093%2FLinqraft-blue.svg?logo=data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACwAAAAyCAYAAAAnWDnqAAAAAXNSR0IArs4c6QAAA05JREFUaEPtmUtyEzEQhtWTQyQLHNak2AB7ZnyXZMEjXMGeK/AIi+QuHrMnbChYY7MIh8g01fJoopFb0uhhEqqcbWTp06/uv1saEDv4O3n3dV60RfP947Mm9/SQc0ICFQgzfc4CYZoTPAswgSJCCUJUnAAoRHOAUOcATwbmVLWdGoH//PB8mnKqScAhsD0kYP3j/Yt5LPQe2KvcXmGvRHcDnpxfL2zOYJ1mFwrryWTz0advv1Ut4CJgf5uhDuDj5eUcAUoahrdY/56ebRWeraTjMt/00Sh3UDtjgHtQNHwcRGOC98BJEAEymycmYcWwOprTgcB6VZ5JK5TAJ+fXGLBm3FDAmn6oPPjR4rKCAoJCal2eAiQp2x0vxTPB3ALO2CRkwmDy5WohzBDwSEFKRwPbknEggCPB/imwrycgxX2NzoMCHhPkDwqYMr9tRcP5qNrMZHkVnOjRMWwLCcr8ohBVb1OMjxLwGCvjTikrsBOiA6fNyCrm8V1rP93iVPpwaE+gO0SsWmPiXB+jikdf6SizrT5qKasx5j8ABbHpFTx+vFXp9EnYQmLx02h1QTTrl6eDqxLnGjporxl3NL3agEvXdT0WmEost648sQOYAeJS9Q7bfUVoMGnjo4AZdUMQku50McDcMWcBPvr0SzbTAFDfvJqwLzgxwATnCgnp4wDl6Aa+Ax283gghmj+vj7feE2KBBRMW3FzOpLOADl0Isb5587h/U4gGvkt5v60Z1VLG8BhYjbzRwyQZemwAd6cCR5/XFWLYZRIMpX39AR0tjaGGiGzLVyhse5C9RKC6ai42ppWPKiBagOvaYk8lO7DajerabOZP46Lby5wKjw1HCRx7p9sVMOWGzb/vA1hwiWc6jm3MvQDTogQkiqIhJV0nBQBTU+3okKCFDy9WwferkHjtxib7t3xIUQtHxnIwtx4mpg26/HfwVNVDb4oI9RHmx5WGelRVlrtiw43zboCLaxv46AZeB3IlTkwouebTr1y2NjSpHz68WNFjHvupy3q8TFn3Hos2IAk4Ju5dCo8B3wP7VPr/FGaKiG+T+v+TQqIrOqMTL1VdWV1DdmcbO8KXBz6esmYWYKPwDL5b5FA1a0hwapHiom0r/cKaoqr+27/XcrS5UwSMbQAAAABJRU5ErkJggg==)](https://deepwiki.com/arika0093/Linqraft)
+[![NuGet Version](https://img.shields.io/nuget/v/Linqraft?style=flat-square&logo=NuGet&color=0080CC)](https://www.nuget.org/packages/Linqraft/) ![GitHub Actions Workflow Status](https://img.shields.io/github/actions/workflow/status/arika0093/Linqraft/test.yaml?branch=main&label=Test&style=flat-square) [![DeepWiki](https://img.shields.io/badge/DeepWiki-Linqraft-blue.svg?logo=data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACwAAAAyCAYAAAAnWDnqAAAAAXNSR0IArs4c6QAAA05JREFUaEPtmUtyEzEQhtWTQyQLHNak2AB7ZnyXZMEjXMGeK/AIi+QuHrMnbChYY7MIh8g01fJoopFb0uhhEqqcbWTp06/uv1saEDv4O3n3dV60RfP947Mm9/SQc0ICFQgzfc4CYZoTPAswgSJCCUJUnAAoRHOAUOcATwbmVLWdGoH//PB8mnKqScAhsD0kYP3j/Yt5LPQe2KvcXmGvRHcDnpxfL2zOYJ1mFwrryWTz0advv1Ut4CJgf5uhDuDj5eUcAUoahrdY/56ebRWeraTjMt/00Sh3UDtjgHtQNHwcRGOC98BJEAEymycmYcWwOprTgcB6VZ5JK5TAJ+fXGLBm3FDAmn6oPPjR4rKCAoJCal2eAiQp2x0vxTPB3ALO2CRkwmDy5WohzBDwSEFKRwPbknEggCPB/imwrycgxX2NzoMCHhPkDwqYMr9tRcP5qNrMZHkVnOjRMWwLCcr8ohBVb1OMjxLwGCvjTikrsBOiA6fNyCrm8V1rP93iVPpwaE+gO0SsWmPiXB+jikdf6SizrT5qKasx5j8ABbHpFTx+vFXp9EnYQmLx02h1QTTrl6eDqxLnGjporxl3NL3agEvXdT0WmEost648sQOYAeJS9Q7bfUVoMGnjo4AZdUMQku50McDcMWcBPvr0SzbTAFDfvJqwLzgxwATnCgnp4wDl6Aa+Ax283gghmj+vj7feE2KBBRMW3FzOpLOADl0Isb5587h/U4gGvkt5v60Z1VLG8BhYjbzRwyQZemwAd6cCR5/XFWLYZRIMpX39AR0tjaGGiGzLVyhse5C9RKC6ai42ppWPKiBagOvaYk8lO7DajerabOZP46Lby5wKjw1HCRx7p9sVMOWGzb/vA1hwiWc6jm3MvQDTogQkiqIhJV0nBQBTU+3okKCFDy9WwferkHjtxib7t3xIUQtHxnIwtx4mpg26/HfwVNVDb4oI9RHmx5WGelRVlrtiw43zboCLaxv46AZeB3IlTkwouebTr1y2NjSpHz68WNFjHvupy3q8TFn3Hos2IAk4Ju5dCo8B3wP7VPr/FGaKiG+T+v+TQqIrOqMTL1VdWV1DdmcbO8KXBz6esmYWYKPwDL5b5FA1a0hwapHiom0r/cKaoqr+27/XcrS5UwSMbQAAAABJRU5ErkJggg==)](https://deepwiki.com/arika0093/Linqraft)
 
-Write Select queries easily with on-demand DTO generation and null-propagation operators. No depedendencies.
+Linqraft is a Roslyn Source Generator for easily writing `IQueryable` projections.
+
+* **Query-based** automatic DTO generation
+  * You can freely define DTO structures in the query without predefining them.
+  * Based on anonymous types, "what you see is what you get" declarations.
+  * Supports nested DTOs, collections, and calculated fields.
+* Null-propagation operator support (`?.`) in Expression Trees
+  * No more need to write `o.Customer != null ? o.Customer.Name : null`.
+* Zero-dependency
+  * No runtime dependencies are required since it uses Source Generators and Interceptors.
 
 For Example:
 
@@ -15,16 +24,20 @@ var orders = await dbContext.Orders
         // can use inferred member names
         o.Id,
         // null-propagation supported
+        // you can create flattened structures easily
         CustomerName = o.Customer?.Name,
         // also works for nested objects
         CustomerCountry = o.Customer?.Address?.Country?.Name,
         CustomerCity = o.Customer?.Address?.City?.Name,
-        // you can use anonymous types inside
+        // you can use anonymous types inside. great for grouping
         CustomerInfo = new
         {
             Email = o.Customer?.EmailAddress,
             Phone = o.Customer?.PhoneNumber,
         },
+        // calculated fields? no problem!
+        LatestOrderDate = o.OrderItems.Max(oi => oi.OrderDate),
+        TotalAmount = o.OrderItems.Sum(oi => oi.Quantity * oi.UnitPrice),
         // collections available
         Items = o.OrderItems.Select(oi => new
         {
@@ -40,7 +53,7 @@ will be generated as:
 
 ```csharp
 // <auto-generated>
-// This file is auto-generated by Linqraft.
+// This file is auto-generated by Linqraft 
 // </auto-generated>
 #nullable enable
 #pragma warning disable IDE0060
@@ -49,17 +62,15 @@ will be generated as:
 #pragma warning disable CS8603
 #pragma warning disable CS8604
 #pragma warning disable CS8618
-
 using System;
 using System.Linq;
 using System.Collections.Generic;
-
 namespace Linqraft
 {
     file static partial class GeneratedExpression
     {
-        [global::System.Runtime.CompilerServices.InterceptsLocationAttribute(1, "1rTP47TjaPKlTizGJTAHaXsBAABUdXRvcmlhbENhc2VUZXN0LmNz")]
-        public static IQueryable<TResult> SelectExpr_54EA5DDB_8D42F5FB<TIn, TResult>(
+        [global::System.Runtime.CompilerServices.InterceptsLocationAttribute(1, "HWIj1D9ydZTCzRj7o0y/oYkBAABUdXRvcmlhbENhc2VUZXN0LmNz")]
+        public static IQueryable<TResult> SelectExpr_CE7A5A7D_5A34E201<TIn, TResult>(
             this IQueryable<TIn> query, Func<TIn, object> selector)
         {
             var matchedQuery = query as object as IQueryable<global::Tutorial.Order>;
@@ -74,6 +85,8 @@ namespace Linqraft
                     Email = o.Customer != null ? (string?)o.Customer.EmailAddress : null,
                     Phone = o.Customer != null ? (string?)o.Customer.PhoneNumber : null
                 },
+                LatestOrderDate = o.OrderItems.Max(oi => oi.OrderDate),
+                TotalAmount = o.OrderItems.Sum(oi => oi.Quantity * oi.UnitPrice),
                 Items = o.OrderItems
                     .Select(oi => new global::Tutorial.LinqraftGenerated_DE33EA40.ItemsDto
                     {
@@ -83,9 +96,9 @@ namespace Linqraft
             });
             return converted as object as IQueryable<TResult>;
         }
+
     }
 }
-
 namespace Tutorial
 {
     public partial class OrderDto
@@ -95,9 +108,10 @@ namespace Tutorial
         public required string? CustomerCountry { get; set; }
         public required string? CustomerCity { get; set; }
         public required global::Tutorial.LinqraftGenerated_F1A64BF4.CustomerInfoDto? CustomerInfo { get; set; }
+        public required global::System.DateTime LatestOrderDate { get; set; }
+        public required decimal TotalAmount { get; set; }
         public required global::System.Collections.Generic.IEnumerable<Tutorial.LinqraftGenerated_DE33EA40.ItemsDto> Items { get; set; }
     }
-
 }
 namespace Tutorial.LinqraftGenerated_DE33EA40
 {
@@ -108,7 +122,6 @@ namespace Tutorial.LinqraftGenerated_DE33EA40
         public required string? ProductName { get; set; }
         public required int Quantity { get; set; }
     }
-
 }
 namespace Tutorial.LinqraftGenerated_F1A64BF4
 {
