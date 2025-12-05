@@ -5,6 +5,7 @@ on:
   push:
     branches-ignore:
       - release/*
+      - release-pr/*
     paths:
       - '**.csproj'
       - '**.cs'
