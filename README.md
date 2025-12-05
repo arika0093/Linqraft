@@ -556,6 +556,9 @@ public partial class EntityDto
 ### Global Properties
 Linqraft supports several MSBuild properties to customize the generated code:
 
+<details>
+<summary>Available Properties</summary>
+
 ```xml
 <Project>
   <!-- The values listed are the default values. -->
@@ -580,6 +583,8 @@ Linqraft supports several MSBuild properties to customize the generated code:
   </PropertyGroup>
 </Project>
 ```
+
+</details>
 
 ## Performance
 
