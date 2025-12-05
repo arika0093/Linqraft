@@ -12,6 +12,20 @@ using Microsoft.CodeAnalysis.CSharp.Syntax;
 namespace Linqraft.Core;
 
 /// <summary>
+/// Information about a LINQ expression for code generation.
+/// Used to represent extracted and processed LINQ invocation data.
+/// </summary>
+public record LinqExpressionInfo
+{
+    public required string BaseExpression { get; init; }
+    public required string ParamName { get; init; }
+    public required string ChainedMethods { get; init; }
+    public required bool HasNullableAccess { get; init; }
+    public string? CoalescingDefaultValue { get; init; }
+    public string? NullCheckExpression { get; init; }
+}
+
+/// <summary>
 /// Base class for SelectExpr information, providing common functionality for
 /// analyzing LINQ Select expressions and generating corresponding DTO structures
 /// </summary>
@@ -276,6 +290,18 @@ public abstract record SelectExprInfo
                     return $"{convertedSelectMany} /* CONVERSION FAILED: {property.Name} */";
                 }
                 return convertedSelectMany;
+            }
+
+            // Check if this contains SelectExpr - convert to Select and handle nested structure
+            if (RoslynTypeHelper.ContainsSelectExprInvocation(syntax))
+            {
+                // For nested SelectExpr, convert to Select and handle the nested structure
+                var convertedSelectExpr = ConvertNestedSelectExprWithRoslyn(syntax, property, indents);
+                if (convertedSelectExpr != expression)
+                {
+                    return convertedSelectExpr;
+                }
+                // Fall through to other handling if conversion failed
             }
 
             // Check if this contains Select - use dedicated formatting for better output
@@ -1002,12 +1028,6 @@ public abstract record SelectExprInfo
         int indents
     )
     {
-        var nestedStructure = property.NestedStructure!;
-        var spaces = CodeFormatter.IndentSpaces(indents);
-        var innerSpaces = CodeFormatter.IndentSpaces(indents + CodeFormatter.IndentSize);
-        // For anonymous types (empty class name), GetNestedDtoFullNameFromStructure returns empty string
-        var nestedDtoName = GetNestedDtoFullNameFromStructure(nestedStructure);
-
         // Use Roslyn to extract Select information
         var selectInfo = ExtractSelectInfoFromSyntax(syntax);
         if (selectInfo is null)
@@ -1016,115 +1036,8 @@ public abstract record SelectExprInfo
             return syntax.ToString();
         }
 
-        var (
-            baseExpression,
-            paramName,
-            chainedMethods,
-            hasNullableAccess,
-            coalescingDefaultValue,
-            nullCheckExpression
-        ) = selectInfo.Value;
-
-        // Normalize baseExpression: remove unnecessary whitespace and newlines
-        baseExpression = System.Text.RegularExpressions.Regex.Replace(
-            baseExpression.Trim(),
-            @"\s+",
-            " "
-        );
-        // Remove spaces around dots (property access)
-        baseExpression = System.Text.RegularExpressions.Regex.Replace(
-            baseExpression,
-            @"\s*\.\s*",
-            "."
-        );
-
-        // Normalize nullCheckExpression if present
-        if (nullCheckExpression is not null)
-        {
-            nullCheckExpression = System.Text.RegularExpressions.Regex.Replace(
-                nullCheckExpression.Trim(),
-                @"\s+",
-                " "
-            );
-            nullCheckExpression = System.Text.RegularExpressions.Regex.Replace(
-                nullCheckExpression,
-                @"\s*\.\s*",
-                "."
-            );
-        }
-
-        // Generate property assignments for nested DTO with proper formatting
-        // Properties should be indented two levels from the base (one for Select block, one for properties)
-        var propertyIndentSpaces = CodeFormatter.IndentSpaces(
-            indents + CodeFormatter.IndentSize * 2
-        );
-        var propertyAssignments = new List<string>();
-        foreach (var prop in nestedStructure.Properties)
-        {
-            var assignment = GeneratePropertyAssignment(
-                prop,
-                indents + CodeFormatter.IndentSize * 2
-            );
-            propertyAssignments.Add($"{propertyIndentSpaces}{prop.Name} = {assignment}");
-        }
-        var propertiesCode = string.Join($",{CodeFormatter.DefaultNewLine}", propertyAssignments);
-
-        // Format chained methods with proper indentation (one level from base)
-        var formattedChainedMethods = FormatChainedMethods(chainedMethods, innerSpaces);
-
-        // Build the Select expression with proper formatting
-        // The .Select, {, }, and chained methods should all be indented one level from the property assignment
-        if (hasNullableAccess)
-        {
-            // Use nullCheckExpression for the null check (defaults to baseExpression if not provided)
-            var checkExpr = nullCheckExpression ?? baseExpression;
-
-            // Determine default value based on the expression's type
-            // If it's a collection type, use empty enumerable/list; otherwise use null
-            string defaultValue;
-            if (coalescingDefaultValue is not null)
-            {
-                defaultValue = coalescingDefaultValue;
-            }
-            else if (
-                string.IsNullOrEmpty(nestedDtoName)
-                || !RoslynTypeHelper.IsCollectionType(property.TypeSymbol)
-            )
-            {
-                // For single element results or anonymous types, default is null
-                defaultValue = "null";
-            }
-            else
-            {
-                // For collections, determine the appropriate empty collection type
-                // Check if the result type is a List<T> (chained with ToList())
-                defaultValue = GetEmptyCollectionExpression(
-                    property.TypeSymbol,
-                    nestedDtoName,
-                    chainedMethods
-                );
-            }
-
-            var code = $$"""
-                {{checkExpr}} != null ? {{baseExpression}}
-                {{innerSpaces}}.Select({{paramName}} => new {{nestedDtoName}}
-                {{innerSpaces}}{
-                {{propertiesCode}}
-                {{innerSpaces}}}){{formattedChainedMethods}} : {{defaultValue}}
-                """;
-            return code;
-        }
-        else
-        {
-            var code = $$"""
-                {{baseExpression}}
-                {{innerSpaces}}.Select({{paramName}} => new {{nestedDtoName}}
-                {{innerSpaces}}{
-                {{propertiesCode}}
-                {{innerSpaces}}}){{formattedChainedMethods}}
-                """;
-            return code;
-        }
+        // Use shared helper for Select expression generation
+        return GenerateSelectExpression(property, indents, selectInfo);
     }
 
     /// <summary>
@@ -1152,14 +1065,12 @@ public abstract record SelectExprInfo
             return syntax.ToString();
         }
 
-        var (
-            baseExpression,
-            paramName,
-            chainedMethods,
-            hasNullableAccess,
-            coalescingDefaultValue,
-            nullCheckExpression
-        ) = selectInfo.Value;
+        var baseExpression = selectInfo.BaseExpression;
+        var paramName = selectInfo.ParamName;
+        var chainedMethods = selectInfo.ChainedMethods;
+        var hasNullableAccess = selectInfo.HasNullableAccess;
+        var coalescingDefaultValue = selectInfo.CoalescingDefaultValue;
+        var nullCheckExpression = selectInfo.NullCheckExpression;
 
         // Normalize baseExpression: remove unnecessary whitespace and newlines
         baseExpression = System.Text.RegularExpressions.Regex.Replace(
@@ -1245,6 +1156,181 @@ public abstract record SelectExprInfo
             var code = $$"""
                 {{baseExpression}}
                 {{innerSpaces}}.Select({{paramName}} => new {{namedTypeName}}
+                {{innerSpaces}}{
+                {{propertiesCode}}
+                {{innerSpaces}}}){{formattedChainedMethods}}
+                """;
+            return code;
+        }
+    }
+
+    /// <summary>
+    /// Converts nested SelectExpr expressions to Select.
+    /// When SelectExpr is used inside another SelectExpr, the inner SelectExpr should be
+    /// converted to a regular Select call.
+    /// </summary>
+    protected string ConvertNestedSelectExprWithRoslyn(
+        ExpressionSyntax syntax,
+        DtoProperty property,
+        int indents
+    )
+    {
+        // Use Roslyn to extract SelectExpr information (treat it like Select)
+        var selectExprInfo = ExtractSelectExprInfoFromSyntax(syntax);
+        if (selectExprInfo is null)
+        {
+            // Fallback to string representation
+            return syntax.ToString();
+        }
+
+        // Reuse the common conversion logic (SelectExpr -> Select conversion uses same format)
+        return GenerateSelectExpression(property, indents, selectExprInfo);
+    }
+
+    /// <summary>
+    /// Generates the Select expression code from extracted LINQ invocation info.
+    /// This is shared between ConvertNestedSelectWithRoslyn and ConvertNestedSelectExprWithRoslyn.
+    /// </summary>
+    private string GenerateSelectExpression(
+        DtoProperty property,
+        int indents,
+        LinqExpressionInfo info
+    )
+    {
+        var nestedStructure = property.NestedStructure!;
+        var innerSpaces = CodeFormatter.IndentSpaces(indents + CodeFormatter.IndentSize);
+
+        // Use explicit DTO type if available (from SelectExpr<TIn, TResult> generic arguments)
+        // Otherwise, use the auto-generated DTO name from the structure
+        string nestedDtoName;
+        if (property.ExplicitNestedDtoType is not null && property.ExplicitNestedDtoType is not IErrorTypeSymbol)
+        {
+            // Get the fully qualified name including namespace
+            var typeSymbol = property.ExplicitNestedDtoType;
+            var displayString = typeSymbol.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat);
+
+            // Ensure the name includes global:: prefix for fully qualified reference
+            if (!displayString.StartsWith("global::") && typeSymbol.ContainingNamespace != null)
+            {
+                var namespaceName = typeSymbol.ContainingNamespace.ToDisplayString();
+                if (!string.IsNullOrEmpty(namespaceName))
+                {
+                    nestedDtoName = $"global::{namespaceName}.{typeSymbol.Name}";
+                }
+                else
+                {
+                    nestedDtoName = $"global::{typeSymbol.Name}";
+                }
+            }
+            else
+            {
+                nestedDtoName = displayString;
+            }
+        }
+        else if (!string.IsNullOrEmpty(property.ExplicitNestedDtoTypeName))
+        {
+            // Use the syntax-level type name when the type symbol is not available
+            // (e.g., when the DTO is generated by another SelectExpr)
+            nestedDtoName = property.ExplicitNestedDtoTypeName!;
+        }
+        else
+        {
+            nestedDtoName = GetNestedDtoFullNameFromStructure(nestedStructure);
+        }
+
+        var baseExpression = info.BaseExpression;
+        var paramName = info.ParamName;
+        var chainedMethods = info.ChainedMethods;
+        var hasNullableAccess = info.HasNullableAccess;
+        var coalescingDefaultValue = info.CoalescingDefaultValue;
+        var nullCheckExpression = info.NullCheckExpression;
+
+        // Normalize baseExpression: remove unnecessary whitespace and newlines
+        baseExpression = System.Text.RegularExpressions.Regex.Replace(
+            baseExpression.Trim(),
+            @"\s+",
+            " "
+        );
+        // Remove spaces around dots (property access)
+        baseExpression = System.Text.RegularExpressions.Regex.Replace(
+            baseExpression,
+            @"\s*\.\s*",
+            "."
+        );
+
+        // Normalize nullCheckExpression if present
+        if (nullCheckExpression is not null)
+        {
+            nullCheckExpression = System.Text.RegularExpressions.Regex.Replace(
+                nullCheckExpression.Trim(),
+                @"\s+",
+                " "
+            );
+            nullCheckExpression = System.Text.RegularExpressions.Regex.Replace(
+                nullCheckExpression,
+                @"\s*\.\s*",
+                "."
+            );
+        }
+
+        // Generate property assignments for nested DTO with proper formatting
+        var propertyIndentSpaces = CodeFormatter.IndentSpaces(
+            indents + CodeFormatter.IndentSize * 2
+        );
+        var propertyAssignments = new List<string>();
+        foreach (var prop in nestedStructure.Properties)
+        {
+            var assignment = GeneratePropertyAssignment(
+                prop,
+                indents + CodeFormatter.IndentSize * 2
+            );
+            propertyAssignments.Add($"{propertyIndentSpaces}{prop.Name} = {assignment}");
+        }
+        var propertiesCode = string.Join($",{CodeFormatter.DefaultNewLine}", propertyAssignments);
+
+        // Format chained methods with proper indentation
+        var formattedChainedMethods = FormatChainedMethods(chainedMethods, innerSpaces);
+
+        // Build the Select expression
+        if (hasNullableAccess)
+        {
+            var checkExpr = nullCheckExpression ?? baseExpression;
+
+            string defaultValue;
+            if (coalescingDefaultValue is not null)
+            {
+                defaultValue = coalescingDefaultValue;
+            }
+            else if (
+                string.IsNullOrEmpty(nestedDtoName)
+                || !RoslynTypeHelper.IsCollectionType(property.TypeSymbol)
+            )
+            {
+                defaultValue = "null";
+            }
+            else
+            {
+                defaultValue = GetEmptyCollectionExpression(
+                    property.TypeSymbol,
+                    nestedDtoName!,
+                    chainedMethods
+                );
+            }
+
+            var code = $$"""
+                {{checkExpr}} != null ? {{baseExpression}}
+                {{innerSpaces}}.Select({{paramName}} => new {{nestedDtoName}}
+                {{innerSpaces}}{
+                {{propertiesCode}}
+                {{innerSpaces}}}){{formattedChainedMethods}} : {{defaultValue}}
+                """;
+            return code;
+        }
+        else
+        {
+            var code = $$"""
+                {{baseExpression}}
+                {{innerSpaces}}.Select({{paramName}} => new {{nestedDtoName}}
                 {{innerSpaces}}{
                 {{propertiesCode}}
                 {{innerSpaces}}}){{formattedChainedMethods}}
@@ -1375,14 +1461,12 @@ public abstract record SelectExprInfo
             return syntax.ToString();
         }
 
-        var (
-            baseExpression,
-            paramName,
-            chainedMethods,
-            hasNullableAccess,
-            coalescingDefaultValue,
-            nullCheckExpression
-        ) = selectManyInfo.Value;
+        var baseExpression = selectManyInfo.BaseExpression;
+        var paramName = selectManyInfo.ParamName;
+        var chainedMethods = selectManyInfo.ChainedMethods;
+        var hasNullableAccess = selectManyInfo.HasNullableAccess;
+        var coalescingDefaultValue = selectManyInfo.CoalescingDefaultValue;
+        var nullCheckExpression = selectManyInfo.NullCheckExpression;
 
         // Normalize baseExpression: remove unnecessary whitespace and newlines
         baseExpression = System.Text.RegularExpressions.Regex.Replace(
@@ -1548,14 +1632,7 @@ public abstract record SelectExprInfo
             );
     }
 
-    private (
-        string baseExpression,
-        string paramName,
-        string chainedMethods,
-        bool hasNullableAccess,
-        string? coalescingDefaultValue,
-        string? nullCheckExpression
-    )? ExtractSelectManyInfoFromSyntax(ExpressionSyntax syntax)
+    private LinqExpressionInfo? ExtractSelectManyInfoFromSyntax(ExpressionSyntax syntax)
     {
         var info = LinqMethodHelper.ExtractLinqInvocationInfo(syntax, "SelectMany");
         if (info is null)
@@ -1577,24 +1654,18 @@ public abstract record SelectExprInfo
                 .ToString();
         }
 
-        return (
-            cleanedBaseExpression,
-            info.ParameterName,
-            info.ChainedMethods,
-            info.HasNullableAccess,
-            info.CoalescingDefaultValue,
-            cleanedNullCheckExpression
-        );
+        return new LinqExpressionInfo
+        {
+            BaseExpression = cleanedBaseExpression,
+            ParamName = info.ParameterName,
+            ChainedMethods = info.ChainedMethods,
+            HasNullableAccess = info.HasNullableAccess,
+            CoalescingDefaultValue = info.CoalescingDefaultValue,
+            NullCheckExpression = cleanedNullCheckExpression
+        };
     }
 
-    private (
-        string baseExpression,
-        string paramName,
-        string chainedMethods,
-        bool hasNullableAccess,
-        string? coalescingDefaultValue,
-        string? nullCheckExpression
-    )? ExtractSelectInfoFromSyntax(ExpressionSyntax syntax)
+    private LinqExpressionInfo? ExtractSelectInfoFromSyntax(ExpressionSyntax syntax)
     {
         var info = LinqMethodHelper.ExtractLinqInvocationInfo(syntax, "Select");
         if (info is null)
@@ -1623,14 +1694,55 @@ public abstract record SelectExprInfo
         // Fully qualify static references in chained methods (issue #157)
         var fullyQualifiedChainedMethods = FullyQualifyChainedMethods(info);
 
-        return (
-            cleanedBaseExpression,
-            info.ParameterName,
-            fullyQualifiedChainedMethods,
-            info.HasNullableAccess,
-            info.CoalescingDefaultValue,
-            cleanedNullCheckExpression
-        );
+        return new LinqExpressionInfo
+        {
+            BaseExpression = cleanedBaseExpression,
+            ParamName = info.ParameterName,
+            ChainedMethods = fullyQualifiedChainedMethods,
+            HasNullableAccess = info.HasNullableAccess,
+            CoalescingDefaultValue = info.CoalescingDefaultValue,
+            NullCheckExpression = cleanedNullCheckExpression
+        };
+    }
+
+    private LinqExpressionInfo? ExtractSelectExprInfoFromSyntax(ExpressionSyntax syntax)
+    {
+        // Extract info for SelectExpr (treat it like Select for the purpose of code generation)
+        var info = LinqMethodHelper.ExtractLinqInvocationInfo(syntax, "SelectExpr");
+        if (info is null)
+            return null;
+
+        // Fully qualify static references in base expression
+        var fullyQualifiedBaseExpression = FullyQualifyBaseExpression(info);
+
+        // Apply comment removal to base expression
+        var cleanedBaseExpression = RemoveComments(
+                SyntaxFactory.ParseExpression(fullyQualifiedBaseExpression)
+            )
+            .ToString();
+
+        // Apply comment removal to null check expression if present
+        string? cleanedNullCheckExpression = null;
+        if (info.NullCheckExpression is not null)
+        {
+            cleanedNullCheckExpression = RemoveComments(
+                    SyntaxFactory.ParseExpression(info.NullCheckExpression)
+                )
+                .ToString();
+        }
+
+        // Fully qualify static references in chained methods
+        var fullyQualifiedChainedMethods = FullyQualifyChainedMethods(info);
+
+        return new LinqExpressionInfo
+        {
+            BaseExpression = cleanedBaseExpression,
+            ParamName = info.ParameterName,
+            ChainedMethods = fullyQualifiedChainedMethods,
+            HasNullableAccess = info.HasNullableAccess,
+            CoalescingDefaultValue = info.CoalescingDefaultValue,
+            NullCheckExpression = cleanedNullCheckExpression
+        };
     }
 
     /// <summary>

@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using System.Linq;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
@@ -239,11 +240,12 @@ public static class RoslynTypeHelper
     }
 
     /// <summary>
-    /// Determines whether an expression contains a Select method invocation.
+    /// Determines whether an expression contains a method invocation with the specified name.
     /// </summary>
     /// <param name="expression">The expression to check</param>
-    /// <returns>True if the expression contains a Select method invocation</returns>
-    public static bool ContainsSelectInvocation(ExpressionSyntax expression)
+    /// <param name="methodName">The method name to search for</param>
+    /// <returns>True if the expression contains an invocation of the specified method</returns>
+    private static bool ContainsMethodInvocation(ExpressionSyntax? expression, string methodName)
     {
         if (expression == null)
             return false;
@@ -253,11 +255,19 @@ public static class RoslynTypeHelper
             .OfType<InvocationExpressionSyntax>()
             .Any(inv =>
                 (inv.Expression is MemberAccessExpressionSyntax ma
-                    && ma.Name.Identifier.Text == "Select")
+                    && ma.Name.Identifier.Text == methodName)
                 || (inv.Expression is MemberBindingExpressionSyntax mb
-                    && mb.Name.Identifier.Text == "Select")
+                    && mb.Name.Identifier.Text == methodName)
             );
     }
+
+    /// <summary>
+    /// Determines whether an expression contains a Select method invocation.
+    /// </summary>
+    /// <param name="expression">The expression to check</param>
+    /// <returns>True if the expression contains a Select method invocation</returns>
+    public static bool ContainsSelectInvocation(ExpressionSyntax expression)
+        => ContainsMethodInvocation(expression, "Select");
 
     /// <summary>
     /// Determines whether an expression contains a SelectMany method invocation.
@@ -265,18 +275,36 @@ public static class RoslynTypeHelper
     /// <param name="expression">The expression to check</param>
     /// <returns>True if the expression contains a SelectMany method invocation</returns>
     public static bool ContainsSelectManyInvocation(ExpressionSyntax expression)
+        => ContainsMethodInvocation(expression, "SelectMany");
+
+    /// <summary>
+    /// Determines whether an expression contains a SelectExpr method invocation.
+    /// </summary>
+    /// <param name="expression">The expression to check</param>
+    /// <returns>True if the expression contains a SelectExpr method invocation</returns>
+    public static bool ContainsSelectExprInvocation(ExpressionSyntax expression)
+        => ContainsMethodInvocation(expression, "SelectExpr");
+
+    /// <summary>
+    /// Finds all SelectExpr invocations in an expression.
+    /// </summary>
+    /// <param name="expression">The expression to search</param>
+    /// <returns>All SelectExpr invocations found</returns>
+    public static IEnumerable<InvocationExpressionSyntax> FindSelectExprInvocations(
+        ExpressionSyntax expression
+    )
     {
         if (expression == null)
-            return false;
+            return [];
 
         return expression
             .DescendantNodesAndSelf()
             .OfType<InvocationExpressionSyntax>()
-            .Any(inv =>
+            .Where(inv =>
                 (inv.Expression is MemberAccessExpressionSyntax ma
-                    && ma.Name.Identifier.Text == "SelectMany")
+                    && ma.Name.Identifier.Text == "SelectExpr")
                 || (inv.Expression is MemberBindingExpressionSyntax mb
-                    && mb.Name.Identifier.Text == "SelectMany")
+                    && mb.Name.Identifier.Text == "SelectExpr")
             );
     }
 
