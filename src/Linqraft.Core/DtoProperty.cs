@@ -33,12 +33,12 @@ public record DtoProperty(
     /// </summary>
     string? ExplicitNestedDtoTypeName = null,
     /// <summary>
-    /// Indicates whether this property is the result of a nested SelectExpr call.
-    /// When true, the property type should always be treated as a collection type (IEnumerable&lt;TResult&gt;).
-    /// This is used to fix type resolution issues on older .NET versions where the semantic model
-    /// may incorrectly return the element type instead of the collection type.
+    /// The source collection type name for nested SelectExpr expressions.
+    /// For example, if the expression is x.Items.SelectExpr&lt;...&gt;() where Items is List&lt;T&gt;,
+    /// this stores the collection wrapper type (e.g., "IEnumerable", "IQueryable", "List").
+    /// Used to determine the correct output collection type when the semantic model fails to resolve it.
     /// </summary>
-    bool IsNestedSelectExprResult = false
+    string? SourceCollectionWrapperType = null
 )
 {
     /// <summary>
@@ -163,7 +163,7 @@ public record DtoProperty(
         bool isNestedFromNamedType = false;
         ITypeSymbol? explicitNestedDtoType = null;
         string? explicitNestedDtoTypeName = null;
-        bool isNestedSelectExprResult = false;
+        string? sourceCollectionWrapperType = null;
         var selectExprInvocation = FindSelectExprInvocation(expression);
         if (selectExprInvocation is not null && selectExprInvocation.ArgumentList.Arguments.Count > 0)
         {
@@ -207,8 +207,13 @@ public record DtoProperty(
                             explicitNestedDtoTypeName = $"global::{simpleTypeName}";
                         }
 
-                        // Mark this as a nested SelectExpr result - the property type should be a collection
-                        isNestedSelectExprResult = true;
+                        // Determine the collection wrapper type from the source collection
+                        // SelectExpr transforms IQueryable<T> -> IQueryable<TResult> or IEnumerable<T> -> IEnumerable<TResult>
+                        // We store this to use as fallback when the semantic model fails to resolve the return type
+                        if (collectionType is INamedTypeSymbol sourceNamedType)
+                        {
+                            sourceCollectionWrapperType = DetermineCollectionWrapperType(sourceNamedType);
+                        }
                     }
                 }
 
@@ -684,8 +689,54 @@ public record DtoProperty(
             Documentation: documentation,
             ExplicitNestedDtoType: explicitNestedDtoType,
             ExplicitNestedDtoTypeName: explicitNestedDtoTypeName,
-            IsNestedSelectExprResult: isNestedSelectExprResult
+            SourceCollectionWrapperType: sourceCollectionWrapperType
         );
+    }
+
+    /// <summary>
+    /// Determines the appropriate collection wrapper type for SelectExpr output based on the source collection type.
+    /// SelectExpr transforms:
+    /// - IQueryable&lt;T&gt; -&gt; IQueryable&lt;TResult&gt;
+    /// - IEnumerable&lt;T&gt; -&gt; IEnumerable&lt;TResult&gt;
+    /// </summary>
+    private static string? DetermineCollectionWrapperType(INamedTypeSymbol sourceCollectionType)
+    {
+        // Check if it implements IQueryable<T> - if so, output is IQueryable
+        if (ImplementsInterface(sourceCollectionType, "IQueryable"))
+        {
+            return "global::System.Linq.IQueryable";
+        }
+
+        // Otherwise check for IEnumerable<T> - output is IEnumerable
+        if (ImplementsInterface(sourceCollectionType, "IEnumerable"))
+        {
+            return "global::System.Collections.Generic.IEnumerable";
+        }
+
+        return null;
+    }
+
+    /// <summary>
+    /// Checks if a type implements IQueryable or IEnumerable interface.
+    /// </summary>
+    private static bool ImplementsInterface(INamedTypeSymbol type, string interfaceName)
+    {
+        // Check if the type itself is the interface
+        if (type.Name == interfaceName && type.IsGenericType)
+        {
+            return true;
+        }
+
+        // Check all implemented interfaces
+        foreach (var iface in type.AllInterfaces)
+        {
+            if (iface.Name == interfaceName && iface.IsGenericType)
+            {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     /// <summary>

@@ -205,26 +205,25 @@ public class GenerateDtoClassInfo
                         propertyType = $"{propertyType}?";
                     }
                 }
+                else if (!string.IsNullOrEmpty(prop.SourceCollectionWrapperType))
+                {
+                    // Fallback: The semantic model failed to identify the type as a collection,
+                    // but we know from the source collection that this should be a collection type.
+                    // Use the source collection wrapper type (IEnumerable or IQueryable) to construct
+                    // the proper output type.
+                    const string GlobalPrefix = "global::";
+                    var simpleTypeName = explicitDtoName!.StartsWith(GlobalPrefix)
+                        ? explicitDtoName[GlobalPrefix.Length..]
+                        : explicitDtoName;
+                    propertyType = $"{prop.SourceCollectionWrapperType}<{simpleTypeName}>";
+                    if (shouldReapplyNullable)
+                    {
+                        propertyType = $"{propertyType}?";
+                    }
+                }
                 else
                 {
-                    // When this is a nested SelectExpr result (IsNestedSelectExprResult is true),
-                    // the type should always be a collection type (IEnumerable<TResult>).
-                    // On older .NET versions, the semantic model may incorrectly return just TResult
-                    // instead of IEnumerable<TResult>. In this case, we wrap it in IEnumerable<>.
-                    if (prop.IsNestedSelectExprResult)
-                    {
-                        // The type is from a nested SelectExpr, wrap in IEnumerable<>
-                        // Remove "global::" prefix if present at the start of the type name
-                        const string GlobalPrefix = "global::";
-                        var simpleTypeName = explicitDtoName!.StartsWith(GlobalPrefix)
-                            ? explicitDtoName.Substring(GlobalPrefix.Length)
-                            : explicitDtoName;
-                        propertyType = $"global::System.Collections.Generic.IEnumerable<{simpleTypeName}>";
-                    }
-                    else
-                    {
-                        propertyType = explicitDtoName!;
-                    }
+                    propertyType = explicitDtoName!;
                     if (shouldReapplyNullable)
                     {
                         propertyType = $"{propertyType}?";
