@@ -186,10 +186,8 @@ public class GenerateDtoClassInfo
                 // Determine whether to re-apply nullable marker
                 var shouldReapplyNullable = isTypeNullable && prop.IsNullable;
 
-                // Check if it's an array type using the type symbol, string pattern, or expression syntax
-                var isArrayType = prop.TypeSymbol is IArrayTypeSymbol 
-                    || typeWithoutNullable.EndsWith("[]")
-                    || prop.OriginalExpression.Trim().EndsWith(".ToArray()");
+                // Check if it's an array type
+                var isArrayType = IsArrayType(prop, typeWithoutNullable);
                 
                 // Remove [] suffix from the type string if present
                 // This is needed to extract the base type for replacement
@@ -425,5 +423,18 @@ public class GenerateDtoClassInfo
             "private" => 0,
             _ => 5, // Default to public
         };
+    }
+
+    /// <summary>
+    /// Determines if a property type represents an array type by checking:
+    /// 1. The type symbol (IArrayTypeSymbol)
+    /// 2. The type string pattern (ends with [])
+    /// 3. The original expression syntax (ends with .ToArray())
+    /// </summary>
+    private static bool IsArrayType(DtoProperty prop, string typeString)
+    {
+        return prop.TypeSymbol is IArrayTypeSymbol
+            || typeString.EndsWith("[]")
+            || prop.OriginalExpression.Trim().EndsWith(".ToArray()");
     }
 }
