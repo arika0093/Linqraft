@@ -1205,27 +1205,9 @@ public abstract record SelectExprInfo
         string nestedDtoName;
         if (property.ExplicitNestedDtoType is not null && property.ExplicitNestedDtoType is not IErrorTypeSymbol)
         {
-            // Get the fully qualified name including namespace
+            // Get the fully qualified name including namespace and parent classes
             var typeSymbol = property.ExplicitNestedDtoType;
-            var displayString = typeSymbol.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat);
-
-            // Ensure the name includes global:: prefix for fully qualified reference
-            if (!displayString.StartsWith("global::") && typeSymbol.ContainingNamespace != null)
-            {
-                var namespaceName = typeSymbol.ContainingNamespace.ToDisplayString();
-                if (!string.IsNullOrEmpty(namespaceName))
-                {
-                    nestedDtoName = $"global::{namespaceName}.{typeSymbol.Name}";
-                }
-                else
-                {
-                    nestedDtoName = $"global::{typeSymbol.Name}";
-                }
-            }
-            else
-            {
-                nestedDtoName = displayString;
-            }
+            nestedDtoName = typeSymbol.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat);
         }
         else if (!string.IsNullOrEmpty(property.ExplicitNestedDtoTypeName))
         {
