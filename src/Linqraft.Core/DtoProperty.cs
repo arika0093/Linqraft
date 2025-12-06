@@ -38,7 +38,12 @@ public record DtoProperty(
     /// this stores the collection wrapper type (e.g., "IEnumerable", "IQueryable", "List").
     /// Used to determine the correct output collection type when the semantic model fails to resolve it.
     /// </summary>
-    string? SourceCollectionWrapperType = null
+    string? SourceCollectionWrapperType = null,
+    /// <summary>
+    /// The terminal collection method called after SelectExpr (e.g., "ToArray", "ToList", "ToImmutableList", "FirstOrDefault").
+    /// Used to determine the correct output type when the semantic model fails to resolve it.
+    /// </summary>
+    string? TerminalCollectionMethod = null
 )
 {
     /// <summary>
@@ -65,6 +70,40 @@ public record DtoProperty(
             }
             return typeName;
         }
+    }
+
+    /// <summary>
+    /// Gets the generic type wrapper if this is a generic type with error type arguments.
+    /// For example, ImmutableList&lt;ErrorType&gt; returns "System.Collections.Immutable.ImmutableList".
+    /// Returns null if not a generic type or no error type arguments.
+    /// </summary>
+    public string? GetGenericTypeWrapperWithErrorArgs()
+    {
+        if (TypeSymbol is INamedTypeSymbol namedType && 
+            namedType.IsGenericType && 
+            namedType.TypeArguments.Length > 0)
+        {
+            // Check if any type argument is an error type
+            var hasErrorArg = namedType.TypeArguments.Any(arg => arg is IErrorTypeSymbol);
+            if (hasErrorArg)
+            {
+                // Return the generic type definition (without type arguments)
+                var definition = namedType.ConstructedFrom;
+                var fullName = definition.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat);
+                // Remove the <T> part to get just the base type name
+                var idx = fullName.IndexOf('<');
+                return idx >= 0 ? fullName[..idx] : fullName;
+            }
+        }
+        
+        // Also check for array types with error element type
+        if (TypeSymbol is IArrayTypeSymbol arrayType && 
+            arrayType.ElementType is IErrorTypeSymbol)
+        {
+            return "array"; // Special marker for arrays
+        }
+        
+        return null;
     }
 
     /// <summary>
@@ -164,6 +203,7 @@ public record DtoProperty(
         ITypeSymbol? explicitNestedDtoType = null;
         string? explicitNestedDtoTypeName = null;
         string? sourceCollectionWrapperType = null;
+        string? terminalMethod = null;
         var selectExprInvocation = FindSelectExprInvocation(expression);
         if (selectExprInvocation is not null && selectExprInvocation.ArgumentList.Arguments.Count > 0)
         {
@@ -210,11 +250,27 @@ public record DtoProperty(
                         // Determine the collection wrapper type from the source collection
                         // SelectExpr transforms IQueryable<T> -> IQueryable<TResult> or IEnumerable<T> -> IEnumerable<TResult>
                         // We store this to use as fallback when the semantic model fails to resolve the return type
-                        if (collectionType is INamedTypeSymbol sourceNamedType)
+                        // ONLY if SelectExpr is the outermost invocation (no chained methods like .FirstOrDefault(), .ToArray(), etc.)
+                        // Check if the expression is the SelectExpr invocation itself (no chained methods)
+                        var isSelectExprOutermost = expression == selectExprInvocation ||
+                            (expression is InvocationExpressionSyntax exprInvocation && 
+                             exprInvocation.Expression is MemberAccessExpressionSyntax exprMember &&
+                             exprMember.Name.Identifier.Text == "SelectExpr");
+                        
+                        if (isSelectExprOutermost && collectionType is INamedTypeSymbol sourceNamedType)
                         {
                             sourceCollectionWrapperType = DetermineCollectionWrapperType(sourceNamedType);
                         }
                     }
+                }
+
+                // Extract the terminal method if there are chained methods after SelectExpr
+                // e.g., x.Items.SelectExpr<...>(...).ToImmutableList() -> terminalMethod = "ToImmutableList"
+                if (expression != selectExprInvocation &&
+                    expression is InvocationExpressionSyntax terminalInvocation &&
+                    terminalInvocation.Expression is MemberAccessExpressionSyntax terminalMemberAccess)
+                {
+                    terminalMethod = terminalMemberAccess.Name.Identifier.Text;
                 }
 
                 if (
@@ -689,7 +745,8 @@ public record DtoProperty(
             Documentation: documentation,
             ExplicitNestedDtoType: explicitNestedDtoType,
             ExplicitNestedDtoTypeName: explicitNestedDtoTypeName,
-            SourceCollectionWrapperType: sourceCollectionWrapperType
+            SourceCollectionWrapperType: sourceCollectionWrapperType,
+            TerminalCollectionMethod: terminalMethod
         );
     }
 

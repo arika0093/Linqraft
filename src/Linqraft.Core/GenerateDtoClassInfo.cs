@@ -205,6 +205,41 @@ public class GenerateDtoClassInfo
                         propertyType = $"{propertyType}?";
                     }
                 }
+                else if (typeWithoutNullable.EndsWith("[]"))
+                {
+                    // Array type (e.g., Type[])
+                    // Replace the element type with the explicit DTO type
+                    var simpleTypeName = explicitDtoName!.Replace("global::", "");
+                    propertyType = $"{simpleTypeName}[]";
+                    if (shouldReapplyNullable)
+                    {
+                        propertyType = $"{propertyType}?";
+                    }
+                }
+                else if (!string.IsNullOrEmpty(prop.GetGenericTypeWrapperWithErrorArgs()))
+                {
+                    // The semantic model returned a generic type with error type arguments
+                    // (e.g., ImmutableList<ErrorType> because the DTO doesn't exist yet).
+                    // Construct the proper type by replacing the error type argument with the explicit DTO type.
+                    var wrapperType = prop.GetGenericTypeWrapperWithErrorArgs()!;
+                    var simpleTypeName = explicitDtoName!.Replace("global::", "");
+                    
+                    if (wrapperType == "array")
+                    {
+                        // Handle array types
+                        propertyType = $"{simpleTypeName}[]";
+                    }
+                    else
+                    {
+                        // Handle generic types (e.g., ImmutableList<T>)
+                        propertyType = $"{wrapperType}<{simpleTypeName}>";
+                    }
+                    
+                    if (shouldReapplyNullable)
+                    {
+                        propertyType = $"{propertyType}?";
+                    }
+                }
                 else if (!string.IsNullOrEmpty(prop.SourceCollectionWrapperType))
                 {
                     // Fallback: The semantic model failed to identify the type as a collection,
@@ -216,6 +251,32 @@ public class GenerateDtoClassInfo
                         ? explicitDtoName[GlobalPrefix.Length..]
                         : explicitDtoName;
                     propertyType = $"{prop.SourceCollectionWrapperType}<{simpleTypeName}>";
+                    if (shouldReapplyNullable)
+                    {
+                        propertyType = $"{propertyType}?";
+                    }
+                }
+                else if (!string.IsNullOrEmpty(prop.TerminalCollectionMethod))
+                {
+                    // There's a terminal method after SelectExpr (e.g., .ToImmutableList(), .ToArray())
+                    // Use the terminal method to determine the output type
+                    const string GlobalPrefix = "global::";
+                    var simpleTypeName = explicitDtoName!.StartsWith(GlobalPrefix)
+                        ? explicitDtoName[GlobalPrefix.Length..]
+                        : explicitDtoName;
+                    
+                    propertyType = prop.TerminalCollectionMethod switch
+                    {
+                        "ToArray" => $"{simpleTypeName}[]",
+                        "ToList" => $"global::System.Collections.Generic.List<{simpleTypeName}>",
+                        "ToImmutableList" => $"global::System.Collections.Immutable.ImmutableList<{simpleTypeName}>",
+                        "ToImmutableArray" => $"global::System.Collections.Immutable.ImmutableArray<{simpleTypeName}>",
+                        "ToHashSet" => $"global::System.Collections.Generic.HashSet<{simpleTypeName}>",
+                        "ToDictionary" => explicitDtoName!, // Keep as-is for complex cases
+                        "First" or "FirstOrDefault" or "Single" or "SingleOrDefault" or "Last" or "LastOrDefault" => explicitDtoName!,
+                        _ => explicitDtoName! // Default: use the explicit DTO name as-is
+                    };
+                    
                     if (shouldReapplyNullable)
                     {
                         propertyType = $"{propertyType}?";

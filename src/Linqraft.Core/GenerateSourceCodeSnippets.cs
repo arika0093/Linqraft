@@ -276,6 +276,7 @@ public static class GenerateSourceCodeSnippets
         using System;
         using System.Linq;
         using System.Collections.Generic;
+        using System.Collections.Immutable;
         """;
 
     // OverloadPriorityAttribute is usable C# 13 or later.
