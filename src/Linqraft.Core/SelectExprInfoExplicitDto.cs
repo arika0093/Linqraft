@@ -135,14 +135,23 @@ public record SelectExprInfoExplicitDto : SelectExprInfo
         var actualNamespace = GetActualDtoNamespace();
 
         // When NestedDtoUseHashNamespace option is enabled, child DTOs are placed in
-        // a hash-named sub-namespace (e.g., LinqraftGenerated_{Hash}.ClassName)
+        // a hash-named sub-namespace (e.g., LinqraftGenerated_{Hash}) WITHOUT parent class nesting
         // However, DTOs with explicit names from nested SelectExpr should NOT use hash namespace
+        // and should maintain their parent class structure
+        List<string> finalParentClasses = currentParentClasses;
+        List<string> finalParentAccessibilities = currentParentAccessibilities;
+        
         if (!isExplicitDto && Configuration?.NestedDtoUseHashNamespace == true)
         {
             var hash = structure.GetUniqueId();
             actualNamespace = string.IsNullOrEmpty(actualNamespace)
                 ? $"LinqraftGenerated_{hash}"
                 : $"{actualNamespace}.LinqraftGenerated_{hash}";
+            
+            // Implicit DTOs in hash namespace should NOT be nested inside parent classes
+            // They are managed by the hash, so they don't need to exist within a class
+            finalParentClasses = [];
+            finalParentAccessibilities = [];
         }
 
         var dtoClassInfo = new GenerateDtoClassInfo
@@ -152,8 +161,8 @@ public record SelectExprInfoExplicitDto : SelectExprInfo
             ClassName = className,
             Structure = structure,
             NestedClasses = [.. result],
-            ParentClasses = currentParentClasses,
-            ParentAccessibilities = currentParentAccessibilities,
+            ParentClasses = finalParentClasses,
+            ParentAccessibilities = finalParentAccessibilities,
             ExistingProperties = existingProperties,
             IsExplicitRootDto = isExplicitDto, // Mark explicit DTOs (main or from nested SelectExpr) to avoid adding the attribute
         };
@@ -258,7 +267,8 @@ public record SelectExprInfoExplicitDto : SelectExprInfo
 
     /// <summary>
     /// Gets the full name for a nested DTO class using the structure.
-    /// When NestedDtoUseHashNamespace is enabled, includes the LinqraftGenerated_{hash} namespace.
+    /// When NestedDtoUseHashNamespace is enabled, includes the LinqraftGenerated_{hash} namespace
+    /// WITHOUT parent class nesting (implicit DTOs are managed by hash, not class hierarchy).
     /// </summary>
     protected override string GetNestedDtoFullNameFromStructure(DtoStructure nestedStructure)
     {
@@ -269,6 +279,8 @@ public record SelectExprInfoExplicitDto : SelectExprInfo
         var actualNamespace = GetActualDtoNamespace();
 
         // When NestedDtoUseHashNamespace option is enabled, include LinqraftGenerated_{hash} in namespace
+        // Implicit DTOs should NOT be nested inside parent classes - they are placed directly
+        // in the LinqraftGenerated_{hash} namespace
         if (Configuration?.NestedDtoUseHashNamespace == true)
         {
             var hash = nestedStructure.GetUniqueId();
@@ -276,15 +288,11 @@ public record SelectExprInfoExplicitDto : SelectExprInfo
                 ? $"LinqraftGenerated_{hash}"
                 : $"{actualNamespace}.LinqraftGenerated_{hash}";
 
-            // Handle parent classes
-            if (ParentClasses.Count > 0)
-            {
-                return $"global::{generatedNamespace}.{string.Join(".", ParentClasses)}.{className}";
-            }
+            // Implicit DTOs in hash namespace should NOT include parent classes
             return $"global::{generatedNamespace}.{className}";
         }
 
-        // Default behavior: use GetNestedDtoFullName
+        // Default behavior: use GetNestedDtoFullName (includes parent classes)
         return GetNestedDtoFullName(className);
     }
 
