@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using System.Collections.Immutable;
 using System.Linq;
 
 namespace Linqraft.Tests;
@@ -124,6 +125,60 @@ public class Issue207_NestedSelectExprTest
             .FirstOrDefault();
         subItemElementType.ShouldNotBeNull();
         subItemElementType!.Namespace!.ShouldContain("LinqraftGenerated");
+    }
+
+    [Fact]
+    public void NestedSelectExpr_WithExplicitDtoTypes_FirstOrDefault()
+    {
+        var query = TestData.AsQueryable();
+
+        var result = query
+            .SelectExpr<NestedEntity207, NestedEntity207Dto2>(x => new
+            {
+                x.Id,
+                x.Name,
+                LatestItem = x
+                    .Items.SelectExpr<NestedItem207, NestedItem207Dto2>(i => new
+                    {
+                        i.Id,
+                        i.Title,
+                        SubItem = i.SubItems.Select(si => new { si.Id, si.Value }),
+                    })
+                    .FirstOrDefault(),
+            })
+            .ToList();
+
+        result.Count.ShouldBe(2);
+    }
+
+    [Fact]
+    public void NestedSelectExpr_WithExplicitDtoTypes_Multiples()
+    {
+        var query = TestData.AsQueryable();
+
+        var result = query
+            .SelectExpr<NestedEntity207, NestedEntity207Dto3>(x => new
+            {
+                x.Id,
+                x.Name,
+                LatestItems = x
+                    .Items.SelectExpr<NestedItem207, NestedItem207Dto3>(i => new
+                    {
+                        i.Id,
+                        i.Title,
+                        SubItem = i
+                            .SubItems.SelectExpr<NestedSubItem207, NestedSubItem207Dto3>(si => new
+                            {
+                                si.Id,
+                                si.Value,
+                            })
+                            .ToArray(),
+                    })
+                    .ToImmutableList(),
+            })
+            .ToList();
+
+        result.Count.ShouldBe(2);
     }
 
     // Test data classes for the nested SelectExpr test
