@@ -82,4 +82,31 @@ public static class SelectExprHelper
         var symbolInfo = semanticModel.GetSymbolInfo(invocation);
         return IsSelectExprMethod(symbolInfo.Symbol);
     }
+
+    /// <summary>
+    /// Checks if the given SelectExpr invocation is nested inside another SelectExpr invocation.
+    /// When SelectExpr is used inside another SelectExpr (nested SelectExpr),
+    /// only the outermost SelectExpr should generate an interceptor.
+    /// The inner SelectExpr will be converted to a regular Select call by the outer one.
+    /// </summary>
+    /// <param name="invocation">The invocation expression to check</param>
+    /// <returns>True if the invocation is nested inside another SelectExpr</returns>
+    public static bool IsNestedInsideAnotherSelectExpr(InvocationExpressionSyntax invocation)
+    {
+        // Walk up the syntax tree to find any ancestor that is also a SelectExpr invocation
+        var current = invocation.Parent;
+        while (current is not null)
+        {
+            // If we find a parent InvocationExpression that is also a SelectExpr, we are nested
+            if (current is InvocationExpressionSyntax parentInvocation)
+            {
+                if (IsSelectExprInvocationSyntax(parentInvocation.Expression))
+                {
+                    return true;
+                }
+            }
+            current = current.Parent;
+        }
+        return false;
+    }
 }
