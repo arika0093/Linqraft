@@ -161,7 +161,17 @@ public class CodeGenerationService(SharedCompilationService sharedCompilation)
     private static bool IsSelectExprInvocation(InvocationExpressionSyntax invocation)
     {
         var expression = invocation.Expression;
-        return SelectExprHelper.IsSelectExprInvocationSyntax(expression);
+        if (!SelectExprHelper.IsSelectExprInvocationSyntax(expression))
+            return false;
+
+        // Skip if this SelectExpr is nested inside another SelectExpr.
+        // When SelectExpr is used inside another SelectExpr (nested SelectExpr),
+        // only the outermost SelectExpr should generate an interceptor.
+        // The inner SelectExpr will be converted to a regular Select call by the outer one.
+        if (SelectExprHelper.IsNestedInsideAnotherSelectExpr(invocation))
+            return false;
+
+        return true;
     }
 
     private static SelectExprInfo? GetSelectExprInfo(
