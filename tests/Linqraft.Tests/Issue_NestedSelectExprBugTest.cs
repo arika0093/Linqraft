@@ -16,23 +16,21 @@ public partial class Issue_NestedSelectExprTest
             {
                 x.Id,
                 x.Name,
-                // error: ItemsEnumerable should be IEnumerable<NestedItemDtoEnumerable>
-                ItemsEnumerable = x.Items.SelectExpr<NestedItem, NestedItemDtoEnumerable>(i => new
+                // Use qualified name for nested partial classes
+                ItemsEnumerable = x.Items.SelectExpr<NestedItem, Issue_NestedSelectExprTest.NestedItemDtoEnumerable>(i => new
                 {
                     i.Id,
                 }),
                 ItemsList = x
-                    .Items.SelectExpr<NestedItem, NestedItemDtoList>(i => new { i.Id })
+                    .Items.SelectExpr<NestedItem, Issue_NestedSelectExprTest.NestedItemDtoList>(i => new { i.Id })
                     .ToList(),
-                // error: ItemsArray should be NestedItemDtoArray[]
                 ItemsArray = x
-                    .Items.SelectExpr<NestedItem, NestedItemDtoArray>(i => new
+                    .Items.SelectExpr<NestedItem, Issue_NestedSelectExprTest.NestedItemDtoArray>(i => new
                     {
                         i.Id,
                         i.Title,
                         SubItem = i.SubItems.Select(si => new { si.Id, si.Value }),
-                        // error: SubItemWithExpr should be IEnumerable<NestedSubItemDto>
-                        SubItemWithExpr = i.SubItems.SelectExpr<NestedSubItem, NestedSubItemDto>(
+                        SubItemWithExpr = i.SubItems.SelectExpr<NestedSubItem, Issue_NestedSelectExprTest.NestedSubItemDto>(
                             si => new { si.Id, si.Value }
                         ),
                     })

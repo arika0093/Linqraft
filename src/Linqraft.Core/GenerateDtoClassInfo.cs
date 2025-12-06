@@ -4,6 +4,7 @@ using System.Linq;
 using System.Text;
 using Linqraft.Core.Formatting;
 using Linqraft.Core.RoslynHelpers;
+using Microsoft.CodeAnalysis;
 
 namespace Linqraft.Core;
 
@@ -185,22 +186,40 @@ public class GenerateDtoClassInfo
                 // Determine whether to re-apply nullable marker
                 var shouldReapplyNullable = isTypeNullable && prop.IsNullable;
 
-                if (RoslynTypeHelper.IsAnonymousTypeByString(typeWithoutNullable))
+                // Check if it's an array type using both the type symbol and string pattern
+                var isArrayType = prop.TypeSymbol is IArrayTypeSymbol || typeWithoutNullable.EndsWith("[]");
+                
+                // Remove [] suffix from the type string if present
+                // This is needed to extract the base type for replacement
+                var typeWithoutArray = typeWithoutNullable;
+                if (typeWithoutNullable.EndsWith("[]"))
+                {
+                    typeWithoutArray = typeWithoutNullable[..^2];
+                }
+
+                if (RoslynTypeHelper.IsAnonymousTypeByString(typeWithoutArray))
                 {
                     // Direct anonymous type
                     propertyType = explicitDtoName;
+                    if (isArrayType)
+                    {
+                        propertyType = $"{propertyType}[]";
+                    }
                     if (shouldReapplyNullable)
                     {
                         propertyType = $"{propertyType}?";
                     }
                 }
-                else if (RoslynTypeHelper.IsGenericTypeByString(typeWithoutNullable))
+                else if (RoslynTypeHelper.IsGenericTypeByString(typeWithoutArray))
                 {
                     // Collection type (e.g., List<...>, IEnumerable<...>)
-                    // Extract the simple type name from the fully qualified name
-                    var simpleTypeName = explicitDtoName!.Replace("global::", "");
-                    var baseType = typeWithoutNullable[..typeWithoutNullable.IndexOf("<")];
-                    propertyType = $"{baseType}<{simpleTypeName}>";
+                    // Keep the fully qualified name including global:: prefix
+                    var baseType = typeWithoutArray[..typeWithoutArray.IndexOf("<")];
+                    propertyType = $"{baseType}<{explicitDtoName}>";
+                    if (isArrayType)
+                    {
+                        propertyType = $"{propertyType}[]";
+                    }
                     if (shouldReapplyNullable)
                     {
                         propertyType = $"{propertyType}?";
@@ -209,6 +228,10 @@ public class GenerateDtoClassInfo
                 else
                 {
                     propertyType = explicitDtoName!;
+                    if (isArrayType)
+                    {
+                        propertyType = $"{propertyType}[]";
+                    }
                     if (shouldReapplyNullable)
                     {
                         propertyType = $"{propertyType}?";
