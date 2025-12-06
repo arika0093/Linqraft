@@ -10,7 +10,9 @@ namespace Linqraft.Core;
 public static class GenerateSourceCodeSnippets
 {
     // Export all source codes
-    public static void ExportAll(IncrementalGeneratorPostInitializationContext context)
+    public static void ExportAllConstantSnippets(
+        IncrementalGeneratorPostInitializationContext context
+    )
     {
         context.AddSource("InterceptsLocationAttribute.g.cs", InterceptsLocationAttribute);
         context.AddSource("SelectExprExtensions.g.cs", SelectExprExtensions);
