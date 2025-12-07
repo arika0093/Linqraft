@@ -202,7 +202,7 @@ public record DtoProperty(
                             // If the type name contains a dot, it's already qualified (e.g., "ClassName.DtoName")
                             // In that case, respect the qualification and don't modify it
                             // Otherwise, assume the DTO will be generated at the namespace level (NOT nested)
-                            // unless we're in a scenario where it's actually predeclared as nested
+                            // unless the user has provided a partial class declaration indicating it should be nested
                             
                             if (!string.IsNullOrEmpty(callerNamespace))
                             {
