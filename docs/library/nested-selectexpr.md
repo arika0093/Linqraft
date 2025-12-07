@@ -1,57 +1,61 @@
-# Nested SelectExpr
+# Nested SelectExpr (Beta)
 
-You can use `SelectExpr` inside another `SelectExpr` to explicitly control the DTO class generation for nested collections.
+You can use `SelectExpr` inside another `SelectExpr` to explicitly control the DTO class generation for nested collections. This allows you to create reusable DTOs for nested entities instead of auto-generated DTOs in hash namespaces.
 
-## Overview
+## Important Notes
 
-When using nested collections in `SelectExpr`, you have two options:
+### Beta Feature Warning
 
-1. **Regular `Select`**: Nested DTOs are auto-generated in a hash namespace (not reusable)
-2. **Nested `SelectExpr`**: Nested DTOs are generated in your namespace (reusable)
+This feature is currently in **beta** (available since v0.6.2). While it works correctly, the API and behavior may change in future versions. Please report any issues on GitHub.
+
+### .NET 9+ Recommended
+
+This feature is **strongly recommended for .NET 9 or later**. In older .NET versions, type inference may fail for unknown reasons. See [GitHub Issue #211](https://github.com/your-org/linqraft/issues/211) for details.
+
+If you must use this feature on older .NET versions:
+* Test thoroughly
+* Watch for type inference errors
+* Consider upgrading to .NET 9+ if possible
+
+### Required: Empty Partial Class Declarations
+
+To ensure DTOs are generated in the correct location, you **must** declare empty partial class definitions for all explicit DTO types:
+
+```csharp
+public class MyService
+{
+    public void GetOrders(IQueryable<Order> query)
+    {
+        var result = query
+            .SelectExpr<Order, OrderDto>(o => new
+            {
+                o.Id,
+                Items = o.OrderItems.SelectExpr<OrderItem, OrderItemDto>(i => new
+                {
+                    i.ProductName,
+                }),
+            });
+    }
+
+    // Empty partial class definitions - REQUIRED
+    internal partial class OrderDto;
+    internal partial class OrderItemDto;
+}
+```
+
+**Why is this necessary?**
+
+The source generator determines where to generate DTOs based on where the empty partial class is declared. Without these declarations:
+- The generator might place DTOs in the wrong namespace
+- DTO generation might fail
+- The generated code might not compile
+
+**Requirements:**
+1. Always declare empty partial class definitions for all explicit DTO types
+2. Place the partial class definitions in the same scope as the `SelectExpr` call
+3. Use the correct access modifier (`public`, `internal`, etc.)
 
 ## Basic Usage
-
-### Without Nested SelectExpr (Default)
-
-```csharp
-var result = query
-    .SelectExpr<Order, OrderDto>(o => new
-    {
-        o.Id,
-        o.CustomerName,
-        // Using regular Select - ItemDto is auto-generated in LinqraftGenerated_ namespace
-        Items = o.OrderItems.Select(i => new
-        {
-            i.ProductName,
-            i.Quantity,
-        }),
-    });
-```
-
-**Generated DTOs:**
-```csharp
-namespace MyProject
-{
-    public partial class OrderDto
-    {
-        public required int Id { get; set; }
-        public required string CustomerName { get; set; }
-        public required IEnumerable<global::MyProject.LinqraftGenerated_HASH.ItemDto> Items { get; set; }
-    }
-}
-
-namespace MyProject.LinqraftGenerated_HASH
-{
-    // This DTO is not directly accessible or reusable
-    public partial class ItemDto
-    {
-        public required string ProductName { get; set; }
-        public required int Quantity { get; set; }
-    }
-}
-```
-
-### With Nested SelectExpr (v0.6.2+)
 
 ```csharp
 var result = query
@@ -66,6 +70,10 @@ var result = query
             i.Quantity,
         }),
     });
+
+// Required partial class declarations
+internal partial class OrderDto;
+internal partial class OrderItemDto;
 ```
 
 **Generated DTOs:**
@@ -87,39 +95,6 @@ namespace MyProject
     }
 }
 ```
-
-## Controlling DTO Generation with Empty Partial Classes
-
-To ensure DTOs are generated in the correct location, you must declare empty partial class definitions:
-
-```csharp
-public class MyService
-{
-    public void GetOrders(IQueryable<Order> query)
-    {
-        var result = query
-            .SelectExpr<Order, OrderDto>(o => new
-            {
-                o.Id,
-                Items = o.OrderItems.SelectExpr<OrderItem, OrderItemDto>(i => new
-                {
-                    i.ProductName,
-                }),
-            });
-    }
-
-    // Empty partial class definitions to control DTO generation location
-    internal partial class OrderDto;
-    internal partial class OrderItemDto;
-}
-```
-
-**Why is this necessary?**
-
-The source generator determines where to generate DTOs based on where the empty partial class is declared. Without these declarations:
-- The generator might place DTOs in the wrong namespace
-- DTO generation might fail
-- The generated code might not compile
 
 ## Multiple Nesting Levels
 
@@ -159,7 +134,7 @@ var result = query
     .SelectExpr<Entity, EntityDto>(x => new
     {
         x.Id,
-        // Reusable DTO
+        // Reusable DTO - generated in your namespace
         Items = x.Items.SelectExpr<Item, ItemDto>(i => new
         {
             i.Id,
@@ -210,59 +185,13 @@ internal partial class ItemDtoArray;
 * You don't need to reference the nested DTO type
 * You prefer simpler, less verbose code
 
-## Important Notes
-
-### Beta Feature Warning
-
-This feature is currently in **beta**. While it works correctly, the API and behavior may change in future versions. Please report any issues on GitHub.
-
-### .NET 9+ Recommended
-
-This feature is **strongly recommended for .NET 9 or later**. In older .NET versions, type inference may fail for unknown reasons. See [GitHub Issue #211](https://github.com/your-org/linqraft/issues/211) for details.
-
-If you must use this feature on older .NET versions:
-* Test thoroughly
-* Watch for type inference errors
-* Consider upgrading to .NET 9+ if possible
-
-### Compilation Requirements
-
-When using nested `SelectExpr`:
-1. Always declare empty partial class definitions for all explicit DTO types
-2. Place the partial class definitions in the same scope as the `SelectExpr` call
-3. Use the correct access modifier (`public`, `internal`, etc.)
-
-```csharp
-// Good: DTOs declared in the same class
-public class MyService
-{
-    public void Query() {
-        /* SelectExpr here */
-    }
-
-    internal partial class EntityDto;
-    internal partial class ItemDto;
-}
-
-// Bad: DTOs not declared
-public class MyService
-{
-    public void Query() {
-        /* SelectExpr here - may fail to compile */
-    }
-}
-```
-
 ## Comparison
 
 | Feature | Regular Select | Nested SelectExpr |
 |---------|---------------|-------------------|
 | DTO Location | `LinqraftGenerated_HASH` namespace | Your namespace |
-| Reusability | Not reusable | Reusable |
-| Partial Class Support | Limited | Full support |
+| Reusability | No | Yes |
 | Declaration Required | No | Yes (empty partial class) |
-| Verbosity | Low | Medium |
-| Type Safety | High | High |
 | .NET Version | Any | .NET 9+ recommended |
 
 ## See Also
