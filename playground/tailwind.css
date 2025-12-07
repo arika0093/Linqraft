@@ -5,18 +5,6 @@
 	--font-sans: 'Montserrat', ui-sans-serif, system-ui, sans-serif, 'Apple Color Emoji', 'Segoe UI Emoji', 'Segoe UI Symbol', 'Noto Color Emoji';
 	--font-mono: 'JetBrains Mono', ui-monospace, 'Monaco', 'Consolas', 'Courier New', monospace;
 	--font-display: 'Orbitron', ui-sans-serif, sans-serif;
-
-	/* Custom animations */
-	--animate-pulse-slow: pulse-slow 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
-
-	@keyframes pulse-slow {
-		0%, 100% {
-			opacity: 1;
-		}
-		50% {
-			opacity: 0.5;
-		}
-	}
 }
 
 /* scrollbar styles */
