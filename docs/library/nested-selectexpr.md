@@ -13,7 +13,7 @@ This feature is currently in **beta** (available since v0.6.2). While it works c
 
 This feature is **recommended for .NET 9 or later**.
 In older .NET versions, type inference may fail for unknown reasons.
-See [GitHub Issue #211](https://github.com/your-org/linqraft/issues/211) for details.
+See [GitHub Issue #211](https://github.com/arika0093/linqraft/issues/211) for details.
 
 ### Empty Partial Class Declarations Required
 
