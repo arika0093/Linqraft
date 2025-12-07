@@ -10,7 +10,7 @@ Mapping and projection are common tasks in .NET development. Here's how Linqraft
 | Mapster    | Manual         | From class  | Config-based  | Yes     | MIT        | Yes          |
 | Mapperly   | Manual         | From class  | Code/Attr     | Yes     | Apache 2.0 | No           |
 | Facet      | Semi-auto      | From class  | Attributes    | Yes     | MIT        | Yes          |
-| **Linqraft** | **Auto**     | **From query** | **Inline**  | **No**  | **Apache 2.0** | **No**   |
+| Linqraft   | Auto           | From query  | Inline        | No      | Apache 2.0 | No           |
 
 ## AutoMapper
 
@@ -54,10 +54,6 @@ var orders = dbContext.Orders
 * **Paid license required for commercial use from version 15 onward**
 * Runtime dependency
 
-**Linqraft vs AutoMapper:**
-* Linqraft: DTOs generated from queries, inline customization, no runtime deps, free
-* AutoMapper: DTOs pre-defined, config-based customization, runtime deps, paid (v15+)
-
 ## Mapster
 
 [Mapster](https://github.com/MapsterMapper/Mapster) is a fast and flexible object mapping library.
@@ -96,10 +92,6 @@ var orders = dbContext.Orders
 * DTO must be pre-defined (or generated separately)
 * Manual configuration for complex structures
 * Runtime dependency
-
-**Linqraft vs Mapster:**
-* Linqraft: DTOs auto-generated inline, no separate tool needed, no runtime deps
-* Mapster: DTOs pre-defined or generated separately, runtime deps
 
 ## Mapperly
 
@@ -143,10 +135,6 @@ var orders = mapper.MapToDto(dbContext.Orders).ToList();
 * Customization requires defining methods or attributes
 * [Property mappings must be explicitly specified](https://mapperly.riok.app/docs/configuration/flattening/) for flattening
 
-**Linqraft vs Mapperly:**
-* Linqraft: DTOs auto-generated from queries, inline customization
-* Mapperly: DTOs pre-defined, method/attribute-based customization, explicit property mapping
-
 ## Facet
 
 [Facet](https://github.com/Tim-Maes/Facet) is a feature-rich DTO generation library.
@@ -186,20 +174,16 @@ var orders = await dbContext.Orders.ToFacetsAsync<OrderFacet>();
 * Configuration can be complex
 * Must explicitly control generation with attributes
 * Nested objects require explicit `NestedFacets` attribute
-* Performance overhead (see [Performance benchmarks](./performance.md): 2x slower)
 
-**Linqraft vs Facet:**
-* Linqraft: Query-based, minimal configuration, better performance
-* Facet: Class-based, attribute-heavy configuration, more features (CRUD extensions)
-
-## Linqraft's Unique Approach
+## Linqraft
 
 Linqraft takes a fundamentally different approach:
 
 **Query-based generation** instead of class-based:
 ```csharp
-// Traditional approach: Define DTO first, then map
+// Traditional approach: Define DTO, configuration, then query
 public class OrderDto { /* properties */ }
+var config = new MapperConfiguration( /* mapping rules */ );
 var orders = dbContext.Orders.ProjectTo<OrderDto>();
 
 // Linqraft approach: Define query first, DTO is generated

@@ -80,7 +80,6 @@ Nested DTOs are named based on:
 .SelectExpr<Order, OrderDto>(o => new
 {
     Items = o.OrderItems.Select(oi => new { oi.ProductName })
-    //      ^^^^^ Property name
 })
 
 // Generated:

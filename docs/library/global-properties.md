@@ -58,11 +58,12 @@ Generate records instead of classes:
 
 ```csharp
 // Generated as record
-public partial record OrderDto(
-    int Id,
-    string CustomerName,
-    decimal TotalAmount
-);
+public partial record OrderDto
+{
+    public required int Id { get; init; }
+    public required string CustomerName { get; init; }
+    public required decimal TotalAmount { get; init; }
+}
 ```
 
 ### LinqraftPropertyAccessor

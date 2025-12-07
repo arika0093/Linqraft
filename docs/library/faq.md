@@ -137,73 +137,6 @@ YourProject/
 └── YourProject.csproj
 ```
 
-## Troubleshooting
-
-### The generated code is not visible
-
-Try these steps:
-
-1. **Clean and rebuild**
-   ```bash
-   dotnet clean
-   dotnet build --no-incremental
-   ```
-
-2. **Restart your IDE**
-   Sometimes Visual Studio or Rider needs a restart to recognize generated code.
-
-3. **Check SDK version**
-   Ensure you have .NET 8.0.400 SDK or later:
-   ```bash
-   dotnet --version
-   ```
-
-4. **Enable file output** (for debugging)
-   ```xml
-   <PropertyGroup>
-     <EmitCompilerGeneratedFiles>true</EmitCompilerGeneratedFiles>
-     <CompilerGeneratedFilesOutputPath>Generated</CompilerGeneratedFilesOutputPath>
-   </PropertyGroup>
-   ```
-
-### Build errors: "Interceptor location not found"
-
-This usually means the source generator didn't run. Try:
-
-1. Clean and rebuild:
-   ```bash
-   dotnet clean
-   dotnet build --no-incremental
-   ```
-
-2. Ensure C# 12.0 is enabled:
-   ```xml
-   <PropertyGroup>
-     <LangVersion>12.0</LangVersion>
-   </PropertyGroup>
-   ```
-
-3. Check that you're using .NET 8.0.400 SDK or later
-
-### IntelliSense doesn't recognize generated DTOs
-
-This is usually a temporary IDE issue. Try:
-
-1. Rebuild the project: `dotnet build`
-2. Restart your IDE
-3. Close and reopen the solution
-
-### Generated code has compilation errors
-
-This might indicate a bug in Linqraft. Please:
-
-1. Check the generated code (F12 or output to files)
-2. Report the issue at https://github.com/arika0093/Linqraft/issues
-3. Include:
-   * Your `SelectExpr` usage
-   * The generated code
-   * Error messages
-
 ## Getting Help
 
 ### Where can I report bugs or request features?
@@ -223,13 +156,6 @@ Include:
 * [Linqraft.ApiSample](../../examples/Linqraft.ApiSample) - API integration example
 * [Linqraft.Benchmark](../../examples/Linqraft.Benchmark) - Performance benchmarks
 * [Online Playground](https://arika0093.github.io/Linqraft/playground/) - Try it in your browser
-
-### How can I contribute?
-
-Contributions are welcome! See the repository for:
-* [Development guidelines](../../CLAUDE.md)
-* [Contributing guide](../../CONTRIBUTING.md)
-* [Code of conduct](../../CODE_OF_CONDUCT.md)
 
 ## Next Steps
 

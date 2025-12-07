@@ -205,8 +205,6 @@ dotnet add package Linqraft
 
 ## Basic Usage
 
-Linqraft provides three main usage patterns. For detailed information, see the [Usage Patterns Guide](./docs/library/usage-patterns.md).
-
 ### Anonymous pattern
 
 Use `SelectExpr` without generics to get an anonymous-type projection:
