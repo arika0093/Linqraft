@@ -165,7 +165,7 @@ For detailed installation instructions, see the [Installation Guide](./docs/libr
 This library requirements following environment:
 
 * C# 12 or later (for interceptor feature)
-* One of the followingv ersions (or later):
+* One of the following versions (or later):
   * .NET 8.0.400 
   * Visual Studio 2022 version 17.11
 
