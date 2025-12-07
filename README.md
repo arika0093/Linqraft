@@ -7,32 +7,6 @@ Write Select queries easily with on-demand DTO generation and null-propagation o
 
 [Web Page](https://arika0093.github.io/Linqraft/) | [Online Playground](https://arika0093.github.io/Linqraft/playground/)
 
-## Table of Contents
-
-* [Features](#features)
-* [Quick Start](#quick-start)
-  * [Installation](./docs/library/installation.md)
-  * [Basic Usage](#basic-usage)
-* [Documentation](#documentation)
-  * Getting Started
-    * [Installation](./docs/library/installation.md)
-    * [Usage Patterns](./docs/library/usage-patterns.md)
-  * Customization
-    * [Local Variable Capture](./docs/library/local-variable-capture.md)
-    * [Array Nullability Removal](./docs/library/array-nullability.md)
-    * [Partial Classes](./docs/library/partial-classes.md)
-    * [Nested DTO Naming](./docs/library/nested-dto-naming.md)
-    * [Auto-Generated Comments](./docs/library/auto-generated-comments.md)
-    * [Global Properties](./docs/library/global-properties.md)
-  * Performance & Comparison
-    * [Performance](./docs/library/performance.md)
-    * [Library Comparison](./docs/library/library-comparison.md)
-  * Help
-    * [FAQ](./docs/library/faq.md)
-    * [Analyzers](./docs/analyzers/README.md)
-* [Examples](#examples)
-* [License](#license)
-
 ## Features
 ### Overview
 Linqraft is a Roslyn Source Generator for easily writing `IQueryable` projections.
