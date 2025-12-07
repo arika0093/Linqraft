@@ -1,6 +1,7 @@
 # Nested SelectExpr (Beta)
 
-You can use `SelectExpr` inside another `SelectExpr` to explicitly control the DTO class generation for nested collections. This allows you to create reusable DTOs for nested entities instead of auto-generated DTOs in hash namespaces.
+You can use `SelectExpr` inside another `SelectExpr` to explicitly control the DTO class generation for nested collections.  
+This allows you to create reusable DTOs for nested entities instead of auto-generated DTOs in hash namespaces.
 
 ## Important Notes
 
@@ -10,14 +11,11 @@ This feature is currently in **beta** (available since v0.6.2). While it works c
 
 ### .NET 9+ Recommended
 
-This feature is **strongly recommended for .NET 9 or later**. In older .NET versions, type inference may fail for unknown reasons. See [GitHub Issue #211](https://github.com/your-org/linqraft/issues/211) for details.
+This feature is **recommended for .NET 9 or later**.
+In older .NET versions, type inference may fail for unknown reasons.
+See [GitHub Issue #211](https://github.com/your-org/linqraft/issues/211) for details.
 
-If you must use this feature on older .NET versions:
-* Test thoroughly
-* Watch for type inference errors
-* Consider upgrading to .NET 9+ if possible
-
-### Required: Empty Partial Class Declarations
+### Empty Partial Class Declarations Required
 
 To ensure DTOs are generated in the correct location, you **must** declare empty partial class definitions for all explicit DTO types:
 
@@ -49,11 +47,6 @@ The source generator determines where to generate DTOs based on where the empty 
 - The generator might place DTOs in the wrong namespace
 - DTO generation might fail
 - The generated code might not compile
-
-**Requirements:**
-1. Always declare empty partial class definitions for all explicit DTO types
-2. Place the partial class definitions in the same scope as the `SelectExpr` call
-3. Use the correct access modifier (`public`, `internal`, etc.)
 
 ## Basic Usage
 
@@ -146,30 +139,6 @@ var result = query
 internal partial class EntityDto;
 internal partial class ItemDto;
 // No need to declare SubItemDto - it's auto-generated
-```
-
-## Collection Types
-
-Nested `SelectExpr` works with various collection types:
-
-```csharp
-var result = query
-    .SelectExpr<Entity, EntityDto>(x => new
-    {
-        // IEnumerable (default)
-        ItemsEnumerable = x.Items.SelectExpr<Item, ItemDtoEnumerable>(i => new { i.Id }),
-
-        // List
-        ItemsList = x.Items.SelectExpr<Item, ItemDtoList>(i => new { i.Id }).ToList(),
-
-        // Array
-        ItemsArray = x.Items.SelectExpr<Item, ItemDtoArray>(i => new { i.Id }).ToArray(),
-    });
-
-internal partial class EntityDto;
-internal partial class ItemDtoEnumerable;
-internal partial class ItemDtoList;
-internal partial class ItemDtoArray;
 ```
 
 ## When to Use Nested SelectExpr
