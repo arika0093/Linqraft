@@ -162,7 +162,7 @@ Interested? Try it out in the [Playground](https://arika0093.github.io/Linqraft/
 For detailed installation instructions, see the [Installation Guide](./docs/library/installation.md).
 
 ### Prerequisites
-This library requirements following environment:
+This library requires following environment:
 
 * C# 12 or later (for interceptor feature)
 * One of the following versions (or later):
