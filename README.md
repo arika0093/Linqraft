@@ -174,42 +174,17 @@ Interested? Try it out in the [Playground](https://arika0093.github.io/Linqraft/
 ![](./assets/replace-codefix-sample.gif)
 
 ## Quick Start
-
-### Installation
-
 For detailed installation instructions, see the [Installation Guide](./docs/library/installation.md).
 
-#### Prerequisites
-This library requirements **C# 12.0 or later** because it uses the [interceptor](https://learn.microsoft.com/en-us/dotnet/csharp/whats-new/csharp-12#interceptors) feature.  
+### Prerequisites
+This library requirements following environment:
 
+* C# 12 or later (for interceptor feature)
+* One of the followingv ersions (or later):
+  * .NET 8.0.400 
+  * Visual Studio 2022 version 17.11
 
-<details>
-<summary>.NET 7 or below setup</summary>
-
-Set the `LangVersion` property to `12.0` or later and use [Polysharp](https://github.com/Sergio0694/PolySharp/) to enable C# latest features.
-
-```xml
-<Project>
-  <PropertyGroup>
-    <LangVersion>12.0</LangVersion>
-  </PropertyGroup>
-  <ItemGroup>
-    <PackageReference Include="Polysharp" Version="1.*" />
-  </ItemGroup>
-</Project>
-```
-
-</details>
-
-Also, due to the constraints of `Microsoft.CodeAnalysis.CSharp`, One of the following environment is [required](https://andrewlock.net/supporting-multiple-sdk-versions-in-analyzers-and-source-generators/):
-
-* .NET 8.0.400 or later **SDK**
-* Visual Studio 2022 version 17.11 or later
-
-> [!NOTE]
-> This is only a constraint on the SDK side, so the runtime(target framework) can be older versions.
-
-#### Installation
+### Installation
 
 Install `Linqraft` from NuGet:
 
@@ -217,13 +192,11 @@ Install `Linqraft` from NuGet:
 dotnet add package Linqraft
 ```
 
-For more details, see the [Installation Guide](./docs/library/installation.md).
-
-### Basic Usage
+## Basic Usage
 
 Linqraft provides three main usage patterns. For detailed information, see the [Usage Patterns Guide](./docs/library/usage-patterns.md).
 
-#### Anonymous pattern
+### Anonymous pattern
 
 Use `SelectExpr` without generics to get an anonymous-type projection:
 
@@ -238,7 +211,7 @@ var orders = await dbContext.Orders
     .ToListAsync();
 ```
 
-#### Explicit DTO pattern
+### Explicit DTO pattern
 
 Specify the generics to generate a DTO class:
 
@@ -255,7 +228,7 @@ var orders = await dbContext.Orders
     .ToListAsync();
 ```
 
-#### Pre-existing DTO pattern
+### Pre-existing DTO pattern
 
 Use your existing DTO classes:
 
@@ -276,16 +249,7 @@ public class OrderDto { /* ... */ }
 For more usage patterns and examples, see the [Usage Patterns Guide](./docs/library/usage-patterns.md).
 
 ## Documentation
-
-### Usage & Configuration
-
-* **[Installation Guide](./docs/library/installation.md)** - Prerequisites, installation, and setup
-* **[Usage Patterns](./docs/library/usage-patterns.md)** - Anonymous, Explicit DTO, and Pre-existing DTO patterns
-* **[Customization](./docs/library/customization.md)** - Local variables, partial classes, global properties, and more
-* **[Performance](./docs/library/performance.md)** - Benchmarks and comparisons with other libraries
-* **[FAQ](./docs/library/faq.md)** - Common questions and troubleshooting
-
-### Advanced Topics
+### Customization
 
 For advanced customization options, see the [Customization Guide](./docs/library/customization.md):
 
@@ -297,14 +261,22 @@ For advanced customization options, see the [Customization Guide](./docs/library
 * [Auto-Generated Comments](./docs/library/customization.md#auto-generated-comments) - XML documentation generation
 * [Global Properties](./docs/library/customization.md#global-properties) - MSBuild configuration options
 
+### Analyzers
+Linqraft provides code analyzers to help migrate existing LINQ Select queries to use Linqraft features. For more information, see the [Analyzers Guide](./docs/analyzers/README.md).
+
+### Performance
+For performance benchmarks and comparisons with other libraries, see the [Performance Guide](./docs/library/performance.md).
+
+### FAQ
+For common questions and troubleshooting tips, see the [FAQ Guide](./docs/library/faq.md).
+
 ## Examples
 
 Example projects are available in the [examples](./examples) folder:
 
-* [Linqraft.Sample](./examples/Linqraft.Sample) - Basic usage examples
+* [Linqraft.Sample](./examples/Linqraft.Sample) - Basic usage examples (with EFCore)
 * [Linqraft.MinimumSample](./examples/Linqraft.MinimumSample) - Minimal working example
 * [Linqraft.ApiSample](./examples/Linqraft.ApiSample) - API integration example
-* [Linqraft.Benchmark](./examples/Linqraft.Benchmark) - Performance benchmarks
 
 ## License
 This project is licensed under the Apache License 2.0.
