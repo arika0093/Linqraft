@@ -241,6 +241,7 @@ For more usage patterns and examples, see the [Usage Patterns Guide](./docs/libr
 ### Customization
 
 * **[Local Variable Capture](./docs/library/local-variable-capture.md)** - Using local variables in SelectExpr
+* **[Nested SelectExpr](./docs/library/nested-selectexpr.md) (beta)** - Using nested SelectExpr for reusable DTOs
 * **[Array Nullability Removal](./docs/library/array-nullability.md)** - Automatic null handling for collections
 * **[Partial Classes](./docs/library/partial-classes.md)** - Extending generated DTOs
 * **[Nested DTO Naming](./docs/library/nested-dto-naming.md)** - Customizing nested DTO names
