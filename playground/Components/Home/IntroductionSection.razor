@@ -1,0 +1,540 @@
+@implements IAsyncDisposable
+
+<section class="bg-gradient-to-b from-gray-900 to-gray-950 border-y border-gray-800">
+    <div class="max-w-7xl mx-auto px-6 py-16">
+        <SectionTitle>Query-Based DTO Generation</SectionTitle>
+        <p class="text-gray-400 text-center mb-4 max-w-3xl mx-auto">
+            Unlike traditional generators that create queries from class definitions, <br/>
+            Linqraft generates DTOs from your queries. Watch how it works:
+        </p>
+
+        <!-- Step Indicators at Top -->
+        <div class="mb-6">
+            <div class="flex flex-wrap justify-center gap-2">
+                @for (int i = 1; i < steps.Length; i++)
+                {
+                    var stepIndex = i;
+                    // Tab is green if: step is completed (stepIndex <= currentStep)
+                    var isCompleted = stepIndex <= currentStep;
+                    // Tab is cyan if: this is the target step AND we're currently typing
+                    var isCurrent = stepIndex == targetStep && isTyping;
+                    // Tab is gray if: step is not completed and not current
+                    var isPending = stepIndex > currentStep && stepIndex != targetStep;
+
+                    <div class="relative flex flex-col items-center">
+                        <button @onclick="() => JumpToStep(stepIndex)"
+                                class="@(isCurrent ? "bg-cyan-500/20 border-cyan-500" : isCompleted ? "bg-green-500/20 border-green-500" : "bg-gray-800 border-gray-700")
+                                    border rounded-lg px-4 py-2 transition-all duration-300 min-w-[120px] hover:scale-105 cursor-pointer">
+                            <div class="text-xs font-semibold @(isCurrent ? "text-cyan-400" : isCompleted ? "text-green-400" : "text-gray-500")">
+                                Step @stepIndex
+                            </div>
+                            <div class="text-xs text-gray-400 truncate max-w-[100px]">
+                                @steps[stepIndex].Description
+                            </div>
+                        </button>
+
+                        @if (isCurrent && isTyping)
+                        {
+                            <!-- Progress bar for current typing step -->
+                            <div class="absolute bottom-0 left-0 right-0 h-1 bg-gray-700 rounded-full overflow-hidden">
+                                <div class="h-full bg-cyan-500 transition-all duration-100"
+                                     style="width: @GetProgressPercentage()%"></div>
+                            </div>
+                        }
+                    </div>
+                }
+            </div>
+        </div>
+
+        <div class="gap-4 overflow-auto lg:grid lg:grid-cols-2">
+            <!-- Left Side: SelectExpr Query with Block Animation -->
+            <div class="flex flex-col rounded-md border border-gray-700 p-4 mb-4 lg:mb-0">
+                <div class="mb-3 flex items-center gap-2">
+                    <h3 class="text-lg font-semibold text-cyan-400">Your Query</h3>
+                </div>
+                <div class="relative flex-1 overflow-hidden">
+                    <CodeBlock Title="SelectExpr Definition" Code="@displayedCode" />
+                    @if (isTyping)
+                    {
+                        <div class="absolute bottom-4 right-4">
+                            <span class="inline-block h-2 w-2 rounded-full bg-cyan-400 animate-pulse"></span>
+                        </div>
+                    }
+                </div>
+            </div>
+
+            <!-- Right Side: Generated Code with Tabs -->
+            <div class="flex flex-col rounded-md border border-green-500 p-4">
+                <div class="mb-3 flex items-center justify-between">
+                    <div class="flex items-center gap-2 text-green-500">
+                        <span>✓</span>
+                        <h3 class="text-lg font-semibold">Generated Code</h3>
+                    </div>
+                    <!-- Tab Buttons -->
+                    <div class="flex gap-2">
+                        <button @onclick="() => SetActiveTab(0)"
+                                class="px-3 py-1 text-sm rounded transition-colors @(activeTab == 0 ? "bg-green-500/20 text-green-400 border border-green-500" : "bg-gray-800 text-gray-400 border border-gray-700 hover:border-gray-600")">
+                            DTO Class
+                        </button>
+                        <button @onclick="() => SetActiveTab(1)"
+                                class="px-3 py-1 text-sm rounded transition-colors @(activeTab == 1 ? "bg-green-500/20 text-green-400 border border-green-500" : "bg-gray-800 text-gray-400 border border-gray-700 hover:border-gray-600")">
+                            Select Expression
+                        </button>
+                    </div>
+                </div>
+                <div class="flex-1 overflow-hidden @(isGeneratedUpdating ? "opacity-50 transition-opacity duration-300" : "opacity-100 transition-opacity duration-300")">
+                    <CodeBlock Title="@GetCurrentTabTitle()" Code="@GetCurrentGeneratedCode()" Highlight />
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+
+@code {
+    private int currentStep = 0;
+    private int targetStep = 0;
+    private int activeTab = 0;
+    private bool isTyping = false;
+    private bool isGeneratedUpdating = false;
+    private string displayedCode = "";
+    private string previousCode = "";
+    private string currentBlockText = "";
+    private int currentCharIndex = 0;
+    private string highlightedSection = "";
+    private System.Timers.Timer? typewriterTimer;
+    private CancellationTokenSource? _cts;
+
+    // Step definitions based on README comments
+    private readonly CodeStep[] steps = [
+        new CodeStep
+        {
+            Description = "Initial setup - empty structure",
+            CodeToAdd = "",
+            BaseCode = @"var orders = await dbContext.Orders
+    .SelectExpr<Order, OrderDto>(o => new
+    {
+    })
+    .ToListAsync();",
+            DtoCode = @"// DTO class will be auto-generated",
+            SelectCode = @"// Select expression will be auto-generated"
+        },
+        new CodeStep
+        {
+            Description = "can use inferred member names",
+            CodeToAdd = @"        o.Id,",
+            BaseCode = "",
+            DtoCode = @"public partial class OrderDto
+{
+    public required int Id { get; set; }
+}",
+            SelectCode = @".Select(o => new OrderDto
+{
+    Id = o.Id,
+})"
+        },
+        new CodeStep
+        {
+            Description = "null-propagation supported",
+            CodeToAdd = @"        CustomerName = o.Customer?.Name,",
+            BaseCode = "",
+            DtoCode = @"public partial class OrderDto
+{
+    public required int Id { get; set; }
+    public required string? CustomerName { get; set; }
+}",
+            SelectCode = @".Select(o => new OrderDto
+{
+    Id = o.Id,
+    CustomerName = o.Customer != null
+        ? o.Customer.Name : null,
+})"
+        },
+        new CodeStep
+        {
+            Description = "also works for nested objects",
+            CodeToAdd = @"        CustomerCountry = o.Customer?.Address?.Country?.Name,
+        CustomerCity = o.Customer?.Address?.City?.Name,",
+            BaseCode = "",
+            DtoCode = @"public partial class OrderDto
+{
+    public required int Id { get; set; }
+    public required string? CustomerName { get; set; }
+    public required string? CustomerCountry { get; set; }
+    public required string? CustomerCity { get; set; }
+}",
+            SelectCode = @".Select(o => new OrderDto
+{
+    Id = o.Id,
+    CustomerName = o.Customer != null
+        ? o.Customer.Name : null,
+    CustomerCountry = o.Customer != null
+        && o.Customer.Address != null
+        && o.Customer.Address.Country != null
+        ? o.Customer.Address.Country.Name : null,
+    CustomerCity = o.Customer != null
+        && o.Customer.Address != null
+        && o.Customer.Address.City != null
+        ? o.Customer.Address.City.Name : null,
+})"
+        },
+        new CodeStep
+        {
+            Description = "you can use anonymous types inside",
+            CodeToAdd = @"        CustomerInfo = new
+        {
+            Email = o.Customer?.EmailAddress,
+            Phone = o.Customer?.PhoneNumber,
+        },",
+            BaseCode = "",
+            DtoCode = @"public partial class OrderDto
+{
+    public required int Id { get; set; }
+    public required string? CustomerName { get; set; }
+    public required string? CustomerCountry { get; set; }
+    public required string? CustomerCity { get; set; }
+    public required CustomerInfoDto? CustomerInfo { get; set; }
+}
+
+public partial class CustomerInfoDto
+{
+    public required string? Email { get; set; }
+    public required string? Phone { get; set; }
+}",
+            SelectCode = @".Select(o => new OrderDto
+{
+    Id = o.Id,
+    CustomerName = o.Customer != null
+        ? o.Customer.Name : null,
+    CustomerCountry = o.Customer != null
+        && o.Customer.Address != null
+        && o.Customer.Address.Country != null
+        ? o.Customer.Address.Country.Name : null,
+    CustomerCity = o.Customer != null
+        && o.Customer.Address != null
+        && o.Customer.Address.City != null
+        ? o.Customer.Address.City.Name : null,
+    CustomerInfo = new CustomerInfoDto
+    {
+        Email = o.Customer != null
+            ? o.Customer.EmailAddress : null,
+        Phone = o.Customer != null
+            ? o.Customer.PhoneNumber : null,
+    }
+})"
+        },
+        new CodeStep
+        {
+            Description = "calculated fields? no problem!",
+            CodeToAdd = @"        LatestOrderDate = o.OrderItems.Max(oi => oi.OrderDate),
+        TotalAmount = o.OrderItems.Sum(oi => oi.Quantity * oi.UnitPrice),",
+            BaseCode = "",
+            DtoCode = @"public partial class OrderDto
+{
+    public required int Id { get; set; }
+    public required string? CustomerName { get; set; }
+    public required string? CustomerCountry { get; set; }
+    public required string? CustomerCity { get; set; }
+    public required CustomerInfoDto? CustomerInfo { get; set; }
+    public required DateTime LatestOrderDate { get; set; }
+    public required decimal TotalAmount { get; set; }
+}
+
+public partial class CustomerInfoDto
+{
+    public required string? Email { get; set; }
+    public required string? Phone { get; set; }
+}",
+            SelectCode = @".Select(o => new OrderDto
+{
+    Id = o.Id,
+    CustomerName = o.Customer != null
+        ? o.Customer.Name : null,
+    CustomerCountry = o.Customer != null
+        && o.Customer.Address != null
+        && o.Customer.Address.Country != null
+        ? o.Customer.Address.Country.Name : null,
+    CustomerCity = o.Customer != null
+        && o.Customer.Address != null
+        && o.Customer.Address.City != null
+        ? o.Customer.Address.City.Name : null,
+    CustomerInfo = new CustomerInfoDto
+    {
+        Email = o.Customer != null
+            ? o.Customer.EmailAddress : null,
+        Phone = o.Customer != null
+            ? o.Customer.PhoneNumber : null,
+    },
+    LatestOrderDate = o.OrderItems.Max(oi => oi.OrderDate),
+    TotalAmount = o.OrderItems.Sum(oi => oi.Quantity * oi.UnitPrice),
+})"
+        },
+        new CodeStep
+        {
+            Description = "collections available",
+            CodeToAdd = @"        Items = o.OrderItems.Select(oi => new
+        {
+            ProductName = oi.Product?.Name,
+            oi.Quantity
+        }),",
+            BaseCode = "",
+            DtoCode = @"public partial class OrderDto
+{
+    public required int Id { get; set; }
+    public required string? CustomerName { get; set; }
+    public required string? CustomerCountry { get; set; }
+    public required string? CustomerCity { get; set; }
+    public required CustomerInfoDto? CustomerInfo { get; set; }
+    public required DateTime LatestOrderDate { get; set; }
+    public required decimal TotalAmount { get; set; }
+    public required IEnumerable<ItemsDto> Items { get; set; }
+}
+
+public partial class CustomerInfoDto
+{
+    public required string? Email { get; set; }
+    public required string? Phone { get; set; }
+}
+
+public partial class ItemsDto
+{
+    public required string? ProductName { get; set; }
+    public required int Quantity { get; set; }
+}",
+            SelectCode = @".Select(o => new OrderDto
+{
+    Id = o.Id,
+    CustomerName = o.Customer != null
+        ? o.Customer.Name : null,
+    CustomerCountry = o.Customer != null
+        && o.Customer.Address != null
+        && o.Customer.Address.Country != null
+        ? o.Customer.Address.Country.Name : null,
+    CustomerCity = o.Customer != null
+        && o.Customer.Address != null
+        && o.Customer.Address.City != null
+        ? o.Customer.Address.City.Name : null,
+    CustomerInfo = new CustomerInfoDto
+    {
+        Email = o.Customer != null
+            ? o.Customer.EmailAddress : null,
+        Phone = o.Customer != null
+            ? o.Customer.PhoneNumber : null,
+    },
+    LatestOrderDate = o.OrderItems.Max(oi => oi.OrderDate),
+    TotalAmount = o.OrderItems.Sum(oi => oi.Quantity * oi.UnitPrice),
+    Items = o.OrderItems.Select(oi => new ItemsDto
+    {
+        ProductName = oi.Product != null
+            ? oi.Product.Name : null,
+        Quantity = oi.Quantity
+    })
+})"
+        }
+    ];
+
+    protected override async Task OnInitializedAsync()
+    {
+        _cts = new CancellationTokenSource();
+
+        // Initialize with Step 1 (showing o.Id)
+        currentStep = 1;
+        targetStep = 1;
+        BuildCodeUpToStep(1);
+    }
+
+    private void BuildCodeUpToStep(int targetStep)
+    {
+        displayedCode = steps[0].BaseCode;
+        for (int i = 1; i <= targetStep && i < steps.Length; i++)
+        {
+            string codeToAdd = steps[i].CodeToAdd;
+            int insertPosition = displayedCode.LastIndexOf("    })");
+            if (insertPosition > 0)
+            {
+                displayedCode = displayedCode.Insert(insertPosition, codeToAdd + "\n");
+            }
+        }
+    }
+
+    private async Task StartTypewriterForStep(int newTargetStep)
+    {
+        if (_cts?.Token.IsCancellationRequested == true) return;
+
+        // Stop any existing animation
+        typewriterTimer?.Stop();
+
+        // Set target step immediately (this makes the tab turn cyan)
+        targetStep = newTargetStep;
+
+        // Save previous code for highlighting
+        previousCode = displayedCode;
+
+        // Determine what needs to be added
+        if (newTargetStep > currentStep)
+        {
+            // Adding new code blocks
+            isTyping = true;
+            currentCharIndex = 0;
+
+            // Build the text to add (all blocks between currentStep and targetStep)
+            currentBlockText = "";
+            for (int i = currentStep + 1; i <= newTargetStep && i < steps.Length; i++)
+            {
+                currentBlockText += steps[i].CodeToAdd + "\n";
+            }
+
+            highlightedSection = currentBlockText;
+            await InvokeAsync(StateHasChanged);
+
+            // Start typewriter animation
+            typewriterTimer = new System.Timers.Timer(8); // 8ms per character (faster)
+            typewriterTimer.Elapsed += async (sender, e) =>
+            {
+                try
+                {
+                    await TypeNextCharacter();
+                }
+                catch (ObjectDisposedException) { }
+            };
+            typewriterTimer.AutoReset = true;
+            typewriterTimer.Start();
+        }
+        else if (newTargetStep < currentStep)
+        {
+            // Removing code blocks - instant update
+            BuildCodeUpToStep(newTargetStep);
+            currentStep = newTargetStep;
+            targetStep = newTargetStep;
+            highlightedSection = "";
+            await InvokeAsync(StateHasChanged);
+        }
+    }
+
+    private async Task TypeNextCharacter()
+    {
+        if (_cts?.Token.IsCancellationRequested == true) return;
+
+        if (currentCharIndex >= currentBlockText.Length)
+        {
+            // Typing complete
+            typewriterTimer?.Stop();
+            isTyping = false;
+
+            // Update currentStep immediately (this makes tabs turn green and updates right side)
+            currentStep = targetStep;
+            await InvokeAsync(StateHasChanged);
+
+            // Wait a moment before clearing highlight
+            await Task.Delay(1000);
+            highlightedSection = "";
+            await InvokeAsync(StateHasChanged);
+            return;
+        }
+
+        // Add next character
+        char nextChar = currentBlockText[currentCharIndex];
+        currentCharIndex++;
+
+        // Insert the character before the closing braces
+        int insertPosition = displayedCode.LastIndexOf("    })");
+        if (insertPosition > 0)
+        {
+            displayedCode = displayedCode.Insert(insertPosition, nextChar.ToString());
+        }
+
+        await InvokeAsync(StateHasChanged);
+    }
+
+    private double GetProgressPercentage()
+    {
+        if (string.IsNullOrEmpty(currentBlockText) || currentBlockText.Length == 0)
+            return 0;
+
+        return Math.Min(100, (double)currentCharIndex / currentBlockText.Length * 100);
+    }
+
+    private async void JumpToStep(int newTargetStep)
+    {
+        if (newTargetStep == currentStep && !isTyping) return;
+
+        // Start typewriter animation for the new step
+        await StartTypewriterForStep(newTargetStep);
+    }
+
+    private void SetActiveTab(int tab)
+    {
+        activeTab = tab;
+        StateHasChanged();
+    }
+
+    private string GetCurrentTabTitle()
+    {
+        return activeTab == 0 ? "Auto-Generated DTO" : "Generated Select Expression";
+    }
+
+    private string GetCurrentGeneratedCode()
+    {
+        if (currentStep >= steps.Length) return steps[^1].GetCodeForTab(activeTab);
+        return steps[currentStep].GetCodeForTab(activeTab);
+    }
+
+    private const string autoMapperExample = @"// 1. Define DTO manually
+public class OrderDto
+{
+    public int Id { get; set; }
+    public string CustomerName { get; set; }
+}
+
+// 2. Configure mapping
+var config = new MapperConfiguration(cfg =>
+{
+    cfg.CreateMap<Order, OrderDto>()
+        .ForMember(d => d.CustomerName,
+            opt => opt.MapFrom(s => s.Customer.Name));
+});
+
+// 3. Use in query
+var orders = await dbContext.Orders
+    .ProjectTo<OrderDto>(config)
+    .ToListAsync();";
+
+    private const string linqraftExample = @"// 1. Write query directly
+var orders = await dbContext.Orders
+    .SelectExpr<Order, OrderDto>(o => new
+    {
+        o.Id,
+        CustomerName = o.Customer?.Name,
+    })
+    .ToListAsync();
+
+// OrderDto is auto-generated
+// No configuration needed!";
+
+    public async ValueTask DisposeAsync()
+    {
+        _cts?.Cancel();
+        _cts?.Dispose();
+        _cts = null;
+
+        if (typewriterTimer != null)
+        {
+            typewriterTimer.Stop();
+            typewriterTimer.Dispose();
+            typewriterTimer = null;
+        }
+    }
+
+    private class CodeStep
+    {
+        public required string Description { get; set; }
+        public required string CodeToAdd { get; set; }
+        public required string BaseCode { get; set; }
+        public required string DtoCode { get; set; }
+        public required string SelectCode { get; set; }
+
+        public string GetCodeForTab(int tab)
+        {
+            return tab == 0 ? DtoCode : SelectCode;
+        }
+    }
+}
