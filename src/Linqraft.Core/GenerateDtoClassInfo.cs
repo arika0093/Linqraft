@@ -4,6 +4,7 @@ using System.Linq;
 using System.Text;
 using Linqraft.Core.Formatting;
 using Linqraft.Core.RoslynHelpers;
+using Microsoft.CodeAnalysis;
 
 namespace Linqraft.Core;
 
@@ -184,22 +185,40 @@ public class GenerateDtoClassInfo
                 // Determine whether to re-apply nullable marker
                 var shouldReapplyNullable = isTypeNullable && prop.IsNullable;
 
-                if (RoslynTypeHelper.IsAnonymousTypeByString(typeWithoutNullable))
+                // Check if it's an array type
+                var isArrayType = IsArrayType(prop, typeWithoutNullable);
+                
+                // Remove [] suffix from the type string if present
+                // This is needed to extract the base type for replacement
+                var typeWithoutArray = typeWithoutNullable;
+                if (typeWithoutNullable.EndsWith("[]"))
+                {
+                    typeWithoutArray = typeWithoutNullable[..^2];
+                }
+
+                if (RoslynTypeHelper.IsAnonymousTypeByString(typeWithoutArray))
                 {
                     // Direct anonymous type
                     propertyType = explicitDtoName;
+                    if (isArrayType)
+                    {
+                        propertyType = $"{propertyType}[]";
+                    }
                     if (shouldReapplyNullable)
                     {
                         propertyType = $"{propertyType}?";
                     }
                 }
-                else if (RoslynTypeHelper.IsGenericTypeByString(typeWithoutNullable))
+                else if (RoslynTypeHelper.IsGenericTypeByString(typeWithoutArray))
                 {
                     // Collection type (e.g., List<...>, IEnumerable<...>)
-                    // Extract the simple type name from the fully qualified name
-                    var simpleTypeName = explicitDtoName!.Replace("global::", "");
-                    var baseType = typeWithoutNullable[..typeWithoutNullable.IndexOf("<")];
-                    propertyType = $"{baseType}<{simpleTypeName}>";
+                    // Keep the fully qualified name including global:: prefix
+                    var baseType = typeWithoutArray[..typeWithoutArray.IndexOf("<")];
+                    propertyType = $"{baseType}<{explicitDtoName}>";
+                    if (isArrayType)
+                    {
+                        propertyType = $"{propertyType}[]";
+                    }
                     if (shouldReapplyNullable)
                     {
                         propertyType = $"{propertyType}?";
@@ -208,6 +227,10 @@ public class GenerateDtoClassInfo
                 else
                 {
                     propertyType = explicitDtoName!;
+                    if (isArrayType)
+                    {
+                        propertyType = $"{propertyType}[]";
+                    }
                     if (shouldReapplyNullable)
                     {
                         propertyType = $"{propertyType}?";
@@ -399,5 +422,19 @@ public class GenerateDtoClassInfo
             "private" => 0,
             _ => 5, // Default to public
         };
+    }
+
+    /// <summary>
+    /// Determines if a property type represents an array type by checking:
+    /// 1. The type symbol (IArrayTypeSymbol) - preferred when semantic model information is available
+    /// 2. The type string pattern (ends with [])
+    /// 3. The original expression syntax (ends with .ToArray()) - a necessary compromise for cases
+    ///    where semantic model information is not available or the type symbol doesn't reflect the array type
+    /// </summary>
+    private static bool IsArrayType(DtoProperty prop, string typeString)
+    {
+        return prop.TypeSymbol is IArrayTypeSymbol
+            || typeString.EndsWith("[]")
+            || prop.OriginalExpression.Trim().EndsWith(".ToArray()");
     }
 }
