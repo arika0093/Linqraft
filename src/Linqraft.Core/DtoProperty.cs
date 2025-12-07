@@ -1215,26 +1215,8 @@ public record DtoProperty(
 
             var methodName = input.Substring(dotIndex + 1, methodNameEnd - dotIndex - 1);
             
-            // Check for generic type arguments (<Type1, Type2, ...>)
-            if (methodNameEnd < input.Length && input[methodNameEnd] == '<')
-            {
-                // Find the matching closing angle bracket
-                var genericStart = methodNameEnd;
-                var depth = 1;
-                var genericEnd = genericStart + 1;
-                
-                while (genericEnd < input.Length && depth > 0)
-                {
-                    if (input[genericEnd] == '<')
-                        depth++;
-                    else if (input[genericEnd] == '>')
-                        depth--;
-                    genericEnd++;
-                }
-                
-                // Skip the generic type arguments
-                methodNameEnd = genericEnd;
-            }
+            // Skip generic type arguments if present
+            methodNameEnd = SkipGenericTypeArguments(input, methodNameEnd);
 
             // Check if there's an opening parenthesis after the method name (and optional generic args)
             if (methodNameEnd >= input.Length || input[methodNameEnd] != '(')
@@ -1281,5 +1263,36 @@ public record DtoProperty(
         }
 
         return result.ToString();
+    }
+
+    /// <summary>
+    /// Skips generic type arguments in a string if present at the given position.
+    /// Returns the position after the generic type arguments, or the original position if none found.
+    /// </summary>
+    /// <param name="input">The input string</param>
+    /// <param name="startPos">The position to start checking for generic arguments</param>
+    /// <returns>The position after the generic type arguments</returns>
+    private static int SkipGenericTypeArguments(string input, int startPos)
+    {
+        // Check for generic type arguments (<Type1, Type2, ...>)
+        if (startPos < input.Length && input[startPos] == '<')
+        {
+            // Find the matching closing angle bracket
+            var depth = 1;
+            var pos = startPos + 1;
+            
+            while (pos < input.Length && depth > 0)
+            {
+                if (input[pos] == '<')
+                    depth++;
+                else if (input[pos] == '>')
+                    depth--;
+                pos++;
+            }
+            
+            return pos;
+        }
+        
+        return startPos;
     }
 }

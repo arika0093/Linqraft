@@ -16,21 +16,21 @@ public partial class Issue_NestedSelectExprTest
             {
                 x.Id,
                 x.Name,
-                // Use qualified name for nested partial classes
-                ItemsEnumerable = x.Items.SelectExpr<NestedItem, Issue_NestedSelectExprTest.NestedItemDtoEnumerable>(i => new
+                // Test without qualifier - expecting DTO generation in same place as calling class
+                ItemsEnumerable = x.Items.SelectExpr<NestedItem, NestedItemDtoEnumerable>(i => new
                 {
                     i.Id,
                 }),
                 ItemsList = x
-                    .Items.SelectExpr<NestedItem, Issue_NestedSelectExprTest.NestedItemDtoList>(i => new { i.Id })
+                    .Items.SelectExpr<NestedItem, NestedItemDtoList>(i => new { i.Id })
                     .ToList(),
                 ItemsArray = x
-                    .Items.SelectExpr<NestedItem, Issue_NestedSelectExprTest.NestedItemDtoArray>(i => new
+                    .Items.SelectExpr<NestedItem, NestedItemDtoArray>(i => new
                     {
                         i.Id,
                         i.Title,
                         SubItem = i.SubItems.Select(si => new { si.Id, si.Value }),
-                        SubItemWithExpr = i.SubItems.SelectExpr<NestedSubItem, Issue_NestedSelectExprTest.NestedSubItemDto>(
+                        SubItemWithExpr = i.SubItems.SelectExpr<NestedSubItem, NestedSubItemDto>(
                             si => new { si.Id, si.Value }
                         ),
                     })
@@ -60,4 +60,8 @@ public partial class Issue_NestedSelectExprTest
     }
 
     internal partial class NestedEntityDto;
+    internal partial class NestedItemDtoEnumerable;
+    internal partial class NestedItemDtoList;
+    internal partial class NestedItemDtoArray;
+    internal partial class NestedSubItemDto;
 }

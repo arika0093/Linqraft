@@ -427,9 +427,10 @@ public class GenerateDtoClassInfo
 
     /// <summary>
     /// Determines if a property type represents an array type by checking:
-    /// 1. The type symbol (IArrayTypeSymbol)
+    /// 1. The type symbol (IArrayTypeSymbol) - preferred when semantic model information is available
     /// 2. The type string pattern (ends with [])
-    /// 3. The original expression syntax (ends with .ToArray())
+    /// 3. The original expression syntax (ends with .ToArray()) - a necessary compromise for cases
+    ///    where semantic model information is not available or the type symbol doesn't reflect the array type
     /// </summary>
     private static bool IsArrayType(DtoProperty prop, string typeString)
     {
