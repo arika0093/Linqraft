@@ -1,0 +1,564 @@
+# Customization
+
+Linqraft provides various customization options to tailor the generated code to your needs.
+
+## Table of Contents
+
+* [Local Variable Capture](#local-variable-capture)
+* [Array Nullability Removal](#array-nullability-removal)
+* [Partial Classes](#partial-classes)
+* [Property Accessibility Control](#property-accessibility-control)
+* [Nested DTO Naming](#nested-dto-naming)
+* [Auto-Generated Comments](#auto-generated-comments)
+* [Global Properties](#global-properties)
+
+## Local Variable Capture
+
+Local variables cannot be used directly inside `SelectExpr` because the selector is translated into a separate method. To use local variables, you must explicitly capture them.
+
+### Problem
+
+```csharp
+var threshold = 100;
+var converted = dbContext.Entities
+    .SelectExpr<Entity, EntityDto>(x => new {
+        x.Id,
+        IsExpensive = x.Price > threshold, // ERROR: Cannot access local variable
+    });
+```
+
+### Solution: Use Capture Parameter
+
+Pass local variables as an anonymous object through the `capture` parameter:
+
+```csharp
+var threshold = 100;
+var multiplier = 2;
+var suffix = " units";
+
+var converted = dbContext.Entities
+    .SelectExpr<Entity, EntityDto>(
+        x => new {
+            x.Id,
+            IsExpensive = x.Price > threshold,
+            DoubledValue = x.Value * multiplier,
+            Description = x.Name + suffix,
+        },
+        capture: new { threshold, multiplier, suffix }
+    );
+```
+
+### Generated Code
+
+```csharp
+public static IQueryable<TResult> SelectExpr_HASH<TIn, TResult>(
+    this IQueryable<TIn> query, Func<TIn, TResult> selector, object captureParam)
+{
+    var matchedQuery = query as object as IQueryable<Entity>;
+    dynamic captureObj = captureParam;
+    int threshold = captureObj.threshold;
+    int multiplier = captureObj.multiplier;
+    string suffix = captureObj.suffix;
+
+    var converted = matchedQuery.Select(x => new EntityDto
+    {
+        Id = x.Id,
+        IsExpensive = x.Price > threshold,
+        DoubledValue = x.Value * multiplier,
+        Description = x.Name + suffix,
+    });
+    return converted as object as IQueryable<TResult>;
+}
+```
+
+### Analyzer Support
+
+Linqraft provides an analyzer that automatically detects uncaptured local variables and suggests a code fix:
+
+![Local variable capture error](../../assets/local-variable-capture-err.png)
+
+Simply apply the suggested fix to add the capture parameter automatically.
+
+## Array Nullability Removal
+
+For convenience, Linqraft automatically removes nullability from array-type properties in generated DTOs.
+
+### Why?
+
+With array types, there's rarely a need to distinguish between `null` and `[]` (empty array). Removing nullability simplifies your code by eliminating unnecessary null checks like `dto.Items ?? []`.
+
+### Rules
+
+Nullability is removed when **all** of the following conditions are met:
+
+1. The expression does **not** contain a ternary operator (`? :`)
+2. The type is `IEnumerable<T>` or derived (List, Array, etc.)
+3. The expression uses null-conditional access (`?.`)
+4. The expression contains a `Select` or `SelectMany` call
+
+### Example
+
+```csharp
+query.SelectExpr<Entity, EntityDto>(e => new
+{
+    // Nullability removed: List<string>? → List<string>
+    ChildNames = e.Child?.Select(c => c.Name).ToList(),
+
+    // Nullability removed: IEnumerable<ChildDto>? → IEnumerable<ChildDto>
+    ChildDtos = e.Child?.Select(c => new { c.Name, c.Description }),
+
+    // Nullability preserved (explicit ternary): List<string>?
+    ExplicitNullableNames = e.Child != null
+        ? e.Child.Select(c => c.Name).ToList()
+        : null,
+});
+```
+
+### Generated Code
+
+```csharp
+public partial class EntityDto
+{
+    // Non-nullable array property
+    public required List<string> ChildNames { get; set; }
+
+    // Non-nullable collection property
+    public required IEnumerable<ChildDto> ChildDtos { get; set; }
+
+    // Nullable (because of explicit ternary)
+    public required List<string>? ExplicitNullableNames { get; set; }
+}
+
+// Conversion with default empty collections
+var converted = matchedQuery.Select(d => new EntityDto
+{
+    ChildNames = d.Child != null
+        ? d.Child.Select(c => c.Name).ToList()
+        : new List<int>(),
+
+    ChildDtos = d.Child != null
+        ? d.Child.Select(c => new ChildDto { Name = c.Name, Description = c.Description })
+        : Enumerable.Empty<ChildDto>(),
+
+    ExplicitNullableNames = d.Child != null
+        ? d.Child.Select(c => c.Name).ToList()
+        : null,
+});
+```
+
+### Disabling This Behavior
+
+If you prefer to keep nullability on array types, set the global property to `false`:
+
+```xml
+<PropertyGroup>
+  <LinqraftArrayNullabilityRemoval>false</LinqraftArrayNullabilityRemoval>
+</PropertyGroup>
+```
+
+## Partial Classes
+
+All generated DTOs are `partial` classes, allowing you to extend them as needed.
+
+### Adding Methods
+
+```csharp
+// Generated by Linqraft
+public partial class OrderDto
+{
+    public required int Id { get; set; }
+    public required string CustomerName { get; set; }
+    public required decimal TotalAmount { get; set; }
+    public required IEnumerable<OrderItemDto> Items { get; set; }
+}
+
+// Your extension
+public partial class OrderDto
+{
+    public string GetDisplayName() => $"Order #{Id} - {CustomerName}";
+
+    public decimal GetAverageItemPrice() =>
+        Items.Any() ? TotalAmount / Items.Count() : 0;
+
+    public bool IsLargeOrder() => TotalAmount > 1000;
+}
+```
+
+### Adding Interfaces
+
+```csharp
+public partial class OrderDto : IValidatableObject
+{
+    public IEnumerable<ValidationResult> Validate(ValidationContext validationContext)
+    {
+        if (TotalAmount < 0)
+            yield return new ValidationResult("Total amount cannot be negative");
+
+        if (string.IsNullOrWhiteSpace(CustomerName))
+            yield return new ValidationResult("Customer name is required");
+    }
+}
+```
+
+### Adding Attributes
+
+```csharp
+[Serializable]
+[JsonConverter(typeof(CustomOrderDtoConverter))]
+public partial class OrderDto
+{
+    // Additional custom logic
+}
+```
+
+## Property Accessibility Control
+
+You can control the accessibility of specific properties by pre-defining them in a partial class.
+
+### Example
+
+```csharp
+// Pre-define properties you want to control
+public partial class OrderDto
+{
+    // This property will not be generated
+    // You control its accessibility and implementation
+    internal string InternalData { get; set; }
+}
+
+var orders = await dbContext.Orders
+    .SelectExpr<Order, OrderDto>(o => new
+    {
+        o.Id,
+        PublicComment = o.Comment,
+        InternalData = o.InternalField, // Will use the pre-defined property
+    })
+    .ToListAsync();
+```
+
+### Generated Code
+
+```csharp
+// Generated by Linqraft
+public partial class OrderDto
+{
+    public required int Id { get; set; }
+    public required string PublicComment { get; set; }
+    // InternalData is NOT generated here
+    // because it was pre-defined in your partial class
+}
+```
+
+This technique is useful when:
+* You need internal properties for testing
+* You want to hide certain properties from public API
+* You need custom setters or getters
+
+## Nested DTO Naming
+
+Nested DTOs (generated from anonymous types inside the selector) can have their naming strategy customized.
+
+### Hash Namespace (Default)
+
+By default, nested DTOs are placed in a hash-suffixed namespace to avoid naming conflicts:
+
+```csharp
+namespace MyProject
+{
+    public partial class OrderDto
+    {
+        public required List<global::MyProject.LinqraftGenerated_DE33EA40.ItemsDto> Items { get; set; }
+    }
+}
+
+namespace MyProject.LinqraftGenerated_DE33EA40
+{
+    public partial class ItemsDto
+    {
+        public required string? ProductName { get; set; }
+    }
+}
+```
+
+**Pros:**
+* Clean class names
+* Avoids namespace pollution
+* Easy to find in namespace explorer
+
+**Cons:**
+* Longer fully-qualified names
+* More namespaces
+
+### Hash Class Name
+
+Set `LinqraftNestedDtoUseHashNamespace` to `false` to use hash-suffixed class names instead:
+
+```xml
+<PropertyGroup>
+  <LinqraftNestedDtoUseHashNamespace>false</LinqraftNestedDtoUseHashNamespace>
+</PropertyGroup>
+```
+
+Generated code:
+
+```csharp
+namespace MyProject
+{
+    public partial class OrderDto
+    {
+        public required List<global::MyProject.ItemsDto_DE33EA40> Items { get; set; }
+    }
+
+    public partial class ItemsDto_DE33EA40
+    {
+        public required string? ProductName { get; set; }
+    }
+}
+```
+
+**Pros:**
+* All DTOs in the same namespace
+* Shorter fully-qualified names
+
+**Cons:**
+* Hash-suffixed class names
+* More classes in the same namespace
+
+## Auto-Generated Comments
+
+Linqraft can automatically generate XML documentation comments on generated DTOs by extracting comments from source properties.
+
+### Supported Comment Types
+
+Linqraft extracts comments from:
+
+1. **XML summary comments** (`/// <summary>`)
+2. **EF Core Comment attributes** (`[Comment("...")]`)
+3. **Display attributes** (`[Display(Name = "...")]`)
+4. **Single-line comments** (`// ...`)
+
+### Example
+
+```csharp
+// Source entity with comments
+public class Order
+{
+    /// <summary>
+    /// Unique identifier for the order
+    /// </summary>
+    [Key]
+    public int Id { get; set; }
+
+    [Comment("Customer who placed the order")]
+    public string CustomerName { get; set; }
+
+    [Display(Name = "Total order amount")]
+    public decimal TotalAmount { get; set; }
+
+    // Collection of items in this order
+    public List<OrderItem> Items { get; set; }
+}
+
+public class OrderItem
+{
+    // Product associated with this item
+    public Product Product { get; set; }
+}
+
+// Use SelectExpr
+query.SelectExpr<Order, OrderDto>(o => new
+{
+    o.Id,
+    o.CustomerName,
+    Amount = o.TotalAmount,
+    ProductNames = o.Items.Select(i => i.Product?.Name).ToList(),
+});
+```
+
+### Generated Code with Comments
+
+```csharp
+/// <summary>
+/// Source entity with comments
+/// </summary>
+/// <remarks>
+/// From: <c>Order</c>
+/// </remarks>
+public partial class OrderDto
+{
+    /// <summary>
+    /// Unique identifier for the order
+    /// </summary>
+    /// <remarks>
+    /// From: <c>Order.Id</c>
+    /// Attributes: <c>[Key]</c>
+    /// </remarks>
+    public required int Id { get; set; }
+
+    /// <summary>
+    /// Customer who placed the order
+    /// </summary>
+    /// <remarks>
+    /// From: <c>Order.CustomerName</c>
+    /// </remarks>
+    public required string CustomerName { get; set; }
+
+    /// <summary>
+    /// Total order amount
+    /// </summary>
+    /// <remarks>
+    /// From: <c>Order.TotalAmount</c>
+    /// </remarks>
+    public required decimal Amount { get; set; }
+
+    /// <summary>
+    /// Product associated with this item
+    /// </summary>
+    /// <remarks>
+    /// From: <c>Order.Items.Select(...).ToList()</c>
+    /// </remarks>
+    public required List<string> ProductNames { get; set; }
+}
+```
+
+### Configuration
+
+Control comment generation with the `LinqraftCommentOutput` property:
+
+```xml
+<PropertyGroup>
+  <!-- All: summary + reference (default) -->
+  <LinqraftCommentOutput>All</LinqraftCommentOutput>
+
+  <!-- SummaryOnly: only summary, no reference -->
+  <LinqraftCommentOutput>SummaryOnly</LinqraftCommentOutput>
+
+  <!-- None: no comments -->
+  <LinqraftCommentOutput>None</LinqraftCommentOutput>
+</PropertyGroup>
+```
+
+## Global Properties
+
+Linqraft supports several MSBuild properties to customize code generation globally.
+
+### Available Properties
+
+```xml
+<Project>
+  <PropertyGroup>
+    <!-- Set namespace for DTOs in global namespace. Empty means use global namespace -->
+    <LinqraftGlobalNamespace></LinqraftGlobalNamespace>
+
+    <!-- Generate records instead of classes -->
+    <LinqraftRecordGenerate>false</LinqraftRecordGenerate>
+
+    <!-- Set property accessor pattern: Default, GetAndSet, GetAndInit, GetAndInternalSet -->
+    <!-- Default is GetAndSet for classes, GetAndInit for records -->
+    <LinqraftPropertyAccessor>Default</LinqraftPropertyAccessor>
+
+    <!-- Add 'required' keyword on properties -->
+    <LinqraftHasRequired>true</LinqraftHasRequired>
+
+    <!-- Generate XML documentation comments -->
+    <!-- All (summary+reference), SummaryOnly (summary only), None (no comments) -->
+    <LinqraftCommentOutput>All</LinqraftCommentOutput>
+
+    <!-- Remove nullability from array-type properties -->
+    <LinqraftArrayNullabilityRemoval>true</LinqraftArrayNullabilityRemoval>
+
+    <!-- Use hash-named namespace for nested DTOs (e.g., LinqraftGenerated_HASH.ItemsDto) -->
+    <!-- When false, uses hash-suffixed class names (e.g., ItemsDto_HASH) -->
+    <LinqraftNestedDtoUseHashNamespace>true</LinqraftNestedDtoUseHashNamespace>
+  </PropertyGroup>
+</Project>
+```
+
+### Property Details
+
+#### LinqraftGlobalNamespace
+
+Controls the namespace for DTOs when the source entity is in the global namespace.
+
+```xml
+<!-- Use global namespace (default) -->
+<LinqraftGlobalNamespace></LinqraftGlobalNamespace>
+
+<!-- Use specific namespace -->
+<LinqraftGlobalNamespace>MyProject.Dtos</LinqraftGlobalNamespace>
+```
+
+#### LinqraftRecordGenerate
+
+Generate records instead of classes:
+
+```xml
+<LinqraftRecordGenerate>true</LinqraftRecordGenerate>
+```
+
+```csharp
+// Generated as record
+public partial record OrderDto(
+    int Id,
+    string CustomerName,
+    decimal TotalAmount
+);
+```
+
+#### LinqraftPropertyAccessor
+
+Control property accessor patterns:
+
+* `Default`: `get; set;` for classes, `get; init;` for records
+* `GetAndSet`: `get; set;`
+* `GetAndInit`: `get; init;`
+* `GetAndInternalSet`: `get; internal set;`
+
+```xml
+<LinqraftPropertyAccessor>GetAndInit</LinqraftPropertyAccessor>
+```
+
+```csharp
+public partial class OrderDto
+{
+    public required int Id { get; init; }
+    public required string CustomerName { get; init; }
+}
+```
+
+#### LinqraftHasRequired
+
+Control the `required` keyword on properties:
+
+```xml
+<LinqraftHasRequired>false</LinqraftHasRequired>
+```
+
+```csharp
+public partial class OrderDto
+{
+    public int Id { get; set; } // No 'required' keyword
+    public string CustomerName { get; set; }
+}
+```
+
+## Viewing Generated Code
+
+To inspect the generated code:
+
+1. **F12 (Go to Definition)** on the DTO class name
+2. **Output to files** by adding these settings:
+
+```xml
+<PropertyGroup>
+  <EmitCompilerGeneratedFiles>true</EmitCompilerGeneratedFiles>
+  <CompilerGeneratedFilesOutputPath>Generated</CompilerGeneratedFilesOutputPath>
+</PropertyGroup>
+```
+
+Generated files will be written to the `Generated/` folder in your project.
+
+## Next Steps
+
+* [FAQ](./faq.md) - Common questions and answers
+* [Performance](./performance.md) - Performance benchmarks and comparisons
