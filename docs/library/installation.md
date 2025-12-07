@@ -56,20 +56,6 @@ The `PrivateAssets` attribute might look unfamiliar, but it indicates that this 
 * It only affects compile-time code generation
 * Your deployed application has zero runtime dependencies from Linqraft
 
-## Verifying Installation
-
-To verify that Linqraft is installed correctly:
-
-1. Build your project: `dotnet build`
-2. Try using `SelectExpr` in your code
-3. The generated code should be available via IntelliSense
-
-If you encounter any issues, try:
-* Cleaning and rebuilding: `dotnet clean && dotnet build --no-incremental`
-* Restarting your IDE
-* Checking that your SDK version meets the requirements
-
 ## Next Steps
 
 * [Usage Patterns](./usage-patterns.md) - Learn how to use SelectExpr with different patterns
-* [Customization](./customization.md) - Customize the generated code to fit your needs

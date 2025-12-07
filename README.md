@@ -14,11 +14,22 @@ Write Select queries easily with on-demand DTO generation and null-propagation o
   * [Installation](./docs/library/installation.md)
   * [Basic Usage](#basic-usage)
 * [Documentation](#documentation)
-  * [Usage Patterns](./docs/library/usage-patterns.md) - Anonymous, Explicit DTO, and Pre-existing DTO patterns
-  * [Customization](./docs/library/customization.md) - Local variables, partial classes, global properties, and more
-  * [Performance](./docs/library/performance.md) - Benchmarks and library comparisons
-  * [FAQ](./docs/library/faq.md) - Common questions and troubleshooting
-  * [Analyzers](./docs/analyzers/README.md) - Code analyzers and fixes
+  * Getting Started
+    * [Installation](./docs/library/installation.md)
+    * [Usage Patterns](./docs/library/usage-patterns.md)
+  * Customization
+    * [Local Variable Capture](./docs/library/local-variable-capture.md)
+    * [Array Nullability Removal](./docs/library/array-nullability.md)
+    * [Partial Classes](./docs/library/partial-classes.md)
+    * [Nested DTO Naming](./docs/library/nested-dto-naming.md)
+    * [Auto-Generated Comments](./docs/library/auto-generated-comments.md)
+    * [Global Properties](./docs/library/global-properties.md)
+  * Performance & Comparison
+    * [Performance](./docs/library/performance.md)
+    * [Library Comparison](./docs/library/library-comparison.md)
+  * Help
+    * [FAQ](./docs/library/faq.md)
+    * [Analyzers](./docs/analyzers/README.md)
 * [Examples](#examples)
 * [License](#license)
 
@@ -249,26 +260,30 @@ public class OrderDto { /* ... */ }
 For more usage patterns and examples, see the [Usage Patterns Guide](./docs/library/usage-patterns.md).
 
 ## Documentation
+
+### Getting Started
+
+* **[Installation](./docs/library/installation.md)** - Prerequisites, installation, and setup
+* **[Usage Patterns](./docs/library/usage-patterns.md)** - Anonymous, Explicit DTO, and Pre-existing DTO patterns
+
 ### Customization
 
-For advanced customization options, see the [Customization Guide](./docs/library/customization.md):
+* **[Local Variable Capture](./docs/library/local-variable-capture.md)** - Using local variables in SelectExpr
+* **[Array Nullability Removal](./docs/library/array-nullability.md)** - Automatic null handling for collections
+* **[Partial Classes](./docs/library/partial-classes.md)** - Extending generated DTOs
+* **[Nested DTO Naming](./docs/library/nested-dto-naming.md)** - Customizing nested DTO names
+* **[Auto-Generated Comments](./docs/library/auto-generated-comments.md)** - XML documentation generation
+* **[Global Properties](./docs/library/global-properties.md)** - MSBuild configuration options
 
-* [Local Variable Capture](./docs/library/customization.md#local-variable-capture) - Using local variables in SelectExpr
-* [Array Nullability Removal](./docs/library/customization.md#array-nullability-removal) - Automatic null handling for collections
-* [Partial Classes](./docs/library/customization.md#partial-classes) - Extending generated DTOs
-* [Property Accessibility Control](./docs/library/customization.md#property-accessibility-control) - Internal properties
-* [Nested DTO Naming](./docs/library/customization.md#nested-dto-naming) - Customizing nested DTO names
-* [Auto-Generated Comments](./docs/library/customization.md#auto-generated-comments) - XML documentation generation
-* [Global Properties](./docs/library/customization.md#global-properties) - MSBuild configuration options
+### Performance & Comparison
 
-### Analyzers
-Linqraft provides code analyzers to help migrate existing LINQ Select queries to use Linqraft features. For more information, see the [Analyzers Guide](./docs/analyzers/README.md).
+* **[Performance](./docs/library/performance.md)** - Benchmarks and best practices
+* **[Library Comparison](./docs/library/library-comparison.md)** - Comparisons with AutoMapper, Mapster, Mapperly, and Facet
 
-### Performance
-For performance benchmarks and comparisons with other libraries, see the [Performance Guide](./docs/library/performance.md).
+### Help
 
-### FAQ
-For common questions and troubleshooting tips, see the [FAQ Guide](./docs/library/faq.md).
+* **[FAQ](./docs/library/faq.md)** - Common questions and troubleshooting
+* **[Analyzers](./docs/analyzers/README.md)** - Code analyzers and fixes
 
 ## Examples
 
