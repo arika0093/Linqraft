@@ -141,15 +141,13 @@ YourProject/
 
 ### Where can I report bugs or request features?
 
-Please use the GitHub issue tracker:
-https://github.com/arika0093/Linqraft/issues
+Please use the [GitHub issue tracker](https://github.com/arika0093/Linqraft/issues).
 
 Include:
 * Your `SelectExpr` usage code
 * Expected behavior
 * Actual behavior
 * Generated code (if relevant)
-
 ### Where can I find examples?
 
 * [Linqraft.Sample](../../examples/Linqraft.Sample) - Basic usage examples
