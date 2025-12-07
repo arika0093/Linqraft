@@ -1,15 +1,15 @@
 @implements IAsyncDisposable
 
-<section class="bg-gradient-to-b from-gray-900 to-gray-950 border-y border-gray-800">
-    <div class="max-w-7xl mx-auto px-6 py-16">
+<section class="border-y border-gray-800 bg-gradient-to-b from-gray-900 to-gray-950 py-8">
+    <div class="mx-auto max-w-7xl px-6 py-16">
         <SectionTitle>Query-Based DTO Generation</SectionTitle>
-        <p class="text-gray-400 text-center mb-4 max-w-3xl mx-auto">
+        <p class="mx-auto mb-4 max-w-3xl text-center text-gray-400">
             Unlike traditional generators that create queries from class definitions, <br/>
             Linqraft generates DTOs from your queries. Watch how it works:
         </p>
 
         <!-- Step Indicators at Top -->
-        <div class="mb-6">
+        <div class="mb-3">
             <div class="flex flex-wrap justify-center gap-2">
                 @for (int i = 1; i < steps.Length; i++)
                 {
@@ -21,22 +21,19 @@
                     // Tab is gray if: step is not completed and not current
                     var isPending = stepIndex > currentStep && stepIndex != targetStep;
 
-                    <div class="relative flex flex-col items-center">
+                    <div class="relative flex flex-col items-center" translate="no">
                         <button @onclick="() => JumpToStep(stepIndex)"
                                 class="@(isCurrent ? "bg-cyan-500/20 border-cyan-500" : isCompleted ? "bg-green-500/20 border-green-500" : "bg-gray-800 border-gray-700")
                                     border rounded-lg px-4 py-2 transition-all duration-300 min-w-[120px] hover:scale-105 cursor-pointer">
                             <div class="text-xs font-semibold @(isCurrent ? "text-cyan-400" : isCompleted ? "text-green-400" : "text-gray-500")">
                                 Step @stepIndex
                             </div>
-                            <div class="text-xs text-gray-400 truncate max-w-[100px]">
-                                @steps[stepIndex].Description
-                            </div>
                         </button>
 
                         @if (isCurrent && isTyping)
                         {
                             <!-- Progress bar for current typing step -->
-                            <div class="absolute bottom-0 left-0 right-0 h-1 bg-gray-700 rounded-full overflow-hidden">
+                            <div class="absolute bottom-0 left-0 right-0 h-1 overflow-hidden rounded-full bg-gray-700">
                                 <div class="h-full bg-cyan-500 transition-all duration-100"
                                      style="width: @GetProgressPercentage()%"></div>
                             </div>
@@ -48,7 +45,7 @@
 
         <div class="gap-4 overflow-auto lg:grid lg:grid-cols-2">
             <!-- Left Side: SelectExpr Query with Block Animation -->
-            <div class="flex flex-col rounded-md border border-gray-700 p-4 mb-4 lg:mb-0">
+            <div class="mb-4 flex flex-col rounded-md border border-gray-700 p-4 lg:mb-0">
                 <div class="mb-3 flex items-center gap-2">
                     <h3 class="text-lg font-semibold text-cyan-400">Your Query</h3>
                 </div>
@@ -57,7 +54,7 @@
                     @if (isTyping)
                     {
                         <div class="absolute bottom-4 right-4">
-                            <span class="inline-block h-2 w-2 rounded-full bg-cyan-400 animate-pulse"></span>
+                            <span class="inline-block h-2 w-2 animate-pulse rounded-full bg-cyan-400"></span>
                         </div>
                     }
                 </div>
@@ -73,11 +70,11 @@
                     <!-- Tab Buttons -->
                     <div class="flex gap-2">
                         <button @onclick="() => SetActiveTab(0)"
-                                class="px-3 py-1 text-sm rounded transition-colors @(activeTab == 0 ? "bg-green-500/20 text-green-400 border border-green-500" : "bg-gray-800 text-gray-400 border border-gray-700 hover:border-gray-600")">
+                                class="px-3 py-1 text-sm rounded cursor-pointer transition-colors @(activeTab == 0 ? "bg-green-500/20 text-green-400 border border-green-500" : "bg-gray-800 text-gray-400 border border-gray-700 hover:border-gray-600")">
                             DTO Class
                         </button>
                         <button @onclick="() => SetActiveTab(1)"
-                                class="px-3 py-1 text-sm rounded transition-colors @(activeTab == 1 ? "bg-green-500/20 text-green-400 border border-green-500" : "bg-gray-800 text-gray-400 border border-gray-700 hover:border-gray-600")">
+                                class="px-3 py-1 text-sm rounded cursor-pointer transition-colors @(activeTab == 1 ? "bg-green-500/20 text-green-400 border border-green-500" : "bg-gray-800 text-gray-400 border border-gray-700 hover:border-gray-600")">
                             Select Expression
                         </button>
                     </div>
@@ -477,38 +474,6 @@ public partial class ItemsDto
         if (currentStep >= steps.Length) return steps[^1].GetCodeForTab(activeTab);
         return steps[currentStep].GetCodeForTab(activeTab);
     }
-
-    private const string autoMapperExample = @"// 1. Define DTO manually
-public class OrderDto
-{
-    public int Id { get; set; }
-    public string CustomerName { get; set; }
-}
-
-// 2. Configure mapping
-var config = new MapperConfiguration(cfg =>
-{
-    cfg.CreateMap<Order, OrderDto>()
-        .ForMember(d => d.CustomerName,
-            opt => opt.MapFrom(s => s.Customer.Name));
-});
-
-// 3. Use in query
-var orders = await dbContext.Orders
-    .ProjectTo<OrderDto>(config)
-    .ToListAsync();";
-
-    private const string linqraftExample = @"// 1. Write query directly
-var orders = await dbContext.Orders
-    .SelectExpr<Order, OrderDto>(o => new
-    {
-        o.Id,
-        CustomerName = o.Customer?.Name,
-    })
-    .ToListAsync();
-
-// OrderDto is auto-generated
-// No configuration needed!";
 
     public async ValueTask DisposeAsync()
     {
