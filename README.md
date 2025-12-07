@@ -158,56 +158,27 @@ Interested? Try it out in the [Playground](https://arika0093.github.io/Linqraft/
 
 ![](./assets/replace-codefix-sample.gif)
 
-## Usage
+## Quick Start
+For detailed installation instructions, see the [Installation Guide](./docs/library/installation.md).
+
 ### Prerequisites
-This library requirements **C# 12.0 or later** because it uses the [interceptor](https://learn.microsoft.com/en-us/dotnet/csharp/whats-new/csharp-12#interceptors) feature.  
+This library requires following environment:
 
-
-<details>
-<summary>.NET 7 or below setup</summary>
-
-Set the `LangVersion` property to `12.0` or later and use [Polysharp](https://github.com/Sergio0694/PolySharp/) to enable C# latest features.
-
-```xml
-<Project>
-  <PropertyGroup>
-    <LangVersion>12.0</LangVersion>
-  </PropertyGroup>
-  <ItemGroup>
-    <PackageReference Include="Polysharp" Version="1.*" />
-  </ItemGroup>
-</Project>
-```
-
-</details>
-
-Also, due to the constraints of `Microsoft.CodeAnalysis.CSharp`, One of the following environment is [required](https://andrewlock.net/supporting-multiple-sdk-versions-in-analyzers-and-source-generators/):
-
-* .NET 8.0.400 or later **SDK**
-* Visual Studio 2022 version 17.11 or later
-
-> [!NOTE]
-> This is only a constraint on the SDK side, so the runtime(target framework) can be older versions.
+* C# 12 or later (for interceptor feature)
+* One of the following versions (or later):
+  * .NET 8.0.400 
+  * Visual Studio 2022 version 17.11
 
 ### Installation
 
-Install `Linqraft` from NuGet.
+Install `Linqraft` from NuGet:
 
 ```bash
 dotnet add package Linqraft
 ```
 
-When you open your `.csproj` file, you should see the package added like below.
-The `PrivateAssets` attribute might look unfamiliar, but it indicates that this is a development-only dependency (the library will not be included in the production environment).
+## Basic Usage
 
-```xml
-<PackageReference Include="Linqraft" Version="x.y.z">
-  <PrivateAssets>all</PrivateAssets>
-  <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
-</PackageReference>
-```
-
-## Examples
 ### Anonymous pattern
 
 Use `SelectExpr` without generics to get an anonymous-type projection:
@@ -224,7 +195,8 @@ var orders = await dbContext.Orders
 ```
 
 ### Explicit DTO pattern
-If you want to change the result to a DTO class, simply specify the generics as follows.
+
+Specify the generics to generate a DTO class:
 
 ```csharp
 var orders = await dbContext.Orders
@@ -239,26 +211,9 @@ var orders = await dbContext.Orders
     .ToListAsync();
 ```
 
-Similarly, you can use only the auto-generation feature by specifying `IEnumerable` types.
-
-```csharp
-var orders = MySampleList
-    .SelectExpr<Order, OrderDto>(o => new
-    {
-        Id = o.Id,
-        CustomerName = o.Customer?.Name,
-        // ...
-    })
-    .ToList();
-```
-
-> [!TIP]
-> If you want to use the auto-generated type information, you can navigate to the generated code (for example via F12 in your editor) by placing the cursor on the `OrderDto` class.
-> and then you can copy it or use it as you like.
-
-
 ### Pre-existing DTO pattern
-If you already have DTO classes and want to use them directly, call `SelectExpr` without generics and construct your DTO type in the selector:
+
+Use your existing DTO classes:
 
 ```csharp
 var orders = await dbContext.Orders
@@ -274,440 +229,41 @@ var orders = await dbContext.Orders
 public class OrderDto { /* ... */ }
 ```
 
-## Customize Auto-Generated Code
-### Pass Local-Variables
-local variables cannot be used directly inside `SelectExpr` because it is "translated" into another method. To use local variables, use capture arguments.
+For more usage patterns and examples, see the [Usage Patterns Guide](./docs/library/usage-patterns.md).
 
-```csharp
-var val = 10;
-var multiplier = 2;
-var suffix = " units";
-var converted = dbContext.Entities
-    .SelectExpr<Entity, EntityDto>(
-        x => new {
-            x.Id,
-            // cannot use local variable 'val' directly
-            NewValue = x.Value + val,
-            DoubledValue = x.Value * multiplier,
-            Description = x.Name + suffix,
-        },
-        // you need to pass local variables as an object.
-        capture: new { val, multiplier, suffix }
-    );
-```
+## Documentation
 
-<details>
-<summary>Generated code example</summary>
+### Getting Started
 
-```csharp
-// code snippet
-public static IQueryable<TResult> SelectExpr_223F344D_DD65E389<TIn, TResult>(
-    this IQueryable<TIn> query, Func<TIn, TResult> selector, object captureParam)
-{
-    var matchedQuery = query as object as IQueryable<global::Entity>;
-    dynamic captureObj = captureParam;
-    int val = captureObj.val;
-    int multiplier = captureObj.multiplier;
-    string suffix = captureObj.suffix;
-    var converted = matchedQuery.Select(x => new global::EntityDto
-    {
-        Id = x.Id,
-        NewValue = x.Value + val,
-        DoubledValue = x.Value * multiplier,
-        Description = x.Name + suffix,
-    });
-    return converted as object as IQueryable<TResult>;
-}
-```
+* **[Installation](./docs/library/installation.md)** - Prerequisites, installation, and setup
+* **[Usage Patterns](./docs/library/usage-patterns.md)** - Anonymous, Explicit DTO, and Pre-existing DTO patterns
 
-</details>
+### Customization
 
-An analyzer is also provided to automatically detect and apply this transformation.
-It is detected as an error, so just apply the code fix.
+* **[Local Variable Capture](./docs/library/local-variable-capture.md)** - Using local variables in SelectExpr
+* **[Array Nullability Removal](./docs/library/array-nullability.md)** - Automatic null handling for collections
+* **[Partial Classes](./docs/library/partial-classes.md)** - Extending generated DTOs
+* **[Nested DTO Naming](./docs/library/nested-dto-naming.md)** - Customizing nested DTO names
+* **[Auto-Generated Comments](./docs/library/auto-generated-comments.md)** - XML documentation generation
+* **[Global Properties](./docs/library/global-properties.md)** - MSBuild configuration options
 
-![](./assets/local-variable-capture-err.png)
+### Performance & Comparison
 
-### Removing nullability from arrays
-Generally, DTO class types should be generated as specified. However, for array types, it is convenient for null tolerance to be automatically removed during generation.
-This is because with array types, there is rarely a need to distinguish between `null` and `[]`.
+* **[Performance](./docs/library/performance.md)** - Benchmarks and best practices
+* **[Library Comparison](./docs/library/library-comparison.md)** - Comparisons with AutoMapper, Mapster, Mapperly, and Facet
 
-Linqraft automatically removes nullability from array-type properties according to the following rules.
-* Expression should NOT contain a ternary operator
-* The type must be IEnumerable<T> or derived (List, Array, etc.)
-* The expression uses null-conditional access (?.)
-* The expression contains a Select or SelectMany call
+### Help
 
-For example, the following transformation is performed.
+* **[FAQ](./docs/library/faq.md)** - Common questions and troubleshooting
+* **[Analyzers](./docs/analyzers/README.md)** - Code analyzers and fixes
 
-```csharp
-query.SelectExpr<Entity, EntityDto>(e => new
-{
-    // in general, this property is generated as List<string>?
-    // but Linqraft removes nullability for array types.
-    // so the generated type is List<string>
-    ChildNames = e.Child?.Select(c => c.Name).ToList(),
+## Examples
 
-    // This also applies to auto-generated child classes.
-    // so the generated type is IEnumerable<ChildDto>
-    ChildDtos = e.Child?.Select(c => new { c.Name, c.Description }),
+Example projects are available in the [examples](./examples) folder:
 
-    // When explicitly comparing with a ternary operator, it is generated as a nullable type as usual.
-    // therefore, in this case, it is generated as List<string>?
-    ExplicitNullableNames = e.Child != null ? e.Child.Select(c => c.Name).ToList() : null,
-});
-```
-
-<details>
-<summary>Generated code example</summary>
-
-```csharp
-// code snippet
-var converted = matchedQuery.Select(d => new global::EntityDto
-{
-    ChildNames = d.Child != null ? d.Child.Select(c => c.Name).ToList() : new List<int>(),
-    ChildDtos = d.Child != null ? d.Child
-        .Select(c => new global::LinqraftGenerated_HASH1234.ChildDto
-        {
-            Name = c.Name,
-            Description = c.Description
-        }) : Enumerable.Empty<global::LinqraftGenerated_HASH1234.ChildDto>(),
-    ExplicitNullableNames = d.Child != null ? d.Child.Select(c => c.Name).ToList() : null,
-});
-
-// generated DTO class
-public partial class EntityDto
-{
-    public required List<string> ChildNames { get; set; }
-    public required IEnumerable<global::LinqraftGenerated_HASH1234.ChildDto> ChildDtos { get; set; }
-    public required List<string>? ExplicitNullableNames { get; set; }
-}
-```
-
-</details>
-
-This change helps avoid unnecessary null checks like `dto.ChildNames ?? []`, keeping the code simple.
-
-If you don't like this behavior, you can disable it by setting the `LinqraftArrayNullabilityRemoval` property to `false`.
-
-### Partial Classes
-You can extend the generated DTO classes as needed since they are output as `partial` classes.
-
-```csharp
-// extend generated DTO class if needed
-public partial class OrderDto
-{
-    public string GetDisplayName() => $"{Id}: {CustomerName}";
-}
-```
-
-### Property Accessibility Control
-If you want to make specific properties of the auto-generated DTO class `internal`, you can do so by predefining the properties as partial classes.
-
-```csharp
-public partial class ParentDto
-{
-    // This property will not be generated, so you can control its accessibility
-    internal string InternalData { get; set; }
-}
-
-var orders = await dbContext.Orders
-    .SelectExpr<Parent, ParentDto>(o => new 
-    {
-        Id = o.Id,
-        PublicComment = o.Comment,
-        InternalData = o.InternalField,
-    })
-    .ToListAsync();
-
-// Generated code will look like this:
-public partial class ParentDto
-{
-    public required int Id { get; set; }
-    public required string PublicComment { get; set; }
-}
-```
-
-### Remove Hash from Generated Class Names
-By default, nested DTO classes are generated with a namespace containing a hash suffix (e.g., `LinqraftGenerated_HASH1234.ItemsDto`) to avoid class name conflicts.
-You can change this behavior to use class names with a hash-suffixed (e.g., `ItemsDto_HASH1234`).
-This setting can be controlled via the `LinqraftNestedDtoUseHashNamespace` property.
-
-<details>
-<summary>Generated code example</summary>
-
-**LinqraftNestedDtoUseHashNamespace = true (default)**
-
-```csharp
-namespace Tutorial
-{
-    public partial class OrderDto
-    {
-        public required System.Collections.Generic.List<global::Tutorial.LinqraftGenerated_DE33EA40.ItemsDto> Items { get; set; }
-    }
-}
-namespace Tutorial.LinqraftGenerated_DE33EA40
-{
-    public partial class ItemsDto
-    {
-        public required string? ProductName { get; set; }
-    }
-}
-```
-
-**LinqraftNestedDtoUseHashNamespace = false**
-
-```csharp
-namespace Tutorial
-{
-    public partial class OrderDto
-    {
-        public required System.Collections.Generic.List<global::Tutorial.OrderItemDto_DE33EA40> Items { get; set; }
-    }
-
-    public partial class OrderItemDto_DE33EA40
-    {
-        public required string? ProductName { get; set; }
-    }
-}
-```
-
-</details>
-
-### Auto generated comments
-Linqraft attempts to retrieve comments attached to the original properties as much as possible and attach them as XML documentation comments to the properties of the DTO class.
-In addition, reference information indicating what kind of query the DTO class was generated from is also attached.
-This feature can be controlled using the `LinqraftCommentOutput` property.
-
-<details>
-<summary>Generated code example with comments</summary>
-
-```csharp
-// based entity class with comments
-public class Entity
-{
-    /// <summary>
-    /// XML summary comment
-    /// </summary>
-    [Key]
-    public int Id { get; set; }
-
-    [Comment("EFCore Comment")]
-    public int Item1 { get; set; }
-
-    [Display(Name = "Display Comment")]
-    public int Item2 { get; set; }
-
-    public List<ChildEntity> Childs { get; set; }
-}
-public class ChildEntity
-{
-    // single-line comment are also supported
-    public int ChildId { get; set; }
-}
-
-// and use SelectExpr
-query.SelectExpr<Entity, EntityDto>(e => new
-{
-    Id = e.Id,
-    Item1Value = e.Item1,
-    Item2Value = e.Item2,
-    ChildIds = e.Childs.Select(c => c.ChildId).ToList(),
-});
-```
-
-generates the following DTO class:
-
-```csharp
-/// <summary>
-/// based entity class with comments
-/// </summary>
-/// <remarks>
-/// From: <c>Entity</c>
-/// </remarks>
-public partial class EntityDto
-{
-    /// <summary>
-    /// XML summary comment
-    /// </summary>
-    /// <remarks>
-    /// From: <c>Entity.Id</c>
-    /// Attributes: <c>[Key]</c>
-    /// </remarks>
-    public required int Id { get; set; }
-
-    /// <summary>
-    /// EFCore Comment
-    /// </summary>
-    /// <remarks>
-    /// From: <c>Entity.Item1</c>
-    /// </remarks>
-    public required int Item1Value { get; set; }
-
-    /// <summary>
-    /// Display Comment
-    /// </summary>
-    /// <remarks>
-    /// From: <c>Entity.Item2</c>
-    /// </remarks>
-    public required int Item2Value { get; set; }
-
-    /// <summary>
-    /// single-line comment are also supported
-    /// </summary>
-    /// <remarks>
-    /// From: <c>Entity.Childs.Select(...).ToList()</c>
-    /// </remarks>
-    public required System.Collections.Generic.List<int> ChildIds { get; set; }
-}
-```
-</details>
-
-
-### Global Properties
-Linqraft supports several MSBuild properties to customize the generated code:
-
-<details>
-<summary>Available Properties</summary>
-
-```xml
-<Project>
-  <!-- The values listed are the default values. -->
-  <PropertyGroup>
-    <!-- set namespace if based-class is in global namespace. empty means use global namespace -->
-    <LinqraftGlobalNamespace></LinqraftGlobalNamespace>
-    <!-- generate records instead of classes -->
-    <LinqraftRecordGenerate>false</LinqraftRecordGenerate>
-    <!-- set accessor pattern. Default, GetAndSet, GetAndInit, GetAndInternalSet -->
-    <!-- default is GetAndSet in class, GetAndInit in record -->
-    <LinqraftPropertyAccessor>Default</LinqraftPropertyAccessor>
-    <!-- has required keyword on properties -->
-    <LinqraftHasRequired>true</LinqraftHasRequired>
-    <!-- generate xml documentation comments on properties -->
-    <!-- All(summary+reference), SummaryOnly(summary), None(no comments) -->
-    <LinqraftCommentOutput>All</LinqraftCommentOutput>
-    <!-- remove nullability from array-type properties -->
-    <LinqraftArrayNullabilityRemoval>true</LinqraftArrayNullabilityRemoval>
-    <!-- generate nested DTOs in hash-named namespace (e.g., LinqraftGenerated_HASH.ItemsDto) -->
-    <!-- instead of hash-suffixed class names (e.g., ItemsDto_HASH) -->
-    <LinqraftNestedDtoUseHashNamespace>true</LinqraftNestedDtoUseHashNamespace>
-  </PropertyGroup>
-</Project>
-```
-
-</details>
-
-## Performance
-
-<details>
-<summary>Benchmark Results</summary>
-
-```
-BenchmarkDotNet v0.15.8, Windows 11 (10.0.26200.7171/25H2/2025Update/HudsonValley2)
-Intel Core i7-14700F 2.10GHz, 1 CPU, 28 logical and 20 physical cores
-.NET SDK 10.0.100
-  [Host]     : .NET 10.0.0 (10.0.0, 10.0.25.52411), X64 RyuJIT x86-64-v3
-  DefaultJob : .NET 10.0.0 (10.0.0, 10.0.25.52411), X64 RyuJIT x86-64-v3
-
-
-| Method                        | Mean       | Error    | StdDev   | Ratio | RatioSD | Rank | Gen0    | Gen1   | Allocated | Alloc Ratio |
-|------------------------------ |-----------:|---------:|---------:|------:|--------:|-----:|--------:|-------:|----------:|------------:|
-| 'Mapperly Projection'         |   877.9 us |  6.96 us |  6.51 us |  0.98 |    0.01 |    1 | 13.6719 | 1.9531 | 244.69 KB |        1.00 |
-| 'Mapster ProjectToType'       |   881.6 us |  6.13 us |  5.73 us |  0.98 |    0.01 |    1 | 13.6719 | 1.9531 | 236.59 KB |        0.96 |
-| 'AutoMapper ProjectTo'        |   887.2 us |  5.97 us |  5.59 us |  0.99 |    0.01 |    1 | 13.6719 | 1.9531 | 237.38 KB |        0.97 |
-| 'Linqraft Manual DTO'         |   893.5 us |  3.05 us |  2.70 us |  0.99 |    0.01 |    1 | 13.6719 | 1.9531 | 245.97 KB |        1.00 |
-| 'Traditional Manual DTO'      |   898.2 us |  5.92 us |  5.24 us |  1.00 |    0.01 |    1 | 13.6719 | 1.9531 | 245.63 KB |        1.00 |
-| 'Linqraft Auto-Generated DTO' |   900.2 us |  7.49 us |  7.01 us |  1.00 |    0.01 |    1 | 13.6719 | 1.9531 | 245.78 KB |        1.00 |
-| 'Linqraft Anonymous'          |   971.7 us | 19.31 us | 20.67 us |  1.08 |    0.02 |    2 | 13.6719 | 1.9531 | 245.36 KB |        1.00 |
-| 'Traditional Anonymous'       |   984.4 us | 16.56 us | 19.08 us |  1.09 |    0.02 |    2 | 13.6719 | 1.9531 | 247.29 KB |        1.01 |
-| 'Facet ToFacetsAsync'         | 2,086.8 us |  9.59 us |  8.50 us |  2.32 |    0.02 |    3 | 31.2500 | 3.9063 | 541.53 KB |        2.20 |
-```
-
-</details>
-
-Compared to the manual approach, the performance is nearly identical.
-for more details, see [Linqraft.Benchmark](./examples/Linqraft.Benchmark) for details.
-
-## Comparison with Other Libraries
-Mapping is a common task, and many libraries exist.
-Here, instead of comparing performance and pros and cons in detail, we will explain the main differences.
-
-<details>
-<summary>Compared Libraries</summary>
-
-### [AutoMapper](https://automapper.io/)
-* You need to predefine the destination DTO.
-* Mapping rules are set up in advance using `MapperConfiguration`.
-    * Highly configurable, but not type-safe.
-* For Select queries, use the `ProjectTo<TDestination>` method.
-* **Paid license required** for commercial use from version 15 onward.
-
-### [Mapster](https://github.com/MapsterMapper/Mapster)
-* You need to predefine the destination DTO.
-    * You can generate DTOs using `Mapster.Tool`, but it must be run as a separate process.
-* For Select queries, use the `ProjectToType<TDestination>` method.
-* Customizing the structure requires manual configuration one by one using `NewConfig.Map(...)`.
-
-### [Mapperly](https://mapperly.riok.app/)
-* You need to predefine the destination DTO.
-* The conversion process is auto-generated by a source generator and is easy to read.
-* Customizing the conversion is possible, but you need to define your own methods, which adds some extra steps.
-  * Although it can also be specified with attributes, you need to [explicitly specify the properties](https://mapperly.riok.app/docs/configuration/flattening/) before and after conversion.
-
-### [Facet](https://github.com/Tim-Maes/Facet)
-* Automatically generates DTOs from existing types.
-    * You can prepare multiple DTOs as needed.
-    * However, you must explicitly control what gets generated using `Include`/`Exclude` attributes.
-* Nested objects can be retrieved without `.Include()` queries.
-    * However, according to the documentation, you need to specify them explicitly with `NestedFacets`.
-* With EFCore extensions, update queries and more are also auto-generated.
-* Overall, it's feature-rich but the configuration can be somewhat complex.
-
-### [Linqraft](https://arika0093.github.io/Linqraft/)
-* Automatically generates DTOs based on query definitions.
-    * In contrast, Traditional generators generate queries from class definitions.
-    * This allows you to flexibly generate DTO structures that do not depend on the original class structure.
-        * With traditional solutions, the original class structure is the base, so complex customizations or computed fields require extra effort.
-* Zero-dependency because it uses source generators and interceptors.
-    * However, it requires a relatively recent environment (C# 12.0 or later).
-* On the other hand, since it's query-based, it's not suitable for generating shared DTOs referenced from multiple projects.
-    * For example, you can mitigate this by using Linqraft in the API layer and generating separate classes for shared components from the API's OpenAPI Schema.
-* Reverse conversion from DTO to the original entity is not supported.
-    * This is an intentional trade-off for the flexibility mentioned above: reverse conversion of computed fields would be ambiguous.
-
-</details>
-
-In summary (admittedly subjective!), it looks like this:
-
-| Library    | DTO Definition | Generation | Customization | Reverse | License    |
-| ---------- | -------------- | ---------- | ------------- | ------- | ---------- |
-| AutoMapper | Manual         | From class | Config-based  | Yes     | Paid (15+) |
-| Mapster    | Manual         | From class | Config-based  | Yes     | MIT        |
-| Mapperly   | Manual         | From class | Code/Attr     | Yes     | Apache 2.0 |
-| Facet      | Semi-auto      | From class | Attributes    | Yes     | MIT        |
-| Linqraft   | Auto           | From query | Inline        | No      | Apache 2.0 |
-
-## Frequently Asked Questions
-### Only works with Entity Framework?
-No. It can be used with any LINQ provider that supports `IEnumerable` and/or `IQueryable`.
-
-### Can the generated DTOs be used elsewhere?
-Yes. You can use the generated DTOs anywhere, such as API result models, Swagger documentation, function return types, arguments, variables, and more.
-For example, see [here](./examples/Linqraft.ApiSample) for an example of using it in an API.
-
-### Can I access the generated code?
-Yes. `Go to Definition (F12)` on the generated DTO class name will take you to the generated code.
-Alternatively, you can also output the generated code to files by adding the following settings to your project.
-
-```xml
-<Project>
-  <PropertyGroup>
-    <!-- flag to emit generated files -->
-    <EmitCompilerGeneratedFiles>true</EmitCompilerGeneratedFiles>
-    <!-- output path for generated files -->
-    <CompilerGeneratedFilesOutputPath>Generated</CompilerGeneratedFilesOutputPath>
-  </PropertyGroup>
-</Project>
-```
+* [Linqraft.Sample](./examples/Linqraft.Sample) - Basic usage examples (with EFCore)
+* [Linqraft.MinimumSample](./examples/Linqraft.MinimumSample) - Minimal working example
+* [Linqraft.ApiSample](./examples/Linqraft.ApiSample) - API integration example
 
 ## License
 This project is licensed under the Apache License 2.0.
