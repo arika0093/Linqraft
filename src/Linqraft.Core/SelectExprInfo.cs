@@ -141,6 +141,16 @@ public abstract record SelectExprInfo
     );
 
     /// <summary>
+    /// Generates static field declarations for pre-built expressions (if enabled)
+    /// </summary>
+    public virtual string? GenerateStaticFields()
+    {
+        // Default implementation returns null (no fields)
+        // Derived classes can override this if they need static fields
+        return null;
+    }
+
+    /// <summary>
     /// Generates SelectExpr code for a given interceptable location
     /// </summary>
     public List<string> GenerateSelectExprCodes(InterceptableLocation location)

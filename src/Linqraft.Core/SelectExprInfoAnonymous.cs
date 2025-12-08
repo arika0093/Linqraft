@@ -55,6 +55,16 @@ public record SelectExprInfoAnonymous : SelectExprInfo
     // Get expression type string (for documentation)
     protected override string GetExprTypeString() => "anonymous";
 
+    /// <summary>
+    /// Generates static field declarations for pre-built expressions (if enabled)
+    /// </summary>
+    public override string? GenerateStaticFields()
+    {
+        // Anonymous types cannot use pre-built expressions because we don't know the result type at compile time
+        // The result type is inferred from the lambda and is an compiler-generated anonymous type
+        return null;
+    }
+
     // Generate SelectExpr method
     protected override string GenerateSelectExprMethod(
         string dtoName,
@@ -67,6 +77,10 @@ public record SelectExprInfoAnonymous : SelectExprInfo
         var sb = new StringBuilder();
 
         var id = GetUniqueId();
+        
+        // Anonymous types cannot use pre-built expressions (result type is unknown)
+        // so we always use inline lambda
+        
         sb.AppendLine(GenerateMethodHeaderPart("anonymous type", location));
 
         // Determine if we have capture parameters
@@ -113,6 +127,7 @@ public record SelectExprInfoAnonymous : SelectExprInfo
                 sb.AppendLine($"    var capture = ({captureTypeName})captureParam;");
             }
 
+            // Anonymous types always use inline lambda (cannot use pre-built expressions)
             sb.AppendLine($"    var converted = matchedQuery.Select({LambdaParameterName} => new");
         }
         else
@@ -126,6 +141,8 @@ public record SelectExprInfoAnonymous : SelectExprInfo
             sb.AppendLine(
                 $"    var matchedQuery = query as object as {returnTypePrefix}<{sourceTypeFullName}>;"
             );
+            
+            // Anonymous types always use inline lambda (cannot use pre-built expressions)
             sb.AppendLine($"    var converted = matchedQuery.Select({LambdaParameterName} => new");
         }
 
@@ -141,6 +158,7 @@ public record SelectExprInfoAnonymous : SelectExprInfo
             .ToList();
         sb.AppendLine(string.Join($",{CodeFormatter.DefaultNewLine}", propertyAssignments));
         sb.AppendLine("    });");
+        
         sb.AppendLine($"    return converted as object as {returnTypePrefix}<TResult>;");
         sb.AppendLine("}");
         sb.AppendLine();

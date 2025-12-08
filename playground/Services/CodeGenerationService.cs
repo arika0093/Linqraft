@@ -78,6 +78,7 @@ public class CodeGenerationService(SharedCompilationService sharedCompilation)
                         info.Invocation.SyntaxTree
                     );
                     var location = semanticModel.GetInterceptableLocation(info.Invocation);
+                    var fields = info.GenerateStaticFields();
                     var selectExprCodes = info.GenerateSelectExprCodes(location!);
                     var dtoClasses = info.GenerateDtoClasses()
                         .GroupBy(c => c.FullName)
@@ -85,7 +86,7 @@ public class CodeGenerationService(SharedCompilationService sharedCompilation)
                         .ToList();
 
                     queryExpressionBuilder.AppendLine(
-                        GenerateSourceCodeSnippets.BuildExprCodeSnippets(selectExprCodes)
+                        GenerateSourceCodeSnippets.BuildExprCodeSnippets(selectExprCodes, [fields])
                     );
                     dtoClassBuilder.AppendLine(
                         GenerateSourceCodeSnippets.BuildDtoCodeSnippetsGroupedByNamespace(

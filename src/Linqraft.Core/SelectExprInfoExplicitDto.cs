@@ -266,6 +266,73 @@ public record SelectExprInfoExplicitDto : SelectExprInfo
     protected override string GetExprTypeString() => "explicit";
 
     /// <summary>
+    /// Generates static field declarations for pre-built expressions (if enabled)
+    /// </summary>
+    public override string? GenerateStaticFields()
+    {
+        // Check if we should use pre-built expressions (only for IQueryable, not IEnumerable)
+        var usePrebuildExpression = Configuration.UsePrebuildExpression && !IsEnumerableInvocation();
+        
+        // Don't generate fields if captures are used (they don't work well with closures)
+        var hasCapture = CaptureArgumentExpression != null && CaptureArgumentType != null;
+        
+        if (!usePrebuildExpression || hasCapture)
+        {
+            return null;
+        }
+        
+        var structure = GenerateDtoStructure();
+        var sourceTypeFullName = structure.SourceTypeFullName;
+        var actualNamespace = GetActualDtoNamespace();
+        var dtoName = GetParentDtoClassName(structure);
+        
+        // Build full DTO name with parent classes if nested
+        string dtoFullName;
+        if (string.IsNullOrEmpty(actualNamespace))
+        {
+            // Global namespace: no namespace prefix
+            dtoFullName =
+                ParentClasses.Count > 0
+                    ? $"global::{string.Join(".", ParentClasses)}.{dtoName}"
+                    : $"global::{dtoName}";
+        }
+        else
+        {
+            // Regular namespace case
+            dtoFullName =
+                ParentClasses.Count > 0
+                    ? $"global::{actualNamespace}.{string.Join(".", ParentClasses)}.{dtoName}"
+                    : $"global::{actualNamespace}.{dtoName}";
+        }
+        
+        var id = GetUniqueId();
+        
+        // Build the lambda body
+        var lambdaBodyBuilder = new StringBuilder();
+        lambdaBodyBuilder.AppendLine($"new {dtoFullName}");
+        lambdaBodyBuilder.AppendLine($"    {{");
+        var propertyAssignments = structure
+            .Properties.Select(prop =>
+            {
+                var assignment = GeneratePropertyAssignment(prop, CodeFormatter.IndentSize * 2);
+                return $"{CodeFormatter.Indent(2)}{prop.Name} = {assignment}";
+            })
+            .ToList();
+        lambdaBodyBuilder.AppendLine(string.Join($",{CodeFormatter.DefaultNewLine}", propertyAssignments));
+        lambdaBodyBuilder.Append("    }");
+        
+        var (fieldDecl, _) = ExpressionTreeBuilder.GenerateExpressionTreeField(
+            sourceTypeFullName,
+            dtoFullName,
+            LambdaParameterName,
+            lambdaBodyBuilder.ToString(),
+            id
+        );
+        
+        return fieldDecl;
+    }
+
+    /// <summary>
     /// Gets the full name for a nested DTO class using the structure.
     /// When NestedDtoUseHashNamespace is enabled, includes the LinqraftGenerated_{hash} namespace
     /// WITHOUT parent class nesting (implicit DTOs are managed by hash, not class hierarchy).
@@ -373,6 +440,10 @@ public record SelectExprInfoExplicitDto : SelectExprInfo
         var sb = new StringBuilder();
 
         var id = GetUniqueId();
+        
+        // Check if we should use pre-built expressions (only for IQueryable, not IEnumerable)
+        var usePrebuildExpression = Configuration.UsePrebuildExpression && !IsEnumerableInvocation();
+        
         sb.AppendLine(GenerateMethodHeaderPart(dtoName, location));
 
         // Determine if we have capture parameters
@@ -417,6 +488,9 @@ public record SelectExprInfoExplicitDto : SelectExprInfo
                 sb.AppendLine($"    var capture = ({captureTypeName})captureParam;");
             }
 
+            // Note: Pre-built expressions don't work well with captures because the closure
+            // variables would be captured at compile time, not at runtime. So we disable
+            // pre-built expressions when captures are used.
             sb.AppendLine(
                 $"    var converted = matchedQuery.Select({LambdaParameterName} => new {dtoFullName}"
             );
@@ -432,24 +506,43 @@ public record SelectExprInfoExplicitDto : SelectExprInfo
             sb.AppendLine(
                 $"    var matchedQuery = query as object as {returnTypePrefix}<{sourceTypeFullName}>;"
             );
-            sb.AppendLine(
-                $"    var converted = matchedQuery.Select({LambdaParameterName} => new {dtoFullName}"
-            );
+            
+            // Use pre-built expression if enabled
+            if (usePrebuildExpression)
+            {
+                // Get the field name (we need to generate the same hash as in GenerateStaticFields)
+                var hash = HashUtility.GenerateSha256Hash(id).Substring(0, 8);
+                var fieldName = $"_cachedExpression_{hash}";
+                
+                // Use the cached expression directly (no initialization needed, it's done in the field declaration)
+                sb.AppendLine($"    var converted = matchedQuery.Select({fieldName});");
+            }
+            else
+            {
+                sb.AppendLine(
+                    $"    var converted = matchedQuery.Select({LambdaParameterName} => new {dtoFullName}"
+                );
+            }
         }
 
-        sb.AppendLine($"    {{");
+        // Only generate the lambda body if we're not using pre-built expressions (or if we have captures)
+        if (!usePrebuildExpression || hasCapture)
+        {
+            sb.AppendLine($"    {{");
 
-        // Generate property assignments
-        var propertyAssignments = structure
-            .Properties.Select(prop =>
-            {
-                var assignment = GeneratePropertyAssignment(prop, CodeFormatter.IndentSize * 2);
-                return $"{CodeFormatter.Indent(2)}{prop.Name} = {assignment}";
-            })
-            .ToList();
-        sb.AppendLine(string.Join($",{CodeFormatter.DefaultNewLine}", propertyAssignments));
+            // Generate property assignments
+            var propertyAssignments = structure
+                .Properties.Select(prop =>
+                {
+                    var assignment = GeneratePropertyAssignment(prop, CodeFormatter.IndentSize * 2);
+                    return $"{CodeFormatter.Indent(2)}{prop.Name} = {assignment}";
+                })
+                .ToList();
+            sb.AppendLine(string.Join($",{CodeFormatter.DefaultNewLine}", propertyAssignments));
 
-        sb.AppendLine($"    }});");
+            sb.AppendLine($"    }});");
+        }
+        
         sb.AppendLine($"    return converted as object as {returnTypePrefix}<TResult>;");
         sb.AppendLine($"}}");
         return sb.ToString();
