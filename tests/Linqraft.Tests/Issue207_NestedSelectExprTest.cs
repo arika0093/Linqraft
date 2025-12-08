@@ -8,7 +8,7 @@ namespace Linqraft.Tests;
 /// When SelectExpr is used inside another SelectExpr, the inner SelectExpr should be
 /// converted to a regular Select call and only the outer SelectExpr should generate an interceptor.
 /// </summary>
-public class Issue207_NestedSelectExprTest
+public partial class Issue207_NestedSelectExprTest
 {
     private readonly List<NestedEntity207> TestData =
     [
@@ -51,9 +51,6 @@ public class Issue207_NestedSelectExprTest
             ],
         },
     ];
-
-    // !WARNING: This test (inside-SelectExpr) is only work above .NET 9 (reason is unknown...)
-#if NET9_0_OR_GREATER
 
     /// <summary>
     /// Test: Outer SelectExpr with inner SelectExpr for nested DTO types.
@@ -128,7 +125,6 @@ public class Issue207_NestedSelectExprTest
         subItemElementType.ShouldNotBeNull();
         subItemElementType!.Namespace!.ShouldContain("LinqraftGenerated");
     }
-#endif
 
     // Test data classes for the nested SelectExpr test
     internal class NestedEntity207
@@ -150,4 +146,8 @@ public class Issue207_NestedSelectExprTest
         public int Id { get; set; }
         public string Value { get; set; } = null!;
     }
+
+    public partial class NestedEntity207Dto;
+
+    public partial class NestedItem207Dto;
 }
