@@ -146,20 +146,11 @@ var orders = mapper.MapToDto(dbContext.Orders).ToList();
 
 **Example:**
 ```csharp
-// Define entity with attributes
-public class Order
-{
-    public int Id { get; set; }
+[Facet(typeof(OrderChild), exclude = "OrderChildId")]
+public partial record OrderChildFacet;
 
-    [Include]
-    public string CustomerName { get; set; }
-
-    [Exclude]
-    public string InternalField { get; set; }
-
-    [NestedFacets]
-    public List<OrderItem> Items { get; set; }
-}
+[Facet(typeof(Order), NestedFacets = [typeof(OrderChildDto)]
+public partial record OrderFacet;
 
 // Use ToFacetsAsync
 var orders = await dbContext.Orders.ToFacetsAsync<OrderFacet>();
