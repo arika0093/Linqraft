@@ -2239,6 +2239,9 @@ public abstract record SelectExprInfo
         // Handle member access for enum values
         if (expression is MemberAccessExpressionSyntax memberAccess)
         {
+            if (SemanticModel == null)
+                return null;
+
             var symbolInfo = SemanticModel.GetSymbolInfo(memberAccess);
             if (symbolInfo.Symbol is IFieldSymbol fieldSymbol && fieldSymbol.HasConstantValue)
             {
