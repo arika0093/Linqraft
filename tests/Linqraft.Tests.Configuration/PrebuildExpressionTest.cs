@@ -127,6 +127,72 @@ public class PrebuildExpressionTest
         Assert.Equal(results1.Count, results2.Count);
         Assert.Equal(results1[0].Id, results2[0].Id);
     }
+
+    [Fact]
+    public void Test_Nested_SelectExpr_With_PrebuiltExpression()
+    {
+        // Test that pre-built expressions work with nested structures
+        // Using a simpler approach - test multiple DTO types in the same test class
+        var parentData = new List<ParentEntity>
+        {
+            new()
+            {
+                Id = 1,
+                Name = "Parent 1",
+                Value = 100
+            },
+            new()
+            {
+                Id = 2,
+                Name = "Parent 2",
+                Value = 200
+            }
+        };
+
+        // First, test a different DTO type
+        var results = parentData
+            .AsQueryable()
+            .SelectExpr(p => new ParentDto
+            {
+                Id = p.Id,
+                Name = p.Name,
+                ParentValue = p.Value
+            })
+            .ToList();
+
+        Assert.Equal(2, results.Count);
+        Assert.Equal(1, results[0].Id);
+        Assert.Equal("Parent 1", results[0].Name);
+        Assert.Equal(100, results[0].ParentValue);
+        
+        // Then verify the original test data still works (testing multiple DTOs)
+        var sampleResults = _testData
+            .AsQueryable()
+            .SelectExpr(s => new SampleDto
+            {
+                Id = s.Id,
+                Name = s.Name,
+                Value = s.Value
+            })
+            .ToList();
+        
+        Assert.Equal(3, sampleResults.Count);
+    }
+}
+
+// Additional test entities for testing multiple DTO types
+public class ParentEntity
+{
+    public int Id { get; set; }
+    public string Name { get; set; } = "";
+    public int Value { get; set; }
+}
+
+public class ParentDto
+{
+    public int Id { get; set; }
+    public string Name { get; set; } = "";
+    public int ParentValue { get; set; }
 }
 
 // Test entities

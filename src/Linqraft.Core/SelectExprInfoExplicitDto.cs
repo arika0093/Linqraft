@@ -307,9 +307,25 @@ public record SelectExprInfoExplicitDto : SelectExprInfo
         
         var id = GetUniqueId();
         
+        // Build the lambda body
+        var lambdaBodyBuilder = new StringBuilder();
+        lambdaBodyBuilder.AppendLine($"new {dtoFullName}");
+        lambdaBodyBuilder.AppendLine($"    {{");
+        var propertyAssignments = structure
+            .Properties.Select(prop =>
+            {
+                var assignment = GeneratePropertyAssignment(prop, CodeFormatter.IndentSize * 2);
+                return $"{CodeFormatter.Indent(2)}{prop.Name} = {assignment}";
+            })
+            .ToList();
+        lambdaBodyBuilder.AppendLine(string.Join($",{CodeFormatter.DefaultNewLine}", propertyAssignments));
+        lambdaBodyBuilder.Append("    }");
+        
         var (fieldDecl, _) = ExpressionTreeBuilder.GenerateExpressionTreeField(
             sourceTypeFullName,
             dtoFullName,
+            LambdaParameterName,
+            lambdaBodyBuilder.ToString(),
             id
         );
         
@@ -494,37 +510,11 @@ public record SelectExprInfoExplicitDto : SelectExprInfo
             // Use pre-built expression if enabled
             if (usePrebuildExpression)
             {
-                var (_, fieldName) = ExpressionTreeBuilder.GenerateExpressionTreeField(
-                    sourceTypeFullName,
-                    dtoFullName,
-                    id
-                );
+                // Get the field name (we need to generate the same hash as in GenerateStaticFields)
+                var hash = HashUtility.GenerateSha256Hash(id).Substring(0, 8);
+                var fieldName = $"_cachedExpression_{hash}";
                 
-                // Build the lambda body
-                var lambdaBodyBuilder = new StringBuilder();
-                lambdaBodyBuilder.AppendLine($"new {dtoFullName}");
-                lambdaBodyBuilder.AppendLine($"    {{");
-                var propertyAssignments = structure
-                    .Properties.Select(prop =>
-                    {
-                        var assignment = GeneratePropertyAssignment(prop, CodeFormatter.IndentSize * 2);
-                        return $"{CodeFormatter.Indent(2)}{prop.Name} = {assignment}";
-                    })
-                    .ToList();
-                lambdaBodyBuilder.AppendLine(string.Join($",{CodeFormatter.DefaultNewLine}", propertyAssignments));
-                lambdaBodyBuilder.Append("    }");
-                
-                // Generate the expression initialization code
-                var initCode = ExpressionTreeBuilder.GenerateNamedExpressionTreeInitialization(
-                    lambdaBodyBuilder.ToString(),
-                    sourceTypeFullName,
-                    dtoFullName,
-                    LambdaParameterName,
-                    fieldName
-                );
-                sb.Append(initCode);
-                
-                // Use the cached expression
+                // Use the cached expression directly (no initialization needed, it's done in the field declaration)
                 sb.AppendLine($"    var converted = matchedQuery.Select({fieldName});");
             }
             else

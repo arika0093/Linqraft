@@ -30,6 +30,11 @@ Linqraft supports several MSBuild properties to customize code generation global
     <!-- Use hash-named namespace for nested DTOs (e.g., LinqraftGenerated_HASH.ItemsDto) -->
     <!-- When false, uses hash-suffixed class names (e.g., ItemsDto_HASH) -->
     <LinqraftNestedDtoUseHashNamespace>true</LinqraftNestedDtoUseHashNamespace>
+
+    <!-- Pre-build and cache expression trees for IQueryable operations -->
+    <!-- Improves performance by avoiding repeated lambda-to-expression-tree conversion -->
+    <!-- Only applies to IQueryable with named/predefined/explicit DTO types (not anonymous types) -->
+    <LinqraftUsePrebuildExpression>false</LinqraftUsePrebuildExpression>
   </PropertyGroup>
 </Project>
 ```
@@ -114,6 +119,40 @@ See [Array Nullability Removal](./array-nullability.md) for details.
 ### LinqraftNestedDtoUseHashNamespace
 
 See [Nested DTO Naming](./nested-dto-naming.md) for details.
+
+### LinqraftUsePrebuildExpression
+
+Pre-build and cache expression trees for IQueryable operations to improve performance:
+
+```xml
+<LinqraftUsePrebuildExpression>true</LinqraftUsePrebuildExpression>
+```
+
+When enabled, expression trees are constructed at compile-time and cached as static fields, avoiding the overhead of repeated lambda-to-expression-tree conversion at runtime.
+
+**Important Notes:**
+- Only applies to IQueryable operations (not IEnumerable)
+- Only works with named, predefined, or explicit DTO types (not anonymous types)
+- Not applied when there are capture variables in the lambda expression
+
+**Example:**
+
+```csharp
+// Without pre-built expressions (default):
+// Expression tree is created on every call
+var results = dbContext.Orders
+    .AsQueryable()
+    .SelectExpr(o => new OrderDto { Id = o.Id, Name = o.Name })
+    .ToList();
+
+// With LinqraftUsePrebuildExpression=true:
+// Expression tree is created once and cached
+// Subsequent calls reuse the same expression tree
+```
+
+**Performance Benefit:**
+
+Eliminates the runtime overhead of converting lambda expressions to expression trees for IQueryable operations. The expression tree is built once at the field declaration and reused for all invocations.
 
 ## Viewing Generated Code
 
