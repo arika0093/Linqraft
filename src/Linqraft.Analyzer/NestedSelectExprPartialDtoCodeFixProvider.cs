@@ -1,0 +1,241 @@
+using System.Collections.Generic;
+using System.Collections.Immutable;
+using System.Composition;
+using System.Linq;
+using System.Threading;
+using System.Threading.Tasks;
+using Linqraft.Core;
+using Linqraft.Core.SyntaxHelpers;
+using Microsoft.CodeAnalysis;
+using Microsoft.CodeAnalysis.CodeActions;
+using Microsoft.CodeAnalysis.CodeFixes;
+using Microsoft.CodeAnalysis.CSharp;
+using Microsoft.CodeAnalysis.CSharp.Syntax;
+using Microsoft.CodeAnalysis.Formatting;
+
+namespace Linqraft.Analyzer;
+
+/// <summary>
+/// Code fix provider that adds missing partial DTO class declarations for nested SelectExpr
+/// </summary>
+[ExportCodeFixProvider(
+    LanguageNames.CSharp,
+    Name = nameof(NestedSelectExprPartialDtoCodeFixProvider)
+)]
+[Shared]
+public class NestedSelectExprPartialDtoCodeFixProvider : CodeFixProvider
+{
+    public sealed override ImmutableArray<string> FixableDiagnosticIds =>
+        [NestedSelectExprPartialDtoAnalyzer.AnalyzerId];
+
+    public sealed override FixAllProvider GetFixAllProvider() =>
+        WellKnownFixAllProviders.BatchFixer;
+
+    public sealed override async Task RegisterCodeFixesAsync(CodeFixContext context)
+    {
+        var root = await context
+            .Document.GetSyntaxRootAsync(context.CancellationToken)
+            .ConfigureAwait(false);
+        if (root == null)
+            return;
+
+        var diagnostic = context.Diagnostics.First();
+        var diagnosticSpan = diagnostic.Location.SourceSpan;
+
+        // Find the invocation expression containing the SelectExpr call
+        var invocation = root.FindToken(diagnosticSpan.Start)
+            .Parent?.AncestorsAndSelf()
+            .OfType<InvocationExpressionSyntax>()
+            .FirstOrDefault(inv =>
+                inv.Expression is MemberAccessExpressionSyntax ma
+                && ma.Name.Identifier.Text == SelectExprHelper.MethodName
+            );
+
+        if (invocation == null)
+            return;
+
+        context.RegisterCodeFix(
+            CodeAction.Create(
+                title: "Add missing partial class declarations",
+                createChangedDocument: c =>
+                    AddPartialClassDeclarationsAsync(context.Document, invocation, c),
+                equivalenceKey: "AddPartialClassDeclarations"
+            ),
+            diagnostic
+        );
+    }
+
+    private async Task<Document> AddPartialClassDeclarationsAsync(
+        Document document,
+        InvocationExpressionSyntax invocation,
+        CancellationToken cancellationToken
+    )
+    {
+        var root = await document.GetSyntaxRootAsync(cancellationToken).ConfigureAwait(false);
+        if (root == null)
+            return document;
+
+        // Collect all DTO type names (both outer and nested)
+        var requiredDtoTypes = new HashSet<string>();
+
+        // Get the outer DTO type name
+        if (
+            invocation.Expression is MemberAccessExpressionSyntax memberAccess
+            && memberAccess.Name is GenericNameSyntax genericName
+            && genericName.TypeArgumentList.Arguments.Count >= 2
+        )
+        {
+            var outerDtoTypeSyntax = genericName.TypeArgumentList.Arguments[1];
+            var outerDtoTypeName = outerDtoTypeSyntax.ToString();
+            requiredDtoTypes.Add(outerDtoTypeName);
+        }
+
+        // Find all nested SelectExpr calls with explicit DTO types
+        CollectNestedSelectExprDtoTypes(invocation, requiredDtoTypes);
+
+        // Check if all required DTO types exist
+        var existingTypes = GetExistingTypeNames(root);
+
+        // Find missing DTO types
+        var missingTypes = requiredDtoTypes.Where(t => !existingTypes.Contains(t)).ToList();
+
+        if (missingTypes.Count == 0)
+            return document;
+
+        // Create partial class declarations for all missing types
+        // Using "internal" accessibility as default
+        var newRoot = root;
+        var partialClassDeclarations = new List<MemberDeclarationSyntax>();
+
+        foreach (var typeName in missingTypes)
+        {
+            // Create a simple partial class declaration: internal partial class TypeName;
+            var partialClass = SyntaxFactory
+                .ClassDeclaration(typeName)
+                .AddModifiers(
+                    SyntaxFactory.Token(SyntaxKind.InternalKeyword),
+                    SyntaxFactory.Token(SyntaxKind.PartialKeyword)
+                )
+                .WithSemicolonToken(SyntaxFactory.Token(SyntaxKind.SemicolonToken))
+                .NormalizeWhitespace();
+
+            partialClassDeclarations.Add(partialClass);
+        }
+
+        // Add the partial class declarations at the end of the file
+        var namespaceDecl = root.DescendantNodes()
+            .OfType<BaseNamespaceDeclarationSyntax>()
+            .FirstOrDefault();
+
+        if (namespaceDecl != null)
+        {
+            // Add inside the namespace
+            var updatedNamespaceDecl = namespaceDecl;
+
+            foreach (var partialClass in partialClassDeclarations)
+            {
+                // Add leading trivia (empty line before each partial class)
+                var partialClassWithTrivia = partialClass.WithLeadingTrivia(
+                    SyntaxFactory.LineFeed
+                );
+                updatedNamespaceDecl = updatedNamespaceDecl.AddMembers(partialClassWithTrivia);
+            }
+
+            newRoot = newRoot.ReplaceNode(namespaceDecl, updatedNamespaceDecl);
+        }
+        else if (root is CompilationUnitSyntax compilationUnit)
+        {
+            // Add at file level (global namespace)
+            foreach (var partialClass in partialClassDeclarations)
+            {
+                // Add leading trivia (empty lines before each partial class)
+                var partialClassWithTrivia = partialClass.WithLeadingTrivia(
+                    SyntaxFactory.LineFeed,
+                    SyntaxFactory.LineFeed
+                );
+                compilationUnit = compilationUnit.AddMembers(partialClassWithTrivia);
+            }
+
+            newRoot = compilationUnit;
+        }
+
+        var documentWithNewRoot = document.WithSyntaxRoot(newRoot);
+
+        // Format the document to ensure proper indentation
+        var formattedDocument = await Formatter
+            .FormatAsync(documentWithNewRoot, cancellationToken: cancellationToken)
+            .ConfigureAwait(false);
+
+        // Normalize line endings
+        formattedDocument = await CodeFixFormattingHelper
+            .NormalizeLineEndingsOnlyAsync(formattedDocument, cancellationToken)
+            .ConfigureAwait(false);
+
+        return formattedDocument;
+    }
+
+    /// <summary>
+    /// Collects all nested SelectExpr DTO type names from an invocation expression
+    /// </summary>
+    private static void CollectNestedSelectExprDtoTypes(
+        InvocationExpressionSyntax invocation,
+        HashSet<string> dtoTypes
+    )
+    {
+        // Find all nested SelectExpr invocations
+        var nestedSelectExprs = invocation
+            .DescendantNodes()
+            .OfType<InvocationExpressionSyntax>()
+            .Where(inv =>
+                inv.Expression is MemberAccessExpressionSyntax ma
+                && ma.Name.Identifier.Text == SelectExprHelper.MethodName
+                && ma.Name is GenericNameSyntax gn
+                && gn.TypeArgumentList.Arguments.Count >= 2
+            );
+
+        foreach (var nested in nestedSelectExprs)
+        {
+            if (
+                nested.Expression is MemberAccessExpressionSyntax nestedMemberAccess
+                && nestedMemberAccess.Name is GenericNameSyntax nestedGenericName
+            )
+            {
+                // Get the second type argument (TDto)
+                var dtoTypeSyntax = nestedGenericName.TypeArgumentList.Arguments[1];
+                var dtoTypeName = dtoTypeSyntax.ToString();
+                dtoTypes.Add(dtoTypeName);
+            }
+        }
+    }
+
+    /// <summary>
+    /// Gets all existing type names in the syntax tree
+    /// </summary>
+    private static HashSet<string> GetExistingTypeNames(SyntaxNode root)
+    {
+        var typeNames = new HashSet<string>();
+
+        // Collect class declarations
+        var classDecls = root.DescendantNodes().OfType<ClassDeclarationSyntax>();
+        foreach (var classDecl in classDecls)
+        {
+            typeNames.Add(classDecl.Identifier.Text);
+        }
+
+        // Collect struct declarations
+        var structDecls = root.DescendantNodes().OfType<StructDeclarationSyntax>();
+        foreach (var structDecl in structDecls)
+        {
+            typeNames.Add(structDecl.Identifier.Text);
+        }
+
+        // Collect record declarations
+        var recordDecls = root.DescendantNodes().OfType<RecordDeclarationSyntax>();
+        foreach (var recordDecl in recordDecls)
+        {
+            typeNames.Add(recordDecl.Identifier.Text);
+        }
+
+        return typeNames;
+    }
+}
