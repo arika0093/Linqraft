@@ -47,7 +47,7 @@ public static class GenerateSourceCodeSnippets
             staticFields.Count > 0
                 ? CodeFormatter.IndentCode(
                     string.Join(CodeFormatter.DefaultNewLine, staticFields),
-                    CodeFormatter.IndentSize * 1
+                    CodeFormatter.IndentSize * 2
                 ) + CodeFormatter.DefaultNewLine
                 : "";
 
@@ -314,6 +314,7 @@ public static class GenerateSourceCodeSnippets
     private const string GenerateHeaderUsingPart = """
         using System;
         using System.Linq;
+        using System.Linq.Expressions;
         using System.Collections.Generic;
         using System.Collections.Immutable;
         """;

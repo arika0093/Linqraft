@@ -33,26 +33,31 @@ public static class ExpressionTreeBuilder
 
         // Build the expression tree field with direct initialization
         var sb = new StringBuilder();
-        
+
         // The lambda body may contain newlines, so we need to properly handle multi-line expressions
         var lines = lambdaBody.Split(new[] { "\r\n", "\r", "\n" }, StringSplitOptions.None);
+        var firstLine =
+            $"private static readonly Expression<Func<{sourceTypeFullName}, {resultTypeFullName}>> {fieldName} = {lambdaParameterName} =>";
         if (lines.Length == 1)
         {
             // Single line lambda body
-            sb.AppendLine($"    private static readonly global::System.Linq.Expressions.Expression<global::System.Func<{sourceTypeFullName}, {resultTypeFullName}>> {fieldName} = {lambdaParameterName} => {lambdaBody};");
+            sb.AppendLine($"{firstLine} {lambdaBody};");
         }
         else
         {
             // Multi-line lambda body - need to format it properly
-            sb.AppendLine($"    private static readonly global::System.Linq.Expressions.Expression<global::System.Func<{sourceTypeFullName}, {resultTypeFullName}>> {fieldName} = {lambdaParameterName} =>");
+            sb.AppendLine(firstLine);
             // Indent the lambda body properly - it should be at the same level as the lambda parameter
             // The field declaration starts at column 4 (after "    ")
             // We want the body to align after "= " which is at column 4 + "private static readonly ... = ".length
             // For simplicity and consistency, indent by 2 additional levels from the field level
-            var indentedBody = Formatting.CodeFormatter.IndentCode(lambdaBody.TrimEnd(), Formatting.CodeFormatter.IndentSize * 2);
+            var indentedBody = Formatting.CodeFormatter.IndentCode(
+                lambdaBody.TrimEnd(),
+                Formatting.CodeFormatter.IndentSize
+            );
             sb.AppendLine(indentedBody + ";");
         }
-        
+
         return (sb.ToString(), fieldName);
     }
 }
