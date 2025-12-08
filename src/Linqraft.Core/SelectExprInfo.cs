@@ -2002,7 +2002,8 @@ public abstract record SelectExprInfo
         var typeName = typeSymbol.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat);
         if(RoslynTypeHelper.IsNullableType(typeSymbol))
         {
-            if(typeName.EndsWith("?"))
+            // // Nullable<T> (nullable value type) needs default(T?) syntax
+            if(typeSymbol.OriginalDefinition.SpecialType == SpecialType.System_Nullable_T)
             {
                 return $"default({typeName})";
             }
