@@ -42,6 +42,7 @@
     <CompilerVisibleProperty Include="LinqraftCommentOutput" />
     <CompilerVisibleProperty Include="LinqraftArrayNullabilityRemoval" />
     <CompilerVisibleProperty Include="LinqraftNestedDtoUseHashNamespace" />
+    <CompilerVisibleProperty Include="LinqraftUsePrebuildExpression" />
   </ItemGroup>
   <ItemGroup>
     <Using Include="Xunit" />

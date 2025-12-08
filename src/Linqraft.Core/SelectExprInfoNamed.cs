@@ -58,6 +58,52 @@ public record SelectExprInfoNamed : SelectExprInfo
     protected override string GetExprTypeString() => "predefined";
 
     /// <summary>
+    /// Generates static field declarations for pre-built expressions (if enabled)
+    /// </summary>
+    public override string? GenerateStaticFields()
+    {
+        // Check if we should use pre-built expressions (only for IQueryable, not IEnumerable)
+        var usePrebuildExpression = Configuration.UsePrebuildExpression && !IsEnumerableInvocation();
+        
+        // Don't generate fields if captures are used (they don't work well with closures)
+        var hasCapture = CaptureArgumentExpression != null && CaptureArgumentType != null;
+        
+        if (!usePrebuildExpression || hasCapture)
+        {
+            return null;
+        }
+        
+        var querySourceTypeFullName = SourceType.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat);
+        var structure = GenerateDtoStructure();
+        var dtoName = GetParentDtoClassName(structure);
+        var id = GetUniqueId();
+        
+        // Build the lambda body
+        var lambdaBodyBuilder = new StringBuilder();
+        lambdaBodyBuilder.AppendLine($"new {dtoName}");
+        lambdaBodyBuilder.AppendLine($"    {{");
+        var propertyAssignments = structure
+            .Properties.Select(prop =>
+            {
+                var assignment = GeneratePropertyAssignment(prop, CodeFormatter.IndentSize * 2);
+                return $"{CodeFormatter.Indent(2)}{prop.Name} = {assignment}";
+            })
+            .ToList();
+        lambdaBodyBuilder.AppendLine(string.Join($",{CodeFormatter.DefaultNewLine}", propertyAssignments));
+        lambdaBodyBuilder.Append("    }");
+        
+        var (fieldDecl, _) = ExpressionTreeBuilder.GenerateExpressionTreeField(
+            querySourceTypeFullName,
+            dtoName,
+            LambdaParameterName,
+            lambdaBodyBuilder.ToString(),
+            id
+        );
+        
+        return fieldDecl;
+    }
+
+    /// <summary>
     /// Generates the SelectExpr method code
     /// </summary>
     protected override string GenerateSelectExprMethod(
@@ -74,6 +120,10 @@ public record SelectExprInfoNamed : SelectExprInfo
 
         var sb = new StringBuilder();
         var id = GetUniqueId();
+        
+        // Check if we should use pre-built expressions (only for IQueryable, not IEnumerable)
+        var usePrebuildExpression = Configuration.UsePrebuildExpression && !IsEnumerableInvocation();
+        
         sb.AppendLine(GenerateMethodHeaderPart(dtoName, location));
 
         // Determine if we have capture parameters
@@ -118,6 +168,9 @@ public record SelectExprInfoNamed : SelectExprInfo
                 sb.AppendLine($"    var capture = ({captureTypeName})captureParam;");
             }
 
+            // Note: Pre-built expressions don't work well with captures because the closure
+            // variables would be captured at compile time, not at runtime. So we disable
+            // pre-built expressions when captures are used.
             sb.AppendLine(
                 $"    var converted = matchedQuery.Select({LambdaParameterName} => new {dtoName}"
             );
@@ -133,24 +186,43 @@ public record SelectExprInfoNamed : SelectExprInfo
             sb.AppendLine(
                 $"    var matchedQuery = query as object as {returnTypePrefix}<{querySourceTypeFullName}>;"
             );
-            sb.AppendLine(
-                $"    var converted = matchedQuery.Select({LambdaParameterName} => new {dtoName}"
-            );
+            
+            // Use pre-built expression if enabled
+            if (usePrebuildExpression)
+            {
+                // Get the field name (we need to generate the same hash as in GenerateStaticFields)
+                var hash = HashUtility.GenerateSha256Hash(id).Substring(0, 8);
+                var fieldName = $"_cachedExpression_{hash}";
+                
+                // Use the cached expression directly (no initialization needed, it's done in the field declaration)
+                sb.AppendLine($"    var converted = matchedQuery.Select({fieldName});");
+            }
+            else
+            {
+                sb.AppendLine(
+                    $"    var converted = matchedQuery.Select({LambdaParameterName} => new {dtoName}"
+                );
+            }
         }
 
-        sb.AppendLine($"    {{");
+        // Only generate the lambda body if we're not using pre-built expressions (or if we have captures)
+        if (!usePrebuildExpression || hasCapture)
+        {
+            sb.AppendLine($"    {{");
 
-        // Generate property assignments using GeneratePropertyAssignment to properly handle null-conditional operators
-        var propertyAssignments = structure
-            .Properties.Select(prop =>
-            {
-                var assignment = GeneratePropertyAssignment(prop, CodeFormatter.IndentSize * 2);
-                return $"{CodeFormatter.Indent(2)}{prop.Name} = {assignment}";
-            })
-            .ToList();
-        sb.AppendLine(string.Join($",{CodeFormatter.DefaultNewLine}", propertyAssignments));
+            // Generate property assignments using GeneratePropertyAssignment to properly handle null-conditional operators
+            var propertyAssignments = structure
+                .Properties.Select(prop =>
+                {
+                    var assignment = GeneratePropertyAssignment(prop, CodeFormatter.IndentSize * 2);
+                    return $"{CodeFormatter.Indent(2)}{prop.Name} = {assignment}";
+                })
+                .ToList();
+            sb.AppendLine(string.Join($",{CodeFormatter.DefaultNewLine}", propertyAssignments));
 
-        sb.AppendLine($"    }});");
+            sb.AppendLine($"    }});");
+        }
+        
         sb.AppendLine($"    return converted as object as {returnTypePrefix}<TResult>;");
         sb.AppendLine("}");
         return sb.ToString();
