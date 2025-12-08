@@ -50,14 +50,21 @@ internal class SelectExprGroups
         {
             var dtoClassInfos = new List<GenerateDtoClassInfo>();
             var selectExprMethods = new List<string>();
+            var staticFields = new List<string>();
 
             foreach (var expr in Exprs)
             {
                 var info = expr.Info;
                 var classInfos = info.GenerateDtoClasses();
                 var exprMethods = info.GenerateSelectExprCodes(expr.Location);
+                var fields = info.GenerateStaticFields();
+                
                 dtoClassInfos.AddRange(classInfos);
                 selectExprMethods.AddRange(exprMethods);
+                if (fields != null)
+                {
+                    staticFields.Add(fields);
+                }
             }
 
             // drop duplicate DTO classes based on full name
@@ -69,6 +76,7 @@ internal class SelectExprGroups
             // Build final source code using the new method that groups DTOs by namespace
             var sourceCode = GenerateSourceCodeSnippets.BuildCodeSnippetAll(
                 selectExprMethods,
+                staticFields,
                 dtoClassesDistinct,
                 Configuration
             );

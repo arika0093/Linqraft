@@ -6,6 +6,7 @@
     <LinqraftHasRequired>false</LinqraftHasRequired>
     <LinqraftCommentOutput>None</LinqraftCommentOutput>
     <LinqraftNestedDtoUseHashNamespace>true</LinqraftNestedDtoUseHashNamespace>
+    <LinqraftUsePrebuildExpression>true</LinqraftUsePrebuildExpression>
     <EmitCompilerGeneratedFiles>true</EmitCompilerGeneratedFiles>
     <CompilerGeneratedFilesOutputPath>.generated</CompilerGeneratedFilesOutputPath>
   </PropertyGroup>

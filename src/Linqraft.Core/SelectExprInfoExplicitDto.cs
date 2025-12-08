@@ -266,6 +266,57 @@ public record SelectExprInfoExplicitDto : SelectExprInfo
     protected override string GetExprTypeString() => "explicit";
 
     /// <summary>
+    /// Generates static field declarations for pre-built expressions (if enabled)
+    /// </summary>
+    public override string? GenerateStaticFields()
+    {
+        // Check if we should use pre-built expressions (only for IQueryable, not IEnumerable)
+        var usePrebuildExpression = Configuration.UsePrebuildExpression && !IsEnumerableInvocation();
+        
+        // Don't generate fields if captures are used (they don't work well with closures)
+        var hasCapture = CaptureArgumentExpression != null && CaptureArgumentType != null;
+        
+        if (!usePrebuildExpression || hasCapture)
+        {
+            return null;
+        }
+        
+        var structure = GenerateDtoStructure();
+        var sourceTypeFullName = structure.SourceTypeFullName;
+        var actualNamespace = GetActualDtoNamespace();
+        var dtoName = GetParentDtoClassName(structure);
+        
+        // Build full DTO name with parent classes if nested
+        string dtoFullName;
+        if (string.IsNullOrEmpty(actualNamespace))
+        {
+            // Global namespace: no namespace prefix
+            dtoFullName =
+                ParentClasses.Count > 0
+                    ? $"global::{string.Join(".", ParentClasses)}.{dtoName}"
+                    : $"global::{dtoName}";
+        }
+        else
+        {
+            // Regular namespace case
+            dtoFullName =
+                ParentClasses.Count > 0
+                    ? $"global::{actualNamespace}.{string.Join(".", ParentClasses)}.{dtoName}"
+                    : $"global::{actualNamespace}.{dtoName}";
+        }
+        
+        var id = GetUniqueId();
+        
+        var (fieldDecl, _) = ExpressionTreeBuilder.GenerateExpressionTreeField(
+            sourceTypeFullName,
+            dtoFullName,
+            id
+        );
+        
+        return fieldDecl;
+    }
+
+    /// <summary>
     /// Gets the full name for a nested DTO class using the structure.
     /// When NestedDtoUseHashNamespace is enabled, includes the LinqraftGenerated_{hash} namespace
     /// WITHOUT parent class nesting (implicit DTOs are managed by hash, not class hierarchy).
@@ -376,18 +427,6 @@ public record SelectExprInfoExplicitDto : SelectExprInfo
         
         // Check if we should use pre-built expressions (only for IQueryable, not IEnumerable)
         var usePrebuildExpression = Configuration.UsePrebuildExpression && !IsEnumerableInvocation();
-        
-        // Generate static field for cached expression if pre-build is enabled
-        if (usePrebuildExpression)
-        {
-            var (fieldDecl, _) = ExpressionTreeBuilder.GenerateExpressionTreeField(
-                sourceTypeFullName,
-                dtoFullName,
-                id
-            );
-            sb.AppendLine(fieldDecl);
-            sb.AppendLine();
-        }
         
         sb.AppendLine(GenerateMethodHeaderPart(dtoName, location));
 

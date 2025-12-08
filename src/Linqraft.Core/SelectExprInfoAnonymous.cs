@@ -55,6 +55,34 @@ public record SelectExprInfoAnonymous : SelectExprInfo
     // Get expression type string (for documentation)
     protected override string GetExprTypeString() => "anonymous";
 
+    /// <summary>
+    /// Generates static field declarations for pre-built expressions (if enabled)
+    /// </summary>
+    public override string? GenerateStaticFields()
+    {
+        // Check if we should use pre-built expressions (only for IQueryable, not IEnumerable)
+        var usePrebuildExpression = Configuration.UsePrebuildExpression && !IsEnumerableInvocation();
+        
+        // Don't generate fields if captures are used (they don't work well with closures)
+        var hasCapture = CaptureArgumentExpression != null && CaptureArgumentType != null;
+        
+        if (!usePrebuildExpression || hasCapture)
+        {
+            return null;
+        }
+        
+        var sourceTypeFullName = SourceType.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat);
+        var id = GetUniqueId();
+        
+        var (fieldDecl, _) = ExpressionTreeBuilder.GenerateExpressionTreeField(
+            sourceTypeFullName,
+            "TResult",
+            id
+        );
+        
+        return fieldDecl;
+    }
+
     // Generate SelectExpr method
     protected override string GenerateSelectExprMethod(
         string dtoName,
@@ -70,18 +98,6 @@ public record SelectExprInfoAnonymous : SelectExprInfo
         
         // Check if we should use pre-built expressions (only for IQueryable, not IEnumerable)
         var usePrebuildExpression = Configuration.UsePrebuildExpression && !IsEnumerableInvocation();
-        
-        // Generate static field for cached expression if pre-build is enabled
-        if (usePrebuildExpression)
-        {
-            var (fieldDecl, _) = ExpressionTreeBuilder.GenerateExpressionTreeField(
-                sourceTypeFullName,
-                "TResult",
-                id
-            );
-            sb.AppendLine(fieldDecl);
-            sb.AppendLine();
-        }
         
         sb.AppendLine(GenerateMethodHeaderPart("anonymous type", location));
 

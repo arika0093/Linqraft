@@ -25,11 +25,12 @@ public static class GenerateSourceCodeSnippets
     // Generate total code with DTOs that may have different namespaces.
     public static string BuildCodeSnippetAll(
         List<string> expressions,
+        List<string> staticFields,
         List<GenerateDtoClassInfo> dtoClassInfos,
         LinqraftConfiguration configuration
     )
     {
-        var exprPart = BuildExprCodeSnippets(expressions);
+        var exprPart = BuildExprCodeSnippets(expressions, staticFields);
         var dtoPart = BuildDtoCodeSnippetsGroupedByNamespace(dtoClassInfos, configuration);
         return $$"""
             {{GenerateCommentHeaderPart()}}
@@ -40,8 +41,15 @@ public static class GenerateSourceCodeSnippets
     }
 
     // Generate expression part
-    public static string BuildExprCodeSnippets(List<string> expressions)
+    public static string BuildExprCodeSnippets(List<string> expressions, List<string> staticFields)
     {
+        var fieldsPart = staticFields.Count > 0 
+            ? CodeFormatter.IndentCode(
+                string.Join(CodeFormatter.DefaultNewLine, staticFields),
+                CodeFormatter.IndentSize * 2
+            ) + CodeFormatter.DefaultNewLine + CodeFormatter.DefaultNewLine
+            : "";
+            
         var indentedExpr = CodeFormatter.IndentCode(
             string.Join(CodeFormatter.DefaultNewLine, expressions),
             CodeFormatter.IndentSize * 2
@@ -52,7 +60,7 @@ public static class GenerateSourceCodeSnippets
             {
                 file static partial class GeneratedExpression
                 {
-            {{indentedExpr}}
+            {{fieldsPart}}{{indentedExpr}}
                 }
             }
             """;

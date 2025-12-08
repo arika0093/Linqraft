@@ -58,6 +58,36 @@ public record SelectExprInfoNamed : SelectExprInfo
     protected override string GetExprTypeString() => "predefined";
 
     /// <summary>
+    /// Generates static field declarations for pre-built expressions (if enabled)
+    /// </summary>
+    public override string? GenerateStaticFields()
+    {
+        // Check if we should use pre-built expressions (only for IQueryable, not IEnumerable)
+        var usePrebuildExpression = Configuration.UsePrebuildExpression && !IsEnumerableInvocation();
+        
+        // Don't generate fields if captures are used (they don't work well with closures)
+        var hasCapture = CaptureArgumentExpression != null && CaptureArgumentType != null;
+        
+        if (!usePrebuildExpression || hasCapture)
+        {
+            return null;
+        }
+        
+        var querySourceTypeFullName = SourceType.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat);
+        var structure = GenerateDtoStructure();
+        var dtoName = GetParentDtoClassName(structure);
+        var id = GetUniqueId();
+        
+        var (fieldDecl, _) = ExpressionTreeBuilder.GenerateExpressionTreeField(
+            querySourceTypeFullName,
+            dtoName,
+            id
+        );
+        
+        return fieldDecl;
+    }
+
+    /// <summary>
     /// Generates the SelectExpr method code
     /// </summary>
     protected override string GenerateSelectExprMethod(
@@ -77,18 +107,6 @@ public record SelectExprInfoNamed : SelectExprInfo
         
         // Check if we should use pre-built expressions (only for IQueryable, not IEnumerable)
         var usePrebuildExpression = Configuration.UsePrebuildExpression && !IsEnumerableInvocation();
-        
-        // Generate static field for cached expression if pre-build is enabled
-        if (usePrebuildExpression)
-        {
-            var (fieldDecl, _) = ExpressionTreeBuilder.GenerateExpressionTreeField(
-                querySourceTypeFullName,
-                dtoName,
-                id
-            );
-            sb.AppendLine(fieldDecl);
-            sb.AppendLine();
-        }
         
         sb.AppendLine(GenerateMethodHeaderPart(dtoName, location));
 
