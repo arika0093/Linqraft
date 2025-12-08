@@ -134,31 +134,40 @@ public class NestedSelectExprPartialDtoAnalyzer : BaseLinqraftAnalyzer
     }
 
     /// <summary>
-    /// Gets all existing type names in the syntax tree (class, struct, interface, record declarations)
+    /// Gets all existing PARTIAL type names in the syntax tree (only partial classes, structs, records)
     /// </summary>
     private static HashSet<string> GetExistingTypeNames(SyntaxNode root)
     {
         var typeNames = new HashSet<string>();
 
-        // Collect class declarations
+        // Collect partial class declarations
         var classDecls = root.DescendantNodes().OfType<ClassDeclarationSyntax>();
         foreach (var classDecl in classDecls)
         {
-            typeNames.Add(classDecl.Identifier.Text);
+            if (classDecl.Modifiers.Any(m => m.IsKind(SyntaxKind.PartialKeyword)))
+            {
+                typeNames.Add(classDecl.Identifier.Text);
+            }
         }
 
-        // Collect struct declarations
+        // Collect partial struct declarations
         var structDecls = root.DescendantNodes().OfType<StructDeclarationSyntax>();
         foreach (var structDecl in structDecls)
         {
-            typeNames.Add(structDecl.Identifier.Text);
+            if (structDecl.Modifiers.Any(m => m.IsKind(SyntaxKind.PartialKeyword)))
+            {
+                typeNames.Add(structDecl.Identifier.Text);
+            }
         }
 
-        // Collect record declarations
+        // Collect partial record declarations
         var recordDecls = root.DescendantNodes().OfType<RecordDeclarationSyntax>();
         foreach (var recordDecl in recordDecls)
         {
-            typeNames.Add(recordDecl.Identifier.Text);
+            if (recordDecl.Modifiers.Any(m => m.IsKind(SyntaxKind.PartialKeyword)))
+            {
+                typeNames.Add(recordDecl.Identifier.Text);
+            }
         }
 
         return typeNames;

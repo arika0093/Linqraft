@@ -23,7 +23,7 @@ class Entity
 {
     public int Id { get; set; }
     public string Name { get; set; }
-    public List<Item> Items { get; set; }
+    public IQueryable<Item> Items { get; set; }
 }
 
 class Item
@@ -50,6 +50,10 @@ class Test
     }
 }
 
+// Non-partial classes - should trigger analyzer error
+class EntityDto { }
+class ItemDto { }
+
 " + TestSourceCodes.SelectExprWithFuncObjectInLinqraftNamespace;
 
         var expected = VerifyCS
@@ -74,7 +78,7 @@ class Entity
 {
     public int Id { get; set; }
     public string Name { get; set; }
-    public List<Item> Items { get; set; }
+    public IQueryable<Item> Items { get; set; }
 }
 
 class Item
@@ -122,7 +126,7 @@ class Entity
 {
     public int Id { get; set; }
     public string Name { get; set; }
-    public List<Item> Items { get; set; }
+    public IQueryable<Item> Items { get; set; }
 }
 
 class Item
@@ -174,13 +178,13 @@ using Linqraft;
 class Entity
 {
     public int Id { get; set; }
-    public List<Item> Items { get; set; }
+    public IQueryable<Item> Items { get; set; }
 }
 
 class Item
 {
     public int Id { get; set; }
-    public List<SubItem> SubItems { get; set; }
+    public IQueryable<SubItem> SubItems { get; set; }
 }
 
 class SubItem
@@ -247,6 +251,9 @@ class Test
     }
 }
 
+// Stub type to avoid compiler error
+class EntityDto { }
+
 " + TestSourceCodes.SelectExprWithFuncObjectInLinqraftNamespace;
 
         // No diagnostic expected - outer SelectExpr without nested SelectExpr doesn't require partial declarations
@@ -265,7 +272,7 @@ using Linqraft;
 class Entity
 {
     public int Id { get; set; }
-    public List<Item> Items { get; set; }
+    public IQueryable<Item> Items { get; set; }
 }
 
 class Item

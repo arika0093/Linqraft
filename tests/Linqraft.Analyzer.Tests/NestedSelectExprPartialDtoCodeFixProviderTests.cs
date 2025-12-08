@@ -22,7 +22,7 @@ class Entity
 {
     public int Id { get; set; }
     public string Name { get; set; }
-    public List<Item> Items { get; set; }
+    public IQueryable<Item> Items { get; set; }
 }
 
 class Item
@@ -49,6 +49,11 @@ class Test
     }
 }
 
+// Non-partial stub classes
+class EntityDto { }
+class ItemDto { }
+class SubItemDto { }
+
 " + TestSourceCodes.SelectExprWithFuncObjectInLinqraftNamespace;
 
         var fixedCode =
@@ -61,7 +66,7 @@ class Entity
 {
     public int Id { get; set; }
     public string Name { get; set; }
-    public List<Item> Items { get; set; }
+    public IQueryable<Item> Items { get; set; }
 }
 
 class Item
@@ -90,6 +95,11 @@ class Test
 
 internal partial class EntityDto;
 internal partial class ItemDto;
+
+// Non-partial stub classes
+class EntityDto { }
+class ItemDto { }
+class SubItemDto { }
 
 " + TestSourceCodes.SelectExprWithFuncObjectInLinqraftNamespace;
 
@@ -114,7 +124,7 @@ class Entity
 {
     public int Id { get; set; }
     public string Name { get; set; }
-    public List<Item> Items { get; set; }
+    public IQueryable<Item> Items { get; set; }
 }
 
 class Item
@@ -143,6 +153,11 @@ class Test
 
 internal partial class EntityDto;
 
+// Non-partial stub classes
+class EntityDto { }
+class ItemDto { }
+class SubItemDto { }
+
 " + TestSourceCodes.SelectExprWithFuncObjectInLinqraftNamespace;
 
         var fixedCode =
@@ -155,7 +170,7 @@ class Entity
 {
     public int Id { get; set; }
     public string Name { get; set; }
-    public List<Item> Items { get; set; }
+    public IQueryable<Item> Items { get; set; }
 }
 
 class Item
@@ -185,6 +200,11 @@ class Test
 internal partial class EntityDto;
 internal partial class ItemDto;
 
+// Non-partial stub classes
+class EntityDto { }
+class ItemDto { }
+class SubItemDto { }
+
 " + TestSourceCodes.SelectExprWithFuncObjectInLinqraftNamespace;
 
         var expected = VerifyCS
@@ -207,13 +227,13 @@ using Linqraft;
 class Entity
 {
     public int Id { get; set; }
-    public List<Item> Items { get; set; }
+    public IQueryable<Item> Items { get; set; }
 }
 
 class Item
 {
     public int Id { get; set; }
-    public List<SubItem> SubItems { get; set; }
+    public IQueryable<SubItem> SubItems { get; set; }
 }
 
 class SubItem
@@ -241,6 +261,11 @@ class Test
     }
 }
 
+// Non-partial stub classes
+class EntityDto { }
+class ItemDto { }
+class SubItemDto { }
+
 " + TestSourceCodes.SelectExprWithFuncObjectInLinqraftNamespace;
 
         var fixedCode =
@@ -252,13 +277,13 @@ using Linqraft;
 class Entity
 {
     public int Id { get; set; }
-    public List<Item> Items { get; set; }
+    public IQueryable<Item> Items { get; set; }
 }
 
 class Item
 {
     public int Id { get; set; }
-    public List<SubItem> SubItems { get; set; }
+    public IQueryable<SubItem> SubItems { get; set; }
 }
 
 class SubItem
@@ -290,6 +315,11 @@ internal partial class EntityDto;
 internal partial class ItemDto;
 internal partial class SubItemDto;
 
+// Non-partial stub classes
+class EntityDto { }
+class ItemDto { }
+class SubItemDto { }
+
 " + TestSourceCodes.SelectExprWithFuncObjectInLinqraftNamespace;
 
         var expected = VerifyCS
@@ -314,7 +344,7 @@ namespace MyNamespace
     class Entity
     {
         public int Id { get; set; }
-        public List<Item> Items { get; set; }
+        public IQueryable<Item> Items { get; set; }
     }
 
     class Item
@@ -336,6 +366,11 @@ namespace MyNamespace
     }
 }
 
+// Non-partial stub classes
+class EntityDto { }
+class ItemDto { }
+class SubItemDto { }
+
 " + TestSourceCodes.SelectExprWithFuncObjectInLinqraftNamespace;
 
         var fixedCode =
@@ -349,7 +384,7 @@ namespace MyNamespace
     class Entity
     {
         public int Id { get; set; }
-        public List<Item> Items { get; set; }
+        public IQueryable<Item> Items { get; set; }
     }
 
     class Item
@@ -373,6 +408,11 @@ namespace MyNamespace
     internal partial class EntityDto;
     internal partial class ItemDto;
 }
+
+// Non-partial stub classes
+class EntityDto { }
+class ItemDto { }
+class SubItemDto { }
 
 " + TestSourceCodes.SelectExprWithFuncObjectInLinqraftNamespace;
 
