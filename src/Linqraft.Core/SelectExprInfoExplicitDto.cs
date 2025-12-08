@@ -525,7 +525,7 @@ public record SelectExprInfoExplicitDto : SelectExprInfo
                 sb.Append(initCode);
                 
                 // Use the cached expression
-                sb.AppendLine($"    var converted = matchedQuery.Select({fieldName}!);");
+                sb.AppendLine($"    var converted = matchedQuery.Select({fieldName});");
             }
             else
             {

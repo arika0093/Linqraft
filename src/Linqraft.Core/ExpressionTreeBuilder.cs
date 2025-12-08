@@ -1,3 +1,4 @@
+using System;
 using System.Text;
 
 namespace Linqraft.Core;
@@ -88,9 +89,21 @@ public static class ExpressionTreeBuilder
         sb.AppendLine("    {");
         
         // Create the expression tree from the lambda
-        // The C# compiler will automatically convert the lambda to an Expression<Func<TIn, TResult>>
-        // when we explicitly type it
-        sb.AppendLine($"        global::System.Linq.Expressions.Expression<global::System.Func<{sourceTypeFullName}, {resultTypeFullName}>> expr = {lambdaParameterName} => {lambdaBody};");
+        // The lambda body may contain newlines, so we need to properly handle multi-line expressions
+        var lines = lambdaBody.Split(new[] { "\r\n", "\r", "\n" }, StringSplitOptions.None);
+        if (lines.Length == 1)
+        {
+            // Single line lambda body
+            sb.AppendLine($"        global::System.Linq.Expressions.Expression<global::System.Func<{sourceTypeFullName}, {resultTypeFullName}>> expr = {lambdaParameterName} => {lambdaBody};");
+        }
+        else
+        {
+            // Multi-line lambda body - need to format it properly
+            sb.AppendLine($"        global::System.Linq.Expressions.Expression<global::System.Func<{sourceTypeFullName}, {resultTypeFullName}>> expr = {lambdaParameterName} =>");
+            // Indent the lambda body by 3 levels (12 spaces) from the start of the line
+            var indentedBody = Formatting.CodeFormatter.IndentCode(lambdaBody.TrimEnd(), Formatting.CodeFormatter.IndentSize * 3);
+            sb.AppendLine(indentedBody + ";");
+        }
         sb.AppendLine($"        {fieldName} = expr;");
         
         sb.AppendLine("    }");
