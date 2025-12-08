@@ -17,7 +17,6 @@ public class NestedSelectExprPartialDtoAnalyzerTests
 using System.Linq;
 using System.Collections.Generic;
 using Linqraft;
-using Linqraft;
 
 class Entity
 {
