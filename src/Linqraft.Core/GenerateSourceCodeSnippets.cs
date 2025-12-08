@@ -48,9 +48,7 @@ public static class GenerateSourceCodeSnippets
                 ? CodeFormatter.IndentCode(
                     string.Join(CodeFormatter.DefaultNewLine, staticFields),
                     CodeFormatter.IndentSize * 1
-                )
-                    + CodeFormatter.DefaultNewLine
-                    + CodeFormatter.DefaultNewLine
+                ) + CodeFormatter.DefaultNewLine
                 : "";
 
         var indentedExpr = CodeFormatter.IndentCode(
