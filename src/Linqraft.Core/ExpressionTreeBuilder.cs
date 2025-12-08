@@ -39,15 +39,18 @@ public static class ExpressionTreeBuilder
         if (lines.Length == 1)
         {
             // Single line lambda body
-            sb.AppendLine($"    private static global::System.Linq.Expressions.Expression<global::System.Func<{sourceTypeFullName}, {resultTypeFullName}>> {fieldName} = {lambdaParameterName} => {lambdaBody};");
+            sb.AppendLine($"    private static readonly global::System.Linq.Expressions.Expression<global::System.Func<{sourceTypeFullName}, {resultTypeFullName}>> {fieldName} = {lambdaParameterName} => {lambdaBody};");
         }
         else
         {
             // Multi-line lambda body - need to format it properly
-            sb.AppendLine($"    private static global::System.Linq.Expressions.Expression<global::System.Func<{sourceTypeFullName}, {resultTypeFullName}>> {fieldName} = {lambdaParameterName} =>");
-            // Indent the lambda body by 2 levels (8 spaces) from the start of the line
+            sb.AppendLine($"    private static readonly global::System.Linq.Expressions.Expression<global::System.Func<{sourceTypeFullName}, {resultTypeFullName}>> {fieldName} = {lambdaParameterName} =>");
+            // Indent the lambda body properly - it should be at the same level as the lambda parameter
+            // The field declaration starts at column 4 (after "    ")
+            // We want the body to align after "= " which is at column 4 + "private static readonly ... = ".length
+            // For simplicity and consistency, indent by 2 additional levels from the field level
             var indentedBody = Formatting.CodeFormatter.IndentCode(lambdaBody.TrimEnd(), Formatting.CodeFormatter.IndentSize * 2);
-            sb.Append(indentedBody + ";");
+            sb.AppendLine(indentedBody + ";");
         }
         
         return (sb.ToString(), fieldName);
