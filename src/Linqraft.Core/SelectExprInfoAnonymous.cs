@@ -81,7 +81,7 @@ public record SelectExprInfoAnonymous : SelectExprInfo
         if (hasCapture && hasConfig)
         {
             sb.AppendLine(
-                $"    this {returnTypePrefix}<TIn> query, Func<TIn, TResult> selector, object captureParam, global::Linqraft.LinqraftConfiguration? config)"
+                $"    this {returnTypePrefix}<TIn> query, Func<TIn, TResult> selector, object captureParam, global::Linqraft.LinqraftConfiguration config)"
             );
         }
         else if (hasCapture)
@@ -93,7 +93,7 @@ public record SelectExprInfoAnonymous : SelectExprInfo
         else if (hasConfig)
         {
             sb.AppendLine(
-                $"    this {returnTypePrefix}<TIn> query, Func<TIn, TResult> selector, global::Linqraft.LinqraftConfiguration? config)"
+                $"    this {returnTypePrefix}<TIn> query, Func<TIn, TResult> selector, global::Linqraft.LinqraftConfiguration config)"
             );
         }
         else

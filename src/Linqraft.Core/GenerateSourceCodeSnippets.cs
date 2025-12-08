@@ -194,7 +194,7 @@ public static class GenerateSourceCodeSnippets
             /// Configuration options for Linqraft source generator (per-invocation)
             /// </summary>
             [System.ComponentModel.EditorBrowsable(System.ComponentModel.EditorBrowsableState.Never)]
-            public sealed class LinqraftConfiguration
+            internal sealed class LinqraftConfiguration
             {
                 /// <summary>
                 /// The namespace where global namespace DTOs should exist.
@@ -243,8 +243,7 @@ public static class GenerateSourceCodeSnippets
             /// <summary>
             /// Property accessor patterns for generated DTOs
             /// </summary>
-            [System.ComponentModel.EditorBrowsable(System.ComponentModel.EditorBrowsableState.Never)]
-            public enum PropertyAccessor
+            internal enum PropertyAccessor
             {
                 /// <summary>
                 /// Use default based on record/class type
@@ -270,8 +269,7 @@ public static class GenerateSourceCodeSnippets
             /// <summary>
             /// Comment output modes for generated DTOs
             /// </summary>
-            [System.ComponentModel.EditorBrowsable(System.ComponentModel.EditorBrowsableState.Never)]
-            public enum CommentOutputMode
+            internal enum CommentOutputMode
             {
                 /// <summary>
                 /// Include all comments: XML documentation, source references, and attribute information
@@ -359,21 +357,21 @@ public static class GenerateSourceCodeSnippets
             /// <summary>
             /// Create select expression method with per-invocation configuration, usable nullable operators, and generate instance DTOs.
             /// </summary>
-            public static IQueryable<TResult> SelectExpr<TIn, TResult>(this IQueryable<TIn> query, Func<TIn, TResult> selector, Linqraft.LinqraftConfiguration? config)
+            public static IQueryable<TResult> SelectExpr<TIn, TResult>(this IQueryable<TIn> query, Func<TIn, TResult> selector, Linqraft.LinqraftConfiguration config)
                 where TIn : class => throw InvalidException;
 
             /// <summary>
             /// Create select expression method with per-invocation configuration, usable nullable operators, and generate instance DTOs.
             /// </summary>
         {{OverloadPriorityAttribute}}
-            public static IQueryable<TResult> SelectExpr<TIn, TResult>(this IQueryable<TIn> query, Func<TIn, object> selector, Linqraft.LinqraftConfiguration? config)
+            public static IQueryable<TResult> SelectExpr<TIn, TResult>(this IQueryable<TIn> query, Func<TIn, object> selector, Linqraft.LinqraftConfiguration config)
                 where TIn : class => throw InvalidException;
 
             /// <summary>
             /// Create select expression method with per-invocation configuration, with generate instance DTOs.
             /// Works with IEnumerable where nullable operators are supported natively.
             /// </summary>
-            public static IEnumerable<TResult> SelectExpr<TIn, TResult>(this IEnumerable<TIn> query, Func<TIn, TResult> selector, Linqraft.LinqraftConfiguration? config)
+            public static IEnumerable<TResult> SelectExpr<TIn, TResult>(this IEnumerable<TIn> query, Func<TIn, TResult> selector, Linqraft.LinqraftConfiguration config)
                 where TIn : class => throw InvalidException;
 
             /// <summary>
@@ -381,14 +379,14 @@ public static class GenerateSourceCodeSnippets
             /// Works with IEnumerable where nullable operators are supported natively.
             /// </summary>
         {{OverloadPriorityAttribute}}
-            public static IEnumerable<TResult> SelectExpr<TIn, TResult>(this IEnumerable<TIn> query, Func<TIn, object> selector, Linqraft.LinqraftConfiguration? config)
+            public static IEnumerable<TResult> SelectExpr<TIn, TResult>(this IEnumerable<TIn> query, Func<TIn, object> selector, Linqraft.LinqraftConfiguration config)
                 where TIn : class => throw InvalidException;
 
             /// <summary>
             /// Create select expression method with captured local variables and per-invocation configuration, usable nullable operators, and generate instance DTOs.
             /// Pass local variables as an anonymous object: new { var1, var2, ... }
             /// </summary>
-            public static IQueryable<TResult> SelectExpr<TIn, TResult>(this IQueryable<TIn> query, Func<TIn, TResult> selector, object capture, Linqraft.LinqraftConfiguration? config)
+            public static IQueryable<TResult> SelectExpr<TIn, TResult>(this IQueryable<TIn> query, Func<TIn, TResult> selector, object capture, Linqraft.LinqraftConfiguration config)
                 where TIn : class => throw InvalidException;
 
             /// <summary>
@@ -396,7 +394,7 @@ public static class GenerateSourceCodeSnippets
             /// Pass local variables as an anonymous object: new { var1, var2, ... }
             /// </summary>
         {{OverloadPriorityAttribute}}
-            public static IQueryable<TResult> SelectExpr<TIn, TResult>(this IQueryable<TIn> query, Func<TIn, object> selector, object capture, Linqraft.LinqraftConfiguration? config)
+            public static IQueryable<TResult> SelectExpr<TIn, TResult>(this IQueryable<TIn> query, Func<TIn, object> selector, object capture, Linqraft.LinqraftConfiguration config)
                 where TIn : class => throw InvalidException;
 
             /// <summary>
@@ -404,7 +402,7 @@ public static class GenerateSourceCodeSnippets
             /// Works with IEnumerable where nullable operators are supported natively.
             /// Pass local variables as an anonymous object: new { var1, var2, ... }
             /// </summary>
-            public static IEnumerable<TResult> SelectExpr<TIn, TResult>(this IEnumerable<TIn> query, Func<TIn, TResult> selector, object capture, Linqraft.LinqraftConfiguration? config)
+            public static IEnumerable<TResult> SelectExpr<TIn, TResult>(this IEnumerable<TIn> query, Func<TIn, TResult> selector, object capture, Linqraft.LinqraftConfiguration config)
                 where TIn : class => throw InvalidException;
 
             /// <summary>
@@ -413,7 +411,7 @@ public static class GenerateSourceCodeSnippets
             /// Pass local variables as an anonymous object: new { var1, var2, ... }
             /// </summary>
         {{OverloadPriorityAttribute}}
-            public static IEnumerable<TResult> SelectExpr<TIn, TResult>(this IEnumerable<TIn> query, Func<TIn, object> selector, object capture, Linqraft.LinqraftConfiguration? config)
+            public static IEnumerable<TResult> SelectExpr<TIn, TResult>(this IEnumerable<TIn> query, Func<TIn, object> selector, object capture, Linqraft.LinqraftConfiguration config)
                 where TIn : class => throw InvalidException;
 
             private static Exception InvalidException => new System.InvalidOperationException(SelectExprErrorMessage); 

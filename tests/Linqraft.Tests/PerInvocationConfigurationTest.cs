@@ -8,15 +8,13 @@ public class PerInvocationConfigurationTest
     [Fact]
     public void AnonymousPattern_WithConfiguration()
     {
-        var config = new Linqraft.LinqraftConfiguration
-        {
-            RecordGenerate = true,
-            HasRequired = false
-        };
-
         var converted = TestData
             .AsQueryable()
-            .SelectExpr(x => new { x.Id, x.Name, x.Value }, config)
+            .SelectExpr(x => new { x.Id, x.Name, x.Value }, new Linqraft.LinqraftConfiguration
+            {
+                RecordGenerate = true,
+                HasRequired = false
+            })
             .ToList();
 
         converted.Count.ShouldBe(2);
@@ -29,16 +27,14 @@ public class PerInvocationConfigurationTest
     [Fact]
     public void ExplicitPattern_WithConfiguration()
     {
-        var config = new Linqraft.LinqraftConfiguration
-        {
-            PropertyAccessor = Linqraft.PropertyAccessor.GetAndInit
-        };
-
         var converted = TestData
             .AsQueryable()
             .SelectExpr<TestItem, ConfigTestDto>(
                 x => new { x.Id, x.Name },
-                config
+                new Linqraft.LinqraftConfiguration
+                {
+                    PropertyAccessor = Linqraft.PropertyAccessor.GetAndInit
+                }
             )
             .ToList();
 
@@ -53,17 +49,16 @@ public class PerInvocationConfigurationTest
     public void AnonymousPattern_WithCaptureAndConfiguration()
     {
         var suffix = " (modified)";
-        var config = new Linqraft.LinqraftConfiguration
-        {
-            CommentOutput = Linqraft.CommentOutputMode.None
-        };
 
         var converted = TestData
             .AsQueryable()
             .SelectExpr(
                 x => new { x.Id, ModifiedName = x.Name + suffix },
                 new { suffix },
-                config
+                new Linqraft.LinqraftConfiguration
+                {
+                    CommentOutput = Linqraft.CommentOutputMode.None
+                }
             )
             .ToList();
 
@@ -77,10 +72,6 @@ public class PerInvocationConfigurationTest
     public void ExplicitPattern_WithCaptureAndConfiguration()
     {
         var multiplier = 3;
-        var config = new Linqraft.LinqraftConfiguration
-        {
-            ArrayNullabilityRemoval = false
-        };
 
         var converted = TestData
             .AsQueryable()
@@ -91,7 +82,10 @@ public class PerInvocationConfigurationTest
                     TripleValue = x.Value * multiplier
                 },
                 new { multiplier },
-                config
+                new Linqraft.LinqraftConfiguration
+                {
+                    ArrayNullabilityRemoval = false
+                }
             )
             .ToList();
 
@@ -105,16 +99,14 @@ public class PerInvocationConfigurationTest
     [Fact]
     public void NamedPattern_WithConfiguration()
     {
-        var config = new Linqraft.LinqraftConfiguration
-        {
-            HasRequired = false
-        };
-
         var converted = TestData
             .AsQueryable()
             .SelectExpr(
                 x => new ConfigTestDto3 { Id = x.Id, Value = x.Value },
-                config
+                new Linqraft.LinqraftConfiguration
+                {
+                    HasRequired = false
+                }
             )
             .ToList();
 

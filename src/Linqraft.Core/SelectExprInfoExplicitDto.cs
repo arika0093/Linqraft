@@ -387,7 +387,7 @@ public record SelectExprInfoExplicitDto : SelectExprInfo
         if (hasCapture && hasConfig)
         {
             sb.AppendLine(
-                $"    this {returnTypePrefix}<TIn> query, Func<TIn, object> selector, object captureParam, global::Linqraft.LinqraftConfiguration? config)"
+                $"    this {returnTypePrefix}<TIn> query, Func<TIn, object> selector, object captureParam, global::Linqraft.LinqraftConfiguration config)"
             );
         }
         else if (hasCapture)
@@ -399,7 +399,7 @@ public record SelectExprInfoExplicitDto : SelectExprInfo
         else if (hasConfig)
         {
             sb.AppendLine(
-                $"    this {returnTypePrefix}<TIn> query, Func<TIn, object> selector, global::Linqraft.LinqraftConfiguration? config)"
+                $"    this {returnTypePrefix}<TIn> query, Func<TIn, object> selector, global::Linqraft.LinqraftConfiguration config)"
             );
         }
         else
