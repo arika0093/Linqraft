@@ -87,3 +87,7 @@ Nested DTOs are named based on:
 // or
 // - ItemsDto_HASH (if LinqraftNestedDtoUseHashNamespace = false)
 ```
+
+## Explicit Class Name
+
+See [Nested SelectExpr](./nested-selectexpr.md).
