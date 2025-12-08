@@ -4,13 +4,13 @@ Mapping and projection are common tasks in .NET development. Here's how Linqraft
 
 ## Summary Table
 
-| Library    | DTO Definition | Generation  | Customization | Reverse | License    | Runtime Deps |
-| ---------- | -------------- | ----------- | ------------- | ------- | ---------- | ------------ |
-| AutoMapper | Manual         | From class  | Config-based  | Yes     | Paid (15+) | Yes          |
-| Mapster    | Manual         | From class  | Config-based  | Yes     | MIT        | Yes          |
-| Mapperly   | Manual         | From class  | Code/Attr     | Yes     | Apache 2.0 | No           |
-| Facet      | Semi-auto      | From class  | Attributes    | Yes     | MIT        | Yes          |
-| Linqraft   | Auto           | From query  | Inline        | No      | Apache 2.0 | No           |
+| Library    | DTO Definition | Generation  | Customization | Reverse | License    | GitHub  |
+| ---------- | -------------- | ----------- | ------------- | ------- | ---------- | ------- |
+| AutoMapper | Manual         | From class  | Config-based  | Yes     | Paid (15+) | ![GitHub Repo stars](https://img.shields.io/github/stars/LuckyPennySoftware/AutoMapper?style=flat-square) |
+| Mapster    | Manual         | From class  | Config-based  | Yes     | MIT        | ![GitHub Repo stars](https://img.shields.io/github/stars/MapsterMapper/Mapster?style=flat-square) |
+| Mapperly   | Manual         | From class  | Code/Attr     | Yes     | Apache 2.0 | ![GitHub Repo stars](https://img.shields.io/github/stars/riok/mapperly?style=flat-square) |
+| Facet      | Semi-auto      | From class  | Attributes    | Yes     | MIT        | ![GitHub Repo stars](https://img.shields.io/github/stars/Tim-Maes/Facet?style=flat-square) |
+| Linqraft   | Auto           | From query  | Inline        | No      | Apache 2.0 | ![GitHub Repo stars](https://img.shields.io/github/stars/arika0093/Linqraft?style=flat-square) |
 
 ## AutoMapper
 
