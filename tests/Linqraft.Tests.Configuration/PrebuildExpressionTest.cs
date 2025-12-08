@@ -151,3 +151,6 @@ public class SampleDto
     public string Name { get; set; } = "";
     public int Value { get; set; }
 }
+
+// Explicit DTO for testing explicit DTO type parameter
+public partial record ExplicitDto;

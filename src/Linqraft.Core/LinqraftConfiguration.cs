@@ -67,7 +67,7 @@ public record LinqraftConfiguration
     /// <summary>
     /// Whether to pre-build and cache Expression Trees for IQueryable operations to improve performance.
     /// When enabled, expression trees are built at compile-time and cached as static fields, avoiding runtime construction.
-    /// Only applies to IQueryable patterns (not IEnumerable).
+    /// Only applies to IQueryable patterns (not IEnumerable) and only for named/predefined/explicit DTO types (not anonymous types).
     /// Default is false (disabled)
     /// </summary>
     public bool UsePrebuildExpression { get; init; } = false;
