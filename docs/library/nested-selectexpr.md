@@ -7,13 +7,8 @@ This allows you to create reusable DTOs for nested entities instead of auto-gene
 
 ### Beta Feature Warning
 
-This feature is currently in **beta** (available since v0.6.2). While it works correctly, the API and behavior may change in future versions. Please report any issues on GitHub.
-
-### .NET 9+ Recommended
-
-This feature is **recommended for .NET 9 or later**.
-In older .NET versions, type inference may fail for unknown reasons.
-See [GitHub Issue #211](https://github.com/arika0093/linqraft/issues/211) for details.
+This feature is currently in **beta** (available since v0.6.2).  
+If you encounter any issues, please report them on [GitHub Issues](https://github.com/arika0093/Linqraft/issues).
 
 ### Empty Partial Class Declarations Required
 
@@ -43,10 +38,10 @@ public class MyService
 
 **Why is this necessary?**
 
-The source generator determines where to generate DTOs based on where the empty partial class is declared. Without these declarations:
-- The generator might place DTOs in the wrong namespace
-- DTO generation might fail
-- The generated code might not compile
+This is necessary because when evaluating the internal expressions using the Roslyn API, if the target class is not pre-declared, it cannot correctly identify the generated type.
+For example, if `OrderItemDto` is not pre-defined, the part that should be recognized as `IEnumerable<OrderItemDto>` will be treated as `?(UnknownType)`, causing DTO generation to fail.
+Additionally, if `OrderDto` is not defined, the generation location of `OrderItemDto` becomes unclear, leading to it being generated in the wrong place.
+Therefore, it is essential to declare empty partial class definitions for **all** required DTOs.
 
 ## Basic Usage
 
@@ -158,10 +153,9 @@ internal partial class ItemDto;
 
 | Feature | Regular Select | Nested SelectExpr |
 |---------|---------------|-------------------|
-| DTO Location | `LinqraftGenerated_HASH` namespace | Your namespace |
+| DTO Location | `LinqraftGenerated_HASH` namespace | Anywhere you want |
 | Reusability | No | Yes |
 | Declaration Required | No | Yes (empty partial class) |
-| .NET Version | Any | .NET 9+ recommended |
 
 ## See Also
 
