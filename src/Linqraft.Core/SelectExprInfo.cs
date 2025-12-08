@@ -2142,6 +2142,7 @@ public abstract record SelectExprInfo
 
     /// <summary>
     /// Extracts per-invocation configuration from ConfigurationExpression and merges with global config
+    /// NOTE: This method must be kept in sync with LinqraftConfiguration.MergeWithRuntimeConfig
     /// </summary>
     public LinqraftConfiguration GetEffectiveConfiguration(LinqraftConfiguration globalConfig)
     {
@@ -2152,6 +2153,7 @@ public abstract record SelectExprInfo
 
         // Only handle object creation expressions for now
         // Variable references or other expressions will just use global config
+        // TODO: Add analyzer to detect and report non-object-creation expressions as errors
         if (ConfigurationExpression is not ObjectCreationExpressionSyntax objCreation)
         {
             return globalConfig;
@@ -2177,52 +2179,8 @@ public abstract record SelectExprInfo
             }
         }
 
-        // Merge with global config
-        var merged = globalConfig;
-
-        if (configValues.TryGetValue("GlobalNamespace", out var globalNamespace) &&
-            globalNamespace is string globalNs)
-        {
-            merged = merged with { GlobalNamespace = globalNs };
-        }
-
-        if (configValues.TryGetValue("RecordGenerate", out var recordGenerate) &&
-            recordGenerate is bool recordGen)
-        {
-            merged = merged with { RecordGenerate = recordGen };
-        }
-
-        if (configValues.TryGetValue("PropertyAccessor", out var propertyAccessor) &&
-            propertyAccessor is PropertyAccessor propAccessor)
-        {
-            merged = merged with { PropertyAccessor = propAccessor };
-        }
-
-        if (configValues.TryGetValue("HasRequired", out var hasRequired) &&
-            hasRequired is bool hasReq)
-        {
-            merged = merged with { HasRequired = hasReq };
-        }
-
-        if (configValues.TryGetValue("CommentOutput", out var commentOutput) &&
-            commentOutput is CommentOutputMode commentOut)
-        {
-            merged = merged with { CommentOutput = commentOut };
-        }
-
-        if (configValues.TryGetValue("ArrayNullabilityRemoval", out var arrayNullabilityRemoval) &&
-            arrayNullabilityRemoval is bool arrayNullRemoval)
-        {
-            merged = merged with { ArrayNullabilityRemoval = arrayNullRemoval };
-        }
-
-        if (configValues.TryGetValue("NestedDtoUseHashNamespace", out var nestedDtoUseHashNamespace) &&
-            nestedDtoUseHashNamespace is bool nestedUseHash)
-        {
-            merged = merged with { NestedDtoUseHashNamespace = nestedUseHash };
-        }
-
-        return merged;
+        // Merge with global config using the centralized method
+        return LinqraftConfiguration.MergeWithRuntimeConfig(globalConfig, configValues);
     }
 
     /// <summary>
@@ -2261,6 +2219,7 @@ public abstract record SelectExprInfo
             return false;
         }
 
+        // TODO: Add analyzer to detect and report non-constant value access as errors
         return null;
     }
 }

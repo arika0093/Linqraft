@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using Microsoft.CodeAnalysis.Diagnostics;
 
 namespace Linqraft.Core;
@@ -156,6 +157,66 @@ public record LinqraftConfiguration
             };
         }
         return linqraftOptions;
+    }
+
+    // NOTE: RUNTIME CONFIGURATION SYNCHRONIZATION
+    // The following section contains definitions that must be kept in sync with
+    // the runtime LinqraftConfiguration in GenerateSourceCodeSnippets.cs
+    // Any changes to property names, types, or structure must be reflected in both places.
+
+    /// <summary>
+    /// Extracts per-invocation configuration from ConfigurationExpression and merges with global config
+    /// NOTE: This method is duplicated in SelectExprInfo.cs and must be kept in sync
+    /// </summary>
+    public static LinqraftConfiguration MergeWithRuntimeConfig(
+        LinqraftConfiguration globalConfig,
+        Dictionary<string, object?> configValues)
+    {
+        var merged = globalConfig;
+
+        if (configValues.TryGetValue("GlobalNamespace", out var globalNamespace) &&
+            globalNamespace is string globalNs)
+        {
+            merged = merged with { GlobalNamespace = globalNs };
+        }
+
+        if (configValues.TryGetValue("RecordGenerate", out var recordGenerate) &&
+            recordGenerate is bool recordGen)
+        {
+            merged = merged with { RecordGenerate = recordGen };
+        }
+
+        if (configValues.TryGetValue("PropertyAccessor", out var propertyAccessor) &&
+            propertyAccessor is PropertyAccessor propAccessor)
+        {
+            merged = merged with { PropertyAccessor = propAccessor };
+        }
+
+        if (configValues.TryGetValue("HasRequired", out var hasRequired) &&
+            hasRequired is bool hasReq)
+        {
+            merged = merged with { HasRequired = hasReq };
+        }
+
+        if (configValues.TryGetValue("CommentOutput", out var commentOutput) &&
+            commentOutput is CommentOutputMode commentOut)
+        {
+            merged = merged with { CommentOutput = commentOut };
+        }
+
+        if (configValues.TryGetValue("ArrayNullabilityRemoval", out var arrayNullabilityRemoval) &&
+            arrayNullabilityRemoval is bool arrayNullRemoval)
+        {
+            merged = merged with { ArrayNullabilityRemoval = arrayNullRemoval };
+        }
+
+        if (configValues.TryGetValue("NestedDtoUseHashNamespace", out var nestedDtoUseHashNamespace) &&
+            nestedDtoUseHashNamespace is bool nestedUseHash)
+        {
+            merged = merged with { NestedDtoUseHashNamespace = nestedUseHash };
+        }
+
+        return merged;
     }
 }
 

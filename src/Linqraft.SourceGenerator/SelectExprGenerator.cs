@@ -350,7 +350,6 @@ public partial class SelectExprGenerator : IIncrementalGenerator
             Invocation = invocation,
             LambdaParameterName = lambdaParameterName,
             CallerNamespace = callerNamespace,
-            CaptureParameterName = null, // No longer used - capture is via closure
             CaptureArgumentExpression = captureArgumentExpression,
             CaptureArgumentType = captureArgumentType,
             ConfigurationExpression = configArgumentExpression,
@@ -425,7 +424,6 @@ public partial class SelectExprGenerator : IIncrementalGenerator
             CallerNamespace = targetNamespace,
             ParentClasses = parentClasses,
             TResultType = tResultType,
-            CaptureParameterName = null, // No longer used - capture is via closure
             CaptureArgumentExpression = captureArgumentExpression,
             CaptureArgumentType = captureArgumentType,
             ConfigurationExpression = configArgumentExpression,

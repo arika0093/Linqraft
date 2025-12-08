@@ -192,8 +192,9 @@ public static class GenerateSourceCodeSnippets
         {
             /// <summary>
             /// Configuration options for Linqraft source generator (per-invocation)
+            /// NOTE: This definition must be kept in sync with LinqraftConfiguration.cs
+            /// See LinqraftConfiguration.cs for the canonical definition
             /// </summary>
-            [System.ComponentModel.EditorBrowsable(System.ComponentModel.EditorBrowsableState.Never)]
             internal sealed class LinqraftConfiguration
             {
                 /// <summary>

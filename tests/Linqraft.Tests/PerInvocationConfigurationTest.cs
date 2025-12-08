@@ -1,5 +1,6 @@
 using System.Collections.Generic;
 using System.Linq;
+using Linqraft;
 
 namespace Linqraft.Tests;
 
@@ -10,7 +11,7 @@ public class PerInvocationConfigurationTest
     {
         var converted = TestData
             .AsQueryable()
-            .SelectExpr(x => new { x.Id, x.Name, x.Value }, new Linqraft.LinqraftConfiguration
+            .SelectExpr(x => new { x.Id, x.Name, x.Value }, new LinqraftConfiguration
             {
                 RecordGenerate = true,
                 HasRequired = false
@@ -31,9 +32,9 @@ public class PerInvocationConfigurationTest
             .AsQueryable()
             .SelectExpr<TestItem, ConfigTestDto>(
                 x => new { x.Id, x.Name },
-                new Linqraft.LinqraftConfiguration
+                new LinqraftConfiguration
                 {
-                    PropertyAccessor = Linqraft.PropertyAccessor.GetAndInit
+                    PropertyAccessor = PropertyAccessor.GetAndInit
                 }
             )
             .ToList();
@@ -55,9 +56,9 @@ public class PerInvocationConfigurationTest
             .SelectExpr(
                 x => new { x.Id, ModifiedName = x.Name + suffix },
                 new { suffix },
-                new Linqraft.LinqraftConfiguration
+                new LinqraftConfiguration
                 {
-                    CommentOutput = Linqraft.CommentOutputMode.None
+                    CommentOutput = CommentOutputMode.None
                 }
             )
             .ToList();
@@ -82,7 +83,7 @@ public class PerInvocationConfigurationTest
                     TripleValue = x.Value * multiplier
                 },
                 new { multiplier },
-                new Linqraft.LinqraftConfiguration
+                new LinqraftConfiguration
                 {
                     ArrayNullabilityRemoval = false
                 }
@@ -103,7 +104,7 @@ public class PerInvocationConfigurationTest
             .AsQueryable()
             .SelectExpr(
                 x => new ConfigTestDto3 { Id = x.Id, Value = x.Value },
-                new Linqraft.LinqraftConfiguration
+                new LinqraftConfiguration
                 {
                     HasRequired = false
                 }
@@ -117,6 +118,57 @@ public class PerInvocationConfigurationTest
         first.Value.ShouldBe(10);
     }
 
+    [Fact]
+    public void NestedSelectExpr_WithConfiguration()
+    {
+        var parentData = new List<ParentItem>
+        {
+            new ParentItem
+            {
+                Id = 1,
+                Name = "Parent1",
+                Children = new List<ChildItem>
+                {
+                    new ChildItem { Id = 10, Value = 100 },
+                    new ChildItem { Id = 11, Value = 110 }
+                }
+            },
+            new ParentItem
+            {
+                Id = 2,
+                Name = "Parent2",
+                Children = new List<ChildItem>
+                {
+                    new ChildItem { Id = 20, Value = 200 }
+                }
+            }
+        };
+
+        var converted = parentData
+            .AsQueryable()
+            .SelectExpr(
+                x => new
+                {
+                    x.Id,
+                    x.Name,
+                    ChildValues = x.Children.AsQueryable().SelectExpr(
+                        c => new { c.Id, c.Value },
+                        new LinqraftConfiguration { RecordGenerate = true }
+                    ).ToList()
+                },
+                new LinqraftConfiguration { HasRequired = false }
+            )
+            .ToList();
+
+        converted.Count.ShouldBe(2);
+        var first = converted[0];
+        first.Id.ShouldBe(1);
+        first.Name.ShouldBe("Parent1");
+        first.ChildValues.Count.ShouldBe(2);
+        first.ChildValues[0].Id.ShouldBe(10);
+        first.ChildValues[0].Value.ShouldBe(100);
+    }
+
     public static List<TestItem> TestData =>
     [
         new TestItem { Id = 1, Name = "Item1", Value = 10 },
@@ -127,6 +179,19 @@ public class PerInvocationConfigurationTest
     {
         public int Id { get; set; }
         public string Name { get; set; } = string.Empty;
+        public int Value { get; set; }
+    }
+
+    public class ParentItem
+    {
+        public int Id { get; set; }
+        public string Name { get; set; } = string.Empty;
+        public List<ChildItem> Children { get; set; } = new();
+    }
+
+    public class ChildItem
+    {
+        public int Id { get; set; }
         public int Value { get; set; }
     }
 }
