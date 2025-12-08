@@ -67,6 +67,22 @@ public record SelectExprInfoAnonymous : SelectExprInfo
         var sb = new StringBuilder();
 
         var id = GetUniqueId();
+        
+        // Check if we should use pre-built expressions (only for IQueryable, not IEnumerable)
+        var usePrebuildExpression = Configuration.UsePrebuildExpression && !IsEnumerableInvocation();
+        
+        // Generate static field for cached expression if pre-build is enabled
+        if (usePrebuildExpression)
+        {
+            var (fieldDecl, _) = ExpressionTreeBuilder.GenerateExpressionTreeField(
+                sourceTypeFullName,
+                "TResult",
+                id
+            );
+            sb.AppendLine(fieldDecl);
+            sb.AppendLine();
+        }
+        
         sb.AppendLine(GenerateMethodHeaderPart("anonymous type", location));
 
         // Determine if we have capture parameters
@@ -113,6 +129,9 @@ public record SelectExprInfoAnonymous : SelectExprInfo
                 sb.AppendLine($"    var capture = ({captureTypeName})captureParam;");
             }
 
+            // Note: Pre-built expressions don't work well with captures because the closure
+            // variables would be captured at compile time, not at runtime. So we disable
+            // pre-built expressions when captures are used.
             sb.AppendLine($"    var converted = matchedQuery.Select({LambdaParameterName} => new");
         }
         else
@@ -126,21 +145,64 @@ public record SelectExprInfoAnonymous : SelectExprInfo
             sb.AppendLine(
                 $"    var matchedQuery = query as object as {returnTypePrefix}<{sourceTypeFullName}>;"
             );
-            sb.AppendLine($"    var converted = matchedQuery.Select({LambdaParameterName} => new");
+            
+            // Use pre-built expression if enabled
+            if (usePrebuildExpression)
+            {
+                var (_, fieldName) = ExpressionTreeBuilder.GenerateExpressionTreeField(
+                    sourceTypeFullName,
+                    "TResult",
+                    id
+                );
+                
+                // Build the lambda body
+                var lambdaBodyBuilder = new StringBuilder();
+                lambdaBodyBuilder.AppendLine("new");
+                lambdaBodyBuilder.AppendLine($"    {{");
+                var propertyAssignments = structure
+                    .Properties.Select(prop =>
+                    {
+                        var assignment = GeneratePropertyAssignment(prop, CodeFormatter.IndentSize * 2);
+                        return $"{CodeFormatter.Indent(2)}{prop.Name} = {assignment}";
+                    })
+                    .ToList();
+                lambdaBodyBuilder.AppendLine(string.Join($",{CodeFormatter.DefaultNewLine}", propertyAssignments));
+                lambdaBodyBuilder.Append("    }");
+                
+                // Generate the expression initialization code
+                var initCode = ExpressionTreeBuilder.GenerateAnonymousExpressionTreeInitialization(
+                    lambdaBodyBuilder.ToString(),
+                    LambdaParameterName,
+                    fieldName
+                );
+                sb.Append(initCode);
+                
+                // Use the cached expression
+                sb.AppendLine($"    var converted = matchedQuery.Select({fieldName}!);");
+            }
+            else
+            {
+                sb.AppendLine($"    var converted = matchedQuery.Select({LambdaParameterName} => new");
+            }
         }
 
-        sb.AppendLine($"    {{");
+        // Only generate the lambda body if we're not using pre-built expressions (or if we have captures)
+        if (!usePrebuildExpression || hasCapture)
+        {
+            sb.AppendLine($"    {{");
 
-        // Generate property assignments
-        var propertyAssignments = structure
-            .Properties.Select(prop =>
-            {
-                var assignment = GeneratePropertyAssignment(prop, CodeFormatter.IndentSize * 2);
-                return $"{CodeFormatter.Indent(2)}{prop.Name} = {assignment}";
-            })
-            .ToList();
-        sb.AppendLine(string.Join($",{CodeFormatter.DefaultNewLine}", propertyAssignments));
-        sb.AppendLine("    });");
+            // Generate property assignments
+            var propertyAssignments = structure
+                .Properties.Select(prop =>
+                {
+                    var assignment = GeneratePropertyAssignment(prop, CodeFormatter.IndentSize * 2);
+                    return $"{CodeFormatter.Indent(2)}{prop.Name} = {assignment}";
+                })
+                .ToList();
+            sb.AppendLine(string.Join($",{CodeFormatter.DefaultNewLine}", propertyAssignments));
+            sb.AppendLine("    });");
+        }
+        
         sb.AppendLine($"    return converted as object as {returnTypePrefix}<TResult>;");
         sb.AppendLine("}");
         sb.AppendLine();

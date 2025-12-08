@@ -74,6 +74,22 @@ public record SelectExprInfoNamed : SelectExprInfo
 
         var sb = new StringBuilder();
         var id = GetUniqueId();
+        
+        // Check if we should use pre-built expressions (only for IQueryable, not IEnumerable)
+        var usePrebuildExpression = Configuration.UsePrebuildExpression && !IsEnumerableInvocation();
+        
+        // Generate static field for cached expression if pre-build is enabled
+        if (usePrebuildExpression)
+        {
+            var (fieldDecl, _) = ExpressionTreeBuilder.GenerateExpressionTreeField(
+                querySourceTypeFullName,
+                dtoName,
+                id
+            );
+            sb.AppendLine(fieldDecl);
+            sb.AppendLine();
+        }
+        
         sb.AppendLine(GenerateMethodHeaderPart(dtoName, location));
 
         // Determine if we have capture parameters
@@ -118,6 +134,9 @@ public record SelectExprInfoNamed : SelectExprInfo
                 sb.AppendLine($"    var capture = ({captureTypeName})captureParam;");
             }
 
+            // Note: Pre-built expressions don't work well with captures because the closure
+            // variables would be captured at compile time, not at runtime. So we disable
+            // pre-built expressions when captures are used.
             sb.AppendLine(
                 $"    var converted = matchedQuery.Select({LambdaParameterName} => new {dtoName}"
             );
@@ -133,24 +152,69 @@ public record SelectExprInfoNamed : SelectExprInfo
             sb.AppendLine(
                 $"    var matchedQuery = query as object as {returnTypePrefix}<{querySourceTypeFullName}>;"
             );
-            sb.AppendLine(
-                $"    var converted = matchedQuery.Select({LambdaParameterName} => new {dtoName}"
-            );
+            
+            // Use pre-built expression if enabled
+            if (usePrebuildExpression)
+            {
+                var (_, fieldName) = ExpressionTreeBuilder.GenerateExpressionTreeField(
+                    querySourceTypeFullName,
+                    dtoName,
+                    id
+                );
+                
+                // Build the lambda body
+                var lambdaBodyBuilder = new StringBuilder();
+                lambdaBodyBuilder.AppendLine($"new {dtoName}");
+                lambdaBodyBuilder.AppendLine($"    {{");
+                var propertyAssignments = structure
+                    .Properties.Select(prop =>
+                    {
+                        var assignment = GeneratePropertyAssignment(prop, CodeFormatter.IndentSize * 2);
+                        return $"{CodeFormatter.Indent(2)}{prop.Name} = {assignment}";
+                    })
+                    .ToList();
+                lambdaBodyBuilder.AppendLine(string.Join($",{CodeFormatter.DefaultNewLine}", propertyAssignments));
+                lambdaBodyBuilder.Append("    }");
+                
+                // Generate the expression initialization code
+                var initCode = ExpressionTreeBuilder.GenerateNamedExpressionTreeInitialization(
+                    lambdaBodyBuilder.ToString(),
+                    querySourceTypeFullName,
+                    dtoName,
+                    LambdaParameterName,
+                    fieldName
+                );
+                sb.Append(initCode);
+                
+                // Use the cached expression
+                sb.AppendLine($"    var converted = matchedQuery.Select({fieldName}!);");
+            }
+            else
+            {
+                sb.AppendLine(
+                    $"    var converted = matchedQuery.Select({LambdaParameterName} => new {dtoName}"
+                );
+            }
         }
 
-        sb.AppendLine($"    {{");
+        // Only generate the lambda body if we're not using pre-built expressions (or if we have captures)
+        if (!usePrebuildExpression || hasCapture)
+        {
+            sb.AppendLine($"    {{");
 
-        // Generate property assignments using GeneratePropertyAssignment to properly handle null-conditional operators
-        var propertyAssignments = structure
-            .Properties.Select(prop =>
-            {
-                var assignment = GeneratePropertyAssignment(prop, CodeFormatter.IndentSize * 2);
-                return $"{CodeFormatter.Indent(2)}{prop.Name} = {assignment}";
-            })
-            .ToList();
-        sb.AppendLine(string.Join($",{CodeFormatter.DefaultNewLine}", propertyAssignments));
+            // Generate property assignments using GeneratePropertyAssignment to properly handle null-conditional operators
+            var propertyAssignments = structure
+                .Properties.Select(prop =>
+                {
+                    var assignment = GeneratePropertyAssignment(prop, CodeFormatter.IndentSize * 2);
+                    return $"{CodeFormatter.Indent(2)}{prop.Name} = {assignment}";
+                })
+                .ToList();
+            sb.AppendLine(string.Join($",{CodeFormatter.DefaultNewLine}", propertyAssignments));
 
-        sb.AppendLine($"    }});");
+            sb.AppendLine($"    }});");
+        }
+        
         sb.AppendLine($"    return converted as object as {returnTypePrefix}<TResult>;");
         sb.AppendLine("}");
         return sb.ToString();
