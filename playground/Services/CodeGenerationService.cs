@@ -85,7 +85,7 @@ public class CodeGenerationService(SharedCompilationService sharedCompilation)
                         .ToList();
 
                     queryExpressionBuilder.AppendLine(
-                        GenerateSourceCodeSnippets.BuildExprCodeSnippets(selectExprCodes)
+                        GenerateSourceCodeSnippets.BuildExprCodeSnippets(selectExprCodes, new List<string>())
                     );
                     dtoClassBuilder.AppendLine(
                         GenerateSourceCodeSnippets.BuildDtoCodeSnippetsGroupedByNamespace(
