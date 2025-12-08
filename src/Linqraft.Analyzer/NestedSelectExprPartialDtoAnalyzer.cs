@@ -89,10 +89,23 @@ public class NestedSelectExprPartialDtoAnalyzer : BaseLinqraftAnalyzer
 
         if (missingTypes.Count > 0)
         {
-            // Report diagnostic for the outer SelectExpr invocation
+            // Report diagnostic for the SelectExpr method name
+            Location diagnosticLocation;
+            if (
+                invocation.Expression is MemberAccessExpressionSyntax ma
+                && ma.Name is GenericNameSyntax gn
+            )
+            {
+                diagnosticLocation = gn.GetLocation();
+            }
+            else
+            {
+                diagnosticLocation = invocation.GetLocation();
+            }
+
             var diagnostic = Diagnostic.Create(
                 RuleInstance,
-                invocation.GetLocation(),
+                diagnosticLocation,
                 string.Join(", ", missingTypes)
             );
             context.ReportDiagnostic(diagnostic);

@@ -37,7 +37,7 @@ class Test
     void Method()
     {
         var list = new List<Entity>();
-        var result = list.AsQueryable().{|#0:SelectExpr<Entity, EntityDto>(e => new
+        var result = list.AsQueryable().SelectExpr<Entity, EntityDto>(e => new
         {
             e.Id,
             e.Name,
@@ -46,7 +46,7 @@ class Test
                 i.Id,
                 i.Title
             })
-        })|};
+        });
     }
 }
 
@@ -58,7 +58,7 @@ class ItemDto { }
 
         var expected = VerifyCS
             .Diagnostic(NestedSelectExprPartialDtoAnalyzer.AnalyzerId)
-            .WithLocation(0)
+            
             .WithArguments("EntityDto, ItemDto")
             .WithSeverity(DiagnosticSeverity.Error);
 
@@ -140,7 +140,7 @@ class Test
     void Method()
     {
         var list = new List<Entity>();
-        var result = list.AsQueryable().{|#0:SelectExpr<Entity, EntityDto>(e => new
+        var result = list.AsQueryable().SelectExpr<Entity, EntityDto>(e => new
         {
             e.Id,
             e.Name,
@@ -149,7 +149,7 @@ class Test
                 i.Id,
                 i.Title
             })
-        })|};
+        });
     }
 }
 
@@ -159,7 +159,7 @@ internal partial class EntityDto;
 
         var expected = VerifyCS
             .Diagnostic(NestedSelectExprPartialDtoAnalyzer.AnalyzerId)
-            .WithLocation(0)
+            
             .WithArguments("ItemDto")
             .WithSeverity(DiagnosticSeverity.Error);
 
@@ -197,7 +197,7 @@ class Test
     void Method()
     {
         var list = new List<Entity>();
-        var result = list.AsQueryable().{|#0:SelectExpr<Entity, EntityDto>(e => new
+        var result = list.AsQueryable().SelectExpr<Entity, EntityDto>(e => new
         {
             e.Id,
             Items = e.Items.SelectExpr<Item, ItemDto>(i => new
@@ -208,7 +208,7 @@ class Test
                     si.Value
                 })
             })
-        })|};
+        });
     }
 }
 
@@ -216,7 +216,7 @@ class Test
 
         var expected = VerifyCS
             .Diagnostic(NestedSelectExprPartialDtoAnalyzer.AnalyzerId)
-            .WithLocation(0)
+            
             .WithArguments("EntityDto, ItemDto, SubItemDto")
             .WithSeverity(DiagnosticSeverity.Error);
 
