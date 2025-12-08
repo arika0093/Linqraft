@@ -80,6 +80,12 @@ public abstract record SelectExprInfo
     public ITypeSymbol? CaptureArgumentType { get; init; }
 
     /// <summary>
+    /// The object creation expression for per-invocation configuration
+    /// Null if no configuration is provided
+    /// </summary>
+    public ObjectCreationExpressionSyntax? ConfigurationExpression { get; init; }
+
+    /// <summary>
     /// Generates DTO class information (including nested DTOs)
     /// </summary>
     public abstract List<GenerateDtoClassInfo> GenerateDtoClasses();
@@ -2132,5 +2138,119 @@ public abstract record SelectExprInfo
 
         // For other expression types, return as-is
         return expression.ToString();
+    }
+
+    /// <summary>
+    /// Extracts per-invocation configuration from ConfigurationExpression and merges with global config
+    /// </summary>
+    public LinqraftConfiguration GetEffectiveConfiguration(LinqraftConfiguration globalConfig)
+    {
+        if (ConfigurationExpression == null)
+        {
+            return globalConfig;
+        }
+
+        // Parse the object initializer to extract configuration values
+        var configValues = new Dictionary<string, object?>();
+
+        if (ConfigurationExpression.Initializer != null)
+        {
+            foreach (var expr in ConfigurationExpression.Initializer.Expressions)
+            {
+                if (expr is not AssignmentExpressionSyntax assignment)
+                    continue;
+
+                var propertyName = assignment.Left.ToString();
+                var value = EvaluateConfigValue(assignment.Right);
+
+                if (value != null)
+                {
+                    configValues[propertyName] = value;
+                }
+            }
+        }
+
+        // Merge with global config
+        var merged = globalConfig;
+
+        if (configValues.TryGetValue("GlobalNamespace", out var globalNamespace) &&
+            globalNamespace is string globalNs)
+        {
+            merged = merged with { GlobalNamespace = globalNs };
+        }
+
+        if (configValues.TryGetValue("RecordGenerate", out var recordGenerate) &&
+            recordGenerate is bool recordGen)
+        {
+            merged = merged with { RecordGenerate = recordGen };
+        }
+
+        if (configValues.TryGetValue("PropertyAccessor", out var propertyAccessor) &&
+            propertyAccessor is PropertyAccessor propAccessor)
+        {
+            merged = merged with { PropertyAccessor = propAccessor };
+        }
+
+        if (configValues.TryGetValue("HasRequired", out var hasRequired) &&
+            hasRequired is bool hasReq)
+        {
+            merged = merged with { HasRequired = hasReq };
+        }
+
+        if (configValues.TryGetValue("CommentOutput", out var commentOutput) &&
+            commentOutput is CommentOutputMode commentOut)
+        {
+            merged = merged with { CommentOutput = commentOut };
+        }
+
+        if (configValues.TryGetValue("ArrayNullabilityRemoval", out var arrayNullabilityRemoval) &&
+            arrayNullabilityRemoval is bool arrayNullRemoval)
+        {
+            merged = merged with { ArrayNullabilityRemoval = arrayNullRemoval };
+        }
+
+        if (configValues.TryGetValue("NestedDtoUseHashNamespace", out var nestedDtoUseHashNamespace) &&
+            nestedDtoUseHashNamespace is bool nestedUseHash)
+        {
+            merged = merged with { NestedDtoUseHashNamespace = nestedUseHash };
+        }
+
+        return merged;
+    }
+
+    /// <summary>
+    /// Evaluates a configuration value expression to extract its constant value
+    /// </summary>
+    private object? EvaluateConfigValue(ExpressionSyntax expression)
+    {
+        // Handle literal expressions
+        if (expression is LiteralExpressionSyntax literal)
+        {
+            return literal.Token.Value;
+        }
+
+        // Handle member access for enum values
+        if (expression is MemberAccessExpressionSyntax memberAccess)
+        {
+            var symbolInfo = SemanticModel.GetSymbolInfo(memberAccess);
+            if (symbolInfo.Symbol is IFieldSymbol fieldSymbol && fieldSymbol.HasConstantValue)
+            {
+                // It's an enum value or const field
+                return fieldSymbol.ConstantValue;
+            }
+        }
+
+        // Handle boolean literals (true/false keywords)
+        if (expression.IsKind(SyntaxKind.TrueLiteralExpression))
+        {
+            return true;
+        }
+
+        if (expression.IsKind(SyntaxKind.FalseLiteralExpression))
+        {
+            return false;
+        }
+
+        return null;
     }
 }

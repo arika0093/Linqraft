@@ -50,9 +50,11 @@ public partial class SelectExprGenerator : IIncrementalGenerator
                 var infoWithoutNulls = infos.Where(info => info is not null).Select(info => info!);
 
                 // assign configuration to each SelectExprInfo
+                // Each info will merge per-invocation config with global config
                 foreach (var info in infoWithoutNulls)
                 {
-                    info.Configuration = config;
+                    // Set global config first, then info will compute effective config
+                    info.Configuration = info.GetEffectiveConfiguration(config);
                 }
 
                 // record locations by SelectExprInfo Id
@@ -126,8 +128,11 @@ public partial class SelectExprGenerator : IIncrementalGenerator
         // Extract lambda parameter name
         var lambdaParamName = LambdaHelper.GetLambdaParameterName(lambda);
 
-        // Extract capture argument info (if present)
-        var (captureArgExpr, captureType) = GetCaptureInfo(invocation, context.SemanticModel);
+        // Extract capture argument and config info (if present)
+        var (captureArgExpr, captureType, configArgExpr) = GetCaptureAndConfigInfo(
+            invocation,
+            context.SemanticModel
+        );
 
         // check
         // 1. SelectExpr with predefined DTO type
@@ -144,7 +149,8 @@ public partial class SelectExprGenerator : IIncrementalGenerator
                 objCreation,
                 lambdaParamName,
                 captureArgExpr,
-                captureType
+                captureType,
+                configArgExpr
             );
         }
 
@@ -162,7 +168,8 @@ public partial class SelectExprGenerator : IIncrementalGenerator
                 genericName,
                 lambdaParamName,
                 captureArgExpr,
-                captureType
+                captureType,
+                configArgExpr
             );
         }
 
@@ -174,7 +181,8 @@ public partial class SelectExprGenerator : IIncrementalGenerator
                 anon,
                 lambdaParamName,
                 captureArgExpr,
-                captureType
+                captureType,
+                configArgExpr
             );
         }
 
@@ -182,23 +190,64 @@ public partial class SelectExprGenerator : IIncrementalGenerator
         return null;
     }
 
-    private static (ExpressionSyntax? captureArgExpr, ITypeSymbol? captureType) GetCaptureInfo(
-        InvocationExpressionSyntax invocation,
-        SemanticModel semanticModel
-    )
+    private static (
+        ExpressionSyntax? captureArgExpr,
+        ITypeSymbol? captureType,
+        ObjectCreationExpressionSyntax? configArgExpr
+    ) GetCaptureAndConfigInfo(InvocationExpressionSyntax invocation, SemanticModel semanticModel)
     {
-        // Check if invocation has 2 arguments (second one is the capture argument)
+        // Possible argument patterns:
+        // 1. (selector) - 1 argument
+        // 2. (selector, capture) - 2 arguments
+        // 3. (selector, config) - 2 arguments
+        // 4. (selector, capture, config) - 3 arguments
+
         ExpressionSyntax? captureArgExpr = null;
         ITypeSymbol? captureType = null;
-        if (invocation.ArgumentList.Arguments.Count == 2)
+        ObjectCreationExpressionSyntax? configArgExpr = null;
+
+        var argCount = invocation.ArgumentList.Arguments.Count;
+
+        if (argCount == 2)
         {
+            // Either capture or config
+            var secondArg = invocation.ArgumentList.Arguments[1].Expression;
+            var typeInfo = semanticModel.GetTypeInfo(secondArg);
+            var argType = typeInfo.Type ?? typeInfo.ConvertedType;
+
+            // Check if it's LinqraftConfiguration
+            if (IsLinqraftConfigurationType(argType))
+            {
+                configArgExpr = secondArg as ObjectCreationExpressionSyntax;
+            }
+            else
+            {
+                // It's a capture argument
+                captureArgExpr = secondArg;
+                captureType = argType;
+            }
+        }
+        else if (argCount == 3)
+        {
+            // Both capture and config
             captureArgExpr = invocation.ArgumentList.Arguments[1].Expression;
-            // Get the type of the capture argument
-            var typeInfo = semanticModel.GetTypeInfo(captureArgExpr);
-            captureType = typeInfo.Type ?? typeInfo.ConvertedType;
+            var captureTypeInfo = semanticModel.GetTypeInfo(captureArgExpr);
+            captureType = captureTypeInfo.Type ?? captureTypeInfo.ConvertedType;
+
+            var thirdArg = invocation.ArgumentList.Arguments[2].Expression;
+            configArgExpr = thirdArg as ObjectCreationExpressionSyntax;
         }
 
-        return (captureArgExpr, captureType);
+        return (captureArgExpr, captureType, configArgExpr);
+    }
+
+    private static bool IsLinqraftConfigurationType(ITypeSymbol? type)
+    {
+        if (type == null)
+            return false;
+
+        return type.Name == "LinqraftConfiguration"
+            && type.ContainingNamespace?.ToString() == "Linqraft";
     }
 
     private static SelectExprInfoAnonymous? GetAnonymousSelectExprInfo(
@@ -206,7 +255,8 @@ public partial class SelectExprGenerator : IIncrementalGenerator
         AnonymousObjectCreationExpressionSyntax anonymousObj,
         string lambdaParameterName,
         ExpressionSyntax? captureArgumentExpression,
-        ITypeSymbol? captureArgumentType
+        ITypeSymbol? captureArgumentType,
+        ObjectCreationExpressionSyntax? configArgumentExpression
     )
     {
         var invocation = (InvocationExpressionSyntax)context.Node;
@@ -244,6 +294,7 @@ public partial class SelectExprGenerator : IIncrementalGenerator
             CaptureParameterName = null, // No longer used - capture is via closure
             CaptureArgumentExpression = captureArgumentExpression,
             CaptureArgumentType = captureArgumentType,
+            ConfigurationExpression = configArgumentExpression,
         };
     }
 
@@ -252,7 +303,8 @@ public partial class SelectExprGenerator : IIncrementalGenerator
         ObjectCreationExpressionSyntax obj,
         string lambdaParameterName,
         ExpressionSyntax? captureArgumentExpression,
-        ITypeSymbol? captureArgumentType
+        ITypeSymbol? captureArgumentType,
+        ObjectCreationExpressionSyntax? configArgumentExpression
     )
     {
         var invocation = (InvocationExpressionSyntax)context.Node;
@@ -290,6 +342,7 @@ public partial class SelectExprGenerator : IIncrementalGenerator
             CaptureParameterName = null, // No longer used - capture is via closure
             CaptureArgumentExpression = captureArgumentExpression,
             CaptureArgumentType = captureArgumentType,
+            ConfigurationExpression = configArgumentExpression,
         };
     }
 
@@ -299,7 +352,8 @@ public partial class SelectExprGenerator : IIncrementalGenerator
         GenericNameSyntax genericName,
         string lambdaParameterName,
         ExpressionSyntax? captureArgumentExpression,
-        ITypeSymbol? captureArgumentType
+        ITypeSymbol? captureArgumentType,
+        ObjectCreationExpressionSyntax? configArgumentExpression
     )
     {
         var invocation = (InvocationExpressionSyntax)context.Node;
@@ -363,6 +417,7 @@ public partial class SelectExprGenerator : IIncrementalGenerator
             CaptureParameterName = null, // No longer used - capture is via closure
             CaptureArgumentExpression = captureArgumentExpression,
             CaptureArgumentType = captureArgumentType,
+            ConfigurationExpression = configArgumentExpression,
         };
     }
 }

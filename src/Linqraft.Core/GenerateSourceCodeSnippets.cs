@@ -188,6 +188,109 @@ public static class GenerateSourceCodeSnippets
         #nullable enable
         {{GenerateHeaderUsingPart}}
 
+        namespace Linqraft
+        {
+            /// <summary>
+            /// Configuration options for Linqraft source generator (per-invocation)
+            /// </summary>
+            [System.ComponentModel.EditorBrowsable(System.ComponentModel.EditorBrowsableState.Never)]
+            public sealed class LinqraftConfiguration
+            {
+                /// <summary>
+                /// The namespace where global namespace DTOs should exist.
+                /// Default is null (use global configuration)
+                /// </summary>
+                public string? GlobalNamespace { get; init; }
+
+                /// <summary>
+                /// Whether to generate records instead of classes.
+                /// Default is null (use global configuration)
+                /// </summary>
+                public bool? RecordGenerate { get; init; }
+
+                /// <summary>
+                /// The property accessor pattern to use for generated DTOs.
+                /// Default is null (use global configuration)
+                /// </summary>
+                public PropertyAccessor? PropertyAccessor { get; init; }
+
+                /// <summary>
+                /// Whether to use the 'required' keyword on generated DTO properties.
+                /// Default is null (use global configuration)
+                /// </summary>
+                public bool? HasRequired { get; init; }
+
+                /// <summary>
+                /// The comment output mode for generated DTO classes and properties.
+                /// Default is null (use global configuration)
+                /// </summary>
+                public CommentOutputMode? CommentOutput { get; init; }
+
+                /// <summary>
+                /// Whether to remove nullable annotation from collection types with Select/SelectMany
+                /// and use empty collection fallback instead of null.
+                /// Default is null (use global configuration)
+                /// </summary>
+                public bool? ArrayNullabilityRemoval { get; init; }
+
+                /// <summary>
+                /// Whether to generate nested DTOs in a hash-named namespace instead of using hash suffix on the class name.
+                /// Default is null (use global configuration)
+                /// </summary>
+                public bool? NestedDtoUseHashNamespace { get; init; }
+            }
+
+            /// <summary>
+            /// Property accessor patterns for generated DTOs
+            /// </summary>
+            [System.ComponentModel.EditorBrowsable(System.ComponentModel.EditorBrowsableState.Never)]
+            public enum PropertyAccessor
+            {
+                /// <summary>
+                /// Use default based on record/class type
+                /// </summary>
+                Default = 0,
+
+                /// <summary>
+                /// get; set; - mutable properties
+                /// </summary>
+                GetAndSet = 1,
+
+                /// <summary>
+                /// get; init; - init-only properties
+                /// </summary>
+                GetAndInit = 2,
+
+                /// <summary>
+                /// get; internal set; - read-only outside assembly
+                /// </summary>
+                GetAndInternalSet = 3,
+            }
+
+            /// <summary>
+            /// Comment output modes for generated DTOs
+            /// </summary>
+            [System.ComponentModel.EditorBrowsable(System.ComponentModel.EditorBrowsableState.Never)]
+            public enum CommentOutputMode
+            {
+                /// <summary>
+                /// Include all comments: XML documentation, source references, and attribute information
+                /// </summary>
+                All = 0,
+
+                /// <summary>
+                /// Include only comments from the source class/property (XML documentation, Comment attribute, Display attribute)
+                /// Does not include source references (From:) or attribute information
+                /// </summary>
+                SummaryOnly = 1,
+
+                /// <summary>
+                /// Do not include any comments in generated DTOs
+                /// </summary>
+                None = 2,
+            }
+        }
+
         /// <summary>
         /// Dummy expression methods for Linqraft to compile correctly.
         /// </summary>
@@ -251,6 +354,66 @@ public static class GenerateSourceCodeSnippets
             /// </summary>
         {{OverloadPriorityAttribute}}
             public static IEnumerable<TResult> SelectExpr<TIn, TResult>(this IEnumerable<TIn> query, Func<TIn, object> selector, object capture)
+                where TIn : class => throw InvalidException;
+
+            /// <summary>
+            /// Create select expression method with per-invocation configuration, usable nullable operators, and generate instance DTOs.
+            /// </summary>
+            public static IQueryable<TResult> SelectExpr<TIn, TResult>(this IQueryable<TIn> query, Func<TIn, TResult> selector, Linqraft.LinqraftConfiguration? config)
+                where TIn : class => throw InvalidException;
+
+            /// <summary>
+            /// Create select expression method with per-invocation configuration, usable nullable operators, and generate instance DTOs.
+            /// </summary>
+        {{OverloadPriorityAttribute}}
+            public static IQueryable<TResult> SelectExpr<TIn, TResult>(this IQueryable<TIn> query, Func<TIn, object> selector, Linqraft.LinqraftConfiguration? config)
+                where TIn : class => throw InvalidException;
+
+            /// <summary>
+            /// Create select expression method with per-invocation configuration, with generate instance DTOs.
+            /// Works with IEnumerable where nullable operators are supported natively.
+            /// </summary>
+            public static IEnumerable<TResult> SelectExpr<TIn, TResult>(this IEnumerable<TIn> query, Func<TIn, TResult> selector, Linqraft.LinqraftConfiguration? config)
+                where TIn : class => throw InvalidException;
+
+            /// <summary>
+            /// Create select expression method with per-invocation configuration, with generate instance DTOs.
+            /// Works with IEnumerable where nullable operators are supported natively.
+            /// </summary>
+        {{OverloadPriorityAttribute}}
+            public static IEnumerable<TResult> SelectExpr<TIn, TResult>(this IEnumerable<TIn> query, Func<TIn, object> selector, Linqraft.LinqraftConfiguration? config)
+                where TIn : class => throw InvalidException;
+
+            /// <summary>
+            /// Create select expression method with captured local variables and per-invocation configuration, usable nullable operators, and generate instance DTOs.
+            /// Pass local variables as an anonymous object: new { var1, var2, ... }
+            /// </summary>
+            public static IQueryable<TResult> SelectExpr<TIn, TResult>(this IQueryable<TIn> query, Func<TIn, TResult> selector, object capture, Linqraft.LinqraftConfiguration? config)
+                where TIn : class => throw InvalidException;
+
+            /// <summary>
+            /// Create select expression method with captured local variables and per-invocation configuration, usable nullable operators, and generate instance DTOs.
+            /// Pass local variables as an anonymous object: new { var1, var2, ... }
+            /// </summary>
+        {{OverloadPriorityAttribute}}
+            public static IQueryable<TResult> SelectExpr<TIn, TResult>(this IQueryable<TIn> query, Func<TIn, object> selector, object capture, Linqraft.LinqraftConfiguration? config)
+                where TIn : class => throw InvalidException;
+
+            /// <summary>
+            /// Create select expression method with captured local variables and per-invocation configuration, with generate instance DTOs.
+            /// Works with IEnumerable where nullable operators are supported natively.
+            /// Pass local variables as an anonymous object: new { var1, var2, ... }
+            /// </summary>
+            public static IEnumerable<TResult> SelectExpr<TIn, TResult>(this IEnumerable<TIn> query, Func<TIn, TResult> selector, object capture, Linqraft.LinqraftConfiguration? config)
+                where TIn : class => throw InvalidException;
+
+            /// <summary>
+            /// Create select expression method with captured local variables and per-invocation configuration, with generate instance DTOs.
+            /// Works with IEnumerable where nullable operators are supported natively.
+            /// Pass local variables as an anonymous object: new { var1, var2, ... }
+            /// </summary>
+        {{OverloadPriorityAttribute}}
+            public static IEnumerable<TResult> SelectExpr<TIn, TResult>(this IEnumerable<TIn> query, Func<TIn, object> selector, object capture, Linqraft.LinqraftConfiguration? config)
                 where TIn : class => throw InvalidException;
 
             private static Exception InvalidException => new System.InvalidOperationException(SelectExprErrorMessage); 
