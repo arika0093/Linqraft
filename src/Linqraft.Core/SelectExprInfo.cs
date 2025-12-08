@@ -83,7 +83,7 @@ public abstract record SelectExprInfo
     /// The object creation expression for per-invocation configuration
     /// Null if no configuration is provided
     /// </summary>
-    public ObjectCreationExpressionSyntax? ConfigurationExpression { get; init; }
+    public ExpressionSyntax? ConfigurationExpression { get; init; }
 
     /// <summary>
     /// Generates DTO class information (including nested DTOs)
@@ -2150,12 +2150,19 @@ public abstract record SelectExprInfo
             return globalConfig;
         }
 
+        // Only handle object creation expressions for now
+        // Variable references or other expressions will just use global config
+        if (ConfigurationExpression is not ObjectCreationExpressionSyntax objCreation)
+        {
+            return globalConfig;
+        }
+
         // Parse the object initializer to extract configuration values
         var configValues = new Dictionary<string, object?>();
 
-        if (ConfigurationExpression.Initializer != null)
+        if (objCreation.Initializer != null)
         {
-            foreach (var expr in ConfigurationExpression.Initializer.Expressions)
+            foreach (var expr in objCreation.Initializer.Expressions)
             {
                 if (expr is not AssignmentExpressionSyntax assignment)
                     continue;

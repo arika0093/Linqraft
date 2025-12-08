@@ -193,7 +193,7 @@ public partial class SelectExprGenerator : IIncrementalGenerator
     private static (
         ExpressionSyntax? captureArgExpr,
         ITypeSymbol? captureType,
-        ObjectCreationExpressionSyntax? configArgExpr
+        ExpressionSyntax? configArgExpr
     ) GetCaptureAndConfigInfo(InvocationExpressionSyntax invocation, SemanticModel semanticModel)
     {
         // Possible argument patterns:
@@ -204,7 +204,7 @@ public partial class SelectExprGenerator : IIncrementalGenerator
 
         ExpressionSyntax? captureArgExpr = null;
         ITypeSymbol? captureType = null;
-        ObjectCreationExpressionSyntax? configArgExpr = null;
+        ExpressionSyntax? configArgExpr = null;
 
         var argCount = invocation.ArgumentList.Arguments.Count;
 
@@ -218,7 +218,7 @@ public partial class SelectExprGenerator : IIncrementalGenerator
             // Check if it's LinqraftConfiguration
             if (IsLinqraftConfigurationType(argType))
             {
-                configArgExpr = secondArg as ObjectCreationExpressionSyntax;
+                configArgExpr = secondArg;
             }
             else
             {
@@ -234,8 +234,7 @@ public partial class SelectExprGenerator : IIncrementalGenerator
             var captureTypeInfo = semanticModel.GetTypeInfo(captureArgExpr);
             captureType = captureTypeInfo.Type ?? captureTypeInfo.ConvertedType;
 
-            var thirdArg = invocation.ArgumentList.Arguments[2].Expression;
-            configArgExpr = thirdArg as ObjectCreationExpressionSyntax;
+            configArgExpr = invocation.ArgumentList.Arguments[2].Expression;
         }
 
         return (captureArgExpr, captureType, configArgExpr);
@@ -245,6 +244,18 @@ public partial class SelectExprGenerator : IIncrementalGenerator
     {
         if (type == null)
             return false;
+
+        // Handle nullable types
+        if (type is INamedTypeSymbol namedType && namedType.IsValueType == false && namedType.OriginalDefinition.SpecialType == SpecialType.None)
+        {
+            // Check if it's Nullable<T>
+            if (namedType.ConstructedFrom?.SpecialType == SpecialType.System_Nullable_T)
+            {
+                type = namedType.TypeArguments.FirstOrDefault();
+                if (type == null)
+                    return false;
+            }
+        }
 
         return type.Name == "LinqraftConfiguration"
             && type.ContainingNamespace?.ToString() == "Linqraft";
@@ -256,7 +267,7 @@ public partial class SelectExprGenerator : IIncrementalGenerator
         string lambdaParameterName,
         ExpressionSyntax? captureArgumentExpression,
         ITypeSymbol? captureArgumentType,
-        ObjectCreationExpressionSyntax? configArgumentExpression
+        ExpressionSyntax? configArgumentExpression
     )
     {
         var invocation = (InvocationExpressionSyntax)context.Node;
@@ -304,7 +315,7 @@ public partial class SelectExprGenerator : IIncrementalGenerator
         string lambdaParameterName,
         ExpressionSyntax? captureArgumentExpression,
         ITypeSymbol? captureArgumentType,
-        ObjectCreationExpressionSyntax? configArgumentExpression
+        ExpressionSyntax? configArgumentExpression
     )
     {
         var invocation = (InvocationExpressionSyntax)context.Node;
@@ -353,7 +364,7 @@ public partial class SelectExprGenerator : IIncrementalGenerator
         string lambdaParameterName,
         ExpressionSyntax? captureArgumentExpression,
         ITypeSymbol? captureArgumentType,
-        ObjectCreationExpressionSyntax? configArgumentExpression
+        ExpressionSyntax? configArgumentExpression
     )
     {
         var invocation = (InvocationExpressionSyntax)context.Node;

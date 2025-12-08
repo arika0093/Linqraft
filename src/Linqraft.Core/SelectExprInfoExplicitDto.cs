@@ -375,24 +375,46 @@ public record SelectExprInfoExplicitDto : SelectExprInfo
         var id = GetUniqueId();
         sb.AppendLine(GenerateMethodHeaderPart(dtoName, location));
 
-        // Determine if we have capture parameters
+        // Determine if we have capture parameters and/or configuration
         var hasCapture = CaptureArgumentExpression != null && CaptureArgumentType != null;
+        var hasConfig = ConfigurationExpression != null;
 
-        if (hasCapture)
+        // Generate method signature based on parameters
+        sb.AppendLine(
+            $"public static {returnTypePrefix}<TResult> SelectExpr_{id}<TIn, TResult>("
+        );
+
+        if (hasCapture && hasConfig)
         {
-            // Generate method with capture parameter that creates closure variables
             sb.AppendLine(
-                $"public static {returnTypePrefix}<TResult> SelectExpr_{id}<TIn, TResult>("
+                $"    this {returnTypePrefix}<TIn> query, Func<TIn, object> selector, object captureParam, global::Linqraft.LinqraftConfiguration? config)"
             );
+        }
+        else if (hasCapture)
+        {
             sb.AppendLine(
                 $"    this {returnTypePrefix}<TIn> query, Func<TIn, object> selector, object captureParam)"
             );
-            sb.AppendLine($"{{");
+        }
+        else if (hasConfig)
+        {
             sb.AppendLine(
-                $"    var matchedQuery = query as object as {returnTypePrefix}<{sourceTypeFullName}>;"
+                $"    this {returnTypePrefix}<TIn> query, Func<TIn, object> selector, global::Linqraft.LinqraftConfiguration? config)"
             );
+        }
+        else
+        {
+            sb.AppendLine($"    this {returnTypePrefix}<TIn> query, Func<TIn, object> selector)");
+        }
 
-            // For anonymous types, use dynamic to extract properties as closure variables
+        sb.AppendLine($"{{");
+        sb.AppendLine(
+            $"    var matchedQuery = query as object as {returnTypePrefix}<{sourceTypeFullName}>;"
+        );
+
+        // Handle capture parameter if present
+        if (hasCapture)
+        {
             var isAnonymousType =
                 CaptureArgumentType != null && CaptureArgumentType.IsAnonymousType;
             if (isAnonymousType && CaptureArgumentType != null)
@@ -416,27 +438,11 @@ public record SelectExprInfoExplicitDto : SelectExprInfo
                     ?? "object";
                 sb.AppendLine($"    var capture = ({captureTypeName})captureParam;");
             }
-
-            sb.AppendLine(
-                $"    var converted = matchedQuery.Select({LambdaParameterName} => new {dtoFullName}"
-            );
-        }
-        else
-        {
-            // Generate method without capture parameter
-            sb.AppendLine(
-                $"public static {returnTypePrefix}<TResult> SelectExpr_{id}<TIn, TResult>("
-            );
-            sb.AppendLine($"    this {returnTypePrefix}<TIn> query, Func<TIn, object> selector)");
-            sb.AppendLine($"{{");
-            sb.AppendLine(
-                $"    var matchedQuery = query as object as {returnTypePrefix}<{sourceTypeFullName}>;"
-            );
-            sb.AppendLine(
-                $"    var converted = matchedQuery.Select({LambdaParameterName} => new {dtoFullName}"
-            );
         }
 
+        sb.AppendLine(
+            $"    var converted = matchedQuery.Select({LambdaParameterName} => new {dtoFullName}"
+        );
         sb.AppendLine($"    {{");
 
         // Generate property assignments
