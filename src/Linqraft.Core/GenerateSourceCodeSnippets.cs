@@ -43,13 +43,16 @@ public static class GenerateSourceCodeSnippets
     // Generate expression part
     public static string BuildExprCodeSnippets(List<string> expressions, List<string> staticFields)
     {
-        var fieldsPart = staticFields.Count > 0 
-            ? CodeFormatter.IndentCode(
-                string.Join(CodeFormatter.DefaultNewLine, staticFields),
-                CodeFormatter.IndentSize * 2
-            ) + CodeFormatter.DefaultNewLine + CodeFormatter.DefaultNewLine
-            : "";
-            
+        var fieldsPart =
+            staticFields.Count > 0
+                ? CodeFormatter.IndentCode(
+                    string.Join(CodeFormatter.DefaultNewLine, staticFields),
+                    CodeFormatter.IndentSize * 1
+                )
+                    + CodeFormatter.DefaultNewLine
+                    + CodeFormatter.DefaultNewLine
+                : "";
+
         var indentedExpr = CodeFormatter.IndentCode(
             string.Join(CodeFormatter.DefaultNewLine, expressions),
             CodeFormatter.IndentSize * 2
