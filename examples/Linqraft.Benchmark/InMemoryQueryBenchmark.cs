@@ -17,7 +17,7 @@ public partial class InMemoryQueryBenchmark
     private List<SampleClass> _data = null!;
     private IConfigurationProvider _autoMapperConfig = null!;
 
-    [Params(100, 10000)]
+    [Params(100)]
     public int DataCount { get; set; }
 
     [GlobalSetup]

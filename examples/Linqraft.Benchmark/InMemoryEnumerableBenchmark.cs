@@ -8,7 +8,7 @@ namespace Linqraft.Benchmark;
 
 [MemoryDiagnoser]
 [SimpleJob(RuntimeMoniker.Net10_0)]
-//[SimpleJob(RuntimeMoniker.NativeAot10_0)]
+[SimpleJob(RuntimeMoniker.NativeAot10_0)]
 [Orderer(SummaryOrderPolicy.FastestToSlowest)]
 [RankColumn]
 public partial class InMemoryEnumerableBenchmark
@@ -16,7 +16,7 @@ public partial class InMemoryEnumerableBenchmark
     private List<SampleClass> _data = null!;
     private IMapper _autoMapper = null!;
 
-    [Params(100, 10000)]
+    [Params(100)]
     public int DataCount { get; set; }
 
     [GlobalSetup]
@@ -175,15 +175,16 @@ public partial class InMemoryEnumerableBenchmark
                 s.Id,
                 s.Foo,
                 s.Bar,
-                Childs = s.Childs.SelectExpr<SampleChildClass, InMemoryEnumerableLinqraftSampleChildClassDto>(
-                    c => new
-                    {
-                        c.Id,
-                        c.Baz,
-                        ChildId = c.Child?.Id,
-                        ChildQux = c.Child?.Qux,
-                    }
-                ),
+                Childs = s.Childs.SelectExpr<
+                    SampleChildClass,
+                    InMemoryEnumerableLinqraftSampleChildClassDto
+                >(c => new
+                {
+                    c.Id,
+                    c.Baz,
+                    ChildId = c.Child?.Id,
+                    ChildQux = c.Child?.Qux,
+                }),
                 Child2Id = s.Child2?.Id,
                 Child2Quux = s.Child2?.Quux,
                 Child3Id = s.Child3.Id,
