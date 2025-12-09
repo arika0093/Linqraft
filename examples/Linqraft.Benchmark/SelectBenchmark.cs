@@ -11,8 +11,8 @@ using Microsoft.EntityFrameworkCore;
 namespace Linqraft.Benchmark;
 
 [MemoryDiagnoser]
-[SimpleJob(RuntimeMoniker.Net10_0)]
-[SimpleJob(RuntimeMoniker.NativeAot10_0)]
+[DryJob(RuntimeMoniker.Net10_0)]
+[DryJob(RuntimeMoniker.NativeAot10_0)]
 [Orderer(SummaryOrderPolicy.FastestToSlowest)]
 [RankColumn]
 public class SelectBenchmark
