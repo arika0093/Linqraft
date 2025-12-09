@@ -37,12 +37,10 @@ public partial class ClassInClassGeneratedExpr
         // and NOT nested inside ClassInClassGeneratedExpr
         var itemsProperty = nestedEntityDtoType.GetProperty("Items");
         itemsProperty.ShouldNotBeNull();
-        var itemsElementType = itemsProperty!
-            .PropertyType.GetGenericArguments()
-            .FirstOrDefault();
+        var itemsElementType = itemsProperty!.PropertyType.GetGenericArguments().FirstOrDefault();
         itemsElementType.ShouldNotBeNull();
         itemsElementType!.Namespace!.ShouldContain("LinqraftGenerated");
-        
+
         // The key assertion: ItemsDto should NOT be nested inside ClassInClassGeneratedExpr
         // It should be directly in the LinqraftGenerated_{hash} namespace
         var itemsDtoFullName = itemsElementType.FullName!;

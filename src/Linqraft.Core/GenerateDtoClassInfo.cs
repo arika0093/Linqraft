@@ -172,7 +172,10 @@ public class GenerateDtoClassInfo
 
             // For nested structures with explicit DTO types from SelectExpr<TIn, TResult>,
             // use the explicit DTO type name instead of auto-generating one
-            if (!string.IsNullOrEmpty(prop.ExplicitNestedDtoTypeName) && prop.NestedStructure is not null)
+            if (
+                !string.IsNullOrEmpty(prop.ExplicitNestedDtoTypeName)
+                && prop.NestedStructure is not null
+            )
             {
                 // Use the explicit DTO type name from SelectExpr<TIn, TResult>
                 var explicitDtoName = prop.ExplicitNestedDtoTypeName;
@@ -188,7 +191,7 @@ public class GenerateDtoClassInfo
 
                 // Check if it's an array type
                 var isArrayType = IsArrayType(prop, typeWithoutNullable);
-                
+
                 // Remove [] suffix from the type string if present
                 // This is needed to extract the base type for replacement
                 var typeWithoutArray = typeWithoutNullable;

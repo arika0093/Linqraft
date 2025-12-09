@@ -60,8 +60,12 @@ public partial class Issue_NestedSelectExprTest
     }
 
     internal partial class NestedEntityDto;
+
     internal partial class NestedItemDtoEnumerable;
+
     internal partial class NestedItemDtoList;
+
     internal partial class NestedItemDtoArray;
+
     internal partial class NestedSubItemDto;
 }

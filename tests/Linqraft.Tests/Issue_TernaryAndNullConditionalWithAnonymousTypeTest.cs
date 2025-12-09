@@ -34,11 +34,7 @@ public class Issue_TernaryAndNullConditionalWithAnonymousTypeTest
             Items = [new Item { Title = "Item1" }],
             NullableItems = [new Item { Title = "NullableItem1" }],
         },
-        new Container
-        {
-            Items = null,
-            NullableItems = null,
-        },
+        new Container { Items = null, NullableItems = null },
     ];
 
     /// <summary>
@@ -53,9 +49,7 @@ public class Issue_TernaryAndNullConditionalWithAnonymousTypeTest
             .AsQueryable()
             .SelectExpr<Container, TernaryTestDto1>(x => new
             {
-                Items = x.Items != null
-                    ? x.Items.Select(i => new { i.Title })
-                    : [],
+                Items = x.Items != null ? x.Items.Select(i => new { i.Title }) : [],
             })
             .ToList();
 

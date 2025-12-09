@@ -306,7 +306,11 @@ public abstract record SelectExprInfo
             if (RoslynTypeHelper.ContainsSelectExprInvocation(syntax))
             {
                 // For nested SelectExpr, convert to Select and handle the nested structure
-                var convertedSelectExpr = ConvertNestedSelectExprWithRoslyn(syntax, property, indents);
+                var convertedSelectExpr = ConvertNestedSelectExprWithRoslyn(
+                    syntax,
+                    property,
+                    indents
+                );
                 if (convertedSelectExpr != expression)
                 {
                     return convertedSelectExpr;
@@ -1213,7 +1217,10 @@ public abstract record SelectExprInfo
         // Use explicit DTO type if available (from SelectExpr<TIn, TResult> generic arguments)
         // Otherwise, use the auto-generated DTO name from the structure
         string nestedDtoName;
-        if (property.ExplicitNestedDtoType is not null && property.ExplicitNestedDtoType is not IErrorTypeSymbol)
+        if (
+            property.ExplicitNestedDtoType is not null
+            && property.ExplicitNestedDtoType is not IErrorTypeSymbol
+        )
         {
             // Get the fully qualified name including namespace and parent classes
             var typeSymbol = property.ExplicitNestedDtoType;
@@ -1583,9 +1590,15 @@ public abstract record SelectExprInfo
                 {
                     defaultValue = coalescingDefaultValue;
                 }
-                else if (property is not null && RoslynTypeHelper.IsCollectionType(property.TypeSymbol))
+                else if (
+                    property is not null
+                    && RoslynTypeHelper.IsCollectionType(property.TypeSymbol)
+                )
                 {
-                    defaultValue = GetEmptyCollectionExpressionForType(property.TypeSymbol, syntax.ToString());
+                    defaultValue = GetEmptyCollectionExpressionForType(
+                        property.TypeSymbol,
+                        syntax.ToString()
+                    );
                 }
                 else
                 {
@@ -1653,7 +1666,7 @@ public abstract record SelectExprInfo
             ChainedMethods = info.ChainedMethods,
             HasNullableAccess = info.HasNullableAccess,
             CoalescingDefaultValue = info.CoalescingDefaultValue,
-            NullCheckExpression = cleanedNullCheckExpression
+            NullCheckExpression = cleanedNullCheckExpression,
         };
     }
 
@@ -1693,7 +1706,7 @@ public abstract record SelectExprInfo
             ChainedMethods = fullyQualifiedChainedMethods,
             HasNullableAccess = info.HasNullableAccess,
             CoalescingDefaultValue = info.CoalescingDefaultValue,
-            NullCheckExpression = cleanedNullCheckExpression
+            NullCheckExpression = cleanedNullCheckExpression,
         };
     }
 
@@ -1733,7 +1746,7 @@ public abstract record SelectExprInfo
             ChainedMethods = fullyQualifiedChainedMethods,
             HasNullableAccess = info.HasNullableAccess,
             CoalescingDefaultValue = info.CoalescingDefaultValue,
-            NullCheckExpression = cleanedNullCheckExpression
+            NullCheckExpression = cleanedNullCheckExpression,
         };
     }
 
@@ -2000,10 +2013,10 @@ public abstract record SelectExprInfo
     protected string GetDefaultValueForType(ITypeSymbol typeSymbol)
     {
         var typeName = typeSymbol.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat);
-        if(RoslynTypeHelper.IsNullableType(typeSymbol))
+        if (RoslynTypeHelper.IsNullableType(typeSymbol))
         {
             // // Nullable<T> (nullable value type) needs default(T?) syntax
-            if(typeSymbol.OriginalDefinition.SpecialType == SpecialType.System_Nullable_T)
+            if (typeSymbol.OriginalDefinition.SpecialType == SpecialType.System_Nullable_T)
             {
                 return $"default({typeName})";
             }
