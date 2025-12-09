@@ -77,10 +77,10 @@ public record SelectExprInfoAnonymous : SelectExprInfo
         var sb = new StringBuilder();
 
         var id = GetUniqueId();
-        
+
         // Anonymous types cannot use pre-built expressions (result type is unknown)
         // so we always use inline lambda
-        
+
         sb.AppendLine(GenerateMethodHeaderPart("anonymous type", location));
 
         // Determine if we have capture parameters
@@ -141,7 +141,7 @@ public record SelectExprInfoAnonymous : SelectExprInfo
             sb.AppendLine(
                 $"    var matchedQuery = query as object as {returnTypePrefix}<{sourceTypeFullName}>;"
             );
-            
+
             // Anonymous types always use inline lambda (cannot use pre-built expressions)
             sb.AppendLine($"    var converted = matchedQuery.Select({LambdaParameterName} => new");
         }
@@ -158,7 +158,7 @@ public record SelectExprInfoAnonymous : SelectExprInfo
             .ToList();
         sb.AppendLine(string.Join($",{CodeFormatter.DefaultNewLine}", propertyAssignments));
         sb.AppendLine("    });");
-        
+
         sb.AppendLine($"    return converted as object as {returnTypePrefix}<TResult>;");
         sb.AppendLine("}");
         sb.AppendLine();

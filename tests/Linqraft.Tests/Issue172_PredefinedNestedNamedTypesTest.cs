@@ -49,9 +49,10 @@ public class Issue172_PredefinedNestedNamedTypesTest
                 {
                     Title = i.Title,
                     // This nested Select with named type should use fully qualified names
-                    Childs = i.Childs != null
-                        ? i.Childs.Select(c => new Issue172_ItemChildDto { Test = c.Test })
-                        : null,
+                    Childs =
+                        i.Childs != null
+                            ? i.Childs.Select(c => new Issue172_ItemChildDto { Test = c.Test })
+                            : null,
                 }),
             })
             .ToList();
@@ -88,9 +89,7 @@ public class Issue172_PredefinedNestedNamedTypesTest
                 {
                     Title = i.Title,
                     // These ternary expressions with named types should use fully qualified names
-                    Child2 = i.Childs != null
-                        ? new Issue172_ItemChildDto { Test = "" }
-                        : null,
+                    Child2 = i.Childs != null ? new Issue172_ItemChildDto { Test = "" } : null,
                 }),
             })
             .ToList();

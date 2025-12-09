@@ -106,8 +106,8 @@ public class GroupByAnonymousKeyCodeFixProvider : CodeFixProvider
         }
 
         // Fallback to generic name based on property names
-        var propertyNames = anonymousObject.Initializers
-            .Select(i => GetPropertyName(i))
+        var propertyNames = anonymousObject
+            .Initializers.Select(i => GetPropertyName(i))
             .Where(n => !string.IsNullOrEmpty(n))
             .Take(2)
             .ToList();

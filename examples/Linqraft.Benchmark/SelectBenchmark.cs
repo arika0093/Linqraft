@@ -253,9 +253,7 @@ public class SelectBenchmark
     [Benchmark(Description = "Mapperly Projection")]
     public async Task<int> Mapperly_Projection()
     {
-        var results = await _dbContext
-            .SampleClasses.ProjectToDto()
-            .ToListAsync();
+        var results = await _dbContext.SampleClasses.ProjectToDto().ToListAsync();
         return results.Count;
     }
 
@@ -279,8 +277,10 @@ public class SelectBenchmark
     [Benchmark(Description = "Facet ToFacetsAsync")]
     public async Task<int> Facet_ToFacetsAsync()
     {
-        var results = await _dbContext
-            .SampleClasses.ToFacetsAsync<SampleClass, FacetSampleClassDto>();
+        var results = await _dbContext.SampleClasses.ToFacetsAsync<
+            SampleClass,
+            FacetSampleClassDto
+        >();
         return results.Count;
     }
 }

@@ -58,7 +58,7 @@ internal class SelectExprGroups
                 var classInfos = info.GenerateDtoClasses();
                 var exprMethods = info.GenerateSelectExprCodes(expr.Location);
                 var fields = info.GenerateStaticFields();
-                
+
                 dtoClassInfos.AddRange(classInfos);
                 selectExprMethods.AddRange(exprMethods);
                 if (fields != null)

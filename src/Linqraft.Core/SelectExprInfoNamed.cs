@@ -63,21 +63,24 @@ public record SelectExprInfoNamed : SelectExprInfo
     public override string? GenerateStaticFields()
     {
         // Check if we should use pre-built expressions (only for IQueryable, not IEnumerable)
-        var usePrebuildExpression = Configuration.UsePrebuildExpression && !IsEnumerableInvocation();
-        
+        var usePrebuildExpression =
+            Configuration.UsePrebuildExpression && !IsEnumerableInvocation();
+
         // Don't generate fields if captures are used (they don't work well with closures)
         var hasCapture = CaptureArgumentExpression != null && CaptureArgumentType != null;
-        
+
         if (!usePrebuildExpression || hasCapture)
         {
             return null;
         }
-        
-        var querySourceTypeFullName = SourceType.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat);
+
+        var querySourceTypeFullName = SourceType.ToDisplayString(
+            SymbolDisplayFormat.FullyQualifiedFormat
+        );
         var structure = GenerateDtoStructure();
         var dtoName = GetParentDtoClassName(structure);
         var id = GetUniqueId();
-        
+
         // Build the lambda body
         var lambdaBodyBuilder = new StringBuilder();
         lambdaBodyBuilder.AppendLine($"new {dtoName}");
@@ -89,9 +92,11 @@ public record SelectExprInfoNamed : SelectExprInfo
                 return $"{CodeFormatter.Indent(2)}{prop.Name} = {assignment}";
             })
             .ToList();
-        lambdaBodyBuilder.AppendLine(string.Join($",{CodeFormatter.DefaultNewLine}", propertyAssignments));
+        lambdaBodyBuilder.AppendLine(
+            string.Join($",{CodeFormatter.DefaultNewLine}", propertyAssignments)
+        );
         lambdaBodyBuilder.Append("    }");
-        
+
         var (fieldDecl, _) = ExpressionTreeBuilder.GenerateExpressionTreeField(
             querySourceTypeFullName,
             dtoName,
@@ -99,7 +104,7 @@ public record SelectExprInfoNamed : SelectExprInfo
             lambdaBodyBuilder.ToString(),
             id
         );
-        
+
         return fieldDecl;
     }
 
@@ -120,10 +125,11 @@ public record SelectExprInfoNamed : SelectExprInfo
 
         var sb = new StringBuilder();
         var id = GetUniqueId();
-        
+
         // Check if we should use pre-built expressions (only for IQueryable, not IEnumerable)
-        var usePrebuildExpression = Configuration.UsePrebuildExpression && !IsEnumerableInvocation();
-        
+        var usePrebuildExpression =
+            Configuration.UsePrebuildExpression && !IsEnumerableInvocation();
+
         sb.AppendLine(GenerateMethodHeaderPart(dtoName, location));
 
         // Determine if we have capture parameters
@@ -211,7 +217,7 @@ public record SelectExprInfoNamed : SelectExprInfo
             sb.AppendLine(
                 $"    var matchedQuery = query as object as {returnTypePrefix}<{querySourceTypeFullName}>;"
             );
-            
+
             sb.AppendLine(
                 $"    var converted = matchedQuery.Select({LambdaParameterName} => new {dtoName}"
             );
@@ -230,7 +236,7 @@ public record SelectExprInfoNamed : SelectExprInfo
         sb.AppendLine(string.Join($",{CodeFormatter.DefaultNewLine}", propertyAssignments));
 
         sb.AppendLine($"    }});");
-        
+
         sb.AppendLine($"    return converted as object as {returnTypePrefix}<TResult>;");
         sb.AppendLine("}");
         return sb.ToString();
