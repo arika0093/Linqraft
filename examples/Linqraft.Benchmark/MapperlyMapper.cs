@@ -19,7 +19,7 @@ public static partial class MapperlyMapper
 
     /// <summary>
     /// Maps a single SampleClass to ManualSampleClassDto.
-    /// Used internally by the IQueryable projection.
+    /// Used internally by the IQueryable projection and for in-memory mapping.
     /// </summary>
     [MapProperty(
         nameof(SampleClass.Child2) + "." + nameof(SampleChildClass2.Id),

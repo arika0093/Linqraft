@@ -4,7 +4,6 @@ using BenchmarkDotNet.Attributes;
 using BenchmarkDotNet.Jobs;
 using BenchmarkDotNet.Order;
 using Facet.Extensions.EFCore;
-using Linqraft.Benchmark.CompiledModels;
 using Mapster;
 using Microsoft.EntityFrameworkCore;
 
@@ -12,10 +11,9 @@ namespace Linqraft.Benchmark;
 
 [MemoryDiagnoser]
 [DryJob(RuntimeMoniker.Net10_0)]
-[DryJob(RuntimeMoniker.NativeAot10_0)]
 [Orderer(SummaryOrderPolicy.FastestToSlowest)]
 [RankColumn]
-public class SelectBenchmark
+public class EFCoreBenchmark
 {
     private BenchmarkDbContext _dbContext = null!;
     private IConfigurationProvider _autoMapperConfig = null!;
@@ -31,7 +29,6 @@ public class SelectBenchmark
         MapsterConfig.Configure();
 
         var options = new DbContextOptionsBuilder<BenchmarkDbContext>()
-            .UseModel(BenchmarkDbContextModel.Instance)
             .UseSqlite("Data Source=benchmark.db")
             .Options;
 
