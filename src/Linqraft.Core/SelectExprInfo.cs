@@ -1866,8 +1866,8 @@ public abstract record SelectExprInfo
         ITypeSymbol typeSymbol
     )
     {
-        // Example: c.Child?.Id → c.Child != null ? (int?)c.Child.Id : null
-        // Example: s.Child3?.Child?.Id → s.Child3 != null && s.Child3.Child != null ? (int?)s.Child3.Child.Id : null
+        // Example: c.Child?.Id → c.Child != null ? c.Child.Id : default(int?)
+        // Example: s.Child3?.Child?.Id → s.Child3 != null && s.Child3.Child != null ? s.Child3.Child.Id : default(int?)
         // Example: d.InnerData?.Childs.Select(c => c.Id).ToList() → d.InnerData != null ? d.InnerData.Childs.Select(c => c.Id).ToList() : new List<int>()
 
         // Use Roslyn to verify this uses conditional access
@@ -1924,7 +1924,6 @@ public abstract record SelectExprInfo
         // Only use empty collection fallback for collections that use Select/SelectMany
         // and when ArrayNullabilityRemoval is enabled
         string defaultValue;
-        string typeAnnotation;
 
         if (
             Configuration.ArrayNullabilityRemoval
@@ -1934,19 +1933,15 @@ public abstract record SelectExprInfo
         {
             // For collection types with Select/SelectMany, use an empty collection as the default value
             defaultValue = GetEmptyCollectionExpressionForType(typeSymbol, cleanExpression);
-            // No need for nullable type annotation for collections since they use empty collection fallback
-            typeAnnotation = "";
         }
         else
         {
             // For non-collection types or collections without Select/SelectMany (e.g., byte[]),
             // use null or default value with nullable type annotation
-            var typeSymbolValue = typeSymbol.ToDisplayString();
-            typeAnnotation = typeSymbolValue != "?" ? $"({typeSymbolValue})" : "";
             defaultValue = GetDefaultValueForType(typeSymbol);
         }
 
-        return $"{nullCheckPart} ? {typeAnnotation}{accessPath} : {defaultValue}";
+        return $"{nullCheckPart} ? {accessPath} : {defaultValue}";
     }
 
     /// <summary>
@@ -2004,11 +1999,14 @@ public abstract record SelectExprInfo
     /// </summary>
     protected string GetDefaultValueForType(ITypeSymbol typeSymbol)
     {
-        if (
-            typeSymbol.IsReferenceType
-            || typeSymbol.NullableAnnotation == NullableAnnotation.Annotated
-        )
+        var typeName = typeSymbol.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat);
+        if(RoslynTypeHelper.IsNullableType(typeSymbol))
         {
+            // // Nullable<T> (nullable value type) needs default(T?) syntax
+            if(typeSymbol.OriginalDefinition.SpecialType == SpecialType.System_Nullable_T)
+            {
+                return $"default({typeName})";
+            }
             return "null";
         }
         return typeSymbol.SpecialType switch

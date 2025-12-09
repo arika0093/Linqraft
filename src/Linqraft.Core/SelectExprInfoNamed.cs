@@ -129,6 +129,31 @@ public record SelectExprInfoNamed : SelectExprInfo
         // Determine if we have capture parameters
         var hasCapture = CaptureArgumentExpression != null && CaptureArgumentType != null;
 
+        if (usePrebuildExpression && !hasCapture)
+        {
+            // Get the field name (we need to generate the same hash as in GenerateStaticFields)
+            var hash = HashUtility.GenerateSha256Hash(id).Substring(0, 8);
+            var fieldName = $"_cachedExpression_{hash}";
+
+            // Use the cached expression directly (no initialization needed, it's done in the field declaration)
+            sb.AppendLine(
+                $$"""
+                public static {{returnTypePrefix}}<TResult> SelectExpr_{{id}}<TIn, TResult>(
+                    this {{returnTypePrefix}}<TIn> query, Func<TIn, TResult> selector)
+                {
+                    return query.Provider.CreateQuery<TResult>(
+                        Expression.Call(null, _methodInfo_{{id}}, query.Expression, _unaryExpression_{{id}}));
+                }
+                private static readonly UnaryExpression _unaryExpression_{{id}} = Expression.Quote({{fieldName}});
+                private static readonly System.Reflection.MethodInfo _methodInfo_{{id}} = new Func<
+                    IQueryable<{{querySourceTypeFullName}}>,
+                    Expression<Func<{{querySourceTypeFullName}}, {{dtoName}}>>,
+                    IQueryable<{{dtoName}}>>(Queryable.Select).Method;
+                """
+            );
+            return sb.ToString();
+        }
+
         if (hasCapture)
         {
             // Generate method with capture parameter that creates closure variables
@@ -187,41 +212,24 @@ public record SelectExprInfoNamed : SelectExprInfo
                 $"    var matchedQuery = query as object as {returnTypePrefix}<{querySourceTypeFullName}>;"
             );
             
-            // Use pre-built expression if enabled
-            if (usePrebuildExpression)
-            {
-                // Get the field name (we need to generate the same hash as in GenerateStaticFields)
-                var hash = HashUtility.GenerateSha256Hash(id).Substring(0, 8);
-                var fieldName = $"_cachedExpression_{hash}";
-                
-                // Use the cached expression directly (no initialization needed, it's done in the field declaration)
-                sb.AppendLine($"    var converted = matchedQuery.Select({fieldName});");
-            }
-            else
-            {
-                sb.AppendLine(
-                    $"    var converted = matchedQuery.Select({LambdaParameterName} => new {dtoName}"
-                );
-            }
+            sb.AppendLine(
+                $"    var converted = matchedQuery.Select({LambdaParameterName} => new {dtoName}"
+            );
         }
 
-        // Only generate the lambda body if we're not using pre-built expressions (or if we have captures)
-        if (!usePrebuildExpression || hasCapture)
-        {
-            sb.AppendLine($"    {{");
+        sb.AppendLine($"    {{");
 
-            // Generate property assignments using GeneratePropertyAssignment to properly handle null-conditional operators
-            var propertyAssignments = structure
-                .Properties.Select(prop =>
-                {
-                    var assignment = GeneratePropertyAssignment(prop, CodeFormatter.IndentSize * 2);
-                    return $"{CodeFormatter.Indent(2)}{prop.Name} = {assignment}";
-                })
-                .ToList();
-            sb.AppendLine(string.Join($",{CodeFormatter.DefaultNewLine}", propertyAssignments));
+        // Generate property assignments using GeneratePropertyAssignment to properly handle null-conditional operators
+        var propertyAssignments = structure
+            .Properties.Select(prop =>
+            {
+                var assignment = GeneratePropertyAssignment(prop, CodeFormatter.IndentSize * 2);
+                return $"{CodeFormatter.Indent(2)}{prop.Name} = {assignment}";
+            })
+            .ToList();
+        sb.AppendLine(string.Join($",{CodeFormatter.DefaultNewLine}", propertyAssignments));
 
-            sb.AppendLine($"    }});");
-        }
+        sb.AppendLine($"    }});");
         
         sb.AppendLine($"    return converted as object as {returnTypePrefix}<TResult>;");
         sb.AppendLine("}");
