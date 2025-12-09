@@ -520,7 +520,9 @@ public record DtoProperty(
                         )
                         {
                             // Handle: c => new { Grands = c.GrandChildren.Select(...) }
-                            // For anonymous bodies in SelectMany, use propertyName as hint (this is rare)
+                            // This is a SelectMany with an anonymous body (rare case).
+                            // Use propertyName as hint because this is a direct anonymous type creation,
+                            // not a Select projection, so we want to disambiguate different usages.
                             nestedStructure = DtoStructure.AnalyzeAnonymousType(
                                 anonymousBody,
                                 semanticModel,
