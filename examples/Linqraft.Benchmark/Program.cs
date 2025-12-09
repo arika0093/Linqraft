@@ -1,7 +1,8 @@
 using BenchmarkDotNet.Configs;
+using BenchmarkDotNet.Environments;
 using BenchmarkDotNet.Jobs;
 using BenchmarkDotNet.Running;
-using BenchmarkDotNet.Toolchains.InProcess.Emit;
+using BenchmarkDotNet.Toolchains.NativeAot;
 
 namespace Linqraft.Benchmark;
 
@@ -15,7 +16,7 @@ class Program
         Console.WriteLine("This will execute each benchmark method once to verify functionality.");
         Console.WriteLine();
 
-        var benchmark = new SelectBenchmark();
+        var benchmark = new SelectBenchmark { DataCount = 100 };
 
         try
         {
@@ -71,12 +72,7 @@ class Program
             return;
         }
 #else
-        // Release mode: Run BenchmarkDotNet
-        var config = DefaultConfig.Instance
-            .AddJob(Job.Default
-                .WithToolchain(InProcessEmitToolchain.Instance));
-
-        BenchmarkRunner.Run<SelectBenchmark>(config, args);
+        BenchmarkRunner.Run<SelectBenchmark>();
 #endif
     }
 }
