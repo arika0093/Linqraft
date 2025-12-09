@@ -7,14 +7,16 @@ using Mapster;
 namespace Linqraft.Benchmark;
 
 [MemoryDiagnoser]
-[SimpleJob(RuntimeMoniker.Net10_0)]
-[SimpleJob(RuntimeMoniker.NativeAot10_0)]
+[ShortRunJob(RuntimeMoniker.Net10_0)]
+[ShortRunJob(RuntimeMoniker.NativeAot10_0)]
 [Orderer(SummaryOrderPolicy.FastestToSlowest)]
 [RankColumn]
 public partial class InMemoryEnumerableBenchmark
 {
     private List<SampleClass> _data = null!;
+#if LINQRAFT_BENCHMARK_NOT_NATIVEAOT
     private IMapper _autoMapper = null!;
+#endif
 
     [Params(100)]
     public int DataCount { get; set; }
@@ -23,8 +25,10 @@ public partial class InMemoryEnumerableBenchmark
     public void Setup()
     {
         // Configure mapping libraries
+#if LINQRAFT_BENCHMARK_NOT_NATIVEAOT
         _autoMapper = AutoMapperConfig.Configuration.CreateMapper();
         MapsterConfig.Configure();
+#endif
 
         // Create in-memory test data
         _data = new List<SampleClass>();
@@ -229,12 +233,14 @@ public partial class InMemoryEnumerableBenchmark
     // Pattern 6: AutoMapper with Map
     // (Using AutoMapper's in-memory mapping)
     // ============================================================
+#if LINQRAFT_BENCHMARK_NOT_NATIVEAOT
     [Benchmark(Description = "AutoMapper Map")]
     public int AutoMapper_Map()
     {
         var results = _autoMapper.Map<List<ManualSampleClassDto>>(_data);
         return results.Count;
     }
+#endif
 
     // ============================================================
     // Pattern 7: Mapperly with Map
@@ -251,10 +257,12 @@ public partial class InMemoryEnumerableBenchmark
     // Pattern 8: Mapster with Adapt
     // (Using Mapster's in-memory mapping)
     // ============================================================
+#if LINQRAFT_BENCHMARK_NOT_NATIVEAOT
     [Benchmark(Description = "Mapster Adapt")]
     public int Mapster_Adapt()
     {
         var results = _data.Adapt<List<ManualSampleClassDto>>();
         return results.Count;
     }
+#endif
 }
