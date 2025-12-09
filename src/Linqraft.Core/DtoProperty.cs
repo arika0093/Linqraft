@@ -243,13 +243,11 @@ public record DtoProperty(
                         nestedLambda.Body is AnonymousObjectCreationExpressionSyntax nestedAnonymous
                     )
                     {
-                        // For nested structures in SelectExpr, use null as hintName to ensure deduplication
-                        // This prevents duplicate DTOs when the same structure is used in multiple properties
                         nestedStructure = DtoStructure.AnalyzeAnonymousType(
                             nestedAnonymous,
                             semanticModel,
                             elementType,
-                            hintName: null,
+                            propertyName,
                             configuration
                         );
                     }
@@ -259,7 +257,7 @@ public record DtoProperty(
                             nestedNamed,
                             semanticModel,
                             elementType,
-                            hintName: null,
+                            propertyName,
                             configuration
                         );
                         isNestedFromNamedType = true;
@@ -377,12 +375,11 @@ public record DtoProperty(
                             is AnonymousObjectCreationExpressionSyntax nestedAnonymous
                         )
                         {
-                            // For nested structures in Select, use null as hintName to ensure deduplication
                             nestedStructure = DtoStructure.AnalyzeAnonymousType(
                                 nestedAnonymous,
                                 semanticModel,
                                 elementType,
-                                hintName: null,
+                                propertyName,
                                 configuration
                             );
                         }
@@ -392,7 +389,7 @@ public record DtoProperty(
                                 nestedNamed,
                                 semanticModel,
                                 elementType,
-                                hintName: null,
+                                propertyName,
                                 configuration
                             );
                             isNestedFromNamedType = true;
@@ -488,12 +485,11 @@ public record DtoProperty(
                                         is AnonymousObjectCreationExpressionSyntax innerAnonymous
                                     )
                                     {
-                                        // For nested structures in SelectMany, use null as hintName to ensure deduplication
                                         nestedStructure = DtoStructure.AnalyzeAnonymousType(
                                             innerAnonymous,
                                             semanticModel,
                                             innerElementType,
-                                            hintName: null,
+                                            propertyName,
                                             configuration
                                         );
                                     }
@@ -506,7 +502,7 @@ public record DtoProperty(
                                             innerNamed,
                                             semanticModel,
                                             innerElementType,
-                                            hintName: null,
+                                            propertyName,
                                             configuration
                                         );
                                         isNestedFromNamedType = true;
@@ -520,14 +516,11 @@ public record DtoProperty(
                         )
                         {
                             // Handle: c => new { Grands = c.GrandChildren.Select(...) }
-                            // This is a SelectMany with an anonymous body (rare case).
-                            // Use propertyName as hint because this is a direct anonymous type creation,
-                            // not a Select projection, so we want to disambiguate different usages.
                             nestedStructure = DtoStructure.AnalyzeAnonymousType(
                                 anonymousBody,
                                 semanticModel,
                                 elementType,
-                                hintName: propertyName,
+                                propertyName,
                                 configuration
                             );
                         }
@@ -569,13 +562,11 @@ public record DtoProperty(
             // If we couldn't infer the source type, use the property type itself
             sourceTypeForNested ??= propertyType;
 
-            // For direct nested anonymous types, use propertyName as hint to disambiguate
-            // different usages of the same source type
             nestedStructure = DtoStructure.AnalyzeAnonymousType(
                 directAnonymous,
                 semanticModel,
                 sourceTypeForNested,
-                hintName: propertyName,
+                propertyName,
                 configuration
             );
         }
@@ -613,12 +604,12 @@ public record DtoProperty(
 
                 if (anonymousCreation != null)
                 {
-                    // For generalized expressions with anonymous types, use propertyName as hint
+                    // Analyze the anonymous type using the underlying type as the source
                     nestedStructure = DtoStructure.AnalyzeAnonymousType(
                         anonymousCreation,
                         semanticModel,
                         underlyingType,
-                        hintName: propertyName,
+                        propertyName,
                         configuration
                     );
                 }
@@ -641,12 +632,12 @@ public record DtoProperty(
 
                     if (anonymousCreation != null)
                     {
-                        // For collections containing anonymous types, use propertyName as hint
+                        // Analyze the anonymous type using the element type as the source
                         nestedStructure = DtoStructure.AnalyzeAnonymousType(
                             anonymousCreation,
                             semanticModel,
                             elementType,
-                            hintName: propertyName,
+                            propertyName,
                             configuration
                         );
                     }

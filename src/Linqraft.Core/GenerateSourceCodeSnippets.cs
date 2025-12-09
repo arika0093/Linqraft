@@ -108,7 +108,15 @@ public static class GenerateSourceCodeSnippets
         foreach (var group in dtosByNamespace)
         {
             var namespaceName = group.Key;
-            var dtoClasses = group.Select(c => c.BuildCode(configuration)).ToList();
+            
+            // Deduplicate DTOs with the same FullName within this namespace
+            // This handles cases where the same DTO structure is used in multiple SelectExpr calls
+            var uniqueDtos = group
+                .GroupBy(c => c.FullName)
+                .Select(g => g.First())
+                .ToList();
+            
+            var dtoClasses = uniqueDtos.Select(c => c.BuildCode(configuration)).ToList();
 
             if (string.IsNullOrEmpty(namespaceName))
             {
