@@ -11,8 +11,28 @@ Without these declarations, DTOs may be generated in the wrong location or fail 
 
 ## Why Partial Declarations Are Required
 
-When evaluating nested expressions using the Roslyn API, if the target DTO class is not pre-declared as `partial`, the source generator cannot correctly identify the type being referenced. For example:
+When evaluating nested expressions using the Roslyn API, if the target DTO class is not pre-declared as `partial`, the source generator cannot correctly identify the type being referenced. 
 
+### Example of the Problem
+
+Consider this code **without** partial declarations:
+
+```csharp
+// OrderDto and OrderItemDto are NOT declared anywhere
+var result = query
+    .SelectExpr<Order, OrderDto>(o => new
+    {
+        o.Id,
+        o.CustomerName,
+        Items = o.OrderItems.SelectExpr<OrderItem, OrderItemDto>(i => new
+        {
+            i.ProductName,
+            i.Quantity,
+        }),
+    });
+```
+
+In this case:
 - If `OrderItemDto` is not pre-defined as `partial`, the property type that should be `IEnumerable<OrderItemDto>` will be treated as an unknown type (`?`), causing DTO generation to fail.
 - If `OrderDto` is not defined as `partial`, the generation location of `OrderItemDto` becomes unclear, leading to it being generated in the wrong namespace.
 
