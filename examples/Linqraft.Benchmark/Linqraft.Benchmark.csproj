@@ -10,10 +10,6 @@
     <NoWarn>$(NoWarn);NU1608;IL2026;IL3050;IL3000;IL2104;IL3053;IL3002;IL2037</NoWarn>
   </PropertyGroup>
 
-  <PropertyGroup Condition="'$(PublishAot)' != 'true'">
-    <DefineConstants>$(DefineConstants);LINQRAFT_BENCHMARK_NOT_NATIVEAOT</DefineConstants>
-  </PropertyGroup>
-
   <ItemGroup>
     <PackageReference Include="BenchmarkDotNet" Version="*" />
     <PackageReference Include="Microsoft.EntityFrameworkCore.Sqlite" Version="10.*" />

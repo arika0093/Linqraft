@@ -1,5 +1,6 @@
 using AutoMapper;
 using BenchmarkDotNet.Attributes;
+using BenchmarkDotNet.Attributes.Filters;
 using BenchmarkDotNet.Jobs;
 using BenchmarkDotNet.Order;
 using Mapster;
@@ -14,7 +15,8 @@ namespace Linqraft.Benchmark;
 public partial class InMemoryEnumerableBenchmark
 {
     private List<SampleClass> _data = null!;
-#if LINQRAFT_BENCHMARK_NOT_NATIVEAOT
+#if NATIVEAOT
+#else
     private IMapper _autoMapper = null!;
 #endif
 
@@ -25,7 +27,8 @@ public partial class InMemoryEnumerableBenchmark
     public void Setup()
     {
         // Configure mapping libraries
-#if LINQRAFT_BENCHMARK_NOT_NATIVEAOT
+#if NATIVEAOT
+#else
         _autoMapper = AutoMapperConfig.Configuration.CreateMapper();
         MapsterConfig.Configure();
 #endif
@@ -233,14 +236,13 @@ public partial class InMemoryEnumerableBenchmark
     // Pattern 6: AutoMapper with Map
     // (Using AutoMapper's in-memory mapping)
     // ============================================================
-#if LINQRAFT_BENCHMARK_NOT_NATIVEAOT
     [Benchmark(Description = "AutoMapper Map")]
+    [AotFilter("Mapperly is not supported in NativeAOT")]
     public int AutoMapper_Map()
     {
         var results = _autoMapper.Map<List<ManualSampleClassDto>>(_data);
         return results.Count;
     }
-#endif
 
     // ============================================================
     // Pattern 7: Mapperly with Map
@@ -257,12 +259,11 @@ public partial class InMemoryEnumerableBenchmark
     // Pattern 8: Mapster with Adapt
     // (Using Mapster's in-memory mapping)
     // ============================================================
-#if LINQRAFT_BENCHMARK_NOT_NATIVEAOT
     [Benchmark(Description = "Mapster Adapt")]
+    [AotFilter("Mapster is not supported in NativeAOT")]
     public int Mapster_Adapt()
     {
         var results = _data.Adapt<List<ManualSampleClassDto>>();
         return results.Count;
     }
-#endif
 }
