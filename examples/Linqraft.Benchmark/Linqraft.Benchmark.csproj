@@ -3,14 +3,28 @@
     <OutputType>Exe</OutputType>
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
-    <NoWarn>$(NoWarn);NU1608</NoWarn>
     <LinqraftUsePrebuildExpression>true</LinqraftUsePrebuildExpression>
     <EmitCompilerGeneratedFiles>true</EmitCompilerGeneratedFiles>
     <CompilerGeneratedFilesOutputPath>.generated</CompilerGeneratedFilesOutputPath>
+    <!-- Disable NativeAOT warnings -->
+    <NoWarn>$(NoWarn);NU1608;IL2026;IL3050;IL3000;IL2104;IL3053;IL3002;IL2037</NoWarn>
   </PropertyGroup>
+
+  <!-- NativeAOT configuration for Release builds only -->
+  <PropertyGroup Condition="'$(Configuration)' == 'Release'">
+    <PublishAot>true</PublishAot>
+    <InvariantGlobalization>false</InvariantGlobalization>
+    <IlcOptimizationPreference>Speed</IlcOptimizationPreference>
+    <IlcGenerateStackTraceData>false</IlcGenerateStackTraceData>
+  </PropertyGroup>
+
   <ItemGroup>
     <PackageReference Include="BenchmarkDotNet" Version="*" />
     <PackageReference Include="Microsoft.EntityFrameworkCore.Sqlite" Version="10.*" />
+    <PackageReference Include="Microsoft.EntityFrameworkCore.Design" Version="10.*">
+      <PrivateAssets>all</PrivateAssets>
+      <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+    </PackageReference>
     <PackageReference Include="Microsoft.Extensions.Logging.Abstractions" Version="10.*" />
     <!-- Mapping libraries for benchmark comparison -->
     <PackageReference Include="AutoMapper" Version="16.0.0" />

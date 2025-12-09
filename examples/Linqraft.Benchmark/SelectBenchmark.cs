@@ -1,21 +1,28 @@
 using AutoMapper;
 using AutoMapper.QueryableExtensions;
 using BenchmarkDotNet.Attributes;
+using BenchmarkDotNet.Jobs;
 using BenchmarkDotNet.Order;
 using Facet.Extensions.EFCore;
+using Linqraft.Benchmark.CompiledModels;
 using Mapster;
 using Microsoft.EntityFrameworkCore;
 
 namespace Linqraft.Benchmark;
 
 [MemoryDiagnoser]
+[SimpleJob(RuntimeMoniker.Net10_0)]
+[SimpleJob(RuntimeMoniker.NativeAot10_0)]
 [Orderer(SummaryOrderPolicy.FastestToSlowest)]
 [RankColumn]
+[DryJob]
 public class SelectBenchmark
 {
     private BenchmarkDbContext _dbContext = null!;
     private IConfigurationProvider _autoMapperConfig = null!;
-    private const int DataCount = 100;
+
+    [Params(1, 100)]
+    public int DataCount { get; set; }
 
     [GlobalSetup]
     public async Task Setup()
@@ -25,6 +32,7 @@ public class SelectBenchmark
         MapsterConfig.Configure();
 
         var options = new DbContextOptionsBuilder<BenchmarkDbContext>()
+            .UseModel(BenchmarkDbContextModel.Instance)
             .UseSqlite("Data Source=benchmark.db")
             .Options;
 
