@@ -1,5 +1,4 @@
 using AutoMapper;
-using AutoMapper.QueryableExtensions;
 using BenchmarkDotNet.Attributes;
 using BenchmarkDotNet.Jobs;
 using BenchmarkDotNet.Order;
@@ -12,19 +11,19 @@ namespace Linqraft.Benchmark;
 //[SimpleJob(RuntimeMoniker.NativeAot10_0)]
 [Orderer(SummaryOrderPolicy.FastestToSlowest)]
 [RankColumn]
-public partial class InMemoryBenchmark
+public partial class InMemoryEnumerableBenchmark
 {
     private List<SampleClass> _data = null!;
-    private IConfigurationProvider _autoMapperConfig = null!;
+    private IMapper _autoMapper = null!;
 
-    [Params(100)]
+    [Params(100, 10000)]
     public int DataCount { get; set; }
 
     [GlobalSetup]
     public void Setup()
     {
         // Configure mapping libraries
-        _autoMapperConfig = AutoMapperConfig.Configuration;
+        _autoMapper = AutoMapperConfig.Configuration.CreateMapper();
         MapsterConfig.Configure();
 
         // Create in-memory test data
@@ -70,7 +69,6 @@ public partial class InMemoryBenchmark
     public int Traditional_Anonymous()
     {
         var results = _data
-            .AsQueryable()
             .Select(s => new
             {
                 s.Id,
@@ -106,7 +104,6 @@ public partial class InMemoryBenchmark
     public int Traditional_ManualDto()
     {
         var results = _data
-            .AsQueryable()
             .Select(s => new ManualSampleClassDto
             {
                 Id = s.Id,
@@ -173,12 +170,12 @@ public partial class InMemoryBenchmark
     {
         var results = _data
             .AsQueryable()
-            .SelectExpr<SampleClass, InMemoryLinqraftSampleClassDto>(s => new
+            .SelectExpr<SampleClass, InMemoryEnumerableLinqraftSampleClassDto>(s => new
             {
                 s.Id,
                 s.Foo,
                 s.Bar,
-                Childs = s.Childs.SelectExpr<SampleChildClass, InMemoryLinqraftSampleChildClassDto>(
+                Childs = s.Childs.SelectExpr<SampleChildClass, InMemoryEnumerableLinqraftSampleChildClassDto>(
                     c => new
                     {
                         c.Id,
@@ -231,38 +228,35 @@ public partial class InMemoryBenchmark
     }
 
     // ============================================================
-    // Pattern 6: AutoMapper with ProjectTo
-    // (Using AutoMapper's IQueryable projection)
+    // Pattern 6: AutoMapper with Map
+    // (Using AutoMapper's in-memory mapping)
     // ============================================================
-    [Benchmark(Description = "AutoMapper ProjectTo")]
-    public int AutoMapper_ProjectTo()
+    [Benchmark(Description = "AutoMapper Map")]
+    public int AutoMapper_Map()
     {
-        var results = _data
-            .AsQueryable()
-            .ProjectTo<ManualSampleClassDto>(_autoMapperConfig)
-            .ToList();
+        var results = _autoMapper.Map<List<ManualSampleClassDto>>(_data);
         return results.Count;
     }
 
     // ============================================================
-    // Pattern 7: Mapperly with IQueryable Projection
-    // (Using Mapperly's source-generated projection)
+    // Pattern 7: Mapperly with Map
+    // (Using Mapperly's source-generated mapping)
     // ============================================================
-    [Benchmark(Description = "Mapperly Projection")]
-    public int Mapperly_Projection()
+    [Benchmark(Description = "Mapperly Map")]
+    public int Mapperly_Map()
     {
-        var results = _data.AsQueryable().ProjectToDto().ToList();
+        var results = _data.Select(MapperlyMapper.MapSampleClass).ToList();
         return results.Count;
     }
 
     // ============================================================
-    // Pattern 8: Mapster with ProjectToType
-    // (Using Mapster's IQueryable projection)
+    // Pattern 8: Mapster with Adapt
+    // (Using Mapster's in-memory mapping)
     // ============================================================
-    [Benchmark(Description = "Mapster ProjectToType")]
-    public int Mapster_ProjectToType()
+    [Benchmark(Description = "Mapster Adapt")]
+    public int Mapster_Adapt()
     {
-        var results = _data.AsQueryable().ProjectToType<ManualSampleClassDto>().ToList();
+        var results = _data.Adapt<List<ManualSampleClassDto>>();
         return results.Count;
     }
 }

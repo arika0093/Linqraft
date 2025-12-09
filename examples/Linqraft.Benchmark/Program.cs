@@ -9,7 +9,6 @@ class Program
 {
     static async Task Main(string[] args)
     {
-        BenchmarkRunner.Run<InMemoryBenchmark>();
-        BenchmarkRunner.Run<EFCoreBenchmark>();
+        BenchmarkSwitcher.FromAssembly(typeof(Program).Assembly).Run(args);
     }
 }
