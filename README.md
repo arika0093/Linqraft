@@ -250,12 +250,12 @@ For more usage patterns and examples, see the [Usage Patterns Guide](./docs/libr
 
 ### Performance & Comparison
 
-* **[Performance](./docs/library/performance.md)** - Benchmarks and best practices
+* **[Performance](./docs/library/performance.md)** - Benchmarks
 * **[Library Comparison](./docs/library/library-comparison.md)** - Comparisons with AutoMapper, Mapster, Mapperly, and Facet
 
 ### Help
 
-* **[FAQ](./docs/library/faq.md)** - Common questions and troubleshooting
+* **[FAQ](./docs/library/faq.md)** - Common questions
 * **[Analyzers](./docs/analyzers/README.md)** - Code analyzers and fixes
 
 ## Examples

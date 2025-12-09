@@ -140,14 +140,14 @@ public record SelectExprInfoExplicitDto : SelectExprInfo
         // and should maintain their parent class structure
         List<string> finalParentClasses = currentParentClasses;
         List<string> finalParentAccessibilities = currentParentAccessibilities;
-        
+
         if (!isExplicitDto && Configuration?.NestedDtoUseHashNamespace == true)
         {
             var hash = structure.GetUniqueId();
             actualNamespace = string.IsNullOrEmpty(actualNamespace)
                 ? $"LinqraftGenerated_{hash}"
                 : $"{actualNamespace}.LinqraftGenerated_{hash}";
-            
+
             // Implicit DTOs in hash namespace should NOT be nested inside parent classes
             // They are managed by the hash, so they don't need to exist within a class
             finalParentClasses = [];
@@ -271,21 +271,22 @@ public record SelectExprInfoExplicitDto : SelectExprInfo
     public override string? GenerateStaticFields()
     {
         // Check if we should use pre-built expressions (only for IQueryable, not IEnumerable)
-        var usePrebuildExpression = Configuration.UsePrebuildExpression && !IsEnumerableInvocation();
-        
+        var usePrebuildExpression =
+            Configuration.UsePrebuildExpression && !IsEnumerableInvocation();
+
         // Don't generate fields if captures are used (they don't work well with closures)
         var hasCapture = CaptureArgumentExpression != null && CaptureArgumentType != null;
-        
+
         if (!usePrebuildExpression || hasCapture)
         {
             return null;
         }
-        
+
         var structure = GenerateDtoStructure();
         var sourceTypeFullName = structure.SourceTypeFullName;
         var actualNamespace = GetActualDtoNamespace();
         var dtoName = GetParentDtoClassName(structure);
-        
+
         // Build full DTO name with parent classes if nested
         string dtoFullName;
         if (string.IsNullOrEmpty(actualNamespace))
@@ -304,9 +305,9 @@ public record SelectExprInfoExplicitDto : SelectExprInfo
                     ? $"global::{actualNamespace}.{string.Join(".", ParentClasses)}.{dtoName}"
                     : $"global::{actualNamespace}.{dtoName}";
         }
-        
+
         var id = GetUniqueId();
-        
+
         // Build the lambda body
         var lambdaBodyBuilder = new StringBuilder();
         lambdaBodyBuilder.AppendLine($"new {dtoFullName}");
@@ -318,9 +319,11 @@ public record SelectExprInfoExplicitDto : SelectExprInfo
                 return $"{CodeFormatter.Indent(2)}{prop.Name} = {assignment}";
             })
             .ToList();
-        lambdaBodyBuilder.AppendLine(string.Join($",{CodeFormatter.DefaultNewLine}", propertyAssignments));
+        lambdaBodyBuilder.AppendLine(
+            string.Join($",{CodeFormatter.DefaultNewLine}", propertyAssignments)
+        );
         lambdaBodyBuilder.Append("    }");
-        
+
         var (fieldDecl, _) = ExpressionTreeBuilder.GenerateExpressionTreeField(
             sourceTypeFullName,
             dtoFullName,
@@ -328,7 +331,7 @@ public record SelectExprInfoExplicitDto : SelectExprInfo
             lambdaBodyBuilder.ToString(),
             id
         );
-        
+
         return fieldDecl;
     }
 
@@ -440,14 +443,40 @@ public record SelectExprInfoExplicitDto : SelectExprInfo
         var sb = new StringBuilder();
 
         var id = GetUniqueId();
-        
+
         // Check if we should use pre-built expressions (only for IQueryable, not IEnumerable)
-        var usePrebuildExpression = Configuration.UsePrebuildExpression && !IsEnumerableInvocation();
-        
+        var usePrebuildExpression =
+            Configuration.UsePrebuildExpression && !IsEnumerableInvocation();
+
         sb.AppendLine(GenerateMethodHeaderPart(dtoName, location));
 
         // Determine if we have capture parameters
         var hasCapture = CaptureArgumentExpression != null && CaptureArgumentType != null;
+
+        if (usePrebuildExpression && !hasCapture)
+        {
+            // Get the field name (we need to generate the same hash as in GenerateStaticFields)
+            var hash = HashUtility.GenerateSha256Hash(id).Substring(0, 8);
+            var fieldName = $"_cachedExpression_{hash}";
+
+            // Use the cached expression directly (no initialization needed, it's done in the field declaration)
+            sb.AppendLine(
+                $$"""
+                public static {{returnTypePrefix}}<TResult> SelectExpr_{{id}}<TIn, TResult>(
+                    this {{returnTypePrefix}}<TIn> query, Func<TIn, object> selector)
+                {
+                    return query.Provider.CreateQuery<TResult>(
+                        Expression.Call(null, _methodInfo_{{id}}, query.Expression, _unaryExpression_{{id}}));
+                }
+                private static readonly UnaryExpression _unaryExpression_{{id}} = Expression.Quote({{fieldName}});
+                private static readonly System.Reflection.MethodInfo _methodInfo_{{id}} = new Func<
+                    IQueryable<{{sourceTypeFullName}}>,
+                    Expression<Func<{{sourceTypeFullName}}, {{dtoFullName}}>>,
+                    IQueryable<{{dtoFullName}}>>(Queryable.Select).Method;
+                """
+            );
+            return sb.ToString();
+        }
 
         if (hasCapture)
         {
@@ -503,46 +532,27 @@ public record SelectExprInfoExplicitDto : SelectExprInfo
             );
             sb.AppendLine($"    this {returnTypePrefix}<TIn> query, Func<TIn, object> selector)");
             sb.AppendLine($"{{");
+
             sb.AppendLine(
                 $"    var matchedQuery = query as object as {returnTypePrefix}<{sourceTypeFullName}>;"
             );
-            
-            // Use pre-built expression if enabled
-            if (usePrebuildExpression)
-            {
-                // Get the field name (we need to generate the same hash as in GenerateStaticFields)
-                var hash = HashUtility.GenerateSha256Hash(id).Substring(0, 8);
-                var fieldName = $"_cachedExpression_{hash}";
-                
-                // Use the cached expression directly (no initialization needed, it's done in the field declaration)
-                sb.AppendLine($"    var converted = matchedQuery.Select({fieldName});");
-            }
-            else
-            {
-                sb.AppendLine(
-                    $"    var converted = matchedQuery.Select({LambdaParameterName} => new {dtoFullName}"
-                );
-            }
+            sb.AppendLine(
+                $"    var converted = matchedQuery.Select({LambdaParameterName} => new {dtoFullName}"
+            );
         }
+        sb.AppendLine($"    {{");
 
-        // Only generate the lambda body if we're not using pre-built expressions (or if we have captures)
-        if (!usePrebuildExpression || hasCapture)
-        {
-            sb.AppendLine($"    {{");
+        // Generate property assignments
+        var propertyAssignments = structure
+            .Properties.Select(prop =>
+            {
+                var assignment = GeneratePropertyAssignment(prop, CodeFormatter.IndentSize * 2);
+                return $"{CodeFormatter.Indent(2)}{prop.Name} = {assignment}";
+            })
+            .ToList();
+        sb.AppendLine(string.Join($",{CodeFormatter.DefaultNewLine}", propertyAssignments));
 
-            // Generate property assignments
-            var propertyAssignments = structure
-                .Properties.Select(prop =>
-                {
-                    var assignment = GeneratePropertyAssignment(prop, CodeFormatter.IndentSize * 2);
-                    return $"{CodeFormatter.Indent(2)}{prop.Name} = {assignment}";
-                })
-                .ToList();
-            sb.AppendLine(string.Join($",{CodeFormatter.DefaultNewLine}", propertyAssignments));
-
-            sb.AppendLine($"    }});");
-        }
-        
+        sb.AppendLine($"    }});");
         sb.AppendLine($"    return converted as object as {returnTypePrefix}<TResult>;");
         sb.AppendLine($"}}");
         return sb.ToString();
