@@ -1,6 +1,8 @@
 # Performance
 
-This guide covers Linqraft's performance characteristics.
+This guide covers Linqraft's performance characteristics.  
+For detailed benchmark code, see [Linqraft.Benchmark](../../examples/Linqraft.Benchmark).  
+For comparisons with other mapping libraries, see the [Library Comparison](./library-comparison.md) guide.
 
 ## Performance Benchmarks
 
@@ -84,21 +86,18 @@ Intel Core i7-14700F 2.10GHz, 1 CPU, 28 logical and 20 physical cores
 
 ### EFCore(SQLite)
 
-
-| Method                        | Mean       | Error    | StdDev   | Ratio | RatioSD | Rank | Gen0    | Gen1   | Allocated | Alloc Ratio |
-|------------------------------ |-----------:|---------:|---------:|------:|--------:|-----:|--------:|-------:|----------:|------------:|
-| 'Linqraft Manual DTO'         |   858.5 us |  5.51 us |  5.16 us |  0.99 |    0.01 |    1 | 13.6719 | 1.9531 | 232.23 KB |        1.00 |
-| 'Linqraft Auto-Generated DTO' |   865.0 us |  5.77 us |  5.40 us |  1.00 |    0.01 |    1 | 13.6719 | 1.9531 | 232.38 KB |        1.00 |
-| 'Mapperly Projection'         |   869.1 us |  5.65 us |  5.28 us |  1.00 |    0.01 |    1 | 13.6719 | 1.9531 | 244.44 KB |        1.05 |
-| 'Mapster ProjectToType'       |   873.6 us |  4.78 us |  4.47 us |  1.01 |    0.01 |    1 | 13.6719 | 1.9531 | 236.59 KB |        1.02 |
-| 'AutoMapper ProjectTo'        |   884.0 us |  2.50 us |  2.34 us |  1.02 |    0.01 |    1 | 13.6719 | 1.9531 | 237.44 KB |        1.02 |
-| 'Traditional Manual DTO'      |   885.2 us |  6.69 us |  6.26 us |  1.02 |    0.01 |    1 | 13.6719 | 1.9531 | 245.61 KB |        1.06 |
-| 'Traditional Anonymous'       |   952.6 us |  7.22 us |  6.75 us |  1.10 |    0.01 |    2 | 13.6719 | 1.9531 |    247 KB |        1.06 |
-| 'Linqraft Anonymous'          |   955.3 us |  6.22 us |  5.82 us |  1.10 |    0.01 |    2 | 13.6719 | 1.9531 | 245.25 KB |        1.06 |
-| 'Facet ToFacetsAsync'         | 2,062.3 us | 12.25 us | 11.46 us |  2.38 |    0.02 |    3 | 31.2500 | 3.9063 | 541.55 KB |        2.33 |
-
-For detailed benchmark code, see [Linqraft.Benchmark](../../examples/Linqraft.Benchmark).  
-For comparisons with other mapping libraries, see the [Library Comparison](./library-comparison.md) guide.
+```
+| Method                        | DataCount | Mean     | Error    | StdDev   | Ratio | Rank | Gen0    | Gen1   | Allocated | Alloc Ratio |
+|------------------------------ |---------- |---------:|---------:|---------:|------:|-----:|--------:|-------:|----------:|------------:|
+| 'Mapperly Projection'         | 100       | 863.8 us |  2.73 us |  2.42 us |  0.99 |    1 | 13.6719 | 1.9531 | 244.69 KB |        1.05 |
+| 'Linqraft Auto-Generated DTO' | 100       | 870.1 us |  6.02 us |  5.34 us |  1.00 |    1 | 13.6719 | 1.9531 | 232.38 KB |        1.00 |
+| 'Mapster ProjectToType'       | 100       | 870.5 us |  3.13 us |  2.61 us |  1.00 |    1 | 13.6719 | 1.9531 | 236.52 KB |        1.02 |
+| 'Linqraft Manual DTO'         | 100       | 873.0 us |  6.51 us |  6.09 us |  1.00 |    1 | 13.6719 | 1.9531 |  232.3 KB |        1.00 |
+| 'AutoMapper ProjectTo'        | 100       | 876.4 us |  7.45 us |  6.97 us |  1.01 |    1 | 13.6719 | 1.9531 |  237.3 KB |        1.02 |
+| 'Traditional Manual DTO'      | 100       | 893.9 us |  6.19 us | 11.00 us |  1.03 |    1 | 13.6719 | 1.9531 | 245.72 KB |        1.06 |
+| 'Linqraft Anonymous'          | 100       | 952.9 us |  8.29 us |  7.35 us |  1.10 |    2 | 13.6719 | 1.9531 | 245.37 KB |        1.06 |
+| 'Traditional Anonymous'       | 100       | 978.5 us | 10.84 us |  9.61 us |  1.12 |    2 | 13.6719 | 1.9531 | 246.79 KB |        1.06 |
+```
 
 ## Next Steps
 
