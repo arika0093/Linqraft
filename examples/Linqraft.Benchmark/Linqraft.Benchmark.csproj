@@ -10,6 +10,11 @@
     <NoWarn>$(NoWarn);NU1608;IL2026;IL3050;IL3000;IL2104;IL3053;IL3002;IL2037</NoWarn>
   </PropertyGroup>
 
+  <!-- if native AOT is available, add symbol NATIVEAOT -->
+  <PropertyGroup Condition="'$(PublishAot)' == 'true'">
+    <DefineConstants>$(DefineConstants);NATIVEAOT</DefineConstants>
+  </PropertyGroup>
+
   <ItemGroup>
     <PackageReference Include="BenchmarkDotNet" Version="*" />
     <PackageReference Include="Microsoft.EntityFrameworkCore.Sqlite" Version="10.*" />
