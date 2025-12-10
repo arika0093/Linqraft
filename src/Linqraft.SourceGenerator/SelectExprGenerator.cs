@@ -92,31 +92,20 @@ public partial class SelectExprGenerator : IIncrementalGenerator
                     }
                 }
 
-                // Deduplicate DTOs globally by FullName
-                var globallyUniqueDtos = allDtoClassInfos
-                    .GroupBy(c => c.FullName)
-                    .Select(g => g.First())
-                    .ToList();
-
                 // Generate all DTOs in a single shared source file
-                if (globallyUniqueDtos.Count > 0)
+                var dtoCode = GenerateSourceCodeSnippets.BuildGlobalDtoCodeSnippet(
+                    allDtoClassInfos,
+                    config
+                );
+                if (!string.IsNullOrEmpty(dtoCode))
                 {
-                    var dtoSourceCode = GenerateSourceCodeSnippets.BuildDtoCodeSnippetsGroupedByNamespace(
-                        globallyUniqueDtos,
-                        config
-                    );
-                    var dtoCode = $$"""
-                        {{GenerateSourceCodeSnippets.GenerateCommentHeader()}}
-                        {{GenerateSourceCodeSnippets.GenerateHeaderFlags}}
-                        {{dtoSourceCode}}
-                        """;
                     spc.AddSource("GeneratedDtos.g.cs", dtoCode);
                 }
 
                 // Generate code for expression methods (without DTOs)
                 foreach (var exprGroup in exprGroups)
                 {
-                    exprGroup.GenerateCode(spc, generateDtos: false);
+                    exprGroup.GenerateCodeWithoutDtos(spc);
                 }
             }
         );

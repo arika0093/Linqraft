@@ -4,7 +4,10 @@ using System.Collections.Generic;
 
 namespace Linqraft.Tests;
 
-public class Issue239MinimalReproTest
+/// <summary>
+/// Issue #239: Minimal reproduction test case
+/// </summary>
+public class Issue239_MinimalReproTest
 {
     private readonly List<Entity> _testData =
     [

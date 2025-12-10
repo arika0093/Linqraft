@@ -66,7 +66,7 @@ public class CodeGenerationService(SharedCompilationService sharedCompilation)
 
             // Generate code for each SelectExpr
             var queryExpressionBuilder = new StringBuilder();
-            var dtoClassBuilder = new StringBuilder();
+            var allDtoClasses = new List<GenerateDtoClassInfo>();
 
             foreach (var info in allSelectExprInfos)
             {
@@ -80,18 +80,15 @@ public class CodeGenerationService(SharedCompilationService sharedCompilation)
                     var location = semanticModel.GetInterceptableLocation(info.Invocation);
                     var fields = info.GenerateStaticFields();
                     var selectExprCodes = info.GenerateSelectExprCodes(location!);
-                    var dtoClasses = info.GenerateDtoClasses()
-                        .GroupBy(c => c.FullName)
-                        .Select(g => g.First())
-                        .ToList();
+                    
+                    // Collect DTOs from all SelectExpr calls
+                    var dtoClasses = info.GenerateDtoClasses();
+                    allDtoClasses.AddRange(dtoClasses);
 
                     queryExpressionBuilder.AppendLine(
-                        GenerateSourceCodeSnippets.BuildExprCodeSnippets(selectExprCodes, [fields])
-                    );
-                    dtoClassBuilder.AppendLine(
-                        GenerateSourceCodeSnippets.BuildDtoCodeSnippetsGroupedByNamespace(
-                            dtoClasses,
-                            config
+                        GenerateSourceCodeSnippets.BuildExprCodeSnippets(
+                            selectExprCodes, 
+                            fields != null ? [fields] : []
                         )
                     );
                 }
@@ -103,8 +100,13 @@ public class CodeGenerationService(SharedCompilationService sharedCompilation)
                 }
             }
 
+            // Generate DTOs with global deduplication
+            var dtoCode = GenerateSourceCodeSnippets.BuildGlobalDtoCodeSnippet(
+                allDtoClasses,
+                config
+            );
+
             var expressionCode = queryExpressionBuilder.ToString().TrimEnd();
-            var dtoCode = dtoClassBuilder.ToString().TrimEnd();
 
             // Filter out internal attributes from the DTO output for cleaner display
             dtoCode = FilterInternalAttributes(dtoCode);

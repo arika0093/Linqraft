@@ -67,6 +67,35 @@ public static class GenerateSourceCodeSnippets
             """;
     }
 
+    // Generate all DTOs in a single shared source file with global deduplication
+    public static string BuildGlobalDtoCodeSnippet(
+        List<GenerateDtoClassInfo> allDtoClassInfos,
+        LinqraftConfiguration configuration
+    )
+    {
+        // Deduplicate DTOs globally by FullName
+        var globallyUniqueDtos = allDtoClassInfos
+            .GroupBy(c => c.FullName)
+            .Select(g => g.First())
+            .ToList();
+
+        if (globallyUniqueDtos.Count == 0)
+        {
+            return string.Empty;
+        }
+
+        var dtoSourceCode = BuildDtoCodeSnippetsGroupedByNamespace(
+            globallyUniqueDtos,
+            configuration
+        );
+
+        return $$"""
+            {{GenerateCommentHeaderPart()}}
+            {{GenerateHeaderFlagsPart}}
+            {{dtoSourceCode}}
+            """;
+    }
+
     // Generate DTO part
     public static string BuildDtoCodeSnippets(List<string> dtoClasses, string namespaceName)
     {
@@ -276,7 +305,7 @@ public static class GenerateSourceCodeSnippets
         https://github.com/arika0093/Linqraft/issues
         """;
 
-    private static string GenerateCommentHeaderPart()
+    public static string GenerateCommentHeaderPart()
     {
 #if DEBUG
         var now = DateTime.Now;
@@ -301,7 +330,7 @@ public static class GenerateSourceCodeSnippets
         // </auto-generated>
         """;
 
-    private const string GenerateHeaderFlagsPart = """
+    public const string GenerateHeaderFlagsPart = """
         #nullable enable
         #pragma warning disable IDE0060
         #pragma warning disable CS8601
@@ -310,10 +339,6 @@ public static class GenerateSourceCodeSnippets
         #pragma warning disable CS8604
         #pragma warning disable CS8618
         """;
-
-    // Public wrappers for use in SelectExprGenerator
-    public static string GenerateCommentHeader() => GenerateCommentHeaderPart();
-    public static string GenerateHeaderFlags => GenerateHeaderFlagsPart;
 
     private const string GenerateHeaderUsingPart = """
         using System;

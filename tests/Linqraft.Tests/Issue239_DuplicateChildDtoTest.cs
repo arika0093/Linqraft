@@ -4,11 +4,11 @@ using System.Linq;
 namespace Linqraft.Tests;
 
 /// <summary>
-/// Test for ensuring that when ChildDto of the same shape appears multiple times,
+/// Issue #239: When ChildDto of the same shape appears multiple times,
 /// the definition of ChildDto should be generated only once.
-/// This is a reproduction of the bug reported in issue #239.
+/// This test is a duplicate of the minimal repro from issue #239.
 /// </summary>
-public partial class DuplicateChildDtoTest
+public partial class Issue239_DuplicateChildDtoTest
 {
     private readonly List<Entity> _testData =
     [
