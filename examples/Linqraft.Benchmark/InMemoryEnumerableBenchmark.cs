@@ -15,8 +15,7 @@ namespace Linqraft.Benchmark;
 public partial class InMemoryEnumerableBenchmark
 {
     private List<SampleClass> _data = null!;
-#if NATIVEAOT
-#else
+#if !NATIVEAOT
     private IMapper _autoMapper = null!;
 #endif
 
@@ -27,8 +26,7 @@ public partial class InMemoryEnumerableBenchmark
     public void Setup()
     {
         // Configure mapping libraries
-#if NATIVEAOT
-#else
+#if !NATIVEAOT
         _autoMapper = AutoMapperConfig.Configuration.CreateMapper();
         MapsterConfig.Configure();
 #endif
@@ -240,8 +238,12 @@ public partial class InMemoryEnumerableBenchmark
     [AotFilter("Mapperly is not supported in NativeAOT")]
     public int AutoMapper_Map()
     {
+#if !NATIVEAOT
         var results = _autoMapper.Map<List<ManualSampleClassDto>>(_data);
         return results.Count;
+#else
+        return 0;
+#endif
     }
 
     // ============================================================
@@ -263,7 +265,11 @@ public partial class InMemoryEnumerableBenchmark
     [AotFilter("Mapster is not supported in NativeAOT")]
     public int Mapster_Adapt()
     {
+#if !NATIVEAOT
         var results = _data.Adapt<List<ManualSampleClassDto>>();
         return results.Count;
+#else
+        return 0;
+#endif
     }
 }
