@@ -172,15 +172,16 @@ public partial class InMemoryQueryAotBenchmark
                 s.Id,
                 s.Foo,
                 s.Bar,
-                Childs = s.Childs.SelectExpr<SampleChildClass, InMemoryQueryAotLinqraftSampleChildClassDto>(
-                    c => new
-                    {
-                        c.Id,
-                        c.Baz,
-                        ChildId = c.Child?.Id,
-                        ChildQux = c.Child?.Qux,
-                    }
-                ),
+                Childs = s.Childs.SelectExpr<
+                    SampleChildClass,
+                    InMemoryQueryAotLinqraftSampleChildClassDto
+                >(c => new
+                {
+                    c.Id,
+                    c.Baz,
+                    ChildId = c.Child?.Id,
+                    ChildQux = c.Child?.Qux,
+                }),
                 Child2Id = s.Child2?.Id,
                 Child2Quux = s.Child2?.Quux,
                 Child3Id = s.Child3.Id,
