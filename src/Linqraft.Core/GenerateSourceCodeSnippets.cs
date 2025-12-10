@@ -305,7 +305,7 @@ public static class GenerateSourceCodeSnippets
         https://github.com/arika0093/Linqraft/issues
         """;
 
-    private static string GenerateCommentHeaderPart()
+    public static string GenerateCommentHeaderPart()
     {
 #if DEBUG
         var now = DateTime.Now;
@@ -330,7 +330,7 @@ public static class GenerateSourceCodeSnippets
         // </auto-generated>
         """;
 
-    private const string GenerateHeaderFlagsPart = """
+    public const string GenerateHeaderFlagsPart = """
         #nullable enable
         #pragma warning disable IDE0060
         #pragma warning disable CS8601
