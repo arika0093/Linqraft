@@ -1,6 +1,6 @@
 using System;
-using System.Linq;
 using System.Collections.Generic;
+using System.Linq;
 
 namespace Linqraft.Tests;
 
@@ -24,24 +24,26 @@ public class Issue239_MinimalReproTest
     public void TwoSelectExprWithSameStructureShouldShareNestedDto()
     {
         var data = _testData.AsQueryable();
-        
+
         // result1 and result2 use the exact same anonymous structure
         // They should share the same ItemTitlesDto definition
         var result1 = data.SelectExpr(x => new
-        {
-            x.Id,
-            x.Name,
-            ChildDescription = x.Child?.Description,
-            ItemTitles = x.Items.Select(i => new{i.Title}),
-        }).ToList();
-        
+            {
+                x.Id,
+                x.Name,
+                ChildDescription = x.Child?.Description,
+                ItemTitles = x.Items.Select(i => new { i.Title }),
+            })
+            .ToList();
+
         var result2 = data.SelectExpr(x => new
-        {
-            x.Id,
-            x.Name,
-            ChildDescription = x.Child?.Description,
-            ItemTitles = x.Items.Select(i => new{i.Title}),
-        }).ToList();
+            {
+                x.Id,
+                x.Name,
+                ChildDescription = x.Child?.Description,
+                ItemTitles = x.Items.Select(i => new { i.Title }),
+            })
+            .ToList();
 
         result1.Count.ShouldBe(1);
         result2.Count.ShouldBe(1);

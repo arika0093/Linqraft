@@ -80,14 +80,14 @@ public class CodeGenerationService(SharedCompilationService sharedCompilation)
                     var location = semanticModel.GetInterceptableLocation(info.Invocation);
                     var fields = info.GenerateStaticFields();
                     var selectExprCodes = info.GenerateSelectExprCodes(location!);
-                    
+
                     // Collect DTOs from all SelectExpr calls
                     var dtoClasses = info.GenerateDtoClasses();
                     allDtoClasses.AddRange(dtoClasses);
 
                     queryExpressionBuilder.AppendLine(
                         GenerateSourceCodeSnippets.BuildExprCodeSnippets(
-                            selectExprCodes, 
+                            selectExprCodes,
                             fields != null ? [fields] : []
                         )
                     );
