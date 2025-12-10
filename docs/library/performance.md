@@ -68,7 +68,6 @@ Intel Core i7-14700F 2.10GHz, 1 CPU, 28 logical and 20 physical cores
 | 'Traditional Manual DTO'      | 100       | 896.7 us | 6.66 us | 6.23 us |  1.03 |    1 | 1.9531 |      - |  59.85 KB |        1.28 |
 | 'Traditional Anonymous'       | 100       | 967.5 us | 8.23 us | 6.87 us |  1.11 |    2 | 1.9531 |      - |  59.66 KB |        1.28 |
 | 'Linqraft Anonymous'          | 100       | 978.3 us | 6.68 us | 6.25 us |  1.12 |    2 | 1.9531 |      - |  60.21 KB |        1.29 |
-
 ```
 
 **.NET 10 NativeAOT**
