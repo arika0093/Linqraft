@@ -28,7 +28,5 @@
     <PackageReference Include="AutoMapper.Extensions.ExpressionMapping" Version="9.*" />
     <PackageReference Include="Mapster" Version="7.*" />
     <PackageReference Include="Riok.Mapperly" Version="4.*" />
-    <PackageReference Include="Facet" Version="5.*" />
-    <PackageReference Include="Facet.Extensions.EFCore" Version="5.*" />
   </ItemGroup>
 </Project>

@@ -3,7 +3,6 @@ using AutoMapper.QueryableExtensions;
 using BenchmarkDotNet.Attributes;
 using BenchmarkDotNet.Jobs;
 using BenchmarkDotNet.Order;
-using Facet.Extensions.EFCore;
 using Mapster;
 using Microsoft.EntityFrameworkCore;
 
@@ -271,20 +270,6 @@ public class EFCoreBenchmark
         var results = await _dbContext
             .SampleClasses.ProjectToType<ManualSampleClassDto>()
             .ToListAsync();
-        return results.Count;
-    }
-
-    // ============================================================
-    // Pattern 9: Facet with EF Core Extension
-    // (Using Facet's source-generated DTO projection)
-    // ============================================================
-    [Benchmark(Description = "Facet ToFacetsAsync")]
-    public async Task<int> Facet_ToFacetsAsync()
-    {
-        var results = await _dbContext.SampleClasses.ToFacetsAsync<
-            SampleClass,
-            FacetSampleClassDto
-        >();
         return results.Count;
     }
 }

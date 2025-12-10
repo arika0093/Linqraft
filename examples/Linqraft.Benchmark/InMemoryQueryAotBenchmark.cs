@@ -8,7 +8,7 @@ using Mapster;
 namespace Linqraft.Benchmark;
 
 [MemoryDiagnoser]
-[SimpleJob(RuntimeMoniker.NativeAot10_0)]
+[SimpleJob(RuntimeMoniker.NativeAot10_0, id: "NativeAOT")]
 [Orderer(SummaryOrderPolicy.FastestToSlowest)]
 [RankColumn]
 public partial class InMemoryQueryAotBenchmark
