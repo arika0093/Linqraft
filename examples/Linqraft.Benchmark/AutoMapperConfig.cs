@@ -13,17 +13,45 @@ public class AutoMapperProfile : Profile
     {
         // Map SampleClass to ManualSampleClassDto
         CreateMap<SampleClass, ManualSampleClassDto>()
-            .ForMember(dest => dest.Child2Id, opt => opt.MapFrom(src => src.Child2 != null ? src.Child2.Id : (int?)null))
-            .ForMember(dest => dest.Child2Quux, opt => opt.MapFrom(src => src.Child2 != null ? src.Child2.Quux : null))
+            .ForMember(
+                dest => dest.Child2Id,
+                opt => opt.MapFrom(src => src.Child2 != null ? src.Child2.Id : (int?)null)
+            )
+            .ForMember(
+                dest => dest.Child2Quux,
+                opt => opt.MapFrom(src => src.Child2 != null ? src.Child2.Quux : null)
+            )
             .ForMember(dest => dest.Child3Id, opt => opt.MapFrom(src => src.Child3.Id))
             .ForMember(dest => dest.Child3Corge, opt => opt.MapFrom(src => src.Child3.Corge))
-            .ForMember(dest => dest.Child3ChildId, opt => opt.MapFrom(src => src.Child3 != null && src.Child3.Child != null ? src.Child3.Child.Id : (int?)null))
-            .ForMember(dest => dest.Child3ChildGrault, opt => opt.MapFrom(src => src.Child3 != null && src.Child3.Child != null ? src.Child3.Child.Grault : null));
+            .ForMember(
+                dest => dest.Child3ChildId,
+                opt =>
+                    opt.MapFrom(src =>
+                        src.Child3 != null && src.Child3.Child != null
+                            ? src.Child3.Child.Id
+                            : (int?)null
+                    )
+            )
+            .ForMember(
+                dest => dest.Child3ChildGrault,
+                opt =>
+                    opt.MapFrom(src =>
+                        src.Child3 != null && src.Child3.Child != null
+                            ? src.Child3.Child.Grault
+                            : null
+                    )
+            );
 
         // Map SampleChildClass to ManualSampleChildDto
         CreateMap<SampleChildClass, ManualSampleChildDto>()
-            .ForMember(dest => dest.ChildId, opt => opt.MapFrom(src => src.Child != null ? src.Child.Id : (int?)null))
-            .ForMember(dest => dest.ChildQux, opt => opt.MapFrom(src => src.Child != null ? src.Child.Qux : null));
+            .ForMember(
+                dest => dest.ChildId,
+                opt => opt.MapFrom(src => src.Child != null ? src.Child.Id : (int?)null)
+            )
+            .ForMember(
+                dest => dest.ChildQux,
+                opt => opt.MapFrom(src => src.Child != null ? src.Child.Qux : null)
+            );
     }
 }
 

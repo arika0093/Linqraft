@@ -141,6 +141,16 @@ public abstract record SelectExprInfo
     );
 
     /// <summary>
+    /// Generates static field declarations for pre-built expressions (if enabled)
+    /// </summary>
+    public virtual string? GenerateStaticFields()
+    {
+        // Default implementation returns null (no fields)
+        // Derived classes can override this if they need static fields
+        return null;
+    }
+
+    /// <summary>
     /// Generates SelectExpr code for a given interceptable location
     /// </summary>
     public List<string> GenerateSelectExprCodes(InterceptableLocation location)
@@ -296,7 +306,11 @@ public abstract record SelectExprInfo
             if (RoslynTypeHelper.ContainsSelectExprInvocation(syntax))
             {
                 // For nested SelectExpr, convert to Select and handle the nested structure
-                var convertedSelectExpr = ConvertNestedSelectExprWithRoslyn(syntax, property, indents);
+                var convertedSelectExpr = ConvertNestedSelectExprWithRoslyn(
+                    syntax,
+                    property,
+                    indents
+                );
                 if (convertedSelectExpr != expression)
                 {
                     return convertedSelectExpr;
@@ -1203,29 +1217,14 @@ public abstract record SelectExprInfo
         // Use explicit DTO type if available (from SelectExpr<TIn, TResult> generic arguments)
         // Otherwise, use the auto-generated DTO name from the structure
         string nestedDtoName;
-        if (property.ExplicitNestedDtoType is not null && property.ExplicitNestedDtoType is not IErrorTypeSymbol)
+        if (
+            property.ExplicitNestedDtoType is not null
+            && property.ExplicitNestedDtoType is not IErrorTypeSymbol
+        )
         {
-            // Get the fully qualified name including namespace
+            // Get the fully qualified name including namespace and parent classes
             var typeSymbol = property.ExplicitNestedDtoType;
-            var displayString = typeSymbol.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat);
-
-            // Ensure the name includes global:: prefix for fully qualified reference
-            if (!displayString.StartsWith("global::") && typeSymbol.ContainingNamespace != null)
-            {
-                var namespaceName = typeSymbol.ContainingNamespace.ToDisplayString();
-                if (!string.IsNullOrEmpty(namespaceName))
-                {
-                    nestedDtoName = $"global::{namespaceName}.{typeSymbol.Name}";
-                }
-                else
-                {
-                    nestedDtoName = $"global::{typeSymbol.Name}";
-                }
-            }
-            else
-            {
-                nestedDtoName = displayString;
-            }
+            nestedDtoName = typeSymbol.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat);
         }
         else if (!string.IsNullOrEmpty(property.ExplicitNestedDtoTypeName))
         {
@@ -1591,9 +1590,15 @@ public abstract record SelectExprInfo
                 {
                     defaultValue = coalescingDefaultValue;
                 }
-                else if (property is not null && RoslynTypeHelper.IsCollectionType(property.TypeSymbol))
+                else if (
+                    property is not null
+                    && RoslynTypeHelper.IsCollectionType(property.TypeSymbol)
+                )
                 {
-                    defaultValue = GetEmptyCollectionExpressionForType(property.TypeSymbol, syntax.ToString());
+                    defaultValue = GetEmptyCollectionExpressionForType(
+                        property.TypeSymbol,
+                        syntax.ToString()
+                    );
                 }
                 else
                 {
@@ -1661,7 +1666,7 @@ public abstract record SelectExprInfo
             ChainedMethods = info.ChainedMethods,
             HasNullableAccess = info.HasNullableAccess,
             CoalescingDefaultValue = info.CoalescingDefaultValue,
-            NullCheckExpression = cleanedNullCheckExpression
+            NullCheckExpression = cleanedNullCheckExpression,
         };
     }
 
@@ -1701,7 +1706,7 @@ public abstract record SelectExprInfo
             ChainedMethods = fullyQualifiedChainedMethods,
             HasNullableAccess = info.HasNullableAccess,
             CoalescingDefaultValue = info.CoalescingDefaultValue,
-            NullCheckExpression = cleanedNullCheckExpression
+            NullCheckExpression = cleanedNullCheckExpression,
         };
     }
 
@@ -1741,7 +1746,7 @@ public abstract record SelectExprInfo
             ChainedMethods = fullyQualifiedChainedMethods,
             HasNullableAccess = info.HasNullableAccess,
             CoalescingDefaultValue = info.CoalescingDefaultValue,
-            NullCheckExpression = cleanedNullCheckExpression
+            NullCheckExpression = cleanedNullCheckExpression,
         };
     }
 
@@ -1874,8 +1879,8 @@ public abstract record SelectExprInfo
         ITypeSymbol typeSymbol
     )
     {
-        // Example: c.Child?.Id → c.Child != null ? (int?)c.Child.Id : null
-        // Example: s.Child3?.Child?.Id → s.Child3 != null && s.Child3.Child != null ? (int?)s.Child3.Child.Id : null
+        // Example: c.Child?.Id → c.Child != null ? c.Child.Id : default(int?)
+        // Example: s.Child3?.Child?.Id → s.Child3 != null && s.Child3.Child != null ? s.Child3.Child.Id : default(int?)
         // Example: d.InnerData?.Childs.Select(c => c.Id).ToList() → d.InnerData != null ? d.InnerData.Childs.Select(c => c.Id).ToList() : new List<int>()
 
         // Use Roslyn to verify this uses conditional access
@@ -1932,7 +1937,6 @@ public abstract record SelectExprInfo
         // Only use empty collection fallback for collections that use Select/SelectMany
         // and when ArrayNullabilityRemoval is enabled
         string defaultValue;
-        string typeAnnotation;
 
         if (
             Configuration.ArrayNullabilityRemoval
@@ -1942,19 +1946,15 @@ public abstract record SelectExprInfo
         {
             // For collection types with Select/SelectMany, use an empty collection as the default value
             defaultValue = GetEmptyCollectionExpressionForType(typeSymbol, cleanExpression);
-            // No need for nullable type annotation for collections since they use empty collection fallback
-            typeAnnotation = "";
         }
         else
         {
             // For non-collection types or collections without Select/SelectMany (e.g., byte[]),
             // use null or default value with nullable type annotation
-            var typeSymbolValue = typeSymbol.ToDisplayString();
-            typeAnnotation = typeSymbolValue != "?" ? $"({typeSymbolValue})" : "";
             defaultValue = GetDefaultValueForType(typeSymbol);
         }
 
-        return $"{nullCheckPart} ? {typeAnnotation}{accessPath} : {defaultValue}";
+        return $"{nullCheckPart} ? {accessPath} : {defaultValue}";
     }
 
     /// <summary>
@@ -2012,11 +2012,14 @@ public abstract record SelectExprInfo
     /// </summary>
     protected string GetDefaultValueForType(ITypeSymbol typeSymbol)
     {
-        if (
-            typeSymbol.IsReferenceType
-            || typeSymbol.NullableAnnotation == NullableAnnotation.Annotated
-        )
+        var typeName = typeSymbol.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat);
+        if (RoslynTypeHelper.IsNullableType(typeSymbol))
         {
+            // // Nullable<T> (nullable value type) needs default(T?) syntax
+            if (typeSymbol.OriginalDefinition.SpecialType == SpecialType.System_Nullable_T)
+            {
+                return $"default({typeName})";
+            }
             return "null";
         }
         return typeSymbol.SpecialType switch

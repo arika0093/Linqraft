@@ -38,10 +38,7 @@ public class GroupByAnonymousKeyAnalyzer : BaseLinqraftAnalyzer
 
     protected override void RegisterActions(AnalysisContext context)
     {
-        context.RegisterSyntaxNodeAction(
-            AnalyzeInvocation,
-            SyntaxKind.InvocationExpression
-        );
+        context.RegisterSyntaxNodeAction(AnalyzeInvocation, SyntaxKind.InvocationExpression);
     }
 
     private static void AnalyzeInvocation(SyntaxNodeAnalysisContext context)
@@ -74,10 +71,7 @@ public class GroupByAnonymousKeyAnalyzer : BaseLinqraftAnalyzer
         }
 
         // Report diagnostic on the anonymous type in GroupBy
-        var diagnostic = Diagnostic.Create(
-            RuleInstance,
-            anonymousObject.GetLocation()
-        );
+        var diagnostic = Diagnostic.Create(RuleInstance, anonymousObject.GetLocation());
         context.ReportDiagnostic(diagnostic);
     }
 

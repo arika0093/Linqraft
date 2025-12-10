@@ -16,6 +16,8 @@ public record LinqraftConfiguration
         "build_property.LinqraftArrayNullabilityRemoval";
     const string LinqraftNestedDtoUseHashNamespaceOptionKey =
         "build_property.LinqraftNestedDtoUseHashNamespace";
+    const string LinqraftUsePrebuildExpressionOptionKey =
+        "build_property.LinqraftUsePrebuildExpression";
 
     /// <summary>
     /// The namespace where global namespace DTOs should exist.
@@ -63,6 +65,15 @@ public record LinqraftConfiguration
     public bool NestedDtoUseHashNamespace { get; init; } = true;
 
     /// <summary>
+    /// Whether to pre-build and cache Expression Trees for IQueryable operations to improve performance.
+    /// When enabled, expression trees are built at compile-time and cached as static fields, avoiding runtime construction.
+    /// Only applies to IQueryable patterns (not IEnumerable) and only for named/predefined/explicit DTO types (not anonymous types).
+    /// Note: Pre-building is not applied when there are capture variables in the lambda expression.
+    /// Default is false (disabled)
+    /// </summary>
+    public bool UsePrebuildExpression { get; init; } = false;
+
+    /// <summary>
     /// Gets the actual property accessor to use based on configuration
     /// </summary>
     public PropertyAccessor GetEffectivePropertyAccessor()
@@ -106,6 +117,10 @@ public record LinqraftConfiguration
         globalOptions.GlobalOptions.TryGetValue(
             LinqraftNestedDtoUseHashNamespaceOptionKey,
             out var NestedDtoUseHashNamespaceStr
+        );
+        globalOptions.GlobalOptions.TryGetValue(
+            LinqraftUsePrebuildExpressionOptionKey,
+            out var usePrebuildExpressionStr
         );
 
         var linqraftOptions = new LinqraftConfiguration();
@@ -153,6 +168,13 @@ public record LinqraftConfiguration
             linqraftOptions = linqraftOptions with
             {
                 NestedDtoUseHashNamespace = NestedDtoUseHashNamespace,
+            };
+        }
+        if (bool.TryParse(usePrebuildExpressionStr, out var usePrebuildExpression))
+        {
+            linqraftOptions = linqraftOptions with
+            {
+                UsePrebuildExpression = usePrebuildExpression,
             };
         }
         return linqraftOptions;

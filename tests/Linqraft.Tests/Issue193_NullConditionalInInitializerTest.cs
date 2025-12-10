@@ -15,11 +15,7 @@ public class Issue193_NullConditionalInInitializerTest
         {
             Id = 1,
             Name = "Entity1",
-            Items =
-            [
-                new Issue193_Item { Title = "Item1" },
-                new Issue193_Item { Title = null },
-            ],
+            Items = [new Issue193_Item { Title = "Item1" }, new Issue193_Item { Title = null }],
         },
     ];
 
@@ -84,23 +80,20 @@ public class Issue193_NullConditionalInInitializerTest
             {
                 Id = 2,
                 Name = "Entity2",
-                NullableItems =
-                [
-                    new Issue193_Item { Title = "Item1" },
-                ],
+                NullableItems = [new Issue193_Item { Title = "Item1" }],
             },
         };
 
-        var result = data
-            .AsQueryable()
+        var result = data.AsQueryable()
             .SelectExpr(x => new Issue193_EntityWithNullableItemsDto
             {
                 Id = x.Id,
                 Name = x.Name,
                 // Empty array literal fallback - should become global::System.Linq.Enumerable.Empty<...>()
-                Items = x.NullableItems != null
-                    ? x.NullableItems.Select(i => new Issue193_ItemChildDto { Test = i.Title })
-                    : [],
+                Items =
+                    x.NullableItems != null
+                        ? x.NullableItems.Select(i => new Issue193_ItemChildDto { Test = i.Title })
+                        : [],
             })
             .ToList();
 
@@ -137,23 +130,20 @@ public class Issue193_NullConditionalInInitializerTest
             {
                 Id = 2,
                 Name = "Entity2",
-                NullableItems =
-                [
-                    new Issue193_Item { Title = "Item1" },
-                ],
+                NullableItems = [new Issue193_Item { Title = "Item1" }],
             },
         };
 
-        var result = data
-            .AsQueryable()
+        var result = data.AsQueryable()
             .SelectExpr(x => new Issue193_EntityWithNullableItemsDto
             {
                 Id = x.Id,
                 Name = x.Name,
                 // Enumerable.Empty<T>() fallback - should become global::System.Linq.Enumerable.Empty<global::...>()
-                Items = x.NullableItems != null
-                    ? x.NullableItems.Select(i => new Issue193_ItemChildDto { Test = i.Title })
-                    : Enumerable.Empty<Issue193_ItemChildDto>(),
+                Items =
+                    x.NullableItems != null
+                        ? x.NullableItems.Select(i => new Issue193_ItemChildDto { Test = i.Title })
+                        : Enumerable.Empty<Issue193_ItemChildDto>(),
             })
             .ToList();
 

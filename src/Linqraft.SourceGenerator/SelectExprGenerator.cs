@@ -20,7 +20,9 @@ public partial class SelectExprGenerator : IIncrementalGenerator
     public void Initialize(IncrementalGeneratorInitializationContext context)
     {
         // Generate pre-defined source code
-        context.RegisterPostInitializationOutput(ctx => GenerateSourceCodeSnippets.ExportAll(ctx));
+        context.RegisterPostInitializationOutput(
+            GenerateSourceCodeSnippets.ExportAllConstantSnippets
+        );
 
         // Read MSBuild properties for configuration
         var configurationProvider = context.AnalyzerConfigOptionsProvider.Select(
@@ -79,10 +81,31 @@ public partial class SelectExprGenerator : IIncrementalGenerator
                     })
                     .ToList();
 
-                // Generate code for explicit DTO infos (one method per group)
+                // Collect all DTOs from all groups and deduplicate globally
+                var allDtoClassInfos = new List<GenerateDtoClassInfo>();
                 foreach (var exprGroup in exprGroups)
                 {
-                    exprGroup.GenerateCode(spc);
+                    foreach (var expr in exprGroup.Exprs)
+                    {
+                        var classInfos = expr.Info.GenerateDtoClasses();
+                        allDtoClassInfos.AddRange(classInfos);
+                    }
+                }
+
+                // Generate all DTOs in a single shared source file
+                var dtoCode = GenerateSourceCodeSnippets.BuildGlobalDtoCodeSnippet(
+                    allDtoClassInfos,
+                    config
+                );
+                if (!string.IsNullOrEmpty(dtoCode))
+                {
+                    spc.AddSource("GeneratedDtos.g.cs", dtoCode);
+                }
+
+                // Generate code for expression methods (without DTOs)
+                foreach (var exprGroup in exprGroups)
+                {
+                    exprGroup.GenerateCodeWithoutDtos(spc);
                 }
             }
         );
@@ -104,32 +127,10 @@ public partial class SelectExprGenerator : IIncrementalGenerator
         // When SelectExpr is used inside another SelectExpr (nested SelectExpr),
         // only the outermost SelectExpr should generate an interceptor.
         // The inner SelectExpr will be converted to a regular Select call by the outer one.
-        if (IsNestedInsideAnotherSelectExpr(invocation))
+        if (SelectExprHelper.IsNestedInsideAnotherSelectExpr(invocation))
             return false;
 
         return true;
-    }
-
-    /// <summary>
-    /// Checks if the given SelectExpr invocation is nested inside another SelectExpr invocation.
-    /// </summary>
-    private static bool IsNestedInsideAnotherSelectExpr(InvocationExpressionSyntax invocation)
-    {
-        // Walk up the syntax tree to find any ancestor that is also a SelectExpr invocation
-        var current = invocation.Parent;
-        while (current is not null)
-        {
-            // If we find a parent InvocationExpression that is also a SelectExpr, we are nested
-            if (current is InvocationExpressionSyntax parentInvocation)
-            {
-                if (SelectExprHelper.IsSelectExprInvocationSyntax(parentInvocation.Expression))
-                {
-                    return true;
-                }
-            }
-            current = current.Parent;
-        }
-        return false;
     }
 
     private static SelectExprInfo? GetSelectExprInfo(GeneratorSyntaxContext context)

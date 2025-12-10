@@ -66,7 +66,7 @@ public class CodeGenerationService(SharedCompilationService sharedCompilation)
 
             // Generate code for each SelectExpr
             var queryExpressionBuilder = new StringBuilder();
-            var dtoClassBuilder = new StringBuilder();
+            var allDtoClasses = new List<GenerateDtoClassInfo>();
 
             foreach (var info in allSelectExprInfos)
             {
@@ -78,19 +78,17 @@ public class CodeGenerationService(SharedCompilationService sharedCompilation)
                         info.Invocation.SyntaxTree
                     );
                     var location = semanticModel.GetInterceptableLocation(info.Invocation);
+                    var fields = info.GenerateStaticFields();
                     var selectExprCodes = info.GenerateSelectExprCodes(location!);
-                    var dtoClasses = info.GenerateDtoClasses()
-                        .GroupBy(c => c.FullName)
-                        .Select(g => g.First())
-                        .ToList();
+                    
+                    // Collect DTOs from all SelectExpr calls
+                    var dtoClasses = info.GenerateDtoClasses();
+                    allDtoClasses.AddRange(dtoClasses);
 
                     queryExpressionBuilder.AppendLine(
-                        GenerateSourceCodeSnippets.BuildExprCodeSnippets(selectExprCodes)
-                    );
-                    dtoClassBuilder.AppendLine(
-                        GenerateSourceCodeSnippets.BuildDtoCodeSnippetsGroupedByNamespace(
-                            dtoClasses,
-                            config
+                        GenerateSourceCodeSnippets.BuildExprCodeSnippets(
+                            selectExprCodes, 
+                            fields != null ? [fields] : []
                         )
                     );
                 }
@@ -102,8 +100,13 @@ public class CodeGenerationService(SharedCompilationService sharedCompilation)
                 }
             }
 
+            // Generate DTOs with global deduplication
+            var dtoCode = GenerateSourceCodeSnippets.BuildGlobalDtoCodeSnippet(
+                allDtoClasses,
+                config
+            );
+
             var expressionCode = queryExpressionBuilder.ToString().TrimEnd();
-            var dtoCode = dtoClassBuilder.ToString().TrimEnd();
 
             // Filter out internal attributes from the DTO output for cleaner display
             dtoCode = FilterInternalAttributes(dtoCode);
@@ -161,7 +164,17 @@ public class CodeGenerationService(SharedCompilationService sharedCompilation)
     private static bool IsSelectExprInvocation(InvocationExpressionSyntax invocation)
     {
         var expression = invocation.Expression;
-        return SelectExprHelper.IsSelectExprInvocationSyntax(expression);
+        if (!SelectExprHelper.IsSelectExprInvocationSyntax(expression))
+            return false;
+
+        // Skip if this SelectExpr is nested inside another SelectExpr.
+        // When SelectExpr is used inside another SelectExpr (nested SelectExpr),
+        // only the outermost SelectExpr should generate an interceptor.
+        // The inner SelectExpr will be converted to a regular Select call by the outer one.
+        if (SelectExprHelper.IsNestedInsideAnotherSelectExpr(invocation))
+            return false;
+
+        return true;
     }
 
     private static SelectExprInfo? GetSelectExprInfo(

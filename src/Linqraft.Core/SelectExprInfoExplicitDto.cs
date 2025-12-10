@@ -135,14 +135,23 @@ public record SelectExprInfoExplicitDto : SelectExprInfo
         var actualNamespace = GetActualDtoNamespace();
 
         // When NestedDtoUseHashNamespace option is enabled, child DTOs are placed in
-        // a hash-named sub-namespace (e.g., LinqraftGenerated_{Hash}.ClassName)
+        // a hash-named sub-namespace (e.g., LinqraftGenerated_{Hash}) WITHOUT parent class nesting
         // However, DTOs with explicit names from nested SelectExpr should NOT use hash namespace
+        // and should maintain their parent class structure
+        List<string> finalParentClasses = currentParentClasses;
+        List<string> finalParentAccessibilities = currentParentAccessibilities;
+
         if (!isExplicitDto && Configuration?.NestedDtoUseHashNamespace == true)
         {
             var hash = structure.GetUniqueId();
             actualNamespace = string.IsNullOrEmpty(actualNamespace)
                 ? $"LinqraftGenerated_{hash}"
                 : $"{actualNamespace}.LinqraftGenerated_{hash}";
+
+            // Implicit DTOs in hash namespace should NOT be nested inside parent classes
+            // They are managed by the hash, so they don't need to exist within a class
+            finalParentClasses = [];
+            finalParentAccessibilities = [];
         }
 
         var dtoClassInfo = new GenerateDtoClassInfo
@@ -152,8 +161,8 @@ public record SelectExprInfoExplicitDto : SelectExprInfo
             ClassName = className,
             Structure = structure,
             NestedClasses = [.. result],
-            ParentClasses = currentParentClasses,
-            ParentAccessibilities = currentParentAccessibilities,
+            ParentClasses = finalParentClasses,
+            ParentAccessibilities = finalParentAccessibilities,
             ExistingProperties = existingProperties,
             IsExplicitRootDto = isExplicitDto, // Mark explicit DTOs (main or from nested SelectExpr) to avoid adding the attribute
         };
@@ -257,8 +266,79 @@ public record SelectExprInfoExplicitDto : SelectExprInfo
     protected override string GetExprTypeString() => "explicit";
 
     /// <summary>
+    /// Generates static field declarations for pre-built expressions (if enabled)
+    /// </summary>
+    public override string? GenerateStaticFields()
+    {
+        // Check if we should use pre-built expressions (only for IQueryable, not IEnumerable)
+        var usePrebuildExpression =
+            Configuration.UsePrebuildExpression && !IsEnumerableInvocation();
+
+        // Don't generate fields if captures are used (they don't work well with closures)
+        var hasCapture = CaptureArgumentExpression != null && CaptureArgumentType != null;
+
+        if (!usePrebuildExpression || hasCapture)
+        {
+            return null;
+        }
+
+        var structure = GenerateDtoStructure();
+        var sourceTypeFullName = structure.SourceTypeFullName;
+        var actualNamespace = GetActualDtoNamespace();
+        var dtoName = GetParentDtoClassName(structure);
+
+        // Build full DTO name with parent classes if nested
+        string dtoFullName;
+        if (string.IsNullOrEmpty(actualNamespace))
+        {
+            // Global namespace: no namespace prefix
+            dtoFullName =
+                ParentClasses.Count > 0
+                    ? $"global::{string.Join(".", ParentClasses)}.{dtoName}"
+                    : $"global::{dtoName}";
+        }
+        else
+        {
+            // Regular namespace case
+            dtoFullName =
+                ParentClasses.Count > 0
+                    ? $"global::{actualNamespace}.{string.Join(".", ParentClasses)}.{dtoName}"
+                    : $"global::{actualNamespace}.{dtoName}";
+        }
+
+        var id = GetUniqueId();
+
+        // Build the lambda body
+        var lambdaBodyBuilder = new StringBuilder();
+        lambdaBodyBuilder.AppendLine($"new {dtoFullName}");
+        lambdaBodyBuilder.AppendLine($"    {{");
+        var propertyAssignments = structure
+            .Properties.Select(prop =>
+            {
+                var assignment = GeneratePropertyAssignment(prop, CodeFormatter.IndentSize * 2);
+                return $"{CodeFormatter.Indent(2)}{prop.Name} = {assignment}";
+            })
+            .ToList();
+        lambdaBodyBuilder.AppendLine(
+            string.Join($",{CodeFormatter.DefaultNewLine}", propertyAssignments)
+        );
+        lambdaBodyBuilder.Append("    }");
+
+        var (fieldDecl, _) = ExpressionTreeBuilder.GenerateExpressionTreeField(
+            sourceTypeFullName,
+            dtoFullName,
+            LambdaParameterName,
+            lambdaBodyBuilder.ToString(),
+            id
+        );
+
+        return fieldDecl;
+    }
+
+    /// <summary>
     /// Gets the full name for a nested DTO class using the structure.
-    /// When NestedDtoUseHashNamespace is enabled, includes the LinqraftGenerated_{hash} namespace.
+    /// When NestedDtoUseHashNamespace is enabled, includes the LinqraftGenerated_{hash} namespace
+    /// WITHOUT parent class nesting (implicit DTOs are managed by hash, not class hierarchy).
     /// </summary>
     protected override string GetNestedDtoFullNameFromStructure(DtoStructure nestedStructure)
     {
@@ -269,6 +349,8 @@ public record SelectExprInfoExplicitDto : SelectExprInfo
         var actualNamespace = GetActualDtoNamespace();
 
         // When NestedDtoUseHashNamespace option is enabled, include LinqraftGenerated_{hash} in namespace
+        // Implicit DTOs should NOT be nested inside parent classes - they are placed directly
+        // in the LinqraftGenerated_{hash} namespace
         if (Configuration?.NestedDtoUseHashNamespace == true)
         {
             var hash = nestedStructure.GetUniqueId();
@@ -276,15 +358,11 @@ public record SelectExprInfoExplicitDto : SelectExprInfo
                 ? $"LinqraftGenerated_{hash}"
                 : $"{actualNamespace}.LinqraftGenerated_{hash}";
 
-            // Handle parent classes
-            if (ParentClasses.Count > 0)
-            {
-                return $"global::{generatedNamespace}.{string.Join(".", ParentClasses)}.{className}";
-            }
+            // Implicit DTOs in hash namespace should NOT include parent classes
             return $"global::{generatedNamespace}.{className}";
         }
 
-        // Default behavior: use GetNestedDtoFullName
+        // Default behavior: use GetNestedDtoFullName (includes parent classes)
         return GetNestedDtoFullName(className);
     }
 
@@ -365,10 +443,40 @@ public record SelectExprInfoExplicitDto : SelectExprInfo
         var sb = new StringBuilder();
 
         var id = GetUniqueId();
+
+        // Check if we should use pre-built expressions (only for IQueryable, not IEnumerable)
+        var usePrebuildExpression =
+            Configuration.UsePrebuildExpression && !IsEnumerableInvocation();
+
         sb.AppendLine(GenerateMethodHeaderPart(dtoName, location));
 
         // Determine if we have capture parameters
         var hasCapture = CaptureArgumentExpression != null && CaptureArgumentType != null;
+
+        if (usePrebuildExpression && !hasCapture)
+        {
+            // Get the field name (we need to generate the same hash as in GenerateStaticFields)
+            var hash = HashUtility.GenerateSha256Hash(id).Substring(0, 8);
+            var fieldName = $"_cachedExpression_{hash}";
+
+            // Use the cached expression directly (no initialization needed, it's done in the field declaration)
+            sb.AppendLine(
+                $$"""
+                public static {{returnTypePrefix}}<TResult> SelectExpr_{{id}}<TIn, TResult>(
+                    this {{returnTypePrefix}}<TIn> query, Func<TIn, object> selector)
+                {
+                    return query.Provider.CreateQuery<TResult>(
+                        Expression.Call(null, _methodInfo_{{id}}, query.Expression, _unaryExpression_{{id}}));
+                }
+                private static readonly UnaryExpression _unaryExpression_{{id}} = Expression.Quote({{fieldName}});
+                private static readonly System.Reflection.MethodInfo _methodInfo_{{id}} = new Func<
+                    IQueryable<{{sourceTypeFullName}}>,
+                    Expression<Func<{{sourceTypeFullName}}, {{dtoFullName}}>>,
+                    IQueryable<{{dtoFullName}}>>(Queryable.Select).Method;
+                """
+            );
+            return sb.ToString();
+        }
 
         if (hasCapture)
         {
@@ -409,6 +517,9 @@ public record SelectExprInfoExplicitDto : SelectExprInfo
                 sb.AppendLine($"    var capture = ({captureTypeName})captureParam;");
             }
 
+            // Note: Pre-built expressions don't work well with captures because the closure
+            // variables would be captured at compile time, not at runtime. So we disable
+            // pre-built expressions when captures are used.
             sb.AppendLine(
                 $"    var converted = matchedQuery.Select({LambdaParameterName} => new {dtoFullName}"
             );
@@ -421,6 +532,7 @@ public record SelectExprInfoExplicitDto : SelectExprInfo
             );
             sb.AppendLine($"    this {returnTypePrefix}<TIn> query, Func<TIn, object> selector)");
             sb.AppendLine($"{{");
+
             sb.AppendLine(
                 $"    var matchedQuery = query as object as {returnTypePrefix}<{sourceTypeFullName}>;"
             );
@@ -428,7 +540,6 @@ public record SelectExprInfoExplicitDto : SelectExprInfo
                 $"    var converted = matchedQuery.Select({LambdaParameterName} => new {dtoFullName}"
             );
         }
-
         sb.AppendLine($"    {{");
 
         // Generate property assignments

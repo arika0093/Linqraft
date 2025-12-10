@@ -154,6 +154,16 @@
                                @onchange="@(e => UpdateConfig(c => c with { NestedDtoUseHashNamespace = (bool)(e.Value ?? false) }))" />
                         <label for="nestedDtoUseHashNamespace" class="cursor-pointer text-xs text-gray-300">Nested DTO Use Hash Namespace</label>
                     </div>
+                    
+                    <!-- Use Prebuild Expression -->
+                    <div class="flex cursor-pointer items-center gap-2">
+                        <input type="checkbox" 
+                               id="usePrebuildExpression"
+                               class="h-3 w-3"
+                               checked="@Configuration.UsePrebuildExpression"
+                               @onchange="@(e => UpdateConfig(c => c with { UsePrebuildExpression = (bool)(e.Value ?? false) }))" />
+                        <label for="usePrebuildExpression" class="cursor-pointer text-xs text-gray-300">Pre-build Expression Trees</label>
+                    </div>
                 </div>
             }
         </div>
@@ -179,7 +189,7 @@
     [Parameter] public EventCallback OnCopyShareUrlRequest { get; set; }
     [Parameter] public EventCallback OnCreateGitHubIssueRequest { get; set; }
     
-    private bool settingsExpanded = true;
+    private bool settingsExpanded = false;
     private bool shareExpanded = true;
     private string copyButtonText = "Copy Share URL";
 
