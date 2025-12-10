@@ -108,15 +108,7 @@ public static class GenerateSourceCodeSnippets
         foreach (var group in dtosByNamespace)
         {
             var namespaceName = group.Key;
-            
-            // Deduplicate DTOs with the same FullName within this namespace
-            // This handles cases where the same DTO structure is used in multiple SelectExpr calls
-            var uniqueDtos = group
-                .GroupBy(c => c.FullName)
-                .Select(g => g.First())
-                .ToList();
-            
-            var dtoClasses = uniqueDtos.Select(c => c.BuildCode(configuration)).ToList();
+            var dtoClasses = group.Select(c => c.BuildCode(configuration)).ToList();
 
             if (string.IsNullOrEmpty(namespaceName))
             {
@@ -318,6 +310,10 @@ public static class GenerateSourceCodeSnippets
         #pragma warning disable CS8604
         #pragma warning disable CS8618
         """;
+
+    // Public wrappers for use in SelectExprGenerator
+    public static string GenerateCommentHeader() => GenerateCommentHeaderPart();
+    public static string GenerateHeaderFlags => GenerateHeaderFlagsPart;
 
     private const string GenerateHeaderUsingPart = """
         using System;

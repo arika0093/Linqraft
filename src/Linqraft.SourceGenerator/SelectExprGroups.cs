@@ -44,7 +44,7 @@ internal class SelectExprGroups
     }
 
     // Generate source code
-    public virtual void GenerateCode(SourceProductionContext context)
+    public virtual void GenerateCode(SourceProductionContext context, bool generateDtos = true)
     {
         try
         {
@@ -55,11 +55,14 @@ internal class SelectExprGroups
             foreach (var expr in Exprs)
             {
                 var info = expr.Info;
-                var classInfos = info.GenerateDtoClasses();
+                if (generateDtos)
+                {
+                    var classInfos = info.GenerateDtoClasses();
+                    dtoClassInfos.AddRange(classInfos);
+                }
                 var exprMethods = info.GenerateSelectExprCodes(expr.Location);
                 var fields = info.GenerateStaticFields();
 
-                dtoClassInfos.AddRange(classInfos);
                 selectExprMethods.AddRange(exprMethods);
                 if (fields != null)
                 {
@@ -67,23 +70,43 @@ internal class SelectExprGroups
                 }
             }
 
-            // drop duplicate DTO classes based on full name
-            var dtoClassesDistinct = dtoClassInfos
-                .GroupBy(c => c.FullName)
-                .Select(g => g.First())
-                .ToList();
+            if (generateDtos)
+            {
+                // drop duplicate DTO classes based on full name
+                var dtoClassesDistinct = dtoClassInfos
+                    .GroupBy(c => c.FullName)
+                    .Select(g => g.First())
+                    .ToList();
 
-            // Build final source code using the new method that groups DTOs by namespace
-            var sourceCode = GenerateSourceCodeSnippets.BuildCodeSnippetAll(
-                selectExprMethods,
-                staticFields,
-                dtoClassesDistinct,
-                Configuration
-            );
+                // Build final source code using the new method that groups DTOs by namespace
+                var sourceCode = GenerateSourceCodeSnippets.BuildCodeSnippetAll(
+                    selectExprMethods,
+                    staticFields,
+                    dtoClassesDistinct,
+                    Configuration
+                );
 
-            // Register with Source Generator
-            var uniqueId = GetUniqueId();
-            context.AddSource($"GeneratedExpression_{uniqueId}.g.cs", sourceCode);
+                // Register with Source Generator
+                var uniqueId = GetUniqueId();
+                context.AddSource($"GeneratedExpression_{uniqueId}.g.cs", sourceCode);
+            }
+            else
+            {
+                // Generate only expression methods without DTOs
+                var exprPart = GenerateSourceCodeSnippets.BuildExprCodeSnippets(
+                    selectExprMethods,
+                    staticFields
+                );
+                var sourceCode = $$"""
+                    {{GenerateSourceCodeSnippets.GenerateCommentHeader()}}
+                    {{GenerateSourceCodeSnippets.GenerateHeaderFlags}}
+                    {{exprPart}}
+                    """;
+
+                // Register with Source Generator
+                var uniqueId = GetUniqueId();
+                context.AddSource($"GeneratedExpression_{uniqueId}.g.cs", sourceCode);
+            }
         }
         catch (Exception ex)
         {
