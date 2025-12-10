@@ -62,6 +62,35 @@ public static class GenerateSourceCodeSnippets
             """;
     }
 
+    // Generate all DTOs in a single shared source file with global deduplication
+    public static string BuildGlobalDtoCodeSnippet(
+        List<GenerateDtoClassInfo> allDtoClassInfos,
+        LinqraftConfiguration configuration
+    )
+    {
+        // Deduplicate DTOs globally by FullName
+        var globallyUniqueDtos = allDtoClassInfos
+            .GroupBy(c => c.FullName)
+            .Select(g => g.First())
+            .ToList();
+
+        if (globallyUniqueDtos.Count == 0)
+        {
+            return string.Empty;
+        }
+
+        var dtoSourceCode = BuildDtoCodeSnippetsGroupedByNamespace(
+            globallyUniqueDtos,
+            configuration
+        );
+
+        return $$"""
+            {{GenerateCommentHeaderPart()}}
+            {{GenerateHeaderFlagsPart}}
+            {{dtoSourceCode}}
+            """;
+    }
+
     // Generate DTO part
     public static string BuildDtoCodeSnippets(List<string> dtoClasses, string namespaceName)
     {

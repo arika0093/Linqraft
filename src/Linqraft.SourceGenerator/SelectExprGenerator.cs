@@ -79,10 +79,31 @@ public partial class SelectExprGenerator : IIncrementalGenerator
                     })
                     .ToList();
 
-                // Generate code for explicit DTO infos (one method per group)
+                // Collect all DTOs from all groups and deduplicate globally
+                var allDtoClassInfos = new List<GenerateDtoClassInfo>();
                 foreach (var exprGroup in exprGroups)
                 {
-                    exprGroup.GenerateCode(spc);
+                    foreach (var expr in exprGroup.Exprs)
+                    {
+                        var classInfos = expr.Info.GenerateDtoClasses();
+                        allDtoClassInfos.AddRange(classInfos);
+                    }
+                }
+
+                // Generate all DTOs in a single shared source file
+                var dtoCode = GenerateSourceCodeSnippets.BuildGlobalDtoCodeSnippet(
+                    allDtoClassInfos,
+                    config
+                );
+                if (!string.IsNullOrEmpty(dtoCode))
+                {
+                    spc.AddSource("GeneratedDtos.g.cs", dtoCode);
+                }
+
+                // Generate code for expression methods (without DTOs)
+                foreach (var exprGroup in exprGroups)
+                {
+                    exprGroup.GenerateCodeWithoutDtos(spc);
                 }
             }
         );

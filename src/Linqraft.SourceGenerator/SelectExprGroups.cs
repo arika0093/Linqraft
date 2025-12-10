@@ -43,7 +43,7 @@ internal class SelectExprGroups
         return $"{targetNsReplaced}_{filenameReplaced}";
     }
 
-    // Generate source code
+    // Generate source code with DTOs
     public virtual void GenerateCode(SourceProductionContext context)
     {
         try
@@ -80,6 +80,56 @@ internal class SelectExprGroups
                 dtoClassesDistinct,
                 Configuration
             );
+
+            // Register with Source Generator
+            var uniqueId = GetUniqueId();
+            context.AddSource($"GeneratedExpression_{uniqueId}.g.cs", sourceCode);
+        }
+        catch (Exception ex)
+        {
+            // Output error information for debugging
+            var errorMessage = $"""
+                /*
+                 * Source Generator Error: {ex.Message}
+                 * Stack Trace: {ex.StackTrace}
+                 */
+                """;
+            var hash = HashUtility.GenerateRandomIdentifier();
+            context.AddSource($"GeneratorError_{hash}.g.cs", errorMessage);
+        }
+    }
+
+    // Generate source code without DTOs (for global DTO generation)
+    public virtual void GenerateCodeWithoutDtos(SourceProductionContext context)
+    {
+        try
+        {
+            var selectExprMethods = new List<string>();
+            var staticFields = new List<string>();
+
+            foreach (var expr in Exprs)
+            {
+                var info = expr.Info;
+                var exprMethods = info.GenerateSelectExprCodes(expr.Location);
+                var fields = info.GenerateStaticFields();
+
+                selectExprMethods.AddRange(exprMethods);
+                if (fields != null)
+                {
+                    staticFields.Add(fields);
+                }
+            }
+
+            // Generate only expression methods without DTOs
+            var exprPart = GenerateSourceCodeSnippets.BuildExprCodeSnippets(
+                selectExprMethods,
+                staticFields
+            );
+            var sourceCode = $$"""
+                {{GenerateSourceCodeSnippets.GenerateCommentHeaderPart()}}
+                {{GenerateSourceCodeSnippets.GenerateHeaderFlagsPart}}
+                {{exprPart}}
+                """;
 
             // Register with Source Generator
             var uniqueId = GetUniqueId();
