@@ -23,21 +23,16 @@ public static class GenerateSourceCodeSnippets
         );
     }
 
-    // Generate total code with DTOs that may have different namespaces.
-    public static string BuildCodeSnippetAll(
+    // Generate expression and headers
+    public static string BuildExprCodeSnippetsWithHeaders(
         List<string> expressions,
-        List<string> staticFields,
-        List<GenerateDtoClassInfo> dtoClassInfos,
-        LinqraftConfiguration configuration
+        List<string> staticFields
     )
     {
-        var exprPart = BuildExprCodeSnippets(expressions, staticFields);
-        var dtoPart = BuildDtoCodeSnippetsGroupedByNamespace(dtoClassInfos, configuration);
         return $$"""
             {{GenerateCommentHeaderPart()}}
             {{GenerateHeaderFlagsPart}}
-            {{exprPart}}
-            {{dtoPart}}
+            {{BuildExprCodeSnippets(expressions, staticFields)}}
             """;
     }
 
@@ -176,7 +171,7 @@ public static class GenerateSourceCodeSnippets
     }
 
     [StringSyntax("csharp")]
-    public const string EmbeddedAttribute = $$"""
+    private const string EmbeddedAttribute = $$"""
         {{CommentHeaderPartOnProd}}
         namespace Microsoft.CodeAnalysis
         {
@@ -321,7 +316,7 @@ public static class GenerateSourceCodeSnippets
         https://github.com/arika0093/Linqraft/issues
         """;
 
-    public static string GenerateCommentHeaderPart()
+    private static string GenerateCommentHeaderPart()
     {
 #if DEBUG
         var now = DateTime.Now;
@@ -346,7 +341,7 @@ public static class GenerateSourceCodeSnippets
         // </auto-generated>
         """;
 
-    public const string GenerateHeaderFlagsPart = """
+    private const string GenerateHeaderFlagsPart = """
         #nullable enable
         #pragma warning disable IDE0060
         #pragma warning disable CS8601
