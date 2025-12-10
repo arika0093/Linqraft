@@ -260,7 +260,6 @@
           "Microsoft.CodeAnalysis.CSharp": "[4.11.0, )"
         }
       }
-    },
-    ".NETStandard,Version=v2.0/linux-x64": {}
+    }
   }
 }
