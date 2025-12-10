@@ -17,9 +17,13 @@ public static partial class MapperlyMapper
         this IQueryable<SampleClass> query
     );
 
+    public static partial IEnumerable<ManualSampleClassDto> ProjectToDto(
+        this IEnumerable<SampleClass> query
+    );
+
     /// <summary>
     /// Maps a single SampleClass to ManualSampleClassDto.
-    /// Used internally by the IQueryable projection.
+    /// Used internally by the IQueryable projection and for in-memory mapping.
     /// </summary>
     [MapProperty(
         nameof(SampleClass.Child2) + "." + nameof(SampleChildClass2.Id),

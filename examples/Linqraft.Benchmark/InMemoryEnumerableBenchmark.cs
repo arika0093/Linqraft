@@ -1,86 +1,75 @@
 using AutoMapper;
-using AutoMapper.QueryableExtensions;
 using BenchmarkDotNet.Attributes;
+using BenchmarkDotNet.Attributes.Filters;
+using BenchmarkDotNet.Jobs;
 using BenchmarkDotNet.Order;
-using Facet.Extensions.EFCore;
 using Mapster;
-using Microsoft.EntityFrameworkCore;
 
 namespace Linqraft.Benchmark;
 
 [MemoryDiagnoser]
+[SimpleJob(RuntimeMoniker.Net10_0)]
 [Orderer(SummaryOrderPolicy.FastestToSlowest)]
 [RankColumn]
-public class SelectBenchmark
+public partial class InMemoryEnumerableBenchmark
 {
-    private BenchmarkDbContext _dbContext = null!;
-    private IConfigurationProvider _autoMapperConfig = null!;
-    private const int DataCount = 100;
+    private List<SampleClass> _data = null!;
+    private IMapper _autoMapper = null!;
+
+    [Params(100)]
+    public int DataCount { get; set; }
 
     [GlobalSetup]
-    public async Task Setup()
+    public void Setup()
     {
         // Configure mapping libraries
-        _autoMapperConfig = AutoMapperConfig.Configuration;
+        _autoMapper = AutoMapperConfig.Configuration.CreateMapper();
         MapsterConfig.Configure();
 
-        var options = new DbContextOptionsBuilder<BenchmarkDbContext>()
-            .UseSqlite("Data Source=benchmark.db")
-            .Options;
-
-        _dbContext = new BenchmarkDbContext(options);
-
-        // Recreate database
-        await _dbContext.Database.EnsureDeletedAsync();
-        await _dbContext.Database.EnsureCreatedAsync();
-
-        // Seed test data
+        // Create in-memory test data
+        _data = new List<SampleClass>();
         for (int i = 0; i < DataCount; i++)
         {
             var sampleEntity = new SampleClass
             {
+                Id = i + 1,
                 Foo = $"FooValue{i}",
                 Bar = $"BarValue{i}",
                 Childs =
                 [
                     new()
                     {
+                        Id = i * 2 + 1,
                         Baz = $"BazValue{i}-1",
-                        Child = new() { Qux = $"QuxValue{i}-1" },
+                        Child = new() { Id = i * 2 + 1, Qux = $"QuxValue{i}-1" },
                     },
                     new()
                     {
+                        Id = i * 2 + 2,
                         Baz = $"BazValue{i}-2",
-                        Child = new() { Qux = $"QuxValue{i}-2" },
+                        Child = new() { Id = i * 2 + 2, Qux = $"QuxValue{i}-2" },
                     },
                 ],
-                Child2 = i % 2 == 0 ? new() { Quux = $"QuuxValue{i}" } : null,
+                Child2 = i % 2 == 0 ? new() { Id = i + 1, Quux = $"QuuxValue{i}" } : null,
                 Child3 = new()
                 {
+                    Id = i + 1,
                     Corge = $"CorgeValue{i}",
-                    Child = i % 3 == 0 ? new() { Grault = $"GraultValue{i}" } : null,
+                    Child = i % 3 == 0 ? new() { Id = i + 1, Grault = $"GraultValue{i}" } : null,
                 },
             };
-            _dbContext.Add(sampleEntity);
+            _data.Add(sampleEntity);
         }
-        await _dbContext.SaveChangesAsync();
-    }
-
-    [GlobalCleanup]
-    public async Task Cleanup()
-    {
-        await _dbContext.Database.EnsureDeletedAsync();
-        await _dbContext.DisposeAsync();
     }
 
     // ============================================================
     // Pattern 1: Traditional Select with Anonymous Type
     // ============================================================
     [Benchmark(Description = "Traditional Anonymous")]
-    public async Task<int> Traditional_Anonymous()
+    public int Traditional_Anonymous()
     {
-        var results = await _dbContext
-            .SampleClasses.Select(s => new
+        var results = _data
+            .Select(s => new
             {
                 s.Id,
                 s.Foo,
@@ -103,7 +92,7 @@ public class SelectBenchmark
                     ? s.Child3.Child.Grault
                     : null,
             })
-            .ToListAsync();
+            .ToList();
         return results.Count;
     }
 
@@ -112,10 +101,10 @@ public class SelectBenchmark
     // (Manual DTO definition)
     // ============================================================
     [Benchmark(Description = "Traditional Manual DTO")]
-    public async Task<int> Traditional_ManualDto()
+    public int Traditional_ManualDto()
     {
-        var results = await _dbContext
-            .SampleClasses.Select(s => new ManualSampleClassDto
+        var results = _data
+            .Select(s => new ManualSampleClassDto
             {
                 Id = s.Id,
                 Foo = s.Foo,
@@ -136,7 +125,7 @@ public class SelectBenchmark
                 Child3ChildGrault =
                     s.Child3 != null && s.Child3.Child != null ? s.Child3.Child.Grault : null,
             })
-            .ToListAsync();
+            .ToList();
         return results.Count;
     }
 
@@ -145,10 +134,10 @@ public class SelectBenchmark
     // (Using Linqraft - Anonymous Type)
     // ============================================================
     [Benchmark(Description = "Linqraft Anonymous")]
-    public async Task<int> Linqraft_Anonymous()
+    public int Linqraft_Anonymous()
     {
-        var results = await _dbContext
-            .SampleClasses.SelectExpr(s => new
+        var results = _data
+            .SelectExpr(s => new
             {
                 s.Id,
                 s.Foo,
@@ -167,7 +156,7 @@ public class SelectBenchmark
                 Child3ChildId = s.Child3?.Child?.Id,
                 Child3ChildGrault = s.Child3?.Child?.Grault,
             })
-            .ToListAsync();
+            .ToList();
         return results.Count;
     }
 
@@ -176,15 +165,18 @@ public class SelectBenchmark
     // (Using Linqraft - Auto-Generated DTO)
     // ============================================================
     [Benchmark(Baseline = true, Description = "Linqraft Auto-Generated DTO")]
-    public async Task<int> Linqraft_AutoGeneratedDto()
+    public int Linqraft_AutoGeneratedDto()
     {
-        var results = await _dbContext
-            .SampleClasses.SelectExpr<SampleClass, LinqraftSampleClassDto>(s => new
+        var results = _data
+            .SelectExpr<SampleClass, InMemoryEnumerableLinqraftSampleClassDto>(s => new
             {
                 s.Id,
                 s.Foo,
                 s.Bar,
-                Childs = s.Childs.Select(c => new
+                Childs = s.Childs.SelectExpr<
+                    SampleChildClass,
+                    InMemoryEnumerableLinqraftSampleChildClassDto
+                >(c => new
                 {
                     c.Id,
                     c.Baz,
@@ -198,7 +190,7 @@ public class SelectBenchmark
                 Child3ChildId = s.Child3?.Child?.Id,
                 Child3ChildGrault = s.Child3?.Child?.Grault,
             })
-            .ToListAsync();
+            .ToList();
         return results.Count;
     }
 
@@ -207,10 +199,10 @@ public class SelectBenchmark
     // (Using Linqraft - Manual DTO definition)
     // ============================================================
     [Benchmark(Description = "Linqraft Manual DTO")]
-    public async Task<int> Linqraftl_ManualDto()
+    public int Linqraft_ManualDto()
     {
-        var results = await _dbContext
-            .SampleClasses.SelectExpr(s => new ManualSampleClassDto
+        var results = _data
+            .SelectExpr(s => new ManualSampleClassDto
             {
                 Id = s.Id,
                 Foo = s.Foo,
@@ -229,58 +221,40 @@ public class SelectBenchmark
                 Child3ChildId = s.Child3?.Child?.Id,
                 Child3ChildGrault = s.Child3?.Child?.Grault,
             })
-            .ToListAsync();
+            .ToList();
         return results.Count;
     }
 
     // ============================================================
-    // Pattern 6: AutoMapper with ProjectTo
-    // (Using AutoMapper's IQueryable projection)
+    // Pattern 6: AutoMapper with Map
+    // (Using AutoMapper's in-memory mapping)
     // ============================================================
-    [Benchmark(Description = "AutoMapper ProjectTo")]
-    public async Task<int> AutoMapper_ProjectTo()
+    [Benchmark(Description = "AutoMapper Map")]
+    public int AutoMapper_Map()
     {
-        var results = await _dbContext
-            .SampleClasses.ProjectTo<ManualSampleClassDto>(_autoMapperConfig)
-            .ToListAsync();
+        var results = _autoMapper.Map<List<ManualSampleClassDto>>(_data);
         return results.Count;
     }
 
     // ============================================================
-    // Pattern 7: Mapperly with IQueryable Projection
-    // (Using Mapperly's source-generated projection)
+    // Pattern 7: Mapperly with Map
+    // (Using Mapperly's source-generated mapping)
     // ============================================================
-    [Benchmark(Description = "Mapperly Projection")]
-    public async Task<int> Mapperly_Projection()
+    [Benchmark(Description = "Mapperly Map")]
+    public int Mapperly_Map()
     {
-        var results = await _dbContext.SampleClasses.ProjectToDto().ToListAsync();
+        var results = _data.ProjectToDto().ToList();
         return results.Count;
     }
 
     // ============================================================
-    // Pattern 8: Mapster with ProjectToType
-    // (Using Mapster's IQueryable projection)
+    // Pattern 8: Mapster with Adapt
+    // (Using Mapster's in-memory mapping)
     // ============================================================
-    [Benchmark(Description = "Mapster ProjectToType")]
-    public async Task<int> Mapster_ProjectToType()
+    [Benchmark(Description = "Mapster Adapt")]
+    public int Mapster_Adapt()
     {
-        var results = await _dbContext
-            .SampleClasses.ProjectToType<ManualSampleClassDto>()
-            .ToListAsync();
-        return results.Count;
-    }
-
-    // ============================================================
-    // Pattern 9: Facet with EF Core Extension
-    // (Using Facet's source-generated DTO projection)
-    // ============================================================
-    [Benchmark(Description = "Facet ToFacetsAsync")]
-    public async Task<int> Facet_ToFacetsAsync()
-    {
-        var results = await _dbContext.SampleClasses.ToFacetsAsync<
-            SampleClass,
-            FacetSampleClassDto
-        >();
+        var results = _data.Adapt<List<ManualSampleClassDto>>();
         return results.Count;
     }
 }

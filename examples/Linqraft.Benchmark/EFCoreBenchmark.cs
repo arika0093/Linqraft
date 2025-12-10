@@ -1,0 +1,275 @@
+using AutoMapper;
+using AutoMapper.QueryableExtensions;
+using BenchmarkDotNet.Attributes;
+using BenchmarkDotNet.Jobs;
+using BenchmarkDotNet.Order;
+using Mapster;
+using Microsoft.EntityFrameworkCore;
+
+namespace Linqraft.Benchmark;
+
+[MemoryDiagnoser]
+[SimpleJob(RuntimeMoniker.Net10_0)]
+[Orderer(SummaryOrderPolicy.FastestToSlowest)]
+[RankColumn]
+public class EFCoreBenchmark
+{
+    private BenchmarkDbContext _dbContext = null!;
+    private IConfigurationProvider _autoMapperConfig = null!;
+
+    [Params(100)]
+    public int DataCount { get; set; }
+
+    [GlobalSetup]
+    public async Task Setup()
+    {
+        // Configure mapping libraries
+        _autoMapperConfig = AutoMapperConfig.Configuration;
+        MapsterConfig.Configure();
+
+        var options = new DbContextOptionsBuilder<BenchmarkDbContext>()
+            .UseSqlite("Data Source=benchmark.db")
+            .Options;
+
+        _dbContext = new BenchmarkDbContext(options);
+
+        // Recreate database
+        await _dbContext.Database.EnsureDeletedAsync();
+        await _dbContext.Database.EnsureCreatedAsync();
+
+        // Seed test data
+        for (int i = 0; i < DataCount; i++)
+        {
+            var sampleEntity = new SampleClass
+            {
+                Foo = $"FooValue{i}",
+                Bar = $"BarValue{i}",
+                Childs =
+                [
+                    new()
+                    {
+                        Baz = $"BazValue{i}-1",
+                        Child = new() { Qux = $"QuxValue{i}-1" },
+                    },
+                    new()
+                    {
+                        Baz = $"BazValue{i}-2",
+                        Child = new() { Qux = $"QuxValue{i}-2" },
+                    },
+                ],
+                Child2 = i % 2 == 0 ? new() { Quux = $"QuuxValue{i}" } : null,
+                Child3 = new()
+                {
+                    Corge = $"CorgeValue{i}",
+                    Child = i % 3 == 0 ? new() { Grault = $"GraultValue{i}" } : null,
+                },
+            };
+            _dbContext.Add(sampleEntity);
+        }
+        await _dbContext.SaveChangesAsync();
+    }
+
+    [GlobalCleanup]
+    public async Task Cleanup()
+    {
+        await _dbContext.Database.EnsureDeletedAsync();
+        await _dbContext.DisposeAsync();
+    }
+
+    // ============================================================
+    // Pattern 1: Traditional Select with Anonymous Type
+    // ============================================================
+    [Benchmark(Description = "Traditional Anonymous")]
+    public async Task<int> Traditional_Anonymous()
+    {
+        var results = await _dbContext
+            .SampleClasses.Select(s => new
+            {
+                s.Id,
+                s.Foo,
+                s.Bar,
+                Childs = s.Childs.Select(c => new
+                {
+                    c.Id,
+                    c.Baz,
+                    ChildId = c.Child != null ? c.Child.Id : (int?)null,
+                    ChildQux = c.Child != null ? c.Child.Qux : null,
+                }),
+                Child2Id = s.Child2 != null ? (int?)s.Child2.Id : null,
+                Child2Quux = s.Child2 != null ? s.Child2.Quux : null,
+                Child3Id = s.Child3.Id,
+                Child3Corge = s.Child3.Corge,
+                Child3ChildId = s.Child3 != null && s.Child3.Child != null
+                    ? (int?)s.Child3.Child.Id
+                    : null,
+                Child3ChildGrault = s.Child3 != null && s.Child3.Child != null
+                    ? s.Child3.Child.Grault
+                    : null,
+            })
+            .ToListAsync();
+        return results.Count;
+    }
+
+    // ============================================================
+    // Pattern 2: Traditional Select with Manual DTO
+    // (Manual DTO definition)
+    // ============================================================
+    [Benchmark(Description = "Traditional Manual DTO")]
+    public async Task<int> Traditional_ManualDto()
+    {
+        var results = await _dbContext
+            .SampleClasses.Select(s => new ManualSampleClassDto
+            {
+                Id = s.Id,
+                Foo = s.Foo,
+                Bar = s.Bar,
+                Childs = s.Childs.Select(c => new ManualSampleChildDto
+                {
+                    Id = c.Id,
+                    Baz = c.Baz,
+                    ChildId = c.Child != null ? c.Child.Id : null,
+                    ChildQux = c.Child != null ? c.Child.Qux : null,
+                }),
+                Child2Id = s.Child2 != null ? s.Child2.Id : null,
+                Child2Quux = s.Child2 != null ? s.Child2.Quux : null,
+                Child3Id = s.Child3.Id,
+                Child3Corge = s.Child3.Corge,
+                Child3ChildId =
+                    s.Child3 != null && s.Child3.Child != null ? s.Child3.Child.Id : null,
+                Child3ChildGrault =
+                    s.Child3 != null && s.Child3.Child != null ? s.Child3.Child.Grault : null,
+            })
+            .ToListAsync();
+        return results.Count;
+    }
+
+    // ============================================================
+    // Pattern 3: Linqraft SelectExpr with Anonymous Type
+    // (Using Linqraft - Anonymous Type)
+    // ============================================================
+    [Benchmark(Description = "Linqraft Anonymous")]
+    public async Task<int> Linqraft_Anonymous()
+    {
+        var results = await _dbContext
+            .SampleClasses.SelectExpr(s => new
+            {
+                s.Id,
+                s.Foo,
+                s.Bar,
+                Childs = s.Childs.Select(c => new
+                {
+                    c.Id,
+                    c.Baz,
+                    ChildId = c.Child?.Id,
+                    ChildQux = c.Child?.Qux,
+                }),
+                Child2Id = s.Child2?.Id,
+                Child2Quux = s.Child2?.Quux,
+                Child3Id = s.Child3.Id,
+                Child3Corge = s.Child3.Corge,
+                Child3ChildId = s.Child3?.Child?.Id,
+                Child3ChildGrault = s.Child3?.Child?.Grault,
+            })
+            .ToListAsync();
+        return results.Count;
+    }
+
+    // ============================================================
+    // Pattern 4: Linqraft SelectExpr with Auto-Generated DTO
+    // (Using Linqraft - Auto-Generated DTO)
+    // ============================================================
+    [Benchmark(Baseline = true, Description = "Linqraft Auto-Generated DTO")]
+    public async Task<int> Linqraft_AutoGeneratedDto()
+    {
+        var results = await _dbContext
+            .SampleClasses.SelectExpr<SampleClass, LinqraftSampleClassDto>(s => new
+            {
+                s.Id,
+                s.Foo,
+                s.Bar,
+                Childs = s.Childs.Select(c => new
+                {
+                    c.Id,
+                    c.Baz,
+                    ChildId = c.Child?.Id,
+                    ChildQux = c.Child?.Qux,
+                }),
+                Child2Id = s.Child2?.Id,
+                Child2Quux = s.Child2?.Quux,
+                Child3Id = s.Child3.Id,
+                Child3Corge = s.Child3.Corge,
+                Child3ChildId = s.Child3?.Child?.Id,
+                Child3ChildGrault = s.Child3?.Child?.Grault,
+            })
+            .ToListAsync();
+        return results.Count;
+    }
+
+    // ============================================================
+    // Pattern 5: Linqraft SelectExpr with Manual DTO
+    // (Using Linqraft - Manual DTO definition)
+    // ============================================================
+    [Benchmark(Description = "Linqraft Manual DTO")]
+    public async Task<int> Linqraftl_ManualDto()
+    {
+        var results = await _dbContext
+            .SampleClasses.SelectExpr(s => new ManualSampleClassDto
+            {
+                Id = s.Id,
+                Foo = s.Foo,
+                Bar = s.Bar,
+                Childs = s.Childs.Select(c => new ManualSampleChildDto
+                {
+                    Id = c.Id,
+                    Baz = c.Baz,
+                    ChildId = c.Child?.Id,
+                    ChildQux = c.Child?.Qux,
+                }),
+                Child2Id = s.Child2?.Id,
+                Child2Quux = s.Child2?.Quux,
+                Child3Id = s.Child3.Id,
+                Child3Corge = s.Child3.Corge,
+                Child3ChildId = s.Child3?.Child?.Id,
+                Child3ChildGrault = s.Child3?.Child?.Grault,
+            })
+            .ToListAsync();
+        return results.Count;
+    }
+
+    // ============================================================
+    // Pattern 6: AutoMapper with ProjectTo
+    // (Using AutoMapper's IQueryable projection)
+    // ============================================================
+    [Benchmark(Description = "AutoMapper ProjectTo")]
+    public async Task<int> AutoMapper_ProjectTo()
+    {
+        var results = await _dbContext
+            .SampleClasses.ProjectTo<ManualSampleClassDto>(_autoMapperConfig)
+            .ToListAsync();
+        return results.Count;
+    }
+
+    // ============================================================
+    // Pattern 7: Mapperly with IQueryable Projection
+    // (Using Mapperly's source-generated projection)
+    // ============================================================
+    [Benchmark(Description = "Mapperly Projection")]
+    public async Task<int> Mapperly_Projection()
+    {
+        var results = await _dbContext.SampleClasses.ProjectToDto().ToListAsync();
+        return results.Count;
+    }
+
+    // ============================================================
+    // Pattern 8: Mapster with ProjectToType
+    // (Using Mapster's IQueryable projection)
+    // ============================================================
+    [Benchmark(Description = "Mapster ProjectToType")]
+    public async Task<int> Mapster_ProjectToType()
+    {
+        var results = await _dbContext
+            .SampleClasses.ProjectToType<ManualSampleClassDto>()
+            .ToListAsync();
+        return results.Count;
+    }
+}

@@ -3,21 +3,30 @@
     <OutputType>Exe</OutputType>
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
-    <NoWarn>$(NoWarn);NU1608</NoWarn>
     <LinqraftUsePrebuildExpression>true</LinqraftUsePrebuildExpression>
     <EmitCompilerGeneratedFiles>true</EmitCompilerGeneratedFiles>
     <CompilerGeneratedFilesOutputPath>.generated</CompilerGeneratedFilesOutputPath>
+    <!-- Disable NativeAOT warnings -->
+    <NoWarn>$(NoWarn);NU1608;IL2026;IL3050;IL3000;IL2104;IL3053;IL3002;IL2037</NoWarn>
   </PropertyGroup>
+
+  <!-- if native AOT is available, add symbol NATIVEAOT -->
+  <PropertyGroup Condition="'$(PublishAot)' == 'true'">
+    <DefineConstants>$(DefineConstants);NATIVEAOT</DefineConstants>
+  </PropertyGroup>
+
   <ItemGroup>
     <PackageReference Include="BenchmarkDotNet" Version="*" />
     <PackageReference Include="Microsoft.EntityFrameworkCore.Sqlite" Version="10.*" />
+    <PackageReference Include="Microsoft.EntityFrameworkCore.Design" Version="10.*">
+      <PrivateAssets>all</PrivateAssets>
+      <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+    </PackageReference>
     <PackageReference Include="Microsoft.Extensions.Logging.Abstractions" Version="10.*" />
     <!-- Mapping libraries for benchmark comparison -->
     <PackageReference Include="AutoMapper" Version="16.0.0" />
     <PackageReference Include="AutoMapper.Extensions.ExpressionMapping" Version="9.*" />
     <PackageReference Include="Mapster" Version="7.*" />
     <PackageReference Include="Riok.Mapperly" Version="4.*" />
-    <PackageReference Include="Facet" Version="5.*" />
-    <PackageReference Include="Facet.Extensions.EFCore" Version="5.*" />
   </ItemGroup>
 </Project>
