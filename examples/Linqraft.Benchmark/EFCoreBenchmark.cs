@@ -10,7 +10,7 @@ using Microsoft.EntityFrameworkCore;
 namespace Linqraft.Benchmark;
 
 [MemoryDiagnoser]
-[DryJob(RuntimeMoniker.Net10_0)]
+[SimpleJob(RuntimeMoniker.Net10_0)]
 [Orderer(SummaryOrderPolicy.FastestToSlowest)]
 [RankColumn]
 public class EFCoreBenchmark

@@ -8,7 +8,7 @@ using Mapster;
 namespace Linqraft.Benchmark;
 
 [MemoryDiagnoser]
-[ShortRunJob(RuntimeMoniker.Net10_0)]
+[SimpleJob(RuntimeMoniker.Net10_0)]
 [Orderer(SummaryOrderPolicy.FastestToSlowest)]
 [RankColumn]
 public partial class InMemoryEnumerableBenchmark
@@ -243,7 +243,7 @@ public partial class InMemoryEnumerableBenchmark
     [Benchmark(Description = "Mapperly Map")]
     public int Mapperly_Map()
     {
-        var results = _data.Select(MapperlyMapper.MapSampleClass).ToList();
+        var results = _data.ProjectToDto().ToList();
         return results.Count;
     }
 
