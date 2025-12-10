@@ -101,7 +101,7 @@ public class CodeGenerationService(SharedCompilationService sharedCompilation)
             }
 
             // Generate DTOs with global deduplication
-            var dtoCode = GenerateSourceCodeSnippets.BuildGlobalDtoCodeSnippet(
+            var dtoCode = GenerateSourceCodeSnippets.BuildDtoCodeSnippetsGroupedByNamespace(
                 allDtoClasses,
                 config
             );
