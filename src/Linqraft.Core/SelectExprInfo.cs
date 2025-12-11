@@ -99,25 +99,25 @@ public abstract record SelectExprInfo
     /// <summary>
     /// Generates the DTO structure for analysis and unique ID generation
     /// </summary>
-    protected abstract DtoStructure GenerateDtoStructure();
+    public abstract DtoStructure GenerateDtoStructure();
 
     /// <summary>
     /// Gets the class name for a DTO structure
     /// </summary>
-    protected abstract string GetClassName(DtoStructure structure);
+    public abstract string GetClassName(DtoStructure structure);
 
     /// <summary>
     /// Gets the parent (root) DTO class name
     /// </summary>
-    protected abstract string GetParentDtoClassName(DtoStructure structure);
+    public abstract string GetParentDtoClassName(DtoStructure structure);
 
     /// <summary>
     /// Gets the namespace where DTOs will be placed
     /// </summary>
-    protected abstract string GetDtoNamespace();
+    public abstract string GetDtoNamespace();
 
     // Get expression type string (for documentation)
-    protected abstract string GetExprTypeString();
+    public abstract string GetExprTypeString();
 
     /// <summary>
     /// Gets the full name for a nested DTO class using the structure.
@@ -230,7 +230,7 @@ public abstract record SelectExprInfo
     /// <summary>
     /// Gets the return type prefix based on whether it's IQueryable or IEnumerable
     /// </summary>
-    protected string GetReturnTypePrefix()
+    public string GetReturnTypePrefix()
     {
         return IsEnumerableInvocation() ? "IEnumerable" : "IQueryable";
     }
@@ -276,7 +276,7 @@ public abstract record SelectExprInfo
     /// <summary>
     /// Generates property assignment code for a DTO property
     /// </summary>
-    protected string GeneratePropertyAssignment(DtoProperty property, int indents)
+    public string GeneratePropertyAssignment(DtoProperty property, int indents)
     {
         var expression = property.OriginalExpression;
         var syntax = property.OriginalSyntax;
