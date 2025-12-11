@@ -4,21 +4,6 @@ using Xunit;
 
 namespace Linqraft.Tests;
 
-// Test source classes  
-public class MappingTestSampleClass
-{
-    public int Id { get; set; }
-    public string Name { get; set; } = "";
-    public string? Description { get; set; }
-    public MappingTestChildClass? Child { get; set; }
-}
-
-public class MappingTestChildClass
-{
-    public int ChildId { get; set; }
-    public string ChildName { get; set; } = "";
-}
-
 // Static partial class with mapping methods
 public static partial class MappingTestQueries
 {
@@ -39,19 +24,12 @@ public static partial class MappingTestQueries
         {
             x.Id,
             x.Title,
-            Children = x.Children.Select(c => new
+            Children = x.Children.SelectExpr<MappingTestChildClass, MappingTestChildClassDto>(c => new
             {
                 c.ChildId,
                 c.ChildName,
             }),
         });
-}
-
-public class MappingTestParentClass
-{
-    public int Id { get; set; }
-    public string Title { get; set; } = "";
-    public List<MappingTestChildClass> Children { get; set; } = new();
 }
 
 public class LinqraftMappingGenerateTest
@@ -138,4 +116,26 @@ public class LinqraftMappingGenerateTest
         Assert.Equal("Parent2", result[1].Title);
         Assert.Empty(result[1].Children);
     }
+}
+
+// Test source classes - consolidated at the end of the file
+public class MappingTestSampleClass
+{
+    public int Id { get; set; }
+    public string Name { get; set; } = "";
+    public string? Description { get; set; }
+    public MappingTestChildClass? Child { get; set; }
+}
+
+public class MappingTestChildClass
+{
+    public int ChildId { get; set; }
+    public string ChildName { get; set; } = "";
+}
+
+public class MappingTestParentClass
+{
+    public int Id { get; set; }
+    public string Title { get; set; } = "";
+    public List<MappingTestChildClass> Children { get; set; } = new();
 }

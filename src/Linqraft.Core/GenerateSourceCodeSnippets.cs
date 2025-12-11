@@ -257,18 +257,7 @@ public static class GenerateSourceCodeSnippets
             /// name that contains the compiled Select expression.
             /// This is useful for EFCore query (pre)compilation support where interceptors cannot be used.
             /// </summary>
-            /// <example>
-            /// <code>
-            /// public static partial class SampleClassQueries
-            /// {
-            ///     [LinqraftMappingGenerate("ProjectToDto")]
-            ///     internal static IQueryable&lt;SampleDto&gt; DummyQuery(this IQueryable&lt;SampleClass&gt; source) =&gt; source
-            ///         .SelectExpr&lt;SampleClass, SampleDto&gt;(x => new { x.Id, x.Name });
-            /// }
-            /// </code>
-            /// </example>
             [AttributeUsage(AttributeTargets.Method, Inherited = false, AllowMultiple = false)]
-            [EditorBrowsable(EditorBrowsableState.Never)]
             [EmbeddedAttribute]
             internal sealed class LinqraftMappingGenerateAttribute : Attribute
             {

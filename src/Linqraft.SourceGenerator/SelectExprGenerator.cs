@@ -431,6 +431,7 @@ public partial class SelectExprGenerator : IIncrementalGenerator
             return false;
 
         // Check if the method has the LinqraftMappingGenerate attribute
+        // We do syntax-level check here; semantic check happens in transform
         return method
             .AttributeLists.SelectMany(list => list.Attributes)
             .Any(attr =>
@@ -453,13 +454,17 @@ public partial class SelectExprGenerator : IIncrementalGenerator
         if (methodSymbol is null)
             return null;
 
-        // Get the LinqraftMappingGenerate attribute
+        // Get the LinqraftMappingGenerate attribute using full name check
         var attributeData = methodSymbol
             .GetAttributes()
             .FirstOrDefault(attr =>
-                attr.AttributeClass?.Name == "LinqraftMappingGenerateAttribute"
-                && attr.AttributeClass.ContainingNamespace.ToDisplayString() == "Linqraft"
-            );
+            {
+                if (attr.AttributeClass is null)
+                    return false;
+                
+                var fullName = attr.AttributeClass.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat);
+                return fullName == "global::Linqraft.LinqraftMappingGenerateAttribute";
+            });
 
         if (attributeData is null)
             return null;
@@ -480,7 +485,7 @@ public partial class SelectExprGenerator : IIncrementalGenerator
         return new SelectExprMappingInfo
         {
             MethodDeclaration = method,
-            TargetMethodName = targetMethodName,
+            TargetMethodName = targetMethodName!,
             ContainingClass = containingClass,
             SemanticModel = semanticModel,
             ContainingNamespace = containingNamespace,
