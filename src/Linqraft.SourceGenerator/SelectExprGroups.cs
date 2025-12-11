@@ -50,28 +50,66 @@ internal class SelectExprGroups
         {
             var selectExprMethods = new List<string>();
             var staticFields = new List<string>();
+            var mappingMethods = new List<(SelectExprInfo Info, string Code)>();
 
             foreach (var expr in Exprs)
             {
                 var info = expr.Info;
-                var exprMethods = info.GenerateSelectExprCodes(expr.Location);
-                var fields = info.GenerateStaticFields();
+                
+                // For mapping methods, generate extension method without interceptor
+                if (info.MappingMethodName != null && expr.Location == null)
+                {
+                    var mappingMethod = GenerateSourceCodeSnippets.GenerateMappingMethod(info);
+                    if (!string.IsNullOrEmpty(mappingMethod))
+                    {
+                        mappingMethods.Add((info, mappingMethod));
+                    }
+                }
+                else if (expr.Location != null)
+                {
+                    // For regular SelectExpr, generate interceptor
+                    var exprMethods = info.GenerateSelectExprCodes(expr.Location);
+                    selectExprMethods.AddRange(exprMethods);
+                }
 
-                selectExprMethods.AddRange(exprMethods);
+                var fields = info.GenerateStaticFields();
                 if (fields != null)
                 {
                     staticFields.Add(fields);
                 }
             }
 
-            // Generate only expression methods without DTOs
-            var sourceCode = GenerateSourceCodeSnippets.BuildExprCodeSnippetsWithHeaders(
-                selectExprMethods,
-                staticFields
-            );
-            // Register with Source Generator
-            var uniqueId = GetUniqueId();
-            context.AddSource($"GeneratedExpression_{uniqueId}.g.cs", sourceCode);
+            // Generate interceptor-based expression methods
+            if (selectExprMethods.Count > 0 || staticFields.Count > 0)
+            {
+                var sourceCode = GenerateSourceCodeSnippets.BuildExprCodeSnippetsWithHeaders(
+                    selectExprMethods,
+                    staticFields
+                );
+                var uniqueId = GetUniqueId();
+                context.AddSource($"GeneratedExpression_{uniqueId}.g.cs", sourceCode);
+            }
+
+            // Generate mapping methods grouped by containing class
+            var mappingMethodsByClass = mappingMethods
+                .GroupBy(m => m.Info.MappingContainingClass?.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat) ?? "")
+                .Where(g => !string.IsNullOrEmpty(g.Key));
+
+            foreach (var classGroup in mappingMethodsByClass)
+            {
+                var firstInfo = classGroup.First().Info;
+                var containingClass = firstInfo.MappingContainingClass;
+                if (containingClass == null)
+                    continue;
+
+                var sourceCode = GenerateSourceCodeSnippets.BuildMappingClassCode(
+                    containingClass,
+                    classGroup.Select(m => m.Code).ToList()
+                );
+                var className = containingClass.Name.Replace("<", "_").Replace(">", "_");
+                var hash = HashUtility.GenerateSha256Hash(containingClass.ToDisplayString());
+                context.AddSource($"GeneratedMapping_{className}_{hash}.g.cs", sourceCode);
+            }
         }
         catch (Exception ex)
         {
@@ -91,5 +129,5 @@ internal class SelectExprGroups
 internal class SelectExprLocations
 {
     public required SelectExprInfo Info { get; init; }
-    public required InterceptableLocation Location { get; init; }
+    public required InterceptableLocation? Location { get; init; }
 }

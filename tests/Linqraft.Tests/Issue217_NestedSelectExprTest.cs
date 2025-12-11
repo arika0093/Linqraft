@@ -1,7 +1,7 @@
 using System.Collections.Generic;
 using System.Linq;
 
-namespace MinRepro;
+namespace Linqraft.Tests;
 
 public partial class Issue_NestedSelectExprTest
 {
