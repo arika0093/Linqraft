@@ -191,7 +191,7 @@ public record SelectExprInfoExplicitDto : SelectExprInfo
     /// <summary>
     /// Generates the DTO structure for unique ID generation
     /// </summary>
-    protected override DtoStructure GenerateDtoStructure()
+    public override DtoStructure GenerateDtoStructure()
     {
         return DtoStructure.AnalyzeAnonymousType(
             AnonymousObject,
@@ -243,7 +243,7 @@ public record SelectExprInfoExplicitDto : SelectExprInfo
     /// When NestedDtoUseHashNamespace is enabled, the class name is just "{BestName}Dto"
     /// Otherwise, it includes the hash suffix: "{BestName}Dto_{hash}"
     /// </summary>
-    protected override string GetClassName(DtoStructure structure)
+    public override string GetClassName(DtoStructure structure)
     {
         if (Configuration?.NestedDtoUseHashNamespace == true)
         {
@@ -255,15 +255,15 @@ public record SelectExprInfoExplicitDto : SelectExprInfo
     /// <summary>
     /// Gets the parent DTO class name
     /// </summary>
-    protected override string GetParentDtoClassName(DtoStructure structure) => ExplicitDtoName;
+    public override string GetParentDtoClassName(DtoStructure structure) => ExplicitDtoName;
 
     /// <summary>
     /// Gets the namespace where DTOs will be placed
     /// </summary>
-    protected override string GetDtoNamespace() => GetActualDtoNamespace();
+    public override string GetDtoNamespace() => GetActualDtoNamespace();
 
     // Get expression type string (for documentation)
-    protected override string GetExprTypeString() => "explicit";
+    public override string GetExprTypeString() => "explicit";
 
     /// <summary>
     /// Generates static field declarations for pre-built expressions (if enabled)

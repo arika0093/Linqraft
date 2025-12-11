@@ -26,7 +26,7 @@ public record SelectExprInfoNamed : SelectExprInfo
     /// <summary>
     /// Generates the DTO structure for unique ID generation
     /// </summary>
-    protected override DtoStructure GenerateDtoStructure()
+    public override DtoStructure GenerateDtoStructure()
     {
         return DtoStructure.AnalyzeNamedType(
             ObjectCreation,
@@ -39,23 +39,23 @@ public record SelectExprInfoNamed : SelectExprInfo
     /// <summary>
     /// Gets the DTO class name (uses the source type name)
     /// </summary>
-    protected override string GetClassName(DtoStructure structure) => structure.SourceTypeName;
+    public override string GetClassName(DtoStructure structure) => structure.SourceTypeName;
 
     /// <summary>
     /// Gets the parent DTO class name (fully qualified)
     /// </summary>
-    protected override string GetParentDtoClassName(DtoStructure structure) =>
+    public override string GetParentDtoClassName(DtoStructure structure) =>
         structure.SourceTypeFullName;
 
     /// <summary>
     /// Gets the namespace where DTOs will be placed
     /// Named types use the DTO's own namespace
     /// </summary>
-    protected override string GetDtoNamespace() =>
+    public override string GetDtoNamespace() =>
         SourceType.ContainingNamespace?.ToDisplayString() ?? CallerNamespace;
 
     // Get expression type string (for documentation)
-    protected override string GetExprTypeString() => "predefined";
+    public override string GetExprTypeString() => "predefined";
 
     /// <summary>
     /// Generates static field declarations for pre-built expressions (if enabled)

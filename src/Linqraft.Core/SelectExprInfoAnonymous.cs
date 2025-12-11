@@ -26,7 +26,7 @@ public record SelectExprInfoAnonymous : SelectExprInfo
     /// <summary>
     /// Generates the DTO structure for unique ID generation
     /// </summary>
-    protected override DtoStructure GenerateDtoStructure()
+    public override DtoStructure GenerateDtoStructure()
     {
         return DtoStructure.AnalyzeAnonymousType(
             AnonymousObject,
@@ -39,21 +39,21 @@ public record SelectExprInfoAnonymous : SelectExprInfo
     /// <summary>
     /// Gets the DTO class name (empty for anonymous types)
     /// </summary>
-    protected override string GetClassName(DtoStructure structure) => "";
+    public override string GetClassName(DtoStructure structure) => "";
 
     /// <summary>
     /// Gets the parent DTO class name (empty for anonymous types)
     /// </summary>
-    protected override string GetParentDtoClassName(DtoStructure structure) => "";
+    public override string GetParentDtoClassName(DtoStructure structure) => "";
 
     /// <summary>
     /// Gets the namespace where DTOs will be placed
     /// Anonymous types don't generate separate DTOs, but return caller namespace for consistency
     /// </summary>
-    protected override string GetDtoNamespace() => CallerNamespace;
+    public override string GetDtoNamespace() => CallerNamespace;
 
     // Get expression type string (for documentation)
-    protected override string GetExprTypeString() => "anonymous";
+    public override string GetExprTypeString() => "anonymous";
 
     /// <summary>
     /// Generates static field declarations for pre-built expressions (if enabled)
