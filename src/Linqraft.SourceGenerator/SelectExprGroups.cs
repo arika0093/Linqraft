@@ -45,7 +45,7 @@ internal class SelectExprGroups
         return $"{targetNsReplaced}_{filenameReplaced}";
     }
 
-    // Generate source code without DTOs (for global DTO generation)
+    // Generate source code for expressions and co-located DTOs
     public virtual void GenerateCodeWithoutDtos(SourceProductionContext context)
     {
         try
