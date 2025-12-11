@@ -416,21 +416,6 @@ public static class GenerateSourceCodeSnippets
         """;
 
     /// <summary>
-    /// Generates the header for mapping method source files
-    /// </summary>
-    public static string GenerateMappingMethodHeader()
-    {
-        return $$"""
-            {{GenerateCommentHeaderPart()}}
-            #nullable enable
-
-            using System;
-            using System.Linq;
-            using System.Collections.Generic;
-            """;
-    }
-
-    /// <summary>
     /// Generates a mapping class wrapper with the specified methods
     /// </summary>
     public static string BuildMappingClassCode(
@@ -438,25 +423,10 @@ public static class GenerateSourceCodeSnippets
         List<string> methods
     )
     {
-        var sb = new System.Text.StringBuilder();
-
-        // Add header
-        sb.AppendLine(GenerateMappingMethodHeader());
-        sb.AppendLine();
-
-        // Get namespace
         var namespaceName = containingClass.ContainingNamespace?.ToDisplayString();
-
-        if (!string.IsNullOrEmpty(namespaceName) && namespaceName != "<global namespace>")
-        {
-            sb.AppendLine($"namespace {namespaceName}");
-            sb.AppendLine("{");
-        }
-
-        // Generate the partial class
-        var indent = !string.IsNullOrEmpty(namespaceName) && namespaceName != "<global namespace>"
-            ? "    "
-            : "";
+        var hasNamespace = namespaceName != null && namespaceName != "<global namespace>";
+        var firstIndent = CodeFormatter.Indent(hasNamespace ? 1 : 0);
+        var indent = CodeFormatter.Indent(1);
 
         // Determine accessibility - use the class's declared accessibility
         var accessibility = containingClass.DeclaredAccessibility switch
@@ -464,27 +434,38 @@ public static class GenerateSourceCodeSnippets
             Accessibility.Public => "public",
             Accessibility.Internal => "internal",
             Accessibility.Private => "private",
-            _ => "internal"
+            _ => "internal",
         };
 
-        sb.AppendLine($"{indent}{accessibility} static partial class {containingClass.Name}");
-        sb.AppendLine($"{indent}{{");
+        var methodsPart = methods
+            .Select(method =>
+                method
+                    .Split('\n')
+                    .Select(m => $"{firstIndent}{indent}{m}")
+                    .Aggregate((a, b) => $"{a}\n{b}")
+            )
+            .Aggregate((a, b) => $"{a}\n{b}");
+        var classPart = $$"""
+            {{firstIndent}}{{accessibility}} static partial class {{containingClass.Name}}
+            {{firstIndent}}{
+            {{methodsPart}}
+            {{firstIndent}}}
+            """;
+        var classWithNamespacePart = hasNamespace
+            ? $$"""
+                namespace {{namespaceName}}
+                {
+                {{classPart}}
+                }
+                """
+            : classPart;
 
-        // Add all methods
-        foreach (var method in methods)
-        {
-            var indentedMethod = method.Replace("\n", $"\n{indent}    ");
-            sb.AppendLine($"{indent}    {indentedMethod}");
-        }
-
-        sb.AppendLine($"{indent}}}");
-
-        if (!string.IsNullOrEmpty(namespaceName) && namespaceName != "<global namespace>")
-        {
-            sb.AppendLine("}");
-        }
-
-        return sb.ToString();
+        return $$"""
+            {{GenerateCommentHeaderPart()}}
+            {{GenerateHeaderFlagsPart}}
+            {{GenerateHeaderUsingPart}}
+            {{classWithNamespacePart}}
+            """;
     }
 
     /// <summary>
@@ -522,9 +503,7 @@ public static class GenerateSourceCodeSnippets
         sb.AppendLine($"internal static {returnTypePrefix}<{dtoClassName}> {methodName}(");
         sb.AppendLine($"    this {returnTypePrefix}<{sourceTypeFullName}> source)");
         sb.AppendLine($"{{");
-        sb.AppendLine(
-            $"    return source.Select({info.LambdaParameterName} => new {dtoClassName}"
-        );
+        sb.AppendLine($"    return source.Select({info.LambdaParameterName} => new {dtoClassName}");
         sb.AppendLine($"    {{");
 
         // Generate property assignments
