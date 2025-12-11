@@ -80,6 +80,18 @@ public abstract record SelectExprInfo
     public ITypeSymbol? CaptureArgumentType { get; init; }
 
     /// <summary>
+    /// The name of the method to generate when using LinqraftMappingGenerate attribute.
+    /// If null, use the normal interceptor-based generation.
+    /// </summary>
+    public string? MappingMethodName { get; init; }
+
+    /// <summary>
+    /// The containing class for the mapping method when using LinqraftMappingGenerate attribute.
+    /// This should be a static partial class.
+    /// </summary>
+    public INamedTypeSymbol? MappingContainingClass { get; init; }
+
+    /// <summary>
     /// Generates DTO class information (including nested DTOs)
     /// </summary>
     public abstract List<GenerateDtoClassInfo> GenerateDtoClasses();
