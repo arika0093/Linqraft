@@ -93,10 +93,9 @@ public partial class SelectExprGenerator : IIncrementalGenerator
                         Namespace = info.GetNamespaceString(),
                         FileName = info.GetFileNameString() ?? "",
                         // Group mapping methods by containing class to generate code in the same class
-                        MappingClass =
-                            info.MappingContainingClass?.ToDisplayString(
-                                SymbolDisplayFormat.FullyQualifiedFormat
-                            ) ?? "",
+                        MappingClass = info.MappingContainingClass?.ToDisplayString(
+                            SymbolDisplayFormat.FullyQualifiedFormat
+                        ) ?? "",
                     })
                     .Select(g =>
                     {
@@ -461,8 +460,10 @@ public partial class SelectExprGenerator : IIncrementalGenerator
             {
                 if (attr.AttributeClass is null)
                     return false;
-                
-                var fullName = attr.AttributeClass.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat);
+
+                var fullName = attr.AttributeClass.ToDisplayString(
+                    SymbolDisplayFormat.FullyQualifiedFormat
+                );
                 return fullName == "global::Linqraft.LinqraftMappingGenerateAttribute";
             });
 
@@ -524,10 +525,7 @@ public partial class SelectExprGenerator : IIncrementalGenerator
         var lambdaParamName = LambdaHelper.GetLambdaParameterName(lambda);
 
         // Extract capture argument info (if present)
-        var (captureArgExpr, captureType) = GetCaptureInfo(
-            selectExprInvocation,
-            semanticModel
-        );
+        var (captureArgExpr, captureType) = GetCaptureInfo(selectExprInvocation, semanticModel);
 
         // check
         // 1. SelectExpr with predefined DTO type
