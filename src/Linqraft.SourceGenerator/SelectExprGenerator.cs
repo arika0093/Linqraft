@@ -166,6 +166,8 @@ public partial class SelectExprGenerator : IIncrementalGenerator
 
                 static bool IsHashNamespaceDto(string? namespaceName)
                 {
+                    const string HashNamespacePrefix = "LinqraftGenerated_";
+
                     if (string.IsNullOrEmpty(namespaceName))
                     {
                         return false;
@@ -173,7 +175,7 @@ public partial class SelectExprGenerator : IIncrementalGenerator
 
                     var parts = namespaceName!.Split('.');
                     return parts.Any(p =>
-                        p.StartsWith("LinqraftGenerated_", StringComparison.Ordinal)
+                        p.StartsWith(HashNamespacePrefix, StringComparison.Ordinal)
                     );
                 }
             }
