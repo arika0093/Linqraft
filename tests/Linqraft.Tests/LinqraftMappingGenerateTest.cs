@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using System.Linq;
 using Xunit;
 
@@ -31,6 +32,26 @@ public static partial class MappingTestQueries
             ChildId = x.Child?.ChildId,
             ChildName = x.Child?.ChildName,
         });
+
+    [LinqraftMappingGenerate("ProjectToDtoWithChildren")]
+    internal static IQueryable<MappingTestParentDto> DummyWithChildren(this IQueryable<MappingTestParentClass> source) => source
+        .SelectExpr<MappingTestParentClass, MappingTestParentDto>(x => new
+        {
+            x.Id,
+            x.Title,
+            Children = x.Children.Select(c => new
+            {
+                c.ChildId,
+                c.ChildName,
+            }),
+        });
+}
+
+public class MappingTestParentClass
+{
+    public int Id { get; set; }
+    public string Title { get; set; } = "";
+    public List<MappingTestChildClass> Children { get; set; } = new();
 }
 
 public class LinqraftMappingGenerateTest
@@ -74,5 +95,47 @@ public class LinqraftMappingGenerateTest
         Assert.Null(result[1].Description);
         Assert.Null(result[1].ChildId);
         Assert.Null(result[1].ChildName);
+    }
+
+    [Fact]
+    public void MappingGenerate_WithNestedCollection_Test()
+    {
+        // Arrange
+        var data = new[]
+        {
+            new MappingTestParentClass
+            {
+                Id = 1,
+                Title = "Parent1",
+                Children = new List<MappingTestChildClass>
+                {
+                    new() { ChildId = 10, ChildName = "Child1-1" },
+                    new() { ChildId = 11, ChildName = "Child1-2" },
+                }
+            },
+            new MappingTestParentClass
+            {
+                Id = 2,
+                Title = "Parent2",
+                Children = new List<MappingTestChildClass>()
+            }
+        }.AsQueryable();
+
+        // Act
+        var result = MappingTestQueries.ProjectToDtoWithChildren(data).ToList();
+
+        // Assert
+        Assert.Equal(2, result.Count);
+        Assert.Equal(1, result[0].Id);
+        Assert.Equal("Parent1", result[0].Title);
+        
+        var children0 = result[0].Children.ToList();
+        Assert.Equal(2, children0.Count);
+        Assert.Equal(10, children0[0].ChildId);
+        Assert.Equal("Child1-1", children0[0].ChildName);
+
+        Assert.Equal(2, result[1].Id);
+        Assert.Equal("Parent2", result[1].Title);
+        Assert.Empty(result[1].Children);
     }
 }
