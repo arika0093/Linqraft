@@ -48,6 +48,21 @@ public record SelectExprInfoExplicitDto : SelectExprInfo
         return GenerateDtoClasses(structure, parentClassName);
     }
 
+    public override GenerateDtoClassInfo? GetReverseDtoInfo()
+    {
+        var structure = GenerateDtoStructure();
+        var accessibility = GetAccessibilityString(TResultType);
+        var className = GetParentDtoClassName(structure);
+        return BuildReverseDtoInfo(
+            structure,
+            className.Split('.').Last(),
+            GetDtoNamespace(),
+            accessibility,
+            ParentClasses,
+            GetParentAccessibilities()
+        );
+    }
+
     private List<GenerateDtoClassInfo> GenerateDtoClasses(
         DtoStructure structure,
         string? overrideClassName = null,

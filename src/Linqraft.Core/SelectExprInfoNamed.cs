@@ -23,6 +23,22 @@ public record SelectExprInfoNamed : SelectExprInfo
     /// </summary>
     public override List<GenerateDtoClassInfo> GenerateDtoClasses() => [];
 
+    public override GenerateDtoClassInfo? GetReverseDtoInfo()
+    {
+        var structure = GenerateDtoStructure();
+        var dtoFullName = GetParentDtoClassName(structure);
+        var className = dtoFullName.Split('.').Last();
+        var accessibility = GetAccessibilityString(structure.SourceType);
+        return BuildReverseDtoInfo(
+            structure,
+            className,
+            GetDtoNamespace(),
+            accessibility,
+            [],
+            []
+        );
+    }
+
     /// <summary>
     /// Generates the DTO structure for unique ID generation
     /// </summary>

@@ -106,6 +106,16 @@ public partial class SelectExprGenerator : IIncrementalGenerator
                     }
                 }
 
+                var reverseDtoInfos = new List<GenerateDtoClassInfo>(allDtoClassInfos);
+                foreach (var info in infoWithoutNulls)
+                {
+                    var reverseInfo = info.GetReverseDtoInfo();
+                    if (reverseInfo is not null)
+                    {
+                        reverseDtoInfos.Add(reverseInfo);
+                    }
+                }
+
                 // Generate all DTOs in a single shared source file
                 var dtoCode = GenerateSourceCodeSnippets.BuildGlobalDtoCodeSnippet(
                     allDtoClassInfos,
@@ -117,24 +127,17 @@ public partial class SelectExprGenerator : IIncrementalGenerator
                 }
 
                 // Generate reverse converters for DTOs marked with LinqraftReverseConvertionAttribute
-                var dtoLookup = BuildDtoLookup(allDtoClassInfos);
+                var reverseSources = ReverseConversionGenerator.GenerateReverseConverters(
+                    reverseConverterRequests,
+                    reverseDtoInfos
+                );
                 var reverseIndex = 0;
-                foreach (var request in reverseConverterRequests)
+                foreach (var reverse in reverseSources)
                 {
-                    if (!TryFindDtoInfo(dtoLookup, request.DtoType, out var dtoStructure))
-                    {
-                        continue;
-                    }
-
-                    var reverseCode = GenerateReverseConverterCode(request, dtoStructure);
-                    if (!string.IsNullOrEmpty(reverseCode))
-                    {
-                        var hint = request.ConverterSymbol.Name;
-                        spc.AddSource(
-                            $"GeneratedReverseConverter_{hint}_{reverseIndex++}.g.cs",
-                            reverseCode
-                        );
-                    }
+                    spc.AddSource(
+                        $"GeneratedReverseConverter_{reverse.HintName}_{reverseIndex++}.g.cs",
+                        reverse.SourceCode
+                    );
                 }
 
                 // Generate code for expression methods (without DTOs)
@@ -490,283 +493,4 @@ public partial class SelectExprGenerator : IIncrementalGenerator
 
         return null;
     }
-
-    private static Dictionary<string, DtoStructure> BuildDtoLookup(
-        List<GenerateDtoClassInfo> dtoInfos
-    )
-    {
-        var dict = new Dictionary<string, DtoStructure>();
-        foreach (var dto in dtoInfos)
-        {
-            var key = NormalizeFullName(dto.FullName);
-            if (!dict.ContainsKey(key))
-            {
-                dict[key] = dto.Structure;
-            }
-        }
-        return dict;
-    }
-
-    private static bool TryFindDtoInfo(
-        Dictionary<string, DtoStructure> dtoLookup,
-        ITypeSymbol dtoType,
-        out DtoStructure dtoStructure
-    )
-    {
-        var dtoName = NormalizeFullName(
-            dtoType.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat)
-        );
-        if (dtoLookup.TryGetValue(dtoName, out dtoStructure!))
-        {
-            return true;
-        }
-
-        var simpleName = dtoType.Name;
-        var fallback = dtoLookup.FirstOrDefault(kvp =>
-            kvp.Key.EndsWith($".{simpleName}", StringComparison.Ordinal)
-            || kvp.Key.EndsWith($"::{simpleName}", StringComparison.Ordinal)
-        );
-        if (!string.IsNullOrEmpty(fallback.Key))
-        {
-            dtoStructure = fallback.Value;
-            return true;
-        }
-
-        dtoStructure = default!;
-        return false;
-    }
-
-    private static string NormalizeFullName(string name)
-    {
-        return name.StartsWith("global::", StringComparison.Ordinal) ? name : $"global::{name}";
-    }
-
-    private static string GenerateReverseConverterCode(
-        ReverseConverterRequest request,
-        DtoStructure structure
-    )
-    {
-        var sourceTypeName = structure.SourceTypeFullName;
-        var dtoTypeName = request.DtoType.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat);
-        var @namespace = request.ConverterSymbol.ContainingNamespace?.ToDisplayString() ?? "";
-        var accessibility = GetAccessibilityString(request.ConverterSymbol);
-        var staticClassKeyword = request.ConverterSymbol.IsStatic ? " static" : "";
-        var className = request.ConverterSymbol.Name;
-        var methodStaticModifier = request.IsStatic ? "static " : "";
-        var indent1 = CodeFormatter.Indent(1);
-        var indent2 = CodeFormatter.Indent(2);
-        var indent3 = CodeFormatter.Indent(3);
-
-        var assignments = GenerateReverseAssignments(structure, "dto");
-        var assignmentLines = assignments.Count == 0
-            ? ""
-            : CodeFormatter.IndentCode(
-                string.Join(CodeFormatter.DefaultNewLine, assignments),
-                CodeFormatter.IndentSize * 2
-            ) + CodeFormatter.DefaultNewLine;
-
-        var classBody = $$"""
-            {{indent1}}public {{methodStaticModifier}}{{sourceTypeName}} FromDto({{dtoTypeName}} dto)
-            {{indent1}}{
-            {{indent2}}if (dto is null) return default!;
-            {{indent2}}var entity = new {{sourceTypeName}}();
-            {{assignmentLines}}{{indent2}}return entity;
-            {{indent1}}}
-
-            {{indent1}}public {{methodStaticModifier}}IEnumerable<{{sourceTypeName}}> FromDtoProjection(IEnumerable<{{dtoTypeName}}> source)
-            {{indent1}}{
-            {{indent2}}if (source is null) yield break;
-            {{indent2}}foreach (var item in source)
-            {{indent2}}{
-            {{indent3}}yield return FromDto(item);
-            {{indent2}}}
-            {{indent1}}}
-            """;
-
-        var classContent = $$"""
-            {{indent1}}{{accessibility}}{{staticClassKeyword}} partial class {{className}}
-            {{indent1}}{
-            {{classBody}}
-            {{indent1}}}
-            """;
-
-        var bodyWithNamespace = string.IsNullOrEmpty(@namespace)
-            ? classContent
-            : $$"""
-                namespace {{@namespace}}
-                {
-                {{classContent}}
-                }
-                """;
-
-        return $$"""
-            // <auto-generated>
-            // This file is auto-generated by Linqraft.
-            // </auto-generated>
-            #nullable enable
-            #pragma warning disable IDE0060
-            #pragma warning disable CS8601
-            #pragma warning disable CS8602
-            #pragma warning disable CS8603
-            #pragma warning disable CS8604
-            #pragma warning disable CS8618
-            using System;
-            using System.Linq;
-            using System.Collections.Generic;
-
-            {{bodyWithNamespace}}
-            """;
-    }
-
-    private static List<string> GenerateReverseAssignments(DtoStructure structure, string dtoName)
-    {
-        var assignments = new List<string>();
-
-        foreach (var property in structure.Properties)
-        {
-            if (!TryGetMemberPath(property.OriginalSyntax, out var path) || path.Count == 0)
-            {
-                continue;
-            }
-
-            var currentType = structure.SourceType;
-            var currentExpr = "entity";
-            var sb = new List<string>();
-            var skip = false;
-
-            for (int i = 0; i < path.Count - 1; i++)
-            {
-                var memberName = path[i];
-                var memberSymbol = FindMemberSymbol(currentType, memberName);
-                if (memberSymbol is null)
-                {
-                    skip = true;
-                    break;
-                }
-
-                var memberType = memberSymbol switch
-                {
-                    IPropertySymbol propSym => propSym.Type,
-                    IFieldSymbol fieldSym => fieldSym.Type,
-                    _ => null
-                };
-
-                if (memberType is null || !CanInstantiate(memberType))
-                {
-                    skip = true;
-                    break;
-                }
-
-                var targetTypeName = memberType.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat);
-                targetTypeName = targetTypeName.EndsWith("?")
-                    ? targetTypeName[..^1]
-                    : targetTypeName;
-
-                sb.Add($"{currentExpr}.{memberName} ??= new {targetTypeName}();");
-                currentExpr = $"{currentExpr}.{memberName}";
-                currentType = memberType;
-            }
-
-            if (skip)
-            {
-                continue;
-            }
-
-            var lastMember = path[^1];
-            var lastSymbol = FindMemberSymbol(currentType, lastMember);
-            if (lastSymbol is IPropertySymbol prop && prop.SetMethod is null)
-            {
-                continue;
-            }
-            if (lastSymbol is null)
-            {
-                continue;
-            }
-
-            sb.Add($"{currentExpr}.{lastMember} = {dtoName}.{property.Name};");
-            assignments.AddRange(sb);
-        }
-
-        return assignments;
-    }
-
-    private static ISymbol? FindMemberSymbol(ITypeSymbol typeSymbol, string name)
-    {
-        return typeSymbol
-            .GetMembers(name)
-            .FirstOrDefault(m => m is IPropertySymbol || m is IFieldSymbol);
-    }
-
-    private static bool TryGetMemberPath(ExpressionSyntax syntax, out List<string> path)
-    {
-        path = new List<string>();
-
-        if (syntax is IdentifierNameSyntax identifier)
-        {
-            path.Add(identifier.Identifier.Text);
-            return true;
-        }
-
-        if (syntax is not MemberAccessExpressionSyntax memberAccess)
-        {
-            return false;
-        }
-
-        var current = memberAccess;
-        while (true)
-        {
-            path.Insert(0, current.Name.Identifier.Text);
-            if (current.Expression is MemberAccessExpressionSyntax innerAccess)
-            {
-                current = innerAccess;
-                continue;
-            }
-
-            if (current.Expression is IdentifierNameSyntax)
-            {
-                // root parameter, ignore its name
-                return path.Count > 0;
-            }
-
-            return false;
-        }
-    }
-
-    private static bool CanInstantiate(ITypeSymbol typeSymbol)
-    {
-        var nonNullable = RoslynTypeHelper.GetNonNullableType(typeSymbol) ?? typeSymbol;
-        if (nonNullable is not INamedTypeSymbol namedType)
-            return false;
-        if (!nonNullable.IsReferenceType)
-            return false;
-        if (namedType.IsAbstract)
-            return false;
-        if (namedType.SpecialType == SpecialType.System_String)
-            return false;
-
-        return namedType.InstanceConstructors.Any(ctor =>
-            ctor.Parameters.Length == 0 && ctor.DeclaredAccessibility is not Accessibility.Private
-        );
-    }
-
-    private static string GetAccessibilityString(INamedTypeSymbol typeSymbol)
-    {
-        return typeSymbol.DeclaredAccessibility switch
-        {
-            Accessibility.Public => "public",
-            Accessibility.Internal => "internal",
-            Accessibility.Private => "private",
-            Accessibility.Protected => "protected",
-            Accessibility.ProtectedAndInternal => "private protected",
-            Accessibility.ProtectedOrInternal => "protected internal",
-            _ => "public",
-        };
-    }
-}
-
-internal record ReverseConverterRequest
-{
-    public required INamedTypeSymbol ConverterSymbol { get; init; }
-    public required ITypeSymbol DtoType { get; init; }
-    public required bool IsStatic { get; init; }
 }

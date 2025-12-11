@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
+using System.Collections.Immutable;
 using Linqraft.Core.Formatting;
 using Linqraft.Core.RoslynHelpers;
 using Linqraft.Core.SyntaxHelpers;
@@ -85,6 +86,11 @@ public abstract record SelectExprInfo
     public abstract List<GenerateDtoClassInfo> GenerateDtoClasses();
 
     /// <summary>
+    /// Provides DTO class information for reverse conversion generation when no DTO is emitted.
+    /// </summary>
+    public virtual GenerateDtoClassInfo? GetReverseDtoInfo() => null;
+
+    /// <summary>
     /// Generates the DTO structure for analysis and unique ID generation
     /// </summary>
     protected abstract DtoStructure GenerateDtoStructure();
@@ -98,6 +104,28 @@ public abstract record SelectExprInfo
     /// Gets the parent (root) DTO class name
     /// </summary>
     protected abstract string GetParentDtoClassName(DtoStructure structure);
+
+    protected GenerateDtoClassInfo BuildReverseDtoInfo(
+        DtoStructure structure,
+        string className,
+        string @namespace,
+        string accessibility,
+        List<string> parentClasses,
+        List<string> parentAccessibilities
+    )
+    {
+        return new GenerateDtoClassInfo
+        {
+            Accessibility = accessibility,
+            Namespace = @namespace,
+            ClassName = className,
+            Structure = structure,
+            NestedClasses = ImmutableList<GenerateDtoClassInfo>.Empty,
+            ParentClasses = parentClasses,
+            ParentAccessibilities = parentAccessibilities,
+            IsExplicitRootDto = true,
+        };
+    }
 
     /// <summary>
     /// Gets the namespace where DTOs will be placed

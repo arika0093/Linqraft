@@ -244,16 +244,21 @@ public static class GenerateSourceCodeSnippets
         {{CommentHeaderPartOnProd}}
         #nullable enable
         using System;
-        using System.ComponentModel;
         using Microsoft.CodeAnalysis;
 
         namespace Linqraft
         {
-            [AttributeUsage(AttributeTargets.Class, AllowMultiple = true)]
-            [EditorBrowsable(EditorBrowsableState.Never)]
+            /// <summary>
+            /// Marks a partial converter class to enable reverse conversion generation for the specified DTO type.
+            /// </summary>
+            /// <typeparam name="TDto">The DTO type to reverse back into its source entity.</typeparam>
+            [AttributeUsage(AttributeTargets.Class, AllowMultiple = false)]
             [EmbeddedAttribute]
             internal sealed class LinqraftReverseConvertionAttribute<TDto> : Attribute
             {
+                /// <summary>
+                /// When true, generated reverse conversion methods are emitted as static.
+                /// </summary>
                 public bool IsStatic { get; set; }
             }
         }
