@@ -168,12 +168,12 @@ public partial class SelectExprGenerator : IIncrementalGenerator
                 {
                     const string HashNamespacePrefix = "LinqraftGenerated_";
 
-                    if (string.IsNullOrEmpty(namespaceName))
+                    if (namespaceName is not { Length: > 0 } ns)
                     {
                         return false;
                     }
 
-                    var parts = namespaceName!.Split('.');
+                    var parts = ns.Split('.');
                     return parts.Any(p =>
                         p.StartsWith(HashNamespacePrefix, StringComparison.Ordinal)
                     );
