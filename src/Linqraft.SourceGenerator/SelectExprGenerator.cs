@@ -431,7 +431,7 @@ public partial class SelectExprGenerator : IIncrementalGenerator
             return false;
 
         // Check if the method has the LinqraftMappingGenerate attribute
-        // We do syntax-level check here; semantic check happens in transform
+        // Syntax-level check only - full semantic validation happens in GetMappingMethodInfo
         return method
             .AttributeLists.SelectMany(list => list.Attributes)
             .Any(attr =>
