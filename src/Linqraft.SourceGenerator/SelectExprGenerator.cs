@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using Linqraft.Core;
@@ -117,20 +118,39 @@ public partial class SelectExprGenerator : IIncrementalGenerator
                     })
                     .ToList();
 
-                // Collect all DTOs from all groups and deduplicate globally
-                var allDtoClassInfos = new List<GenerateDtoClassInfo>();
+                var hashNamespaceDtoClassInfos = new List<GenerateDtoClassInfo>();
+                var emittedDtoFullNames = new HashSet<string>();
+
                 foreach (var exprGroup in exprGroups)
                 {
+                    var groupDtos = new List<GenerateDtoClassInfo>();
+
                     foreach (var expr in exprGroup.Exprs)
                     {
                         var classInfos = expr.Info.GenerateDtoClasses();
-                        allDtoClassInfos.AddRange(classInfos);
+                        foreach (var classInfo in classInfos)
+                        {
+                            // DTOs in hash-named namespaces can stay in the shared file
+                            if (IsHashNamespaceDto(classInfo.Namespace))
+                            {
+                                hashNamespaceDtoClassInfos.Add(classInfo);
+                                continue;
+                            }
+
+                            // Deduplicate by FullName and keep the first occurrence in this group
+                            if (emittedDtoFullNames.Add(classInfo.FullName))
+                            {
+                                groupDtos.Add(classInfo);
+                            }
+                        }
                     }
+
+                    exprGroup.DtoClasses = groupDtos;
                 }
 
-                // Generate all DTOs in a single shared source file
+                // Generate DTOs that remain in the shared file (hash namespaces)
                 var dtoCode = GenerateSourceCodeSnippets.BuildGlobalDtoCodeSnippet(
-                    allDtoClassInfos,
+                    hashNamespaceDtoClassInfos,
                     config
                 );
                 if (!string.IsNullOrEmpty(dtoCode))
@@ -138,10 +158,23 @@ public partial class SelectExprGenerator : IIncrementalGenerator
                     spc.AddSource("GeneratedDtos.g.cs", dtoCode);
                 }
 
-                // Generate code for expression methods (without DTOs)
+                // Generate code for expression methods (with co-located DTOs)
                 foreach (var exprGroup in exprGroups)
                 {
                     exprGroup.GenerateCodeWithoutDtos(spc);
+                }
+
+                static bool IsHashNamespaceDto(string? namespaceName)
+                {
+                    if (string.IsNullOrEmpty(namespaceName))
+                    {
+                        return false;
+                    }
+
+                    var parts = namespaceName!.Split('.');
+                    return parts.Any(p =>
+                        p.StartsWith("LinqraftGenerated_", StringComparison.Ordinal)
+                    );
                 }
             }
         );
