@@ -55,7 +55,7 @@ internal class SelectExprGroups
             foreach (var expr in Exprs)
             {
                 var info = expr.Info;
-                
+
                 // For mapping methods, generate extension method without interceptor
                 if (info.MappingMethodName != null && expr.Location == null)
                 {
@@ -92,7 +92,11 @@ internal class SelectExprGroups
 
             // Generate mapping methods grouped by containing class
             var mappingMethodsByClass = mappingMethods
-                .GroupBy(m => m.Info.MappingContainingClass?.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat) ?? "")
+                .GroupBy(m =>
+                    m.Info.MappingContainingClass?.ToDisplayString(
+                        SymbolDisplayFormat.FullyQualifiedFormat
+                    ) ?? ""
+                )
                 .Where(g => !string.IsNullOrEmpty(g.Key));
 
             foreach (var classGroup in mappingMethodsByClass)

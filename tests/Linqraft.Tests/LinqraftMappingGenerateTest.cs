@@ -8,8 +8,10 @@ namespace Linqraft.Tests;
 public static partial class MappingTestQueries
 {
     [LinqraftMappingGenerate("ProjectToDto")]
-    internal static IQueryable<MappingTestSampleDto> DummyQuery(this IQueryable<MappingTestSampleClass> source) => source
-        .SelectExpr<MappingTestSampleClass, MappingTestSampleDto>(x => new
+    internal static IQueryable<MappingTestSampleDto> DummyQuery(
+        this IQueryable<MappingTestSampleClass> source
+    ) =>
+        source.SelectExpr<MappingTestSampleClass, MappingTestSampleDto>(x => new
         {
             x.Id,
             x.Name,
@@ -19,22 +21,21 @@ public static partial class MappingTestQueries
         });
 
     [LinqraftMappingGenerate("ProjectToDtoWithChildren")]
-    internal static IQueryable<MappingTestParentDto> DummyWithChildren(this IQueryable<MappingTestParentClass> source) => source
-        .SelectExpr<MappingTestParentClass, MappingTestParentDto>(x => new
+    internal static IQueryable<MappingTestParentDto> DummyWithChildren(
+        this IQueryable<MappingTestParentClass> source
+    ) =>
+        source.SelectExpr<MappingTestParentClass, MappingTestParentDto>(x => new
         {
             x.Id,
             x.Title,
-            Children = x.Children.SelectExpr<MappingTestChildClass, MappingTestChildClassDto>(c => new
-            {
-                c.ChildId,
-                c.ChildName,
-            }),
+            Children = x.Children.SelectExpr<MappingTestChildClass, MappingTestChildClassDto>(
+                c => new { c.ChildId, c.ChildName }
+            ),
         });
 }
 
 public class LinqraftMappingGenerateTest
 {
-
     [Fact]
     public void MappingGenerate_BasicTest()
     {
@@ -46,15 +47,15 @@ public class LinqraftMappingGenerateTest
                 Id = 1,
                 Name = "Test1",
                 Description = "Description1",
-                Child = new MappingTestChildClass { ChildId = 10, ChildName = "Child1" }
+                Child = new MappingTestChildClass { ChildId = 10, ChildName = "Child1" },
             },
             new MappingTestSampleClass
             {
                 Id = 2,
                 Name = "Test2",
                 Description = null,
-                Child = null
-            }
+                Child = null,
+            },
         }.AsQueryable();
 
         // Act
@@ -89,14 +90,14 @@ public class LinqraftMappingGenerateTest
                 {
                     new() { ChildId = 10, ChildName = "Child1-1" },
                     new() { ChildId = 11, ChildName = "Child1-2" },
-                }
+                },
             },
             new MappingTestParentClass
             {
                 Id = 2,
                 Title = "Parent2",
-                Children = new List<MappingTestChildClass>()
-            }
+                Children = new List<MappingTestChildClass>(),
+            },
         }.AsQueryable();
 
         // Act
@@ -106,7 +107,7 @@ public class LinqraftMappingGenerateTest
         Assert.Equal(2, result.Count);
         Assert.Equal(1, result[0].Id);
         Assert.Equal("Parent1", result[0].Title);
-        
+
         var children0 = result[0].Children.ToList();
         Assert.Equal(2, children0.Count);
         Assert.Equal(10, children0[0].ChildId);
