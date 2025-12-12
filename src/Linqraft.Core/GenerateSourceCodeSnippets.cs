@@ -25,10 +25,7 @@ public static class GenerateSourceCodeSnippets
             "LinqraftMappingGenerateAttribute.g.cs",
             LinqraftMappingGenerateAttribute
         );
-        context.AddSource(
-            "LinqraftMappingDeclare.g.cs",
-            LinqraftMappingDeclare
-        );
+        context.AddSource("LinqraftMappingDeclare.g.cs", LinqraftMappingDeclare);
     }
 
     // Generate expression and headers

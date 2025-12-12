@@ -64,7 +64,9 @@ public partial class SelectExprGenerator : IIncrementalGenerator
         var mappingDeclareClassesWithConfig = mappingDeclareClasses.Combine(configurationProvider);
 
         // Combine all providers
-        var combinedData = invocationsWithConfig.Combine(mappingMethodsWithConfig).Combine(mappingDeclareClassesWithConfig);
+        var combinedData = invocationsWithConfig
+            .Combine(mappingMethodsWithConfig)
+            .Combine(mappingDeclareClassesWithConfig);
 
         // Code generation
         context.RegisterSourceOutput(
@@ -862,8 +864,8 @@ public partial class SelectExprGenerator : IIncrementalGenerator
             return null;
 
         // Find the DefineMapping method
-        var defineMappingMethod = classDecl.Members
-            .OfType<MethodDeclarationSyntax>()
+        var defineMappingMethod = classDecl
+            .Members.OfType<MethodDeclarationSyntax>()
             .FirstOrDefault(m => m.Identifier.Text == "DefineMapping");
 
         if (defineMappingMethod is null)
@@ -995,8 +997,7 @@ public partial class SelectExprGenerator : IIncrementalGenerator
 
         // Determine the target method name
         // Use custom name if provided, otherwise generate from source type name
-        var methodName = declareInfo.CustomMethodName 
-            ?? $"ProjectTo{declareInfo.SourceType.Name}";
+        var methodName = declareInfo.CustomMethodName ?? $"ProjectTo{declareInfo.SourceType.Name}";
 
         // Generate a hash suffix for the generated class to avoid name collisions
         var classNameHash = GenerateClassNameHash(declareInfo.ContainingClass);
