@@ -81,12 +81,13 @@ internal class SelectExprGroups
                 }
             }
 
-            var dtoCode = DtoClasses.Count > 0
-                ? GenerateSourceCodeSnippets.BuildDtoCodeSnippetsGroupedByNamespace(
-                    DtoClasses,
-                    Configuration
-                )
-                : string.Empty;
+            var dtoCode =
+                DtoClasses.Count > 0
+                    ? GenerateSourceCodeSnippets.BuildDtoCodeSnippetsGroupedByNamespace(
+                        DtoClasses,
+                        Configuration
+                    )
+                    : string.Empty;
 
             // Generate interceptor-based expression methods
             if (
