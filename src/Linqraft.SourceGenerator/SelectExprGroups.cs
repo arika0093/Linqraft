@@ -11,6 +11,8 @@ internal class SelectExprGroups
 {
     public required List<SelectExprLocations> Exprs { get; set; }
 
+    public List<GenerateDtoClassInfo> DtoClasses { get; set; } = [];
+
     public required LinqraftConfiguration Configuration { get; set; }
 
     public required string TargetNamespace
@@ -43,7 +45,7 @@ internal class SelectExprGroups
         return $"{targetNsReplaced}_{filenameReplaced}";
     }
 
-    // Generate source code without DTOs (for global DTO generation)
+    // Generate source code for expressions and co-located DTOs
     public virtual void GenerateCodeWithoutDtos(SourceProductionContext context)
     {
         try
@@ -79,12 +81,24 @@ internal class SelectExprGroups
                 }
             }
 
+            var dtoCode = DtoClasses.Count > 0
+                ? GenerateSourceCodeSnippets.BuildDtoCodeSnippetsGroupedByNamespace(
+                    DtoClasses,
+                    Configuration
+                )
+                : string.Empty;
+
             // Generate interceptor-based expression methods
-            if (selectExprMethods.Count > 0 || staticFields.Count > 0)
+            if (
+                selectExprMethods.Count > 0
+                || staticFields.Count > 0
+                || !string.IsNullOrEmpty(dtoCode)
+            )
             {
                 var sourceCode = GenerateSourceCodeSnippets.BuildExprCodeSnippetsWithHeaders(
                     selectExprMethods,
-                    staticFields
+                    staticFields,
+                    dtoCode
                 );
                 var uniqueId = GetUniqueId();
                 context.AddSource($"GeneratedExpression_{uniqueId}.g.cs", sourceCode);
