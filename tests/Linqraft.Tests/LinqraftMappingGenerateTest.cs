@@ -20,6 +20,7 @@ public static partial class MappingTestQueries
             ChildName = x.Child?.ChildName,
         });
 
+#if NET9_0_OR_GREATER
     [LinqraftMappingGenerate("ProjectToDtoWithChildren")]
     internal static IQueryable<MappingTestParentDto> DummyWithChildren(
         this IQueryable<MappingTestParentClass> source
@@ -32,6 +33,7 @@ public static partial class MappingTestQueries
                 c => new { c.ChildId, c.ChildName }
             ),
         });
+#endif
 }
 
 public class LinqraftMappingGenerateTest
@@ -76,6 +78,7 @@ public class LinqraftMappingGenerateTest
         Assert.Null(result[1].ChildName);
     }
 
+#if NET9_0_OR_GREATER
     [Fact]
     public void MappingGenerate_WithNestedCollection_Test()
     {
@@ -117,6 +120,7 @@ public class LinqraftMappingGenerateTest
         Assert.Equal("Parent2", result[1].Title);
         Assert.Empty(result[1].Children);
     }
+#endif
 }
 
 // Test source classes - consolidated at the end of the file
