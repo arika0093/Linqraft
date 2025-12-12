@@ -30,13 +30,18 @@ public static class GenerateSourceCodeSnippets
     // Generate expression and headers
     public static string BuildExprCodeSnippetsWithHeaders(
         List<string> expressions,
-        List<string> staticFields
+        List<string> staticFields,
+        string? dtoCode = null
     )
     {
+        var dtoPart = string.IsNullOrWhiteSpace(dtoCode)
+            ? string.Empty
+            : $"{CodeFormatter.DefaultNewLine}{dtoCode}";
+
         return $$"""
             {{GenerateCommentHeaderPart()}}
             {{GenerateHeaderFlagsPart}}
-            {{BuildExprCodeSnippets(expressions, staticFields)}}
+            {{BuildExprCodeSnippets(expressions, staticFields)}}{{dtoPart}}
             """;
     }
 
