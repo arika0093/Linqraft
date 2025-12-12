@@ -92,6 +92,12 @@ public abstract record SelectExprInfo
     public INamedTypeSymbol? MappingContainingClass { get; init; }
 
     /// <summary>
+    /// The hash suffix for the generated class name when using LinqraftMappingDeclare.
+    /// Used to avoid name collisions when generating extension method classes.
+    /// </summary>
+    public string? MappingDeclareClassNameHash { get; init; }
+
+    /// <summary>
     /// Generates DTO class information (including nested DTOs)
     /// </summary>
     public abstract List<GenerateDtoClassInfo> GenerateDtoClasses();

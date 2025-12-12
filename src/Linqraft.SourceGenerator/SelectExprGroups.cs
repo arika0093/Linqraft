@@ -105,8 +105,16 @@ internal class SelectExprGroups
                 context.AddSource($"GeneratedExpression_{uniqueId}.g.cs", sourceCode);
             }
 
-            // Generate mapping methods grouped by containing class
-            var mappingMethodsByClass = mappingMethods
+            // Separate mapping methods into regular (static partial class) and LinqraftMappingDeclare patterns
+            var regularMappingMethods = mappingMethods
+                .Where(m => string.IsNullOrEmpty(m.Info.MappingDeclareClassNameHash))
+                .ToList();
+            var declareMappingMethods = mappingMethods
+                .Where(m => !string.IsNullOrEmpty(m.Info.MappingDeclareClassNameHash))
+                .ToList();
+
+            // Generate regular mapping methods grouped by containing class
+            var regularMethodsByClass = regularMappingMethods
                 .GroupBy(m =>
                     m.Info.MappingContainingClass?.ToDisplayString(
                         SymbolDisplayFormat.FullyQualifiedFormat
@@ -114,7 +122,7 @@ internal class SelectExprGroups
                 )
                 .Where(g => !string.IsNullOrEmpty(g.Key));
 
-            foreach (var classGroup in mappingMethodsByClass)
+            foreach (var classGroup in regularMethodsByClass)
             {
                 var firstInfo = classGroup.First().Info;
                 var containingClass = firstInfo.MappingContainingClass;
@@ -128,6 +136,36 @@ internal class SelectExprGroups
                 var className = containingClass.Name.Replace("<", "_").Replace(">", "_");
                 var hash = HashUtility.GenerateSha256Hash(containingClass.ToDisplayString());
                 context.AddSource($"GeneratedMapping_{className}_{hash}.g.cs", sourceCode);
+            }
+
+            // Generate LinqraftMappingDeclare mapping methods with hash suffix
+            var declareMethodsByClass = declareMappingMethods
+                .GroupBy(m =>
+                    m.Info.MappingContainingClass?.ToDisplayString(
+                        SymbolDisplayFormat.FullyQualifiedFormat
+                    ) ?? ""
+                )
+                .Where(g => !string.IsNullOrEmpty(g.Key));
+
+            foreach (var classGroup in declareMethodsByClass)
+            {
+                var firstInfo = classGroup.First().Info;
+                var containingClass = firstInfo.MappingContainingClass;
+                var classNameHash = firstInfo.MappingDeclareClassNameHash;
+                if (containingClass == null || string.IsNullOrEmpty(classNameHash))
+                    continue;
+
+                // Generate class name with hash suffix
+                var baseClassName = containingClass.Name;
+                var customClassName = $"{baseClassName}_{classNameHash}";
+
+                var sourceCode = GenerateSourceCodeSnippets.BuildMappingClassCode(
+                    containingClass,
+                    classGroup.Select(m => m.Code).ToList(),
+                    customClassName
+                );
+                var hash = HashUtility.GenerateSha256Hash(containingClass.ToDisplayString());
+                context.AddSource($"GeneratedMapping_{customClassName}_{hash}.g.cs", sourceCode);
             }
         }
         catch (Exception ex)
