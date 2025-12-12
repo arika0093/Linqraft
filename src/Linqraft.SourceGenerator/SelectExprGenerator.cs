@@ -1016,8 +1016,6 @@ public partial class SelectExprGenerator : IIncrementalGenerator
     {
         // Generate a stable hash based on the fully qualified class name
         var fullName = classSymbol.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat);
-        var hash = fullName.GetHashCode();
-        // Use absolute value and convert to hex for readability
-        return Math.Abs(hash).ToString("X8");
+        return HashUtility.GenerateSha256Hash(fullName, 8);
     }
 }

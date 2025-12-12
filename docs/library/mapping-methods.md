@@ -226,7 +226,7 @@ The same works with the static partial class approach - simply use the generated
 1. **Inherit from `LinqraftMappingDeclare<T>`**: Your class must inherit from the base helper class
 2. **Override `DefineMapping()`**: Implement the abstract method with your mapping logic
 3. **Use `Source` property**: Use the `Source` property to access the queryable
-4. **SelectExpr Inside**: The `DefineMapping()` method must contain at least one `SelectExpr` call
+4. **SelectExpr Inside**: The `DefineMapping()` method must contain exactly one `SelectExpr` call
 
 ### Static Partial Class Requirements:
 1. **Static Partial Class**: The containing class must be `static` and `partial`

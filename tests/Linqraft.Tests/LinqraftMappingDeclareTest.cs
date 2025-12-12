@@ -76,14 +76,14 @@ public class LinqraftMappingDeclareTest
         var result = data.ProjectToMappingDeclareSourceClass().ToList();
 
         // Assert
-        Assert.Equal(2, result.Count);
-        Assert.Equal(1, result[0].Id);
-        Assert.Equal("Test1", result[0].Name);
-        Assert.Equal("Child1", result[0].ChildName);
+        result.Count.ShouldBe(2);
+        result[0].Id.ShouldBe(1);
+        result[0].Name.ShouldBe("Test1");
+        result[0].ChildName.ShouldBe("Child1");
 
-        Assert.Equal(2, result[1].Id);
-        Assert.Equal("Test2", result[1].Name);
-        Assert.Null(result[1].ChildName);
+        result[1].Id.ShouldBe(2);
+        result[1].Name.ShouldBe("Test2");
+        result[1].ChildName.ShouldBeNull();
     }
 
     [Fact]
@@ -112,12 +112,12 @@ public class LinqraftMappingDeclareTest
         var result = data.CustomProjection().ToList();
 
         // Assert
-        Assert.Equal(2, result.Count);
-        Assert.Equal(1, result[0].Id);
-        Assert.Equal("Description1", result[0].Description);
+        result.Count.ShouldBe(2);
+        result[0].Id.ShouldBe(1);
+        result[0].Description.ShouldBe("Description1");
 
-        Assert.Equal(2, result[1].Id);
-        Assert.Equal("Description2", result[1].Description);
+        result[1].Id.ShouldBe(2);
+        result[1].Description.ShouldBe("Description2");
     }
 
     [Fact]
@@ -148,18 +148,18 @@ public class LinqraftMappingDeclareTest
         var result = data.ProjectToMappingDeclareParentClass().ToList();
 
         // Assert
-        Assert.Equal(2, result.Count);
-        Assert.Equal(1, result[0].Id);
-        Assert.Equal("Parent1", result[0].Title);
+        result.Count.ShouldBe(2);
+        result[0].Id.ShouldBe(1);
+        result[0].Title.ShouldBe("Parent1");
 
         var children0 = result[0].Children.ToList();
-        Assert.Equal(2, children0.Count);
-        Assert.Equal(10, children0[0].ChildId);
-        Assert.Equal("Child1-1", children0[0].ChildName);
+        children0.Count.ShouldBe(2);
+        children0[0].ChildId.ShouldBe(10);
+        children0[0].ChildName.ShouldBe("Child1-1");
 
-        Assert.Equal(2, result[1].Id);
-        Assert.Equal("Parent2", result[1].Title);
-        Assert.Empty(result[1].Children);
+        result[1].Id.ShouldBe(2);
+        result[1].Title.ShouldBe("Parent2");
+        result[1].Children.ShouldBeEmpty();
     }
 }
 
