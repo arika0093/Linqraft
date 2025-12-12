@@ -46,9 +46,10 @@ public class NestedCollectionMappingDeclare : LinqraftMappingDeclare<MappingDecl
             ),
         });
     }
-
 }
+
 internal partial class MappingDeclareParentDto;
+
 internal partial class MappingDeclareChildDto;
 
 public class LinqraftMappingDeclareTest
