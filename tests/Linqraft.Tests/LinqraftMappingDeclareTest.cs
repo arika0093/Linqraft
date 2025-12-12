@@ -54,7 +54,6 @@ public class NestedCollectionMappingDeclare : LinqraftMappingDeclare<MappingDecl
 internal partial class MappingDeclareParentDto;
 
 internal partial class MappingDeclareChildDto;
-
 #endif
 
 public class LinqraftMappingDeclareTest
@@ -172,7 +171,6 @@ public class LinqraftMappingDeclareTest
         result[1].Children.ShouldBeEmpty();
     }
 #endif
-
 }
 
 // Test source classes
