@@ -49,21 +49,34 @@ public partial class SelectExprGenerator : IIncrementalGenerator
             .Where(static info => info is not null)
             .Collect();
 
+        // Provider to detect classes that inherit from LinqraftMappingDeclare<T>
+        var mappingDeclareClasses = context
+            .SyntaxProvider.CreateSyntaxProvider(
+                predicate: static (node, _) => IsLinqraftMappingDeclareClass(node),
+                transform: static (ctx, _) => GetMappingDeclareInfo(ctx)
+            )
+            .Where(static info => info is not null)
+            .Collect();
+
         // Combine configuration with invocations and mapping methods
         var invocationsWithConfig = invocations.Combine(configurationProvider);
         var mappingMethodsWithConfig = mappingMethods.Combine(configurationProvider);
+        var mappingDeclareClassesWithConfig = mappingDeclareClasses.Combine(configurationProvider);
 
-        // Combine both providers
-        var combinedData = invocationsWithConfig.Combine(mappingMethodsWithConfig);
+        // Combine all providers
+        var combinedData = invocationsWithConfig.Combine(mappingMethodsWithConfig).Combine(mappingDeclareClassesWithConfig);
 
         // Code generation
         context.RegisterSourceOutput(
             combinedData,
             (spc, data) =>
             {
-                var ((infos, config), (mappingInfos, _)) = data;
+                var (((infos, config), (mappingInfos, _)), (mappingDeclareInfos, _)) = data;
                 var infoWithoutNulls = infos.Where(info => info is not null).Select(info => info!);
                 var mappingInfoWithoutNulls = mappingInfos
+                    .Where(info => info is not null)
+                    .Select(info => info!);
+                var mappingDeclareInfoWithoutNulls = mappingDeclareInfos
                     .Where(info => info is not null)
                     .Select(info => info!);
 
@@ -72,6 +85,16 @@ public partial class SelectExprGenerator : IIncrementalGenerator
                 foreach (var mappingInfo in mappingInfoWithoutNulls)
                 {
                     var selectExprInfo = ProcessMappingMethod(mappingInfo, config);
+                    if (selectExprInfo != null)
+                    {
+                        mappingSelectExprInfos.Add(selectExprInfo);
+                    }
+                }
+
+                // Process LinqraftMappingDeclare classes
+                foreach (var declareInfo in mappingDeclareInfoWithoutNulls)
+                {
+                    var selectExprInfo = ProcessMappingDeclareClass(declareInfo, config);
                     if (selectExprInfo != null)
                     {
                         mappingSelectExprInfos.Add(selectExprInfo);
@@ -784,5 +807,217 @@ public partial class SelectExprGenerator : IIncrementalGenerator
             CaptureArgumentExpression = captureArgumentExpression,
             CaptureArgumentType = captureArgumentType,
         };
+    }
+
+    private static bool IsLinqraftMappingDeclareClass(SyntaxNode node)
+    {
+        // Detect class declaration that might inherit from LinqraftMappingDeclare<T>
+        if (node is not ClassDeclarationSyntax classDecl)
+            return false;
+
+        // Check if the class has a base list
+        if (classDecl.BaseList is null || classDecl.BaseList.Types.Count == 0)
+            return false;
+
+        // Quick syntax-level check for base types that look like LinqraftMappingDeclare
+        return classDecl.BaseList.Types.Any(baseType =>
+        {
+            var baseTypeName = baseType.Type.ToString();
+            return baseTypeName.Contains("LinqraftMappingDeclare");
+        });
+    }
+
+    private static LinqraftMappingDeclareInfo? GetMappingDeclareInfo(GeneratorSyntaxContext context)
+    {
+        var classDecl = (ClassDeclarationSyntax)context.Node;
+        var semanticModel = context.SemanticModel;
+
+        // Get the class symbol
+        var classSymbol = semanticModel.GetDeclaredSymbol(classDecl);
+        if (classSymbol is null)
+            return null;
+
+        // Check if the class inherits from LinqraftMappingDeclare<T>
+        INamedTypeSymbol? baseLinqraftMappingDeclare = null;
+        ITypeSymbol? sourceType = null;
+
+        var currentBase = classSymbol.BaseType;
+        while (currentBase is not null)
+        {
+            var fullName = currentBase.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat);
+            if (fullName.StartsWith("global::Linqraft.LinqraftMappingDeclare<"))
+            {
+                baseLinqraftMappingDeclare = currentBase;
+                // Extract T from LinqraftMappingDeclare<T>
+                if (currentBase.TypeArguments.Length > 0)
+                {
+                    sourceType = currentBase.TypeArguments[0];
+                }
+                break;
+            }
+            currentBase = currentBase.BaseType;
+        }
+
+        if (baseLinqraftMappingDeclare is null || sourceType is null)
+            return null;
+
+        // Find the DefineMapping method
+        var defineMappingMethod = classDecl.Members
+            .OfType<MethodDeclarationSyntax>()
+            .FirstOrDefault(m => m.Identifier.Text == "DefineMapping");
+
+        if (defineMappingMethod is null)
+            return null;
+
+        // Get the namespace
+        var containingNamespace = classSymbol.ContainingNamespace?.ToDisplayString() ?? "";
+
+        // Check for optional [LinqraftMappingGenerate] attribute at class level
+        string? customMethodName = null;
+        var classAttribute = classSymbol
+            .GetAttributes()
+            .FirstOrDefault(attr =>
+            {
+                if (attr.AttributeClass is null)
+                    return false;
+
+                var fullName = attr.AttributeClass.ToDisplayString(
+                    SymbolDisplayFormat.FullyQualifiedFormat
+                );
+                return fullName == "global::Linqraft.LinqraftMappingGenerateAttribute";
+            });
+
+        if (classAttribute is not null)
+        {
+            customMethodName = classAttribute.ConstructorArguments.FirstOrDefault().Value as string;
+        }
+
+        return new LinqraftMappingDeclareInfo
+        {
+            ClassDeclaration = classDecl,
+            DefineMappingMethod = defineMappingMethod,
+            ContainingClass = classSymbol,
+            SemanticModel = semanticModel,
+            ContainingNamespace = containingNamespace,
+            SourceType = sourceType,
+            CustomMethodName = customMethodName,
+        };
+    }
+
+    private static SelectExprInfo? ProcessMappingDeclareClass(
+        LinqraftMappingDeclareInfo declareInfo,
+        LinqraftConfiguration config
+    )
+    {
+        // Find the SelectExpr invocation inside the DefineMapping method
+        var selectExprInvocation = declareInfo
+            .DefineMappingMethod.DescendantNodes()
+            .OfType<InvocationExpressionSyntax>()
+            .FirstOrDefault(inv =>
+            {
+                var expression = inv.Expression;
+                return SelectExprHelper.IsSelectExprInvocationSyntax(expression);
+            });
+
+        if (selectExprInvocation is null)
+            return null;
+
+        var semanticModel = declareInfo.SemanticModel;
+
+        // Get lambda expression from arguments
+        if (selectExprInvocation.ArgumentList.Arguments.Count == 0)
+            return null;
+
+        var lambdaArg = selectExprInvocation.ArgumentList.Arguments[0].Expression;
+        if (lambdaArg is not LambdaExpressionSyntax lambda)
+            return null;
+
+        // Extract lambda parameter name
+        var lambdaParamName = LambdaHelper.GetLambdaParameterName(lambda);
+
+        // Extract capture argument info (if present)
+        var (captureArgExpr, captureType) = GetCaptureInfo(selectExprInvocation, semanticModel);
+
+        // check
+        // 1. SelectExpr with predefined DTO type
+        // 2. SelectExpr with explicit DTO type in generic arguments
+        // 3. SelectExpr with anonymous object creation
+        var body = lambda.Body;
+
+        SelectExprInfo? selectExprInfo = null;
+
+        // 1. Check if this is a generic invocation with predefined DTO type
+        // If generics are used, but the body is an ObjectCreationExpression, this takes precedence.
+        if (body is ObjectCreationExpressionSyntax objCreation)
+        {
+            selectExprInfo = GetNamedSelectExprInfoInternal(
+                selectExprInvocation,
+                semanticModel,
+                objCreation,
+                lambdaParamName,
+                captureArgExpr,
+                captureType
+            );
+        }
+        // 2. Check for SelectExpr<TIn, TResult>
+        else if (
+            selectExprInvocation.Expression is MemberAccessExpressionSyntax memberAccess
+            && memberAccess.Name is GenericNameSyntax genericName
+            && genericName.TypeArgumentList.Arguments.Count >= 2
+            && body is AnonymousObjectCreationExpressionSyntax anonSyntax
+        )
+        {
+            selectExprInfo = GetExplicitDtoSelectExprInfoInternal(
+                selectExprInvocation,
+                semanticModel,
+                anonSyntax,
+                genericName,
+                lambdaParamName,
+                captureArgExpr,
+                captureType
+            );
+        }
+        // 3. Check for anonymous object creation
+        else if (body is AnonymousObjectCreationExpressionSyntax anon)
+        {
+            selectExprInfo = GetAnonymousSelectExprInfoInternal(
+                selectExprInvocation,
+                semanticModel,
+                anon,
+                lambdaParamName,
+                captureArgExpr,
+                captureType
+            );
+        }
+
+        if (selectExprInfo is null)
+            return null;
+
+        // Determine the target method name
+        // Use custom name if provided, otherwise generate from source type name
+        var methodName = declareInfo.CustomMethodName 
+            ?? $"ProjectTo{declareInfo.SourceType.Name}";
+
+        // Generate a hash suffix for the generated class to avoid name collisions
+        var classNameHash = GenerateClassNameHash(declareInfo.ContainingClass);
+
+        // Add mapping information to the SelectExprInfo
+        // We'll use a special naming pattern to indicate this is from LinqraftMappingDeclare
+        return selectExprInfo with
+        {
+            MappingMethodName = methodName,
+            MappingContainingClass = declareInfo.ContainingClass,
+            // Store additional info for generating the class with hash suffix
+            MappingDeclareClassNameHash = classNameHash,
+        };
+    }
+
+    private static string GenerateClassNameHash(INamedTypeSymbol classSymbol)
+    {
+        // Generate a stable hash based on the fully qualified class name
+        var fullName = classSymbol.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat);
+        var hash = fullName.GetHashCode();
+        // Use absolute value and convert to hex for readability
+        return Math.Abs(hash).ToString("X8");
     }
 }

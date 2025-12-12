@@ -25,6 +25,10 @@ public static class GenerateSourceCodeSnippets
             "LinqraftMappingGenerateAttribute.g.cs",
             LinqraftMappingGenerateAttribute
         );
+        context.AddSource(
+            "LinqraftMappingDeclare.g.cs",
+            LinqraftMappingDeclare
+        );
     }
 
     // Generate expression and headers
@@ -257,12 +261,13 @@ public static class GenerateSourceCodeSnippets
         namespace Linqraft
         {
             /// <summary>
-            /// Marks a method for Linqraft mapping generation. The method must be in a static partial class
-            /// and contain a SelectExpr call. Linqraft will generate an extension method with the specified
-            /// name that contains the compiled Select expression.
+            /// Marks a method or class for Linqraft mapping generation. 
+            /// When used on a method: The method must be in a static partial class and contain a SelectExpr call.
+            /// When used on a class: The class must inherit from LinqraftMappingDeclare&lt;T&gt;.
+            /// Linqraft will generate an extension method with the specified name that contains the compiled Select expression.
             /// This is useful for EFCore query (pre)compilation support where interceptors cannot be used.
             /// </summary>
-            [AttributeUsage(AttributeTargets.Method, Inherited = false, AllowMultiple = false)]
+            [AttributeUsage(AttributeTargets.Method | AttributeTargets.Class, Inherited = false, AllowMultiple = false)]
             [EmbeddedAttribute]
             internal sealed class LinqraftMappingGenerateAttribute : Attribute
             {
@@ -279,6 +284,45 @@ public static class GenerateSourceCodeSnippets
                 /// Gets the name of the extension method to generate.
                 /// </summary>
                 public string MethodName { get; }
+            }
+        }
+        """;
+
+    /// <summary>
+    /// Abstract base class for declaring Linqraft mappings using a helper class pattern.
+    /// This provides a simpler alternative to manually defining static partial classes.
+    /// </summary>
+    [StringSyntax("csharp")]
+    public const string LinqraftMappingDeclare = $$"""
+        {{CommentHeaderPartOnProd}}
+        #nullable enable
+        using System;
+        using System.Linq;
+        using System.ComponentModel;
+        using Microsoft.CodeAnalysis;
+
+        namespace Linqraft
+        {
+            /// <summary>
+            /// Abstract base class for declaring Linqraft mappings.
+            /// Inherit from this class and override DefineMapping to define your projection mapping.
+            /// The source generator will create an extension method class with the mapping logic.
+            /// </summary>
+            /// <typeparam name="T">The source entity type to project from.</typeparam>
+            [EmbeddedAttribute]
+            public abstract class LinqraftMappingDeclare<T>
+            {
+                /// <summary>
+                /// Override this method to define your projection mapping using SelectExpr.
+                /// This method is never called at runtime - it's only analyzed by the source generator.
+                /// </summary>
+                protected abstract void DefineMapping();
+
+                /// <summary>
+                /// Dummy source queryable for use in DefineMapping method with SelectExpr.
+                /// This property is never accessed at runtime - it exists only for source generation.
+                /// </summary>
+                protected IQueryable<T> Source => System.Linq.Enumerable.Empty<T>().AsQueryable();
             }
         }
         """;
@@ -452,6 +496,60 @@ public static class GenerateSourceCodeSnippets
             .Aggregate((a, b) => $"{a}\n{b}");
         var classPart = $$"""
             {{firstIndent}}{{accessibility}} static partial class {{containingClass.Name}}
+            {{firstIndent}}{
+            {{methodsPart}}
+            {{firstIndent}}}
+            """;
+        var classWithNamespacePart = hasNamespace
+            ? $$"""
+                namespace {{namespaceName}}
+                {
+                {{classPart}}
+                }
+                """
+            : classPart;
+
+        return $$"""
+            {{GenerateCommentHeaderPart()}}
+            {{GenerateHeaderFlagsPart}}
+            {{GenerateHeaderUsingPart}}
+            {{classWithNamespacePart}}
+            """;
+    }
+
+    /// <summary>
+    /// Builds mapping class code with a custom class name (for LinqraftMappingDeclare pattern)
+    /// </summary>
+    public static string BuildMappingClassCode(
+        INamedTypeSymbol containingClass,
+        List<string> methods,
+        string customClassName
+    )
+    {
+        var namespaceName = containingClass.ContainingNamespace?.ToDisplayString();
+        var hasNamespace = namespaceName != null && namespaceName != "<global namespace>";
+        var firstIndent = CodeFormatter.Indent(hasNamespace ? 1 : 0);
+        var indent = CodeFormatter.Indent(1);
+
+        // Determine accessibility - use the class's declared accessibility
+        var accessibility = containingClass.DeclaredAccessibility switch
+        {
+            Accessibility.Public => "public",
+            Accessibility.Internal => "internal",
+            Accessibility.Private => "private",
+            _ => "internal",
+        };
+
+        var methodsPart = methods
+            .Select(method =>
+                method
+                    .Split('\n')
+                    .Select(m => $"{firstIndent}{indent}{m}")
+                    .Aggregate((a, b) => $"{a}\n{b}")
+            )
+            .Aggregate((a, b) => $"{a}\n{b}");
+        var classPart = $$"""
+            {{firstIndent}}{{accessibility}} static partial class {{customClassName}}
             {{firstIndent}}{
             {{methodsPart}}
             {{firstIndent}}}
