@@ -4,6 +4,7 @@ using Microsoft.CodeAnalysis.CSharp.Syntax;
 using Linqraft.Core.Pipeline.Analysis;
 using Linqraft.Core.Pipeline.Parsing;
 using Linqraft.Core.Pipeline.Transformation;
+using Linqraft.Core.Pipeline.Generation;
 
 namespace Linqraft.Core.Pipeline;
 
@@ -15,6 +16,7 @@ internal class CodeGenerationPipeline
 {
     private readonly SemanticModel _semanticModel;
     private readonly LinqraftConfiguration _configuration;
+    private PropertyAssignmentGenerator? _propertyAssignmentGenerator;
 
     /// <summary>
     /// Creates a new code generation pipeline.
@@ -36,6 +38,18 @@ internal class CodeGenerationPipeline
     /// Gets the configuration.
     /// </summary>
     public LinqraftConfiguration Configuration => _configuration;
+
+    /// <summary>
+    /// Gets the property assignment generator.
+    /// </summary>
+    public PropertyAssignmentGenerator PropertyAssignmentGenerator
+    {
+        get
+        {
+            _propertyAssignmentGenerator ??= new PropertyAssignmentGenerator(_semanticModel, _configuration);
+            return _propertyAssignmentGenerator;
+        }
+    }
 
     /// <summary>
     /// Parses a lambda expression from an invocation.
@@ -92,10 +106,22 @@ internal class CodeGenerationPipeline
         };
 
         var pipeline = new TransformationPipeline(
-            new NullConditionalTransformer()
+            new NullConditionalTransformer(),
+            new FullyQualifyingTransformer()
         );
 
         return pipeline.Transform(context);
+    }
+
+    /// <summary>
+    /// Fully qualifies all references in an expression.
+    /// </summary>
+    /// <param name="expression">The expression to process</param>
+    /// <param name="expectedType">The expected type</param>
+    /// <returns>The expression with fully qualified names as a string</returns>
+    public string FullyQualifyExpression(ExpressionSyntax expression, ITypeSymbol expectedType)
+    {
+        return PropertyAssignmentGenerator.FullyQualifyExpression(expression, expectedType);
     }
 
     /// <summary>

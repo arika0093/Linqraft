@@ -529,7 +529,8 @@ public abstract record SelectExprInfo
 
         // For any other expression (including invocations like FirstOrDefault, Where, etc.),
         // ensure all static/enum/const references and object creations are fully qualified
-        return FullyQualifyAllReferences(syntax);
+        // Use the pipeline's fully qualifying transformer
+        return GetPipeline().FullyQualifyExpression(syntax, property.TypeSymbol);
     }
 
     /// <summary>
