@@ -63,15 +63,27 @@ public static class LinqraftSyntaxUtilities
         if (typeInfo.Type == null)
             return null;
 
-        // For anonymous types, extract properties
+        // For anonymous types, extract properties from the type symbol
         if (typeInfo.Type.IsAnonymousType)
         {
+            // Try to find the anonymous object creation in the expression
+            var anonymousObject = expression as AnonymousObjectCreationExpressionSyntax
+                ?? expression.DescendantNodesAndSelf()
+                    .OfType<AnonymousObjectCreationExpressionSyntax>()
+                    .FirstOrDefault();
+
+            if (anonymousObject != null)
+            {
+                return ExtractProperties(anonymousObject, semanticModel);
+            }
+
+            // Fallback: create properties from type members without specific expressions
             return typeInfo.Type.GetMembers()
                 .OfType<IPropertySymbol>()
                 .Select(p => new AnonymousTypeProperty
                 {
                     Name = p.Name,
-                    Expression = expression,
+                    Expression = expression, // Use the full expression as fallback
                     Type = p.Type
                 })
                 .ToList();
@@ -107,13 +119,7 @@ public static class LinqraftSyntaxUtilities
     /// <returns>The parameter name, or null if not found</returns>
     public static string? GetLambdaParameterName(LambdaExpressionSyntax lambda)
     {
-        return lambda switch
-        {
-            SimpleLambdaExpressionSyntax simple => simple.Parameter.Identifier.Text,
-            ParenthesizedLambdaExpressionSyntax paren when paren.ParameterList.Parameters.Count > 0
-                => paren.ParameterList.Parameters[0].Identifier.Text,
-            _ => null
-        };
+        return LambdaParsingHelper.GetLambdaParameterName(lambda);
     }
 
     /// <summary>
@@ -123,12 +129,7 @@ public static class LinqraftSyntaxUtilities
     /// <returns>The body expression, or null if not an expression body</returns>
     public static ExpressionSyntax? GetLambdaBody(LambdaExpressionSyntax lambda)
     {
-        return lambda switch
-        {
-            SimpleLambdaExpressionSyntax simple => simple.Body as ExpressionSyntax,
-            ParenthesizedLambdaExpressionSyntax paren => paren.Body as ExpressionSyntax,
-            _ => null
-        };
+        return LambdaParsingHelper.GetLambdaBody(lambda);
     }
 
     private static List<AnonymousTypeProperty> ExtractProperties(

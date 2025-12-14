@@ -4,6 +4,7 @@ using System.Linq;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
 using Linqraft.Core.AnalyzerHelpers;
+using Linqraft.Core.Pipeline.Parsing;
 
 namespace Linqraft.Core.Pipeline.Analysis;
 
@@ -27,7 +28,7 @@ internal class CaptureAnalyzer : ISemanticAnalyzer
 
         if (parsed.LambdaBody != null && parsed.LambdaParameterName != null)
         {
-            var lambda = FindLambda(parsed.OriginalNode);
+            var lambda = LambdaParsingHelper.FindLambdaInArguments(parsed.OriginalNode);
             if (lambda != null)
             {
                 var lambdaParameters = ImmutableHashSet.Create(parsed.LambdaParameterName);
@@ -44,16 +45,5 @@ internal class CaptureAnalyzer : ISemanticAnalyzer
             ParsedSyntax = parsed,
             CapturedVariables = capturedVariables
         };
-    }
-
-    private static LambdaExpressionSyntax? FindLambda(SyntaxNode node)
-    {
-        if (node is not InvocationExpressionSyntax invocation)
-            return null;
-
-        return invocation.ArgumentList.Arguments
-            .Select(arg => arg.Expression)
-            .OfType<LambdaExpressionSyntax>()
-            .FirstOrDefault();
     }
 }
