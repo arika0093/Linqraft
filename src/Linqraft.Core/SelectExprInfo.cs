@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using Linqraft.Core.Formatting;
+using Linqraft.Core.Pipeline;
 using Linqraft.Core.RoslynHelpers;
 using Linqraft.Core.SyntaxHelpers;
 using Microsoft.CodeAnalysis;
@@ -60,6 +61,20 @@ public abstract record SelectExprInfo
     /// The Linqraft configuration settings
     /// </summary>
     public LinqraftConfiguration Configuration { get; set; } = new();
+
+    /// <summary>
+    /// Internal storage for the code generation pipeline.
+    /// </summary>
+    private object? _pipeline;
+
+    /// <summary>
+    /// Gets or initializes the code generation pipeline (internal use only).
+    /// </summary>
+    internal CodeGenerationPipeline GetPipeline()
+    {
+        _pipeline ??= new CodeGenerationPipeline(SemanticModel, Configuration);
+        return (CodeGenerationPipeline)_pipeline;
+    }
 
     /// <summary>
     /// The name of the capture parameter (e.g., "capture" in (x, capture) => new { ... })
