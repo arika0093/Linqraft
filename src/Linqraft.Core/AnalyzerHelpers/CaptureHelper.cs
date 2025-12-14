@@ -315,7 +315,7 @@ public static class CaptureHelper
             }
 
             // Skip if it's part of a member access expression on the right side
-            if (IsPartOfMemberAccess(identifier))
+            if (SyntaxHelper.IsPartOfMemberAccess(identifier))
             {
                 continue;
             }
@@ -374,40 +374,6 @@ public static class CaptureHelper
         }
 
         return variablesToCapture;
-    }
-
-    /// <summary>
-    /// Checks if an identifier is part of a member access expression (on the right side).
-    /// For example, in "s.Property", "Property" is part of member access.
-    /// </summary>
-    private static bool IsPartOfMemberAccess(IdentifierNameSyntax identifier)
-    {
-        var parent = identifier.Parent;
-
-        if (parent is MemberAccessExpressionSyntax memberAccess)
-        {
-            return memberAccess.Name == identifier;
-        }
-
-        if (parent is MemberBindingExpressionSyntax)
-        {
-            return true;
-        }
-
-        // Check if this is inside a NameEquals (property name in anonymous object)
-        if (parent is NameEqualsSyntax)
-        {
-            return true;
-        }
-
-        // Check if this is the left side of an assignment in an object initializer
-        // e.g., in "new MyClass { Id = s.Id }", the left "Id" is the property being assigned
-        if (parent is AssignmentExpressionSyntax assignment && assignment.Left == identifier)
-        {
-            return true;
-        }
-
-        return false;
     }
 
     /// <summary>
