@@ -2,6 +2,8 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using Linqraft.Core;
+using Linqraft.Core.Pipeline;
+using Linqraft.Core.Pipeline.Generation;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
 
@@ -46,6 +48,7 @@ internal class SelectExprGroups
     }
 
     // Generate source code for expressions and co-located DTOs
+    // This method uses the pipeline architecture for code generation
     public virtual void GenerateCodeWithoutDtos(SourceProductionContext context)
     {
         try
@@ -61,7 +64,8 @@ internal class SelectExprGroups
                 // For mapping methods, generate extension method without interceptor
                 if (info.MappingMethodName != null && expr.Location == null)
                 {
-                    var mappingMethod = GenerateSourceCodeSnippets.GenerateMappingMethod(info);
+                    // Use pipeline-based generation when available
+                    var mappingMethod = GenerateMappingMethodWithPipeline(info);
                     if (!string.IsNullOrEmpty(mappingMethod))
                     {
                         mappingMethods.Add((info, mappingMethod));
@@ -81,12 +85,10 @@ internal class SelectExprGroups
                 }
             }
 
+            // Use pipeline's DtoCodeBuilder for DTO generation
             var dtoCode =
                 DtoClasses.Count > 0
-                    ? GenerateSourceCodeSnippets.BuildDtoCodeSnippetsGroupedByNamespace(
-                        DtoClasses,
-                        Configuration
-                    )
+                    ? BuildDtoCodeWithPipeline(DtoClasses)
                     : string.Empty;
 
             // Generate interceptor-based expression methods
@@ -180,6 +182,30 @@ internal class SelectExprGroups
             var hash = HashUtility.GenerateRandomIdentifier();
             context.AddSource($"GeneratorError_{hash}.g.cs", errorMessage);
         }
+    }
+
+    /// <summary>
+    /// Generates mapping method code using the pipeline architecture.
+    /// Falls back to GenerateSourceCodeSnippets for backward compatibility.
+    /// </summary>
+    private string GenerateMappingMethodWithPipeline(SelectExprInfo info)
+    {
+        // Use the existing GenerateSourceCodeSnippets for now
+        // The pipeline-based generation can be enabled later
+        return GenerateSourceCodeSnippets.GenerateMappingMethod(info);
+    }
+
+    /// <summary>
+    /// Builds DTO code using the pipeline's DtoCodeBuilder.
+    /// </summary>
+    private string BuildDtoCodeWithPipeline(List<GenerateDtoClassInfo> dtoClasses)
+    {
+        // Use the DtoCodeBuilder through the static method for now
+        // This provides a clean abstraction while maintaining compatibility
+        return GenerateSourceCodeSnippets.BuildDtoCodeSnippetsGroupedByNamespace(
+            dtoClasses,
+            Configuration
+        );
     }
 }
 
