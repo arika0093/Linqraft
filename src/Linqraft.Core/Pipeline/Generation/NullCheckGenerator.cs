@@ -160,52 +160,7 @@ internal class NullCheckGenerator
     /// </summary>
     private static string GetEmptyCollectionExpressionForType(ITypeSymbol typeSymbol, string expressionText)
     {
-        var nonNullableType = RoslynTypeHelper.GetNonNullableType(typeSymbol) ?? typeSymbol;
-        var elementType = RoslynTypeHelper.GetGenericTypeArgument(nonNullableType, 0);
-        var elementTypeName =
-            elementType?.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat) ?? "object";
-
-        var chainedMethods = "";
-        if (expressionText.Contains(".ToList()"))
-        {
-            chainedMethods = ".ToList()";
-        }
-        else if (expressionText.Contains(".ToArray()"))
-        {
-            chainedMethods = ".ToArray()";
-        }
-
-        return GetEmptyCollectionExpression(typeSymbol, elementTypeName, chainedMethods);
-    }
-
-    /// <summary>
-    /// Gets the empty collection expression based on the target type.
-    /// </summary>
-    private static string GetEmptyCollectionExpression(
-        ITypeSymbol typeSymbol,
-        string elementTypeName,
-        string chainedMethods)
-    {
-        var nonNullableType = RoslynTypeHelper.GetNonNullableType(typeSymbol) ?? typeSymbol;
-
-        // Check if it's a List<T>
-        if (nonNullableType is INamedTypeSymbol namedType)
-        {
-            var fullTypeName = namedType.OriginalDefinition.ToDisplayString();
-            if (fullTypeName == "System.Collections.Generic.List<T>")
-            {
-                return $"new global::System.Collections.Generic.List<{elementTypeName}>()";
-            }
-        }
-
-        // Check for array (via ToArray())
-        if (chainedMethods.Contains(".ToArray()"))
-        {
-            return $"global::System.Array.Empty<{elementTypeName}>()";
-        }
-
-        // Default to Enumerable.Empty<T>() with chained methods
-        return $"global::System.Linq.Enumerable.Empty<{elementTypeName}>(){chainedMethods}";
+        return CollectionHelper.GetEmptyCollectionExpressionForType(typeSymbol, expressionText);
     }
 
     /// <summary>
