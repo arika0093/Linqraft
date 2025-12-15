@@ -19,6 +19,9 @@ internal class CodeGenerationPipeline
     private PropertyAssignmentGenerator? _propertyAssignmentGenerator;
     private NullCheckGenerator? _nullCheckGenerator;
     private LinqExpressionParser? _linqExpressionParser;
+    private DtoAnalyzer? _dtoAnalyzer;
+    private DtoGenerator? _dtoGenerator;
+    private SourceCodeGenerator? _sourceCodeGenerator;
 
     /// <summary>
     /// Creates a new code generation pipeline.
@@ -77,6 +80,42 @@ internal class CodeGenerationPipeline
                 (expr, type) => FullyQualifyExpression(expr, type)
             );
             return _linqExpressionParser;
+        }
+    }
+
+    /// <summary>
+    /// Gets the DTO analyzer.
+    /// </summary>
+    public DtoAnalyzer DtoAnalyzer
+    {
+        get
+        {
+            _dtoAnalyzer ??= new DtoAnalyzer(_semanticModel, _configuration);
+            return _dtoAnalyzer;
+        }
+    }
+
+    /// <summary>
+    /// Gets the DTO generator.
+    /// </summary>
+    public DtoGenerator DtoGenerator
+    {
+        get
+        {
+            _dtoGenerator ??= new DtoGenerator(_semanticModel, _configuration);
+            return _dtoGenerator;
+        }
+    }
+
+    /// <summary>
+    /// Gets the source code generator.
+    /// </summary>
+    public SourceCodeGenerator SourceCodeGenerator
+    {
+        get
+        {
+            _sourceCodeGenerator ??= new SourceCodeGenerator(_configuration);
+            return _sourceCodeGenerator;
         }
     }
 
@@ -202,5 +241,47 @@ internal class CodeGenerationPipeline
             }
         }
         return null;
+    }
+
+    /// <summary>
+    /// Analyzes an anonymous type creation and returns a DtoStructure.
+    /// </summary>
+    public DtoStructure? AnalyzeAnonymousType(
+        AnonymousObjectCreationExpressionSyntax anonymousObj,
+        ITypeSymbol sourceType,
+        string? hintName = null)
+    {
+        return DtoAnalyzer.AnalyzeAnonymousType(anonymousObj, sourceType, hintName);
+    }
+
+    /// <summary>
+    /// Analyzes a named type creation and returns a DtoStructure.
+    /// </summary>
+    public DtoStructure? AnalyzeNamedType(
+        ObjectCreationExpressionSyntax namedObj,
+        ITypeSymbol sourceType,
+        string? hintName = null)
+    {
+        return DtoAnalyzer.AnalyzeNamedType(namedObj, sourceType, hintName);
+    }
+
+    /// <summary>
+    /// Generates a DTO class info from a structure.
+    /// </summary>
+    public GenerateDtoClassInfo GenerateDtoClassInfo(
+        DtoStructure structure,
+        string className,
+        string namespaceName,
+        string accessibility = "public")
+    {
+        return DtoGenerator.GenerateClassInfo(structure, className, namespaceName, accessibility);
+    }
+
+    /// <summary>
+    /// Generates source code for DTO classes.
+    /// </summary>
+    public string GenerateDtoSourceCode(List<GenerateDtoClassInfo> dtoClassInfos)
+    {
+        return SourceCodeGenerator.BuildDtoCodeSnippetsGroupedByNamespace(dtoClassInfos);
     }
 }
