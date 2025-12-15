@@ -1506,82 +1506,8 @@ public abstract record SelectExprInfo
         ITypeSymbol typeSymbol
     )
     {
-        // Example: c.Child?.Id → c.Child != null ? c.Child.Id : default(int?)
-        // Example: s.Child3?.Child?.Id → s.Child3 != null && s.Child3.Child != null ? s.Child3.Child.Id : default(int?)
-        // Example: d.InnerData?.Childs.Select(c => c.Id).ToList() → d.InnerData != null ? d.InnerData.Childs.Select(c => c.Id).ToList() : new List<int>()
-
-        // Use Roslyn to verify this uses conditional access
-        var hasConditionalAccess = syntax
-            .DescendantNodesAndSelf()
-            .OfType<ConditionalAccessExpressionSyntax>()
-            .Any();
-
-        if (!hasConditionalAccess)
-            return syntax.ToString();
-
-        // For now, use the original string-based implementation since it works
-        // The Roslyn check above ensures we only call this when appropriate
-        var expression = syntax.ToString();
-
-        // Remove comments from syntax before processing
-        var cleanSyntax = RemoveComments(syntax);
-        var cleanExpression = cleanSyntax.ToString();
-
-        // Build the access path without ?. operators
-        var accessPath = cleanExpression.Replace("?.", ".");
-
-        // Build null checks using string manipulation (proven to work)
-        var checks = new List<string>();
-        var parts = cleanExpression.Split(["?."], StringSplitOptions.None);
-
-        if (parts.Length < 2)
-            return expression;
-
-        // All parts except the first require null checks
-        var currentPath = parts[0];
-        for (int i = 1; i < parts.Length; i++)
-        {
-            checks.Add($"{currentPath} != null");
-            // Get the first token (property name) of the next part
-            var nextPart = parts[i];
-            var dotIndex = nextPart.IndexOf('.');
-            var propertyName = dotIndex > 0 ? nextPart[..dotIndex] : nextPart;
-            currentPath = $"{currentPath}.{propertyName}";
-        }
-
-        if (checks.Count == 0)
-            return expression;
-
-        // Build null checks
-        var nullCheckPart = string.Join(" && ", checks);
-
-        // Check if expression contains Select or SelectMany invocation
-        var hasSelectOrSelectMany =
-            RoslynTypeHelper.ContainsSelectInvocation(syntax)
-            || RoslynTypeHelper.ContainsSelectManyInvocation(syntax);
-
-        // Determine the default value based on whether the type is a collection with Select/SelectMany
-        // Only use empty collection fallback for collections that use Select/SelectMany
-        // and when ArrayNullabilityRemoval is enabled
-        string defaultValue;
-
-        if (
-            Configuration.ArrayNullabilityRemoval
-            && hasSelectOrSelectMany
-            && RoslynTypeHelper.IsCollectionType(typeSymbol)
-        )
-        {
-            // For collection types with Select/SelectMany, use an empty collection as the default value
-            defaultValue = GetEmptyCollectionExpressionForType(typeSymbol, cleanExpression);
-        }
-        else
-        {
-            // For non-collection types or collections without Select/SelectMany (e.g., byte[]),
-            // use null or default value with nullable type annotation
-            defaultValue = GetDefaultValueForType(typeSymbol);
-        }
-
-        return $"{nullCheckPart} ? {accessPath} : {defaultValue}";
+        // Delegate to the pipeline's null check generator
+        return GetPipeline().ConvertToExplicitNullCheck(syntax, typeSymbol);
     }
 
     /// <summary>
@@ -1639,23 +1565,8 @@ public abstract record SelectExprInfo
     /// </summary>
     protected string GetDefaultValueForType(ITypeSymbol typeSymbol)
     {
-        var typeName = typeSymbol.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat);
-        if (RoslynTypeHelper.IsNullableType(typeSymbol))
-        {
-            // // Nullable<T> (nullable value type) needs default(T?) syntax
-            if (typeSymbol.OriginalDefinition.SpecialType == SpecialType.System_Nullable_T)
-            {
-                return $"default({typeName})";
-            }
-            return "null";
-        }
-        return typeSymbol.SpecialType switch
-        {
-            SpecialType.System_Boolean => "false",
-            SpecialType.System_Char => "'\\0'",
-            SpecialType.System_String => "string.Empty",
-            _ => "default",
-        };
+        // Delegate to the pipeline's null check generator
+        return GetPipeline().GetDefaultValueForType(typeSymbol);
     }
 
     /// <summary>

@@ -17,6 +17,7 @@ internal class CodeGenerationPipeline
     private readonly SemanticModel _semanticModel;
     private readonly LinqraftConfiguration _configuration;
     private PropertyAssignmentGenerator? _propertyAssignmentGenerator;
+    private NullCheckGenerator? _nullCheckGenerator;
 
     /// <summary>
     /// Creates a new code generation pipeline.
@@ -48,6 +49,18 @@ internal class CodeGenerationPipeline
         {
             _propertyAssignmentGenerator ??= new PropertyAssignmentGenerator(_semanticModel, _configuration);
             return _propertyAssignmentGenerator;
+        }
+    }
+
+    /// <summary>
+    /// Gets the null check generator.
+    /// </summary>
+    public NullCheckGenerator NullCheckGenerator
+    {
+        get
+        {
+            _nullCheckGenerator ??= new NullCheckGenerator(_semanticModel, _configuration);
+            return _nullCheckGenerator;
         }
     }
 
@@ -122,6 +135,39 @@ internal class CodeGenerationPipeline
     public string FullyQualifyExpression(ExpressionSyntax expression, ITypeSymbol expectedType)
     {
         return PropertyAssignmentGenerator.FullyQualifyExpression(expression, expectedType);
+    }
+
+    /// <summary>
+    /// Converts a null-conditional expression to an explicit null check.
+    /// </summary>
+    /// <param name="expression">The expression with null-conditional access</param>
+    /// <param name="typeSymbol">The type of the expression result</param>
+    /// <returns>The converted expression with explicit null check</returns>
+    public string ConvertToExplicitNullCheck(ExpressionSyntax expression, ITypeSymbol typeSymbol)
+    {
+        return NullCheckGenerator.ConvertToExplicitNullCheck(expression, typeSymbol);
+    }
+
+    /// <summary>
+    /// Checks if an expression needs null check conversion.
+    /// </summary>
+    /// <param name="expression">The expression to check</param>
+    /// <param name="isNullable">Whether the property is nullable</param>
+    /// <param name="typeSymbol">The type symbol of the expression</param>
+    /// <returns>True if the expression needs null check conversion</returns>
+    public bool NeedsNullCheckConversion(ExpressionSyntax expression, bool isNullable, ITypeSymbol typeSymbol)
+    {
+        return NullCheckGenerator.NeedsNullCheckConversion(expression, isNullable, typeSymbol);
+    }
+
+    /// <summary>
+    /// Gets the default value for a type symbol.
+    /// </summary>
+    /// <param name="typeSymbol">The type symbol</param>
+    /// <returns>The default value as a string</returns>
+    public string GetDefaultValueForType(ITypeSymbol typeSymbol)
+    {
+        return NullCheckGenerator.GetDefaultValueForType(typeSymbol);
     }
 
     /// <summary>
