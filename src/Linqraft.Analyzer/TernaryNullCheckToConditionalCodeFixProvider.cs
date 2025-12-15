@@ -155,7 +155,8 @@ public class TernaryNullCheckToConditionalCodeFixProvider : CodeFixProvider
             containingStatement
                 ?.GetLeadingTrivia()
                 .Where(t => t.IsKind(SyntaxKind.WhitespaceTrivia))
-                .LastOrDefault() ?? default;
+                .LastOrDefault()
+            ?? default;
 
         if (
             newExpression is ObjectCreationExpressionSyntax newObjCreation
