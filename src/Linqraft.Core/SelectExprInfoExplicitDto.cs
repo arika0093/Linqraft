@@ -308,14 +308,16 @@ public record SelectExprInfoExplicitDto : SelectExprInfo
 
         var id = GetUniqueId();
 
-        // Build the lambda body
+        // Build the lambda body using pipeline
+        var pipeline = GetPipeline();
         var lambdaBodyBuilder = new StringBuilder();
         lambdaBodyBuilder.AppendLine($"new {dtoFullName}");
         lambdaBodyBuilder.AppendLine($"    {{");
         var propertyAssignments = structure
             .Properties.Select(prop =>
             {
-                var assignment = GeneratePropertyAssignment(prop, CodeFormatter.IndentSize * 2);
+                var assignment = pipeline.PropertyAssignmentGenerator.GeneratePropertyAssignment(
+                    prop, CodeFormatter.IndentSize * 2, LambdaParameterName, "");
                 return $"{CodeFormatter.Indent(2)}{prop.Name} = {assignment}";
             })
             .ToList();
@@ -542,11 +544,13 @@ public record SelectExprInfoExplicitDto : SelectExprInfo
         }
         sb.AppendLine($"    {{");
 
-        // Generate property assignments
+        // Generate property assignments using pipeline
+        var pipeline = GetPipeline();
         var propertyAssignments = structure
             .Properties.Select(prop =>
             {
-                var assignment = GeneratePropertyAssignment(prop, CodeFormatter.IndentSize * 2);
+                var assignment = pipeline.PropertyAssignmentGenerator.GeneratePropertyAssignment(
+                    prop, CodeFormatter.IndentSize * 2, LambdaParameterName, "");
                 return $"{CodeFormatter.Indent(2)}{prop.Name} = {assignment}";
             })
             .ToList();

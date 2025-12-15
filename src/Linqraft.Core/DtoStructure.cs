@@ -23,7 +23,7 @@ public record DtoStructure(ITypeSymbol SourceType, List<DtoProperty> Properties)
     /// <summary>
     /// Documentation information for the source type (for class-level comments)
     /// </summary>
-    public DocumentationCommentHelper.DocumentationInfo? SourceTypeDocumentation { get; init; }
+    public DocumentationInfo? SourceTypeDocumentation { get; init; }
 
     /// <summary>
     /// Gets the simple name of the source type

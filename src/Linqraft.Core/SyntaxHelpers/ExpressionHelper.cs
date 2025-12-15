@@ -6,7 +6,7 @@ namespace Linqraft.Core.SyntaxHelpers;
 /// <summary>
 /// Helper methods for working with expressions
 /// </summary>
-public static class ExpressionHelper
+internal static class ExpressionHelper
 {
     /// <summary>
     /// Gets the property name from an expression

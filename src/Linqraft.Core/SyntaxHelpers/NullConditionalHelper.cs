@@ -9,7 +9,7 @@ namespace Linqraft.Core.SyntaxHelpers;
 /// <summary>
 /// Helper methods for working with null-conditional operators and null checks
 /// </summary>
-public static class NullConditionalHelper
+internal static class NullConditionalHelper
 {
     /// <summary>
     /// Checks if an expression contains a null-conditional access operator (?.) at the top level

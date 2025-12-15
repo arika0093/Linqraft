@@ -148,11 +148,13 @@ public record SelectExprInfoAnonymous : SelectExprInfo
 
         sb.AppendLine($"    {{");
 
-        // Generate property assignments
+        // Generate property assignments using pipeline
+        var pipeline = GetPipeline();
         var propertyAssignments = structure
             .Properties.Select(prop =>
             {
-                var assignment = GeneratePropertyAssignment(prop, CodeFormatter.IndentSize * 2);
+                var assignment = pipeline.PropertyAssignmentGenerator.GeneratePropertyAssignment(
+                    prop, CodeFormatter.IndentSize * 2, LambdaParameterName, "");
                 return $"{CodeFormatter.Indent(2)}{prop.Name} = {assignment}";
             })
             .ToList();

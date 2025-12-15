@@ -6,7 +6,7 @@ namespace Linqraft.Core.AnalyzerHelpers;
 /// <summary>
 /// Helper methods for common syntax operations in analyzers
 /// </summary>
-public static class SyntaxHelper
+internal static class SyntaxHelper
 {
     /// <summary>
     /// Gets the location of the method name in an invocation expression.

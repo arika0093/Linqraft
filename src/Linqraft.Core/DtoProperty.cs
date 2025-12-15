@@ -21,7 +21,7 @@ public record DtoProperty(
     DtoStructure? NestedStructure,
     string? Accessibility = null,
     bool IsNestedFromNamedType = false,
-    DocumentationCommentHelper.DocumentationInfo? Documentation = null,
+    DocumentationInfo? Documentation = null,
     /// <summary>
     /// The explicit DTO type specified in SelectExpr&lt;TIn, TResult&gt; generic arguments.
     /// When this is set, the generated expression should use this type instead of auto-generating one.
@@ -821,7 +821,7 @@ public record DtoProperty(
     /// <summary>
     /// Extracts documentation information from the source symbol of an expression
     /// </summary>
-    private static DocumentationCommentHelper.DocumentationInfo? ExtractDocumentation(
+    private static DocumentationInfo? ExtractDocumentation(
         ExpressionSyntax expression,
         SemanticModel semanticModel
     )
@@ -829,7 +829,7 @@ public record DtoProperty(
         // Build source reference from expression (converting lambda param to source type name)
         var sourceReference = BuildSourceReference(expression, semanticModel);
 
-        DocumentationCommentHelper.DocumentationInfo? baseDocumentation = null;
+        DocumentationInfo? baseDocumentation = null;
 
         // Check if this is an invocation expression containing Select/SelectMany
         // For these cases, extract documentation from the collection property
@@ -897,7 +897,7 @@ public record DtoProperty(
         // If no source symbol found, return just the source reference
         if (!string.IsNullOrEmpty(sourceReference))
         {
-            return new DocumentationCommentHelper.DocumentationInfo
+            return new DocumentationInfo
             {
                 SourceReference = sourceReference,
             };

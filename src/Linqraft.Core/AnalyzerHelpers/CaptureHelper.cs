@@ -11,7 +11,7 @@ namespace Linqraft.Core.AnalyzerHelpers;
 /// <summary>
 /// Helper methods for capture parameter detection and variable capture analysis
 /// </summary>
-public static class CaptureHelper
+internal static class CaptureHelper
 {
     /// <summary>
     /// Extracts captured variable names from a SelectExpr invocation's capture argument.

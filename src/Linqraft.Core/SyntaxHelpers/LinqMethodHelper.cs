@@ -8,7 +8,7 @@ namespace Linqraft.Core.SyntaxHelpers;
 /// <summary>
 /// Helper methods for working with LINQ method invocations
 /// </summary>
-public static class LinqMethodHelper
+internal static class LinqMethodHelper
 {
     /// <summary>
     /// Finds a LINQ method invocation in an expression

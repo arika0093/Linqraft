@@ -10,7 +10,7 @@ namespace Linqraft.Core.RoslynHelpers;
 /// Type checking helper using Roslyn semantic analysis.
 /// Provides more accurate and robust type checking by replacing string-based type comparisons.
 /// </summary>
-public static class RoslynTypeHelper
+internal static class RoslynTypeHelper
 {
     /// <summary>
     /// Determines whether a type is a nullable type.

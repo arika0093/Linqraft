@@ -6,7 +6,7 @@ namespace Linqraft.Core.AnalyzerHelpers;
 /// <summary>
 /// Helper methods for generating syntax nodes in code fixes
 /// </summary>
-public static class SyntaxGenerationHelper
+internal static class SyntaxGenerationHelper
 {
     /// <summary>
     /// Creates a typed SelectExpr call with type arguments from an existing Select expression.

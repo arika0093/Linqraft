@@ -81,14 +81,16 @@ public record SelectExprInfoNamed : SelectExprInfo
         var dtoName = GetParentDtoClassName(structure);
         var id = GetUniqueId();
 
-        // Build the lambda body
+        // Build the lambda body using pipeline
+        var pipeline = GetPipeline();
         var lambdaBodyBuilder = new StringBuilder();
         lambdaBodyBuilder.AppendLine($"new {dtoName}");
         lambdaBodyBuilder.AppendLine($"    {{");
         var propertyAssignments = structure
             .Properties.Select(prop =>
             {
-                var assignment = GeneratePropertyAssignment(prop, CodeFormatter.IndentSize * 2);
+                var assignment = pipeline.PropertyAssignmentGenerator.GeneratePropertyAssignment(
+                    prop, CodeFormatter.IndentSize * 2, LambdaParameterName, "");
                 return $"{CodeFormatter.Indent(2)}{prop.Name} = {assignment}";
             })
             .ToList();
@@ -225,11 +227,13 @@ public record SelectExprInfoNamed : SelectExprInfo
 
         sb.AppendLine($"    {{");
 
-        // Generate property assignments using GeneratePropertyAssignment to properly handle null-conditional operators
+        // Generate property assignments using pipeline to properly handle null-conditional operators
+        var pipeline = GetPipeline();
         var propertyAssignments = structure
             .Properties.Select(prop =>
             {
-                var assignment = GeneratePropertyAssignment(prop, CodeFormatter.IndentSize * 2);
+                var assignment = pipeline.PropertyAssignmentGenerator.GeneratePropertyAssignment(
+                    prop, CodeFormatter.IndentSize * 2, LambdaParameterName, "");
                 return $"{CodeFormatter.Indent(2)}{prop.Name} = {assignment}";
             })
             .ToList();
