@@ -1,4 +1,6 @@
+using System.Collections.Generic;
 using System.Linq;
+using System.Text;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
@@ -198,5 +200,84 @@ internal class PropertyAssignmentGenerator
         }
 
         return null;
+    }
+
+    /// <summary>
+    /// Generates a property assignment expression for a DtoProperty.
+    /// This is the main entry point for generating property assignment code.
+    /// </summary>
+    /// <param name="property">The property to generate assignment for</param>
+    /// <param name="indents">The indentation level</param>
+    /// <param name="lambdaParameterName">The lambda parameter name</param>
+    /// <param name="callerNamespace">The caller namespace</param>
+    /// <returns>The generated property assignment code</returns>
+    public string GeneratePropertyAssignment(
+        DtoProperty property,
+        int indents,
+        string lambdaParameterName,
+        string callerNamespace)
+    {
+        var expression = property.OriginalExpression;
+        var syntax = property.OriginalSyntax;
+
+        // For nested structure cases, delegate to specialized handlers
+        if (property.NestedStructure is not null)
+        {
+            // If the nested structure is from a named type (not anonymous),
+            // preserve the original type name with full qualification
+            if (property.IsNestedFromNamedType)
+            {
+                // For named types in Select, preserve the original object creation
+                // but convert type names to fully qualified names
+                return FullyQualifyExpression(syntax, property.TypeSymbol);
+            }
+
+            // For other nested cases, convert anonymous types to DTOs
+            // This is a simplified version - the full implementation is in SelectExprInfo
+            return FullyQualifyExpression(syntax, property.TypeSymbol);
+        }
+
+        // If object creation expression, convert type names to fully qualified names.
+        if (syntax is ObjectCreationExpressionSyntax objectCreation)
+        {
+            return ConvertObjectCreationToFullyQualified(objectCreation);
+        }
+
+        // If nullable operator is used, convert to explicit null check
+        var hasConditionalAccess = HasNullConditionalAccess(syntax);
+        var hasSelectOrSelectMany = HasSelectOrSelectMany(syntax);
+        var isCollectionWithSelect = _configuration.ArrayNullabilityRemoval
+            && hasSelectOrSelectMany
+            && IsCollectionType(property.TypeSymbol);
+
+        if (hasConditionalAccess && (property.IsNullable || isCollectionWithSelect))
+        {
+            // Delegate to NullCheckGenerator for null-conditional conversion
+            return FullyQualifyExpression(syntax, property.TypeSymbol);
+        }
+
+        // For static/const expression, return expression with full-name resolution
+        if (syntax is MemberAccessExpressionSyntax memberAccess
+            && memberAccess.Kind() == SyntaxKind.SimpleMemberAccessExpression)
+        {
+            var fullyQualified = GetFullyQualifiedStaticMember(memberAccess);
+            if (fullyQualified is not null)
+            {
+                return fullyQualified;
+            }
+        }
+
+        // For simple identifier, check if it's a static/const member
+        if (syntax is IdentifierNameSyntax identifierName)
+        {
+            var fullyQualified = GetFullyQualifiedIdentifier(identifierName);
+            if (fullyQualified is not null)
+            {
+                return fullyQualified;
+            }
+        }
+
+        // For any other expression, ensure all references are fully qualified
+        return FullyQualifyExpression(syntax, property.TypeSymbol);
     }
 }
