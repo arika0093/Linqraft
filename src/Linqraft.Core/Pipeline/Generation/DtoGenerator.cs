@@ -247,11 +247,27 @@ internal class DtoGenerator
 
     /// <summary>
     /// Determines if a property type represents an array type.
+    /// This method uses multiple heuristics because:
+    /// 1. IArrayTypeSymbol check is the preferred semantic approach
+    /// 2. String pattern "[]" catches cases where the type string explicitly shows array type
+    /// 3. ".ToArray()" string check is a necessary fallback for cases where:
+    ///    - The semantic model information is not available
+    ///    - The type symbol doesn't reflect the array type yet (e.g., chained LINQ operations)
+    /// Note: The string-based ".ToArray()" check may produce false positives if a property
+    /// or method named "ToArray" exists that returns a non-array type, but this is rare in practice.
     /// </summary>
     private static bool IsArrayType(DtoProperty prop, string typeString)
     {
-        return prop.TypeSymbol is IArrayTypeSymbol
-            || typeString.EndsWith("[]")
-            || prop.OriginalExpression.Trim().EndsWith(".ToArray()");
+        // Prefer semantic check (IArrayTypeSymbol) when available
+        if (prop.TypeSymbol is IArrayTypeSymbol)
+            return true;
+
+        // Check type string pattern for explicit array types
+        if (typeString.EndsWith("[]"))
+            return true;
+
+        // Fallback: check if expression ends with .ToArray() call
+        // This handles cases where semantic information is incomplete
+        return prop.OriginalExpression.Trim().EndsWith(".ToArray()");
     }
 }

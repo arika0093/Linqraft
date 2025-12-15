@@ -100,7 +100,7 @@ internal class SourceCodeGenerator
     /// <summary>
     /// Gets the DTO code attributes.
     /// </summary>
-    public static string BuildDtoCodeAttributes()
+    public string BuildDtoCodeAttributes()
     {
         return GenerateSourceCodeSnippets.BuildDtoCodeAttributes();
     }

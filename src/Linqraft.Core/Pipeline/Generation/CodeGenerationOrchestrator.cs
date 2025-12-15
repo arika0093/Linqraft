@@ -108,8 +108,6 @@ internal class CodeGenerationOrchestrator
     /// </summary>
     private static bool IsHashNamespaceDto(string? namespaceName)
     {
-        const string HashNamespacePrefix = "LinqraftGenerated_";
-
         if (namespaceName is not { Length: > 0 } ns)
         {
             return false;
@@ -118,7 +116,7 @@ internal class CodeGenerationOrchestrator
         // Check if the final segment starts with the hash namespace prefix
         var lastDotIndex = ns.LastIndexOf('.');
         var finalSegment = lastDotIndex >= 0 ? ns[(lastDotIndex + 1)..] : ns;
-        return finalSegment.StartsWith(HashNamespacePrefix);
+        return finalSegment.StartsWith(PipelineConstants.HashNamespacePrefix);
     }
 }
 
