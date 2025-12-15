@@ -18,10 +18,10 @@
       <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
       <PrivateAssets>all</PrivateAssets>
     </PackageReference>
-    <!-- <PackageReference Include="PolySharp" Version="1.*">
+    <PackageReference Include="PolySharp" Version="1.*">
       <PrivateAssets>all</PrivateAssets>
       <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
-    </PackageReference> -->
+    </PackageReference>
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\..\src\Linqraft.Core\Linqraft.Core.csproj">
