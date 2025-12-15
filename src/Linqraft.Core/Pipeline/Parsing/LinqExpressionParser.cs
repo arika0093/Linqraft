@@ -206,16 +206,24 @@ internal class LinqExpressionParser
     }
 
     /// <summary>
-    /// Removes all comment trivia from a syntax node.
+    /// Removes comments from a syntax node while preserving other trivia (whitespace, etc).
     /// </summary>
     private static T RemoveComments<T>(T node) where T : SyntaxNode
     {
         return (T)node.ReplaceTrivia(
-            node.DescendantTrivia().Where(t =>
-                t.IsKind(SyntaxKind.SingleLineCommentTrivia) ||
-                t.IsKind(SyntaxKind.MultiLineCommentTrivia) ||
-                t.IsKind(SyntaxKind.SingleLineDocumentationCommentTrivia) ||
-                t.IsKind(SyntaxKind.MultiLineDocumentationCommentTrivia)),
-            (_, _) => SyntaxFactory.Whitespace(" "));
+            node.DescendantTrivia(descendIntoTrivia: true),
+            (originalTrivia, _) =>
+            {
+                // Remove single-line and multi-line comments
+                if (
+                    originalTrivia.IsKind(SyntaxKind.SingleLineCommentTrivia)
+                    || originalTrivia.IsKind(SyntaxKind.MultiLineCommentTrivia)
+                )
+                {
+                    return default;
+                }
+                return originalTrivia;
+            }
+        );
     }
 }

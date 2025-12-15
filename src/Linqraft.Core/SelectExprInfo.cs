@@ -1278,7 +1278,6 @@ public abstract record SelectExprInfo
     }
 
     /// <summary>
-    /// <summary>
     /// Converts nullable access expressions to explicit null checks using Roslyn
     /// </summary>
     protected string ConvertNullableAccessToExplicitCheckWithRoslyn(
