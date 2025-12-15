@@ -18,6 +18,7 @@ internal class CodeGenerationPipeline
     private readonly LinqraftConfiguration _configuration;
     private PropertyAssignmentGenerator? _propertyAssignmentGenerator;
     private NullCheckGenerator? _nullCheckGenerator;
+    private LinqExpressionParser? _linqExpressionParser;
 
     /// <summary>
     /// Creates a new code generation pipeline.
@@ -61,6 +62,21 @@ internal class CodeGenerationPipeline
         {
             _nullCheckGenerator ??= new NullCheckGenerator(_semanticModel, _configuration);
             return _nullCheckGenerator;
+        }
+    }
+
+    /// <summary>
+    /// Gets the LINQ expression parser.
+    /// </summary>
+    public LinqExpressionParser LinqExpressionParser
+    {
+        get
+        {
+            _linqExpressionParser ??= new LinqExpressionParser(
+                _semanticModel,
+                (expr, type) => FullyQualifyExpression(expr, type)
+            );
+            return _linqExpressionParser;
         }
     }
 
