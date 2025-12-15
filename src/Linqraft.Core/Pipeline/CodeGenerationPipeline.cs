@@ -22,6 +22,7 @@ internal class CodeGenerationPipeline
     private DtoAnalyzer? _dtoAnalyzer;
     private DtoGenerator? _dtoGenerator;
     private SourceCodeGenerator? _sourceCodeGenerator;
+    private DtoCodeBuilder? _dtoCodeBuilder;
 
     /// <summary>
     /// Creates a new code generation pipeline.
@@ -116,6 +117,18 @@ internal class CodeGenerationPipeline
         {
             _sourceCodeGenerator ??= new SourceCodeGenerator(_configuration);
             return _sourceCodeGenerator;
+        }
+    }
+
+    /// <summary>
+    /// Gets the DTO code builder.
+    /// </summary>
+    public DtoCodeBuilder DtoCodeBuilder
+    {
+        get
+        {
+            _dtoCodeBuilder ??= new DtoCodeBuilder(_configuration);
+            return _dtoCodeBuilder;
         }
     }
 
