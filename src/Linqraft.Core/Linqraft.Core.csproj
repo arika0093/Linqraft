@@ -13,10 +13,5 @@
     <AssemblyAttribute Include="Linqraft.Core.BuildDateTime">
       <_Parameter1>$([System.DateTime]::UtcNow.Ticks)</_Parameter1>
     </AssemblyAttribute>
-    <InternalsVisibleTo Include="Linqraft.SourceGenerator" />
-    <InternalsVisibleTo Include="Linqraft.Analyzer" />
-    <InternalsVisibleTo Include="Linqraft.Tests" />
-    <InternalsVisibleTo Include="Linqraft.Analyzer.Tests" />
-    <InternalsVisibleTo Include="Linqraft.Playground" />
   </ItemGroup>
 </Project>

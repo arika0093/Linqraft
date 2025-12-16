@@ -7,7 +7,7 @@ namespace Linqraft.Core.SyntaxHelpers;
 /// <summary>
 /// Helper methods for working with syntax trivia (whitespace, comments, etc.)
 /// </summary>
-internal static class TriviaHelper
+public static class TriviaHelper
 {
     /// <summary>
     /// Preserves both leading and trailing trivia from the original node to the updated node

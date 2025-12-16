@@ -9,7 +9,7 @@ namespace Linqraft.Core.AnalyzerHelpers;
 /// <summary>
 /// Helper methods for adding using directives in code fixes
 /// </summary>
-internal static class UsingDirectiveHelper
+public static class UsingDirectiveHelper
 {
     /// <summary>
     /// Adds a using directive for the namespace containing the specified type symbol,

@@ -9,7 +9,7 @@ namespace Linqraft.Core.SyntaxHelpers;
 /// <summary>
 /// Helper methods for manipulating ArgumentList while preserving trivia and structure
 /// </summary>
-internal static class ArgumentListHelper
+public static class ArgumentListHelper
 {
     /// <summary>
     /// Adds a new argument to an argument list while preserving all trivia and formatting

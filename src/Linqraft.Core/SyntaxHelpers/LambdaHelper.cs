@@ -7,7 +7,7 @@ namespace Linqraft.Core.SyntaxHelpers;
 /// <summary>
 /// Helper methods for working with lambda expressions
 /// </summary>
-internal static class LambdaHelper
+public static class LambdaHelper
 {
     /// <summary>
     /// Gets the first parameter name from a lambda expression

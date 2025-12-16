@@ -40,7 +40,7 @@ namespace Linqraft.Core.SyntaxHelpers;
 /// var anonymousObject = ObjectCreationHelper.ConvertToAnonymousTypeRecursive(objectCreation);
 /// </code>
 /// </remarks>
-internal static class ObjectCreationHelper
+public static class ObjectCreationHelper
 {
     /// <summary>
     /// Converts an anonymous object creation to a named object creation, preserving all trivia and structure.
