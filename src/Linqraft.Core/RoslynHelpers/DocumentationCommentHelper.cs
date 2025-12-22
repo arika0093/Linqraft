@@ -27,22 +27,15 @@ public static class DocumentationCommentHelper
         /// </summary>
         public string? SourceReference
         {
-            get => field;
+            get;
             set => field = value?.Replace(" ", "");
         }
-
-        /// <summary>
-        /// List of attribute names (e.g., ["Key", "Required", "StringLength(100)"])
-        /// </summary>
-        public List<string> Attributes { get; init; } = [];
 
         /// <summary>
         /// Returns true if there is any documentation to output
         /// </summary>
         public bool HasDocumentation =>
-            !string.IsNullOrEmpty(Summary)
-            || !string.IsNullOrEmpty(SourceReference)
-            || Attributes.Count > 0;
+            !string.IsNullOrEmpty(Summary) || !string.IsNullOrEmpty(SourceReference);
     }
 
     /// <summary>
@@ -56,14 +49,7 @@ public static class DocumentationCommentHelper
             return new DocumentationInfo();
 
         var summary = GetSummaryFromSymbol(typeSymbol);
-        var attributes = GetDataAnnotationAttributes(typeSymbol);
-
-        return new DocumentationInfo
-        {
-            Summary = summary,
-            SourceReference = typeSymbol.Name,
-            Attributes = attributes,
-        };
+        return new DocumentationInfo { Summary = summary, SourceReference = typeSymbol.Name };
     }
 
     /// <summary>
@@ -81,20 +67,13 @@ public static class DocumentationCommentHelper
             return new DocumentationInfo();
 
         var summary = GetSummaryFromSymbol(propertySymbol);
-        var attributes = GetDataAnnotationAttributes(propertySymbol);
-
         // For source reference (display path), use the provided containing type name
         var displayTypeName = containingTypeName ?? propertySymbol.ContainingType?.Name ?? "";
         var sourceRef = string.IsNullOrEmpty(displayTypeName)
             ? propertySymbol.Name
             : $"{displayTypeName}.{propertySymbol.Name}";
 
-        return new DocumentationInfo
-        {
-            Summary = summary,
-            SourceReference = sourceRef,
-            Attributes = attributes,
-        };
+        return new DocumentationInfo { Summary = summary, SourceReference = sourceRef };
     }
 
     /// <summary>
@@ -112,7 +91,6 @@ public static class DocumentationCommentHelper
             return new DocumentationInfo();
 
         var summary = GetSummaryFromSymbol(fieldSymbol);
-        var attributes = GetDataAnnotationAttributes(fieldSymbol);
 
         // For source reference (display path), use the provided containing type name
         var displayTypeName = containingTypeName ?? fieldSymbol.ContainingType?.Name ?? "";
@@ -120,12 +98,7 @@ public static class DocumentationCommentHelper
             ? fieldSymbol.Name
             : $"{displayTypeName}.{fieldSymbol.Name}";
 
-        return new DocumentationInfo
-        {
-            Summary = summary,
-            SourceReference = sourceRef,
-            Attributes = attributes,
-        };
+        return new DocumentationInfo { Summary = summary, SourceReference = sourceRef };
     }
 
     /// <summary>
@@ -208,7 +181,7 @@ public static class DocumentationCommentHelper
                 // Remove the // prefix and trim
                 if (commentText.StartsWith("//"))
                 {
-                    var text = commentText.Substring(2).Trim();
+                    var text = commentText[2..].Trim();
                     if (!string.IsNullOrEmpty(text))
                         comments.Add(text);
                 }
@@ -243,89 +216,6 @@ public static class DocumentationCommentHelper
         }
 
         return null;
-    }
-
-    /// <summary>
-    /// Gets data annotation attributes from a symbol that should be included in documentation
-    /// </summary>
-    private static List<string> GetDataAnnotationAttributes(ISymbol symbol)
-    {
-        var result = new List<string>();
-        var attributes = symbol.GetAttributes();
-
-        // Namespaces to include attributes from
-        var includedNamespaces = new[]
-        {
-            "Microsoft.EntityFrameworkCore",
-            "System.ComponentModel.DataAnnotations",
-            "System.Text.Json.Serialization",
-        };
-
-        foreach (var attr in attributes)
-        {
-            var attrClass = attr.AttributeClass;
-            if (attrClass == null)
-                continue;
-
-            var attrName = attrClass.Name;
-
-            // Skip Comment and Display attributes (they're used for summary)
-            if (attrName is "Comment" or "CommentAttribute" or "Display" or "DisplayAttribute")
-                continue;
-
-            // Check if the attribute is from one of the included namespaces
-            var attrNamespace = attrClass.ContainingNamespace?.ToDisplayString();
-            if (attrNamespace == null)
-                continue;
-
-            var isIncluded = includedNamespaces.Any(ns =>
-                attrNamespace == ns || attrNamespace.StartsWith(ns + ".")
-            );
-
-            if (!isIncluded)
-                continue;
-
-            // Build attribute string with arguments
-            var attrString = BuildAttributeString(attr);
-            if (!string.IsNullOrEmpty(attrString))
-                result.Add(attrString);
-        }
-
-        return result;
-    }
-
-    /// <summary>
-    /// Builds a string representation of an attribute with its arguments
-    /// </summary>
-    private static string BuildAttributeString(AttributeData attr)
-    {
-        var name = attr.AttributeClass?.Name;
-        if (name == null)
-            return "";
-
-        // Remove "Attribute" suffix for cleaner output
-        if (name.EndsWith("Attribute"))
-            name = name.Substring(0, name.Length - 9);
-
-        // Build argument list
-        var args = new List<string>();
-
-        // Add constructor arguments
-        foreach (var arg in attr.ConstructorArguments)
-        {
-            args.Add(FormatTypedConstant(arg));
-        }
-
-        // Add named arguments
-        foreach (var namedArg in attr.NamedArguments)
-        {
-            args.Add($"{namedArg.Key} = {FormatTypedConstant(namedArg.Value)}");
-        }
-
-        if (args.Count > 0)
-            return $"{name}({string.Join(", ", args)})";
-
-        return name;
     }
 
     /// <summary>
@@ -412,13 +302,6 @@ public static class DocumentationCommentHelper
             if (!string.IsNullOrEmpty(info.SourceReference))
             {
                 remarksParts.Add($"From: <c>{EscapeXmlContent(info.SourceReference!)}</c>");
-            }
-
-            // Add attributes
-            if (info.Attributes.Count > 0)
-            {
-                var attributeStr = string.Join(", ", info.Attributes);
-                remarksParts.Add($"Attributes: <c>[{EscapeXmlContent(attributeStr)}]</c>");
             }
 
             if (remarksParts.Count > 0)
