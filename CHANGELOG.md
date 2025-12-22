@@ -1,3 +1,48 @@
+## [0.7.0] - 2025-12-22
+
+### 🚀 Features
+
+- Add changelog generation step to release workflow
+- Optimize DTO generation and performance documentation (#235)
+- Add EmbeddedAttribute for source generation in ExportAllConstantSnippets (#242)
+- Add GetParentDtoFullName method to SelectExprInfo and its implementations
+
+### 🐛 Bug Fixes
+
+- Correct spelling of "dependencies" in README files
+- Add playground CSS file to .gitignore
+- NestedSelectExprTest and update documentation (#229)
+- Update job dependencies for changelog generation
+
+### 🚜 Refactor
+
+- Streamline template creation and remove unused methods
+- DTO handling and improve code clarity (#216)
+- Simplify code generation by removing DTO handling and updating method signatures
+- Update DTO generation method to group snippets by namespace
+- Update README to rename 'Customization' section to 'Usage Guides' and add 'Mapping Methods' link
+- Simplify DocumentationInfo structure and remove unused attributes
+
+### 📚 Documentation
+
+- Add comparison section with other mapping libraries in README
+- Enhance README with detailed explanation of Linqraft's DTO generation feature and comparison with other libraries
+- Update README and nuget documentation to include new features for automatic DTO generation and calculated fields
+- Refine README overview to clarify Linqraft's features and eliminate redundancy
+- Update FAQ section in README to clarify Linqraft's compatibility with LINQ providers
+- Update FAQ to clarify Linqraft's compatibility with LINQ providers
+- Clarify usage of Linqraft for generating shared DTOs from OpenAPI Schema
+- Add collapsible section for available MSBuild properties in README
+- Add clarification on .csproj package reference for Linqraft installation
+- Improve clarity in reverse conversion explanation in README
+- Clarify target frameworks setup for Windows in CI workflow
+- Add IntroductionSection component and improve accessibility (#223)
+- Separate README contents to other files (#224)
+- Add comprehensive documentation for Nested SelectExpr feature
+- Add Nested SelectExpr documentation for reusable DTOs (#225)
+- Benchmark add NativeAOT performance (#241)
+- Update usage guides for Nested SelectExpr and Mapping Methods
+- Clarify comparison of mapping approaches in documentation
 ## [0.6.0] - 2025-12-03
 
 ### 🚀 Features
