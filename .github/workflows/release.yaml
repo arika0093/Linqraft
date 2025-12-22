@@ -122,4 +122,5 @@ jobs:
         uses: stefanzweifel/git-auto-commit-action@v4
         with:
           commit_message: "chore: update changelog for release ${{ needs.package-build.outputs.version }}"
+          branch: main
           file_pattern: CHANGELOG.md
