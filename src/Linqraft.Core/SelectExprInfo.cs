@@ -118,6 +118,11 @@ public abstract record SelectExprInfo
     public abstract string GetParentDtoClassName(DtoStructure structure);
 
     /// <summary>
+    /// Gets the parent (root) DTO fully qualified name with global:: prefix
+    /// </summary>
+    public abstract string GetParentDtoFullName(DtoStructure structure);
+
+    /// <summary>
     /// Gets the namespace where DTOs will be placed
     /// </summary>
     public abstract string GetDtoNamespace();

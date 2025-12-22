@@ -585,8 +585,8 @@ public static class GenerateSourceCodeSnippets
         // Get the method name from the mapping info
         var methodName = info.MappingMethodName;
 
-        // Get the DTO class name
-        var dtoClassName = info.GetParentDtoClassName(dtoStructure);
+        // Get the DTO fully qualified name with global:: prefix
+        var dtoFullName = info.GetParentDtoFullName(dtoStructure);
 
         // Get return type prefix (IQueryable or IEnumerable)
         var returnTypePrefix = info.GetReturnTypePrefix();
@@ -600,10 +600,10 @@ public static class GenerateSourceCodeSnippets
         sb.AppendLine($"/// </summary>");
 
         // Generate method signature as an extension method
-        sb.AppendLine($"internal static {returnTypePrefix}<{dtoClassName}> {methodName}(");
+        sb.AppendLine($"internal static {returnTypePrefix}<{dtoFullName}> {methodName}(");
         sb.AppendLine($"    this {returnTypePrefix}<{sourceTypeFullName}> source)");
         sb.AppendLine($"{{");
-        sb.AppendLine($"    return source.Select({info.LambdaParameterName} => new {dtoClassName}");
+        sb.AppendLine($"    return source.Select({info.LambdaParameterName} => new {dtoFullName}");
         sb.AppendLine($"    {{");
 
         // Generate property assignments

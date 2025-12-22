@@ -47,6 +47,11 @@ public record SelectExprInfoAnonymous : SelectExprInfo
     public override string GetParentDtoClassName(DtoStructure structure) => "";
 
     /// <summary>
+    /// Gets the parent DTO fully qualified name (empty for anonymous types)
+    /// </summary>
+    public override string GetParentDtoFullName(DtoStructure structure) => "";
+
+    /// <summary>
     /// Gets the namespace where DTOs will be placed
     /// Anonymous types don't generate separate DTOs, but return caller namespace for consistency
     /// </summary>

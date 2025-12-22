@@ -258,6 +258,31 @@ public record SelectExprInfoExplicitDto : SelectExprInfo
     public override string GetParentDtoClassName(DtoStructure structure) => ExplicitDtoName;
 
     /// <summary>
+    /// Gets the parent DTO fully qualified name with global:: prefix
+    /// </summary>
+    public override string GetParentDtoFullName(DtoStructure structure)
+    {
+        var dtoName = GetParentDtoClassName(structure);
+        var actualNamespace = GetActualDtoNamespace();
+
+        // Build full DTO name with parent classes if nested
+        if (string.IsNullOrEmpty(actualNamespace))
+        {
+            // Global namespace: no namespace prefix
+            return ParentClasses.Count > 0
+                ? $"global::{string.Join(".", ParentClasses)}.{dtoName}"
+                : $"global::{dtoName}";
+        }
+        else
+        {
+            // Regular namespace case
+            return ParentClasses.Count > 0
+                ? $"global::{actualNamespace}.{string.Join(".", ParentClasses)}.{dtoName}"
+                : $"global::{actualNamespace}.{dtoName}";
+        }
+    }
+
+    /// <summary>
     /// Gets the namespace where DTOs will be placed
     /// </summary>
     public override string GetDtoNamespace() => GetActualDtoNamespace();

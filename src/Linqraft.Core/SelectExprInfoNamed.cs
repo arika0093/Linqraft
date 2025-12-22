@@ -48,6 +48,13 @@ public record SelectExprInfoNamed : SelectExprInfo
         structure.SourceTypeFullName;
 
     /// <summary>
+    /// Gets the parent DTO fully qualified name with global:: prefix
+    /// Named types already have fully qualified names in SourceTypeFullName
+    /// </summary>
+    public override string GetParentDtoFullName(DtoStructure structure) =>
+        structure.SourceTypeFullName;
+
+    /// <summary>
     /// Gets the namespace where DTOs will be placed
     /// Named types use the DTO's own namespace
     /// </summary>
