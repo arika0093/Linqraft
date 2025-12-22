@@ -204,9 +204,9 @@ The same works with the static partial class approach - simply use the generated
 
 | Feature | Helper Class (Recommended) | Static Partial Class |
 |---------|---------------------------|----------------------|
-| **Simplicity** | ✅ Very simple, just inherit and override | ⚠️ More verbose boilerplate |
+| **Simplicity** | ✅ Very simple | ⚠️ More verbose boilerplate |
 | **Verbosity** | ✅ Minimal code | ⚠️ More code required |
-| **Class Control** | ⚠️ Generated class name includes hash | ✅ Full control over class name |
+| **Class Control** | ⚠️ A separate class is generated | ✅ Contained within the same class |
 | **Multiple Mappings** | ⚠️ One per class | ✅ Multiple per class |
 | **Use Cases** | Single projection per entity | Multiple projections in one class |
 
