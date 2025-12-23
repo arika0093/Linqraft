@@ -23,4 +23,7 @@ builder.Services.AddSingleton<SemanticHighlightingService>();
 builder.Services.AddSingleton<CSharpSyntaxHighlighter>();
 builder.Services.AddScoped<UrlStateService>();
 
+// Register Shiki syntax highlighting service
+builder.Services.AddScoped<ShikiHighlightService>();
+
 await builder.Build().RunAsync();

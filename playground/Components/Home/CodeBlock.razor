@@ -1,4 +1,4 @@
-@inject CSharpSyntaxHighlighter SyntaxHighlighter
+@inject ShikiHighlightService ShikiHighlighter
 
 <div class="code-block max-w-full">
     @if(!string.IsNullOrEmpty(Title))
@@ -7,8 +7,8 @@
             <span class="px-2 text-xs @(Highlight ? "text-green-400" : "text-gray-400")">● @Title</span>
         </div>
     }
-    <div class="code-block-vscode max-h-120 overflow-y-auto" translate="no">
-        <pre><code>@((MarkupString)HighlightedCode)</code></pre>
+    <div class="code-block-shiki max-h-120 overflow-y-auto" translate="no">
+        @((MarkupString)highlightedCode)
     </div>
 </div>
 
@@ -18,5 +18,17 @@
     [Parameter] public string Size { get; set; } = "sm";
     [Parameter] public bool Highlight { get; set; } = false;
 
-    private string HighlightedCode => SyntaxHighlighter.Highlight(Code);
+    private string highlightedCode = "";
+
+    protected override async Task OnParametersSetAsync()
+    {
+        if (!string.IsNullOrWhiteSpace(Code))
+        {
+            highlightedCode = await ShikiHighlighter.HighlightAsync(Code);
+        }
+        else
+        {
+            highlightedCode = "";
+        }
+    }
 }
