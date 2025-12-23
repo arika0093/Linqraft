@@ -4,7 +4,8 @@ namespace Linqraft.Playground.Services;
 
 /// <summary>
 /// Service for syntax highlighting using Shiki library via JavaScript interop.
-/// Replaces the custom CSharpSyntaxHighlighter and SemanticHighlightingService.
+/// Replaces the custom CSharpSyntaxHighlighter for static code display.
+/// Note: SemanticHighlightingService is still used by EditorPane for enhanced Monaco editor highlighting.
 /// </summary>
 public class ShikiHighlightService
 {
