@@ -1,19 +1,19 @@
 // Shiki syntax highlighter interop for Blazor
 window.shikiInterop = {
-    highlighter: null,
+    codeToHtml: null,
     
-    // Initialize Shiki with common languages and theme
+    // Initialize Shiki with the web bundle (optimized for browser use)
     initialize: async function() {
-        if (this.highlighter) {
+        if (this.codeToHtml) {
             return; // Already initialized
         }
         
         try {
-            // Import Shiki from CDN using esm.sh
-            const { codeToHtml } = await import('https://esm.sh/shiki@0.14.7');
+            // Import Shiki from esm.sh with web bundle (includes common languages)
+            const shiki = await import('https://esm.sh/shiki@1.24.2');
             
-            this.codeToHtml = codeToHtml;
-            this.highlighter = true; // Mark as initialized
+            // Store the codeToHtml function
+            this.codeToHtml = shiki.codeToHtml;
             
             console.log('Shiki initialized successfully');
         } catch (error) {
@@ -24,7 +24,7 @@ window.shikiInterop = {
     
     // Highlight code and return HTML
     highlightCode: async function(code, language, theme) {
-        if (!this.highlighter) {
+        if (!this.codeToHtml) {
             await this.initialize();
         }
         
