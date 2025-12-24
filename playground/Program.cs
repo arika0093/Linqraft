@@ -20,7 +20,9 @@ builder.Services.AddSingleton<SharedCompilationService>();
 builder.Services.AddSingleton<TemplateService>();
 builder.Services.AddSingleton<CodeGenerationService>();
 builder.Services.AddSingleton<SemanticHighlightingService>();
-builder.Services.AddSingleton<CSharpSyntaxHighlighter>();
 builder.Services.AddScoped<UrlStateService>();
+
+// Register Shiki syntax highlighting service
+builder.Services.AddScoped<ShikiHighlightService>();
 
 await builder.Build().RunAsync();
