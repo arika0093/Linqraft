@@ -44,7 +44,11 @@ public class ShikiHighlightService
     /// <param name="language">Language identifier (default: csharp)</param>
     /// <param name="theme">Theme name (default: dark-plus)</param>
     /// <returns>HTML string with syntax highlighting</returns>
-    public async Task<string> HighlightAsync(string code, string language = "csharp", string theme = "dark-plus")
+    public async Task<string> HighlightAsync(
+        string code,
+        string language = "csharp",
+        string theme = "dark-plus"
+    )
     {
         if (string.IsNullOrWhiteSpace(code))
             return string.Empty;
