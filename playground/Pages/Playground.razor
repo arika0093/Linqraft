@@ -46,7 +46,7 @@
         <div class="flex min-w-[200px] flex-1 flex-col overflow-hidden">
             <!-- Query Expression Preview -->
             <div class="@(queryPaneCollapsed ? "" : "flex-1") min-h-[50px] overflow-hidden">
-                <ShikiPreviewPane 
+                <PreviewPane 
                     @ref="queryPreviewPane"
                     EditorId="queryPreview"
                     Title="Generated Expression"
@@ -64,7 +64,7 @@
 
             <!-- DTO Class Preview -->
             <div class="@(dtoPaneCollapsed ? "" : "flex-1") min-h-[50px] overflow-hidden">
-                <ShikiPreviewPane 
+                <PreviewPane 
                     @ref="dtoPreviewPane"
                     EditorId="dtoPreview"
                     Title="Generated DTO Class"
@@ -80,8 +80,8 @@
 
 @code {
     private EditorPane? editorPane;
-    private ShikiPreviewPane? queryPreviewPane;
-    private ShikiPreviewPane? dtoPreviewPane;
+    private PreviewPane? queryPreviewPane;
+    private PreviewPane? dtoPreviewPane;
 
     private List<Models.Template> templates = new();
     private Models.Template? selectedTemplate;

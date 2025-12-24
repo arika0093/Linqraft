@@ -10,7 +10,7 @@ window.shikiInterop = {
         
         try {
             // Import Shiki from esm.sh with web bundle (includes common languages)
-            const shiki = await import('https://esm.sh/shiki@1.24.2');
+            const shiki = await import('https://esm.sh/shiki@3.0.0');
             
             // Store the codeToHtml function
             this.codeToHtml = shiki.codeToHtml;
