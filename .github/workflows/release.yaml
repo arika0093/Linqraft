@@ -1,4 +1,4 @@
-﻿name: Package Release to GitHub and Nuget
+name: Package Release to GitHub and Nuget
 
 on:
   workflow_dispatch:
@@ -58,7 +58,7 @@ jobs:
     needs: package-build
     steps:
       - name: Download Artifacts
-        uses: actions/download-artifact@v5
+        uses: actions/download-artifact@v7
         with:
           name: nuget-packages
           path: ./artifacts
@@ -84,7 +84,7 @@ jobs:
     needs: package-build
     steps:
       - name: Download Artifacts
-        uses: actions/download-artifact@v5
+        uses: actions/download-artifact@v7
         with:
           name: nuget-packages
           path: ./artifacts
