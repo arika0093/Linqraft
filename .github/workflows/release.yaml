@@ -1,4 +1,4 @@
-﻿name: Package Release to GitHub and Nuget
+name: Package Release to GitHub and Nuget
 
 on:
   workflow_dispatch:
@@ -19,7 +19,7 @@ jobs:
       version: ${{ steps.version.outputs.semver }}
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v5
+        uses: actions/checkout@v6
         with:
           fetch-depth: 0
 
@@ -105,7 +105,7 @@ jobs:
       - package-build
       - release-github
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
         with:
           fetch-depth: 0
         
