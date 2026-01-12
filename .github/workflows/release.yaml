@@ -1,4 +1,4 @@
-﻿name: Package Release to GitHub and Nuget
+name: Package Release to GitHub and Nuget
 
 on:
   workflow_dispatch:
@@ -47,7 +47,7 @@ jobs:
         run: dotnet pack --no-build -c Release --output ./artifacts
       
       - name: Upload Artifacts
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         with:
           name: nuget-packages
           path: ./artifacts/*.nupkg
