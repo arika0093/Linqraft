@@ -208,7 +208,12 @@ public abstract record SelectExprInfo
                         child = new Dictionary<string, object>();
                         current[part] = child;
                     }
-                    current = (Dictionary<string, object>)child;
+                    // If an earlier capture added this as a leaf, skip this longer path
+                    if (child is not Dictionary<string, object> childDict)
+                    {
+                        break;
+                    }
+                    current = childDict;
                 }
                 
                 // Add the leaf node with the capture name
