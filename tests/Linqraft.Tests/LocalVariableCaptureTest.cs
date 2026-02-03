@@ -256,6 +256,38 @@ public class LocalVariableCaptureTest
         first.NewValue.ShouldBe(110);
     }
 
+    [Fact]
+    public void Case3_NestedMemberAccess_InCapturedFields()
+    {
+        var request = new NestedRequest
+        {
+            Range = new RequestRange
+            {
+                FromDate = new DateTimeOffset(2024, 1, 1, 0, 0, 0, TimeSpan.Zero),
+                ToDate = new DateTimeOffset(2024, 1, 3, 0, 0, 0, TimeSpan.Zero),
+            }
+        };
+        var users = BuildUsers();
+
+        var converted = users
+            .AsQueryable()
+            .SelectExpr<UserWithCommits, UserCommitDto>(
+                u => new
+                {
+                    u.Id,
+                    CommitCount = u.Commits.Count(c =>
+                        request.Range.FromDate <= c.Created && c.Created <= request.Range.ToDate
+                    ),
+                },
+                new { request.Range.FromDate, request.Range.ToDate }
+            )
+            .ToList();
+
+        converted.Count.ShouldBe(2);
+        converted[0].CommitCount.ShouldBe(1);
+        converted[1].CommitCount.ShouldBe(0);
+    }
+
     private static List<UserWithCommits> BuildUsers() =>
     [
         new()
@@ -317,6 +349,11 @@ internal class RequestRange
 {
     public DateTimeOffset FromDate { get; set; }
     public DateTimeOffset ToDate { get; set; }
+}
+
+internal class NestedRequest
+{
+    public RequestRange Range { get; set; } = new();
 }
 
 internal class Commit

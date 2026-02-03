@@ -154,14 +154,14 @@ public abstract record SelectExprInfo
 
             if (initializer.Expression is MemberAccessExpressionSyntax memberAccess)
             {
-                var rootName = GetRootIdentifierName(memberAccess.Expression);
+                var rootName = GetRootIdentifierName(memberAccess);
                 if (rootName == null)
                 {
                     continue;
                 }
 
-                var memberName = memberAccess.Name.Identifier.Text;
-                var captureName = capturePropertyName ?? memberName;
+                var memberPath = GetMemberPathFromRoot(memberAccess, rootName);
+                var captureName = capturePropertyName ?? memberAccess.Name.Identifier.Text;
 
                 if (!aliasMap.TryGetValue(rootName, out var members))
                 {
@@ -169,7 +169,7 @@ public abstract record SelectExprInfo
                     aliasMap[rootName] = members;
                 }
 
-                members.Add((memberName, captureName));
+                members.Add((memberPath, captureName));
             }
         }
 
@@ -189,25 +189,68 @@ public abstract record SelectExprInfo
         {
             var rootName = kvp.Key;
             var members = kvp.Value;
-            sb.AppendLine($"    var {rootName} = new");
-            sb.AppendLine("    {");
-
-            var usedMemberNames = new HashSet<string>();
+            
+            // Build a tree structure for nested member paths
+            var tree = new Dictionary<string, object>();
             foreach (var memberPair in members)
             {
-                var memberName = memberPair.MemberName;
+                var memberPath = memberPair.MemberName;
                 var captureName = memberPair.CapturePropertyName;
-                if (!usedMemberNames.Add(memberName))
+                
+                var pathParts = memberPath.Split('.');
+                var current = tree;
+                
+                for (int i = 0; i < pathParts.Length - 1; i++)
                 {
-                    continue;
+                    var part = pathParts[i];
+                    if (!current.TryGetValue(part, out var child))
+                    {
+                        child = new Dictionary<string, object>();
+                        current[part] = child;
+                    }
+                    current = (Dictionary<string, object>)child;
                 }
-                sb.AppendLine($"        {memberName} = captureObj.{captureName},");
+                
+                // Add the leaf node with the capture name
+                var leafPart = pathParts[^1];
+                if (!current.ContainsKey(leafPart))
+                {
+                    current[leafPart] = captureName;
+                }
             }
-
+            
+            // Generate the nested anonymous object
+            sb.AppendLine($"    var {rootName} = new");
+            sb.AppendLine("    {");
+            GenerateNestedAnonymousObject(sb, tree, 2, "captureObj");
             sb.AppendLine("    };");
         }
 
         return sb.ToString();
+    }
+
+    private static void GenerateNestedAnonymousObject(StringBuilder sb, Dictionary<string, object> tree, int indentLevel, string captureObjName)
+    {
+        var indent = new string(' ', indentLevel * 4);
+        foreach (var kvp in tree)
+        {
+            var memberName = kvp.Key;
+            var value = kvp.Value;
+            
+            if (value is string captureName)
+            {
+                // Leaf node: simple assignment
+                sb.AppendLine($"{indent}{memberName} = {captureObjName}.{captureName},");
+            }
+            else if (value is Dictionary<string, object> nested)
+            {
+                // Nested node: create nested anonymous object
+                sb.AppendLine($"{indent}{memberName} = new");
+                sb.AppendLine($"{indent}{{");
+                GenerateNestedAnonymousObject(sb, nested, indentLevel + 1, captureObjName);
+                sb.AppendLine($"{indent}}},");
+            }
+        }
     }
 
     private static string? GetCapturePropertyName(AnonymousObjectMemberDeclaratorSyntax initializer)
@@ -233,6 +276,27 @@ public abstract record SelectExprInfo
             MemberAccessExpressionSyntax memberAccess => GetRootIdentifierName(memberAccess.Expression),
             _ => null,
         };
+    }
+
+    private static string GetMemberPathFromRoot(ExpressionSyntax expression, string rootName)
+    {
+        var parts = new List<string>();
+        var current = expression;
+
+        while (current is MemberAccessExpressionSyntax memberAccess)
+        {
+            parts.Insert(0, memberAccess.Name.Identifier.Text);
+            current = memberAccess.Expression;
+        }
+
+        // If current is the root identifier, we've collected all member parts
+        if (current is IdentifierNameSyntax identifier && identifier.Identifier.Text == rootName)
+        {
+            return string.Join(".", parts);
+        }
+
+        // Fallback: return the last member name if something unexpected happened
+        return parts.Count > 0 ? parts[^1] : "";
     }
 
     /// <summary>
