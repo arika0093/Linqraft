@@ -133,16 +133,9 @@ public abstract record SelectExprInfo
     /// <summary>
     /// Builds capture alias variables for anonymous capture objects that contain member access.
     /// This allows expressions like request.FromDate to work when capture is new { request.FromDate }.
-    /// This is only applicable when NOT using pre-built expressions since expression trees don't support dynamic.
     /// </summary>
     protected string GenerateAnonymousCaptureMemberAccessAliases()
     {
-        // Don't generate aliases if we're using pre-built expressions (expression trees can't have dynamic)
-        if (Configuration.UsePrebuildExpression && !IsEnumerableInvocation())
-        {
-            return string.Empty;
-        }
-
         if (CaptureArgumentExpression is not AnonymousObjectCreationExpressionSyntax anonymousCapture)
         {
             return string.Empty;
@@ -180,7 +173,7 @@ public abstract record SelectExprInfo
             }
         }
 
-        // Avoid creating aliases that would shadow existing captured root variables
+        // Remove any root names that are explicitly captured (they don't need aliases)
         foreach (var rootName in capturePropertyNames)
         {
             aliasMap.Remove(rootName);

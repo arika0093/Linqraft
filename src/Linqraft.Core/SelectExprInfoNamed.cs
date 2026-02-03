@@ -211,8 +211,9 @@ public record SelectExprInfoNamed : SelectExprInfo
             // Note: Pre-built expressions don't work well with captures because the closure
             // variables would be captured at compile time, not at runtime. So we disable
             // pre-built expressions when captures are used.
+            // Also, convert to IEnumerable to avoid expression tree compilation with dynamic
             sb.AppendLine(
-                $"    var converted = matchedQuery.Select({LambdaParameterName} => new {dtoName}"
+                $"    var converted = matchedQuery.AsEnumerable().Select({LambdaParameterName} => new {dtoName}"
             );
         }
         else
@@ -246,7 +247,15 @@ public record SelectExprInfoNamed : SelectExprInfo
 
         sb.AppendLine($"    }});");
 
-        sb.AppendLine($"    return converted as object as {returnTypePrefix}<TResult>;");
+        // For methods with capture that use AsEnumerable, convert back to IQueryable
+        if (hasCapture)
+        {
+            sb.AppendLine($"    return converted.AsQueryable() as object as {returnTypePrefix}<TResult>;");
+        }
+        else
+        {
+            sb.AppendLine($"    return converted as object as {returnTypePrefix}<TResult>;");
+        }
         sb.AppendLine("}");
         return sb.ToString();
     }
