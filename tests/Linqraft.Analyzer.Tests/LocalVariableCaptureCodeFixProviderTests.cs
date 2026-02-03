@@ -895,7 +895,7 @@ class Test
         var expected = VerifyCS
             .Diagnostic(LocalVariableCaptureAnalyzer.AnalyzerId)
             .WithLocation(0)
-            .WithArguments("Property");
+            .WithArguments("anotherClass");
 
         await VerifyCS.VerifyCodeFixAsync(test, expected, fixedCode);
     }
@@ -999,7 +999,7 @@ class Test
         var expected3 = VerifyCS
             .Diagnostic(LocalVariableCaptureAnalyzer.AnalyzerId)
             .WithLocation(2)
-            .WithArguments("Property");
+            .WithArguments("anotherClass");
 
         await VerifyCS.VerifyCodeFixAsync(
             test,
