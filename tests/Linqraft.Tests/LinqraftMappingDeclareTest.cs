@@ -5,6 +5,7 @@ using Xunit;
 namespace Linqraft.Tests;
 
 // Test classes inheriting from LinqraftMappingDeclare<T>
+[LinqraftMappingGenerate]
 internal class BasicMappingDeclare : LinqraftMappingDeclare<MappingDeclareSourceClass>
 {
     protected override void DefineMapping()
@@ -36,6 +37,7 @@ internal class CustomMethodNameMappingDeclare : LinqraftMappingDeclare<MappingDe
 #if NET9_0_OR_GREATER
 
 // Test with nested collections
+[LinqraftMappingGenerate]
 public class NestedCollectionMappingDeclare : LinqraftMappingDeclare<MappingDeclareParentClass>
 {
     protected override void DefineMapping()

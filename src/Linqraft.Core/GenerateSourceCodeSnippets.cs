@@ -271,6 +271,14 @@ public static class GenerateSourceCodeSnippets
                 /// <summary>
                 /// Initializes a new instance of the LinqraftMappingGenerateAttribute class.
                 /// </summary>
+                public LinqraftMappingGenerateAttribute()
+                {
+                    MethodName = null;
+                }
+
+                /// <summary>
+                /// Initializes a new instance of the LinqraftMappingGenerateAttribute class.
+                /// </summary>
                 /// <param name="methodName">The name of the extension method to generate.</param>
                 public LinqraftMappingGenerateAttribute(string methodName)
                 {
@@ -280,7 +288,7 @@ public static class GenerateSourceCodeSnippets
                 /// <summary>
                 /// Gets the name of the extension method to generate.
                 /// </summary>
-                public string MethodName { get; }
+                public string? MethodName { get; }
             }
         }
         """;

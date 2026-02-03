@@ -18,11 +18,12 @@ Linqraft provides two approaches for generating extension methods instead of usi
 
 ## Approach 1: Helper Class (Recommended)
 
-The simplest way to define mapping methods is to inherit from `LinqraftMappingDeclare<T>`:
+The simplest way to define mapping methods is to inherit from `LinqraftMappingDeclare<T>` and add the `[LinqraftMappingGenerate]` attribute:
 
 ```csharp
 namespace YourNamespace;
 
+[LinqraftMappingGenerate]
 internal class OrderMappingDeclare : LinqraftMappingDeclare<Order>
 {
     protected override void DefineMapping()
@@ -224,14 +225,16 @@ The same works with the static partial class approach - simply use the generated
 
 ### Helper Class Requirements:
 1. **Inherit from `LinqraftMappingDeclare<T>`**: Your class must inherit from the base helper class
-2. **Override `DefineMapping()`**: Implement the abstract method with your mapping logic
-3. **Use `Source` property**: Use the `Source` property to access the queryable
-4. **SelectExpr Inside**: The `DefineMapping()` method must contain exactly one `SelectExpr` call
+2. **Add `[LinqraftMappingGenerate]` attribute**: The class must be marked with this attribute (with or without a custom method name)
+3. **Override `DefineMapping()`**: Implement the abstract method with your mapping logic
+4. **Use `Source` property**: Use the `Source` property to access the queryable
+5. **SelectExpr Inside**: The `DefineMapping()` method must contain exactly one `SelectExpr` call
 
 ### Static Partial Class Requirements:
 1. **Static Partial Class**: The containing class must be `static` and `partial`
-2. **Top-Level Class**: Extension methods must be in a non-nested class
-3. **SelectExpr Inside**: The template method must contain at least one `SelectExpr` call
+2. **[LinqraftMappingGenerate] attribute**: Methods must be marked with this attribute and specify the method name
+3. **Top-Level Class**: Extension methods must be in a non-nested class
+4. **SelectExpr Inside**: The template method must contain at least one `SelectExpr` call
 
 ## Further Reading
 
