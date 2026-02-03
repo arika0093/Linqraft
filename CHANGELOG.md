@@ -1,27 +1,11 @@
 ## [0.7.0] - 2025-12-22
 
-### 🚀 Features
-
-- Add changelog generation step to release workflow
-- Optimize DTO generation and performance documentation (#235)
-- Add EmbeddedAttribute for source generation in ExportAllConstantSnippets (#242)
-- Add GetParentDtoFullName method to SelectExprInfo and its implementations
-
 ### 🐛 Bug Fixes
 
 - Correct spelling of "dependencies" in README files
 - Add playground CSS file to .gitignore
 - NestedSelectExprTest and update documentation (#229)
 - Update job dependencies for changelog generation
-
-### 🚜 Refactor
-
-- Streamline template creation and remove unused methods
-- DTO handling and improve code clarity (#216)
-- Simplify code generation by removing DTO handling and updating method signatures
-- Update DTO generation method to group snippets by namespace
-- Update README to rename 'Customization' section to 'Usage Guides' and add 'Mapping Methods' link
-- Simplify DocumentationInfo structure and remove unused attributes
 
 ### 📚 Documentation
 
@@ -43,7 +27,32 @@
 - Benchmark add NativeAOT performance (#241)
 - Update usage guides for Nested SelectExpr and Mapping Methods
 - Clarify comparison of mapping approaches in documentation
+
+### 🚀 Features
+
+- Add changelog generation step to release workflow
+- Optimize DTO generation and performance documentation (#235)
+- Add EmbeddedAttribute for source generation in ExportAllConstantSnippets (#242)
+- Add GetParentDtoFullName method to SelectExprInfo and its implementations
+
+### 🚜 Refactor
+
+- Streamline template creation and remove unused methods
+- DTO handling and improve code clarity (#216)
+- Simplify code generation by removing DTO handling and updating method signatures
+- Update DTO generation method to group snippets by namespace
+- Update README to rename 'Customization' section to 'Usage Guides' and add 'Mapping Methods' link
+- Simplify DocumentationInfo structure and remove unused attributes
 ## [0.6.0] - 2025-12-03
+
+### 🐛 Bug Fixes
+
+- Simplify name conversion and improve consistency in GroupBy usage (#204)
+- Update BenchmarkDotNet version and refine benchmark results in README.md
+
+### 📚 Documentation
+
+- Add known issues section for GroupBy and SelectExpr functionality
 
 ### 🚀 Features
 
@@ -53,54 +62,14 @@
 - Add transparent background to scrollbar corner in tailwind.css
 - Enhance TAILWIND_CDN_FRAGMENT with additional styles and fonts in DevTailwindUtil.razor
 
-### 🐛 Bug Fixes
-
-- Simplify name conversion and improve consistency in GroupBy usage (#204)
-- Update BenchmarkDotNet version and refine benchmark results in README.md
-
 ### 🚜 Refactor
 
 - Simplify CodeGenerationService constructor and improve internal attribute filtering
-
-### 📚 Documentation
-
-- Add known issues section for GroupBy and SelectExpr functionality
 ## [0.5.0] - 2025-12-02
 
-### 🚀 Features
+### 🎨 Styling
 
-- Add workflow to verify NuGet package installation and functionality (#29)
-- Allow local variable capture in SelectExpr via anonymous object parameter (#49)
-- Add OrderController and SampleData for API example, update README with usage details
-- Add GitHub Actions workflow for code formatting with csharpier
-- Add new issue templates for bug reports and feature requests
-- Add LQRE001 analyzer for complete external reference capture in SelectExpr (#71)
-- Enhance LQRE001 CodeFix to capture instance and static property references intelligently (#79)
-- Add LQRF002 analyzer to suggest [ProducesResponseType] for ApiController methods using SelectExpr<T,TDto> (#75)
-- Generate DTOs in global namespace when source class is in global namespace (#91)
-- Add LQRS002/LQRS003 analyzers for migrating IQueryable.Select to SelectExpr (#93)
-- Simplify ternary null checks to `?.` in LQRS002/LQRS003 codefixes (#95)
-- Add tests for handling comments in LINQ expressions (#112)
-- Enhance DTO generation for nested anonymous types and improve test coverage (#114)
-- Add LQRS005 analyzer to detect and remove unnecessary captures (#122)
-- Add UnnecessaryCaptureAnalyzer to detect and suggest removal of unused capture variables in SelectExpr
-- Enhance SelectExpr to support automatic DTO generation with null-propagation and additional customer info
-- Update README to clarify analyzer functionality and add sample animation
-- Refactor sample data and classes for improved clarity and structure
-- Improve formatting of generated source code for nested structures (#145)
-- Add build-info to generated code (#153)
-- Generate non-nullable collection types when using Enumerable.Empty fallback (#154)
-- Add comments to generated DTOs (#163)
-- Implement C# syntax highlighting and update layout styles across components
-- Enhance C# syntax highlighting to include property and field declarations
-- Update KeyFeaturesSection layout and styles for improved readability and consistency
-- Enhance C# syntax highlighting to differentiate between type and property declarations
-- Implement collapsible editor pane and sidebar for improved UI/UX
-- Add links to web page and online playground in README; improve layout in EditorPane and PreviewPane
-- Simplify Playground layout by removing unused CSS classes and improving responsiveness
-- Add Min Repro template and URL sharing for issue reporting (#174)
-- Update Sidebar UI and enhance Tailwind CSS styles for improved aesthetics
-- Add OverloadPriorityAttribute if use .NET 9 or later
+- Enhance typography and spacing across components
 
 ### 🐛 Bug Fixes
 
@@ -154,26 +123,6 @@
 - Add permissions for NuGet login and update package publishing command
 - Update package description to use null-propagation operators
 
-### 🚜 Refactor
-
-- Streamline NuGet package verification workflow by consolidating directory creation and file copying steps
-- Remove unnecessary TargetFrameworks from project files
-- Remove Windows from build matrix due to performance issues
-- Rename DummyExpression to SelectExprExtensions and improve error handling
-- Streamline SelectExpr method implementations and improve exception handling
-- Remove TryTutorialCaseAnonymous test method to streamline tutorial cases
-- Simplify OrderController GetOrdersAsync method by removing unnecessary properties in DTO mapping
-- Update SelectExpr usage in README to clarify DTO mapping
-- Update performance metrics in README for DTO generation
-- Simplify AnalyzeAnonymousType call by removing unused property accessibilities (#62)
-- Remove OverloadResolutionPriority attribute from SelectExpr methods
-- Clean up item selection syntax for improved readability
-- Simplify output verification step in workflow
-- Reorganize Dependabot workflow to include package testing steps
-- Streamline Dependabot workflow to target .NET 10.0 and simplify .NET setup
-- Improve layout and styling in HeroSection, EditorPane, Sidebar, and Playground components; update package references
-- Rename DTO classes for clarity and improve null handling in queries
-
 ### 📚 Documentation
 
 - Update C# version requirements and remove Polysharp references in README files
@@ -201,10 +150,75 @@
 - Clarify nullability removal for array types in README
 - Update README to clarify prerequisites for .NET SDK and Visual Studio versions
 
-### 🎨 Styling
+### 🚀 Features
 
-- Enhance typography and spacing across components
+- Add workflow to verify NuGet package installation and functionality (#29)
+- Allow local variable capture in SelectExpr via anonymous object parameter (#49)
+- Add OrderController and SampleData for API example, update README with usage details
+- Add GitHub Actions workflow for code formatting with csharpier
+- Add new issue templates for bug reports and feature requests
+- Add LQRE001 analyzer for complete external reference capture in SelectExpr (#71)
+- Enhance LQRE001 CodeFix to capture instance and static property references intelligently (#79)
+- Add LQRF002 analyzer to suggest [ProducesResponseType] for ApiController methods using SelectExpr<T,TDto> (#75)
+- Generate DTOs in global namespace when source class is in global namespace (#91)
+- Add LQRS002/LQRS003 analyzers for migrating IQueryable.Select to SelectExpr (#93)
+- Simplify ternary null checks to `?.` in LQRS002/LQRS003 codefixes (#95)
+- Add tests for handling comments in LINQ expressions (#112)
+- Enhance DTO generation for nested anonymous types and improve test coverage (#114)
+- Add LQRS005 analyzer to detect and remove unnecessary captures (#122)
+- Add UnnecessaryCaptureAnalyzer to detect and suggest removal of unused capture variables in SelectExpr
+- Enhance SelectExpr to support automatic DTO generation with null-propagation and additional customer info
+- Update README to clarify analyzer functionality and add sample animation
+- Refactor sample data and classes for improved clarity and structure
+- Improve formatting of generated source code for nested structures (#145)
+- Add build-info to generated code (#153)
+- Generate non-nullable collection types when using Enumerable.Empty fallback (#154)
+- Add comments to generated DTOs (#163)
+- Implement C# syntax highlighting and update layout styles across components
+- Enhance C# syntax highlighting to include property and field declarations
+- Update KeyFeaturesSection layout and styles for improved readability and consistency
+- Enhance C# syntax highlighting to differentiate between type and property declarations
+- Implement collapsible editor pane and sidebar for improved UI/UX
+- Add links to web page and online playground in README; improve layout in EditorPane and PreviewPane
+- Simplify Playground layout by removing unused CSS classes and improving responsiveness
+- Add Min Repro template and URL sharing for issue reporting (#174)
+- Update Sidebar UI and enhance Tailwind CSS styles for improved aesthetics
+- Add OverloadPriorityAttribute if use .NET 9 or later
+
+### 🚜 Refactor
+
+- Streamline NuGet package verification workflow by consolidating directory creation and file copying steps
+- Remove unnecessary TargetFrameworks from project files
+- Remove Windows from build matrix due to performance issues
+- Rename DummyExpression to SelectExprExtensions and improve error handling
+- Streamline SelectExpr method implementations and improve exception handling
+- Remove TryTutorialCaseAnonymous test method to streamline tutorial cases
+- Simplify OrderController GetOrdersAsync method by removing unnecessary properties in DTO mapping
+- Update SelectExpr usage in README to clarify DTO mapping
+- Update performance metrics in README for DTO generation
+- Simplify AnalyzeAnonymousType call by removing unused property accessibilities (#62)
+- Remove OverloadResolutionPriority attribute from SelectExpr methods
+- Clean up item selection syntax for improved readability
+- Simplify output verification step in workflow
+- Reorganize Dependabot workflow to include package testing steps
+- Streamline Dependabot workflow to target .NET 10.0 and simplify .NET setup
+- Improve layout and styling in HeroSection, EditorPane, Sidebar, and Playground components; update package references
+- Rename DTO classes for clarity and improve null handling in queries
 ## [0.3.0] - 2025-11-16
+
+### 🐛 Bug Fixes
+
+- Remove test step from release workflow
+- Update image path in Japanese README for correct asset reference
+- Correct formatting and labels in bug report issue template
+- Update C# version requirements from 12 to 13 in README files
+- Add CheckEolTargetFramework property to OldVersion project file
+- Change default accessibility from internal to public in GetAccessibilityString method
+- Correct TargetFrameworks to TargetFramework in Directory.Build.props
+
+### 📚 Documentation
+
+- Update README to clarify auto-generation of Items type in example
 
 ### 🚀 Features
 
@@ -224,38 +238,10 @@
 - Add Linqraft.MinimumSample.OldVersion project with sample data and execution logic
 - Enhance DTO generation with nested class support and internal accessibility
 
-### 🐛 Bug Fixes
-
-- Remove test step from release workflow
-- Update image path in Japanese README for correct asset reference
-- Correct formatting and labels in bug report issue template
-- Update C# version requirements from 12 to 13 in README files
-- Add CheckEolTargetFramework property to OldVersion project file
-- Change default accessibility from internal to public in GetAccessibilityString method
-- Correct TargetFrameworks to TargetFramework in Directory.Build.props
-
 ### 🚜 Refactor
 
 - Clean up code formatting and improve readability in various files
-
-### 📚 Documentation
-
-- Update README to clarify auto-generation of Items type in example
 ## [0.2.0] - 2025-11-15
-
-### 🚀 Features
-
-- Add lambda parameter name handling in SelectExpr processing
-- Add methods to handle IEnumerable select expressions with nullable operators
-- Change classes to partial for extensibility in DTOs
-- Add note on extending generated DTO classes as partial
-- Recreate bug report template with improved structure and descriptions
-- Remove feature request template
-- Enhance DTO generation with null-conditional handling and add corresponding tests
-- Add test for PartialNestedDto generation in the same class
-- Mark FullName property as required in EnumerableSimpleDto
-- Add DeepWiki badge to README files
-- Support .NET standard 2.0 (#20)
 
 ### 🐛 Bug Fixes
 
@@ -276,22 +262,25 @@
 ### 📚 Documentation
 
 - Update README to include setup instructions for .NET 7 or below
-## [0.1.0] - 2025-11-14
 
 ### 🚀 Features
 
-- Add initial test cases for SelectExpr functionality
-- Add launchSettings.json for debugging configurations
-- Add DummyExpression class with SelectExpr method for EFCore.ExprGenerator
-- Enhance DtoProperty and DtoStructure for improved expression analysis and DTO generation
-- Update project references and add manual test data for improved test coverage
-- Enhance SelectExprInfoAnonymous for better type handling and add comprehensive tests for nested and simple cases
-- Add package description to Directory.Build.props for improved clarity
-- Enhance NestedCaseTest to include values for GrandChild2 and update assertions for improved test coverage
-- Add accessibility modifiers to generated classes in SelectExprInfo and SelectExprInfoAnonymous
-- Improve handling of nested Select expressions and support for chained methods in DtoProperty and SelectExprInfo
-- Enhance SelectExpr generation with overload resolution priority and inheritance depth calculation
-- Enhance SelectExpr to support explicit DTO types and improve code generation
+- Add lambda parameter name handling in SelectExpr processing
+- Add methods to handle IEnumerable select expressions with nullable operators
+- Change classes to partial for extensibility in DTOs
+- Add note on extending generated DTO classes as partial
+- Recreate bug report template with improved structure and descriptions
+- Remove feature request template
+- Enhance DTO generation with null-conditional handling and add corresponding tests
+- Add test for PartialNestedDto generation in the same class
+- Mark FullName property as required in EnumerableSimpleDto
+- Add DeepWiki badge to README files
+- Support .NET standard 2.0 (#20)
+## [0.1.0] - 2025-11-14
+
+### 🎨 Styling
+
+- Improve code formatting for better readability in SelectExprInfo.cs
 
 ### 🐛 Bug Fixes
 
@@ -313,6 +302,43 @@
 - Update overload resolution attribute handling in SelectExprInfo classes
 - Change dbContext field to readonly in UseEFCoreSenarioTest class
 - Handle null case in DTO generation example in README
+
+### 📚 Documentation
+
+- Add Japanese translation for README
+- Add example of generated method in README
+- Remove outdated example from README
+- Add license section to README
+- Add developer guide for EFCore.ExprGenerator
+- Add authors section to Directory.Build.props
+- Add instructions to enable interceptor in csproj
+- Update README to clarify DTO auto-generation and nullable expression support
+- Add example of existing DTO class in usage section
+- Add prerequisites section to README for .NET 8.0 requirement and update usage examples in tests
+- Update README files to enhance clarity and add examples for auto-generated DTOs and null-propagation support
+- Update installation instructions in README to specify bash code block
+- Update README to include example of auto-generated DTOs with null-propagation support
+- Remove outdated interceptor configuration instructions from README
+- Add quality gate and maintainability badges to README
+- Add troubleshooting section to README for CS8072 error resolution
+- Clarify usage of auto-generated type information in examples
+- Remove note about EFCore dependency from README
+- Update comments for clarity and consistency in README and DummyExpression
+
+### 🚀 Features
+
+- Add initial test cases for SelectExpr functionality
+- Add launchSettings.json for debugging configurations
+- Add DummyExpression class with SelectExpr method for EFCore.ExprGenerator
+- Enhance DtoProperty and DtoStructure for improved expression analysis and DTO generation
+- Update project references and add manual test data for improved test coverage
+- Enhance SelectExprInfoAnonymous for better type handling and add comprehensive tests for nested and simple cases
+- Add package description to Directory.Build.props for improved clarity
+- Enhance NestedCaseTest to include values for GrandChild2 and update assertions for improved test coverage
+- Add accessibility modifiers to generated classes in SelectExprInfo and SelectExprInfoAnonymous
+- Improve handling of nested Select expressions and support for chained methods in DtoProperty and SelectExprInfo
+- Enhance SelectExpr generation with overload resolution priority and inheritance depth calculation
+- Enhance SelectExpr to support explicit DTO types and improve code generation
 
 ### 🚜 Refactor
 
@@ -343,32 +369,6 @@
 - Remove unused accessibility variable in GenerateSelectExprMethod
 - Simplify conditional check for select invocation in AnalyzeExpression method
 - Update SelectExpr usage to specify DTO types and enhance syntax handling
-
-### 📚 Documentation
-
-- Add Japanese translation for README
-- Add example of generated method in README
-- Remove outdated example from README
-- Add license section to README
-- Add developer guide for EFCore.ExprGenerator
-- Add authors section to Directory.Build.props
-- Add instructions to enable interceptor in csproj
-- Update README to clarify DTO auto-generation and nullable expression support
-- Add example of existing DTO class in usage section
-- Add prerequisites section to README for .NET 8.0 requirement and update usage examples in tests
-- Update README files to enhance clarity and add examples for auto-generated DTOs and null-propagation support
-- Update installation instructions in README to specify bash code block
-- Update README to include example of auto-generated DTOs with null-propagation support
-- Remove outdated interceptor configuration instructions from README
-- Add quality gate and maintainability badges to README
-- Add troubleshooting section to README for CS8072 error resolution
-- Clarify usage of auto-generated type information in examples
-- Remove note about EFCore dependency from README
-- Update comments for clarity and consistency in README and DummyExpression
-
-### 🎨 Styling
-
-- Improve code formatting for better readability in SelectExprInfo.cs
 
 ### 🧪 Testing
 
