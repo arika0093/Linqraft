@@ -120,13 +120,16 @@ public abstract record SelectExprInfo : IEquatable<SelectExprInfo>
     /// </remarks>
     protected virtual string GetEquatableIdentifier()
     {
-        var sourceTypeFullName = SourceType?.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat) ?? "";
+        var sourceTypeFullName =
+            SourceType?.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat) ?? "";
         var filePath = Invocation?.GetLocation()?.SourceTree?.FilePath ?? "";
         var spanStart = Invocation?.SpanStart ?? 0;
         var spanLength = Invocation?.Span.Length ?? 0;
         var captureText = CaptureArgumentExpression?.ToFullString() ?? "";
-        var captureTypeFullName = CaptureArgumentType?.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat) ?? "";
-        var mappingClassName = MappingContainingClass?.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat) ?? "";
+        var captureTypeFullName =
+            CaptureArgumentType?.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat) ?? "";
+        var mappingClassName =
+            MappingContainingClass?.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat) ?? "";
 
         return $"{sourceTypeFullName}|{filePath}|{spanStart}|{spanLength}|{LambdaParameterName}|{CallerNamespace}|{MappingMethodName}|{mappingClassName}|{MappingDeclareClassNameHash}|{captureText}|{captureTypeFullName}";
     }

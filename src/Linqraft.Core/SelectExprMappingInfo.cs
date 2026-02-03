@@ -47,8 +47,13 @@ public record SelectExprMappingInfo : IEquatable<SelectExprMappingInfo>
     {
         var filePath = MethodDeclaration?.GetLocation()?.SourceTree?.FilePath ?? "";
         var spanStart = MethodDeclaration?.SpanStart ?? 0;
-        var containingClassName = ContainingClass?.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat) ?? "";
-        var methodBodyHash = HashUtility.GenerateSha256Hash(MethodDeclaration?.Body?.ToFullString() ?? MethodDeclaration?.ExpressionBody?.ToFullString() ?? "");
+        var containingClassName =
+            ContainingClass?.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat) ?? "";
+        var methodBodyHash = HashUtility.GenerateSha256Hash(
+            MethodDeclaration?.Body?.ToFullString()
+                ?? MethodDeclaration?.ExpressionBody?.ToFullString()
+                ?? ""
+        );
 
         return $"{filePath}|{spanStart}|{TargetMethodName}|{containingClassName}|{ContainingNamespace}|{methodBodyHash}";
     }

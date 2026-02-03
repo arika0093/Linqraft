@@ -58,9 +58,15 @@ public record LinqraftMappingDeclareInfo : IEquatable<LinqraftMappingDeclareInfo
     {
         var filePath = ClassDeclaration?.GetLocation()?.SourceTree?.FilePath ?? "";
         var spanStart = ClassDeclaration?.SpanStart ?? 0;
-        var containingClassName = ContainingClass?.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat) ?? "";
-        var sourceTypeName = SourceType?.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat) ?? "";
-        var methodBodyHash = HashUtility.GenerateSha256Hash(DefineMappingMethod?.Body?.ToFullString() ?? DefineMappingMethod?.ExpressionBody?.ToFullString() ?? "");
+        var containingClassName =
+            ContainingClass?.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat) ?? "";
+        var sourceTypeName =
+            SourceType?.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat) ?? "";
+        var methodBodyHash = HashUtility.GenerateSha256Hash(
+            DefineMappingMethod?.Body?.ToFullString()
+                ?? DefineMappingMethod?.ExpressionBody?.ToFullString()
+                ?? ""
+        );
 
         return $"{filePath}|{spanStart}|{containingClassName}|{ContainingNamespace}|{sourceTypeName}|{CustomMethodName}|{methodBodyHash}";
     }

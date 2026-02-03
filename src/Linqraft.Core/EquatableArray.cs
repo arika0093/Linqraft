@@ -43,7 +43,8 @@ public readonly struct EquatableArray<T> : IEquatable<EquatableArray<T>>, IReadO
     /// <summary>
     /// Gets the underlying immutable array.
     /// </summary>
-    public ImmutableArray<T> AsImmutableArray() => _array.IsDefault ? ImmutableArray<T>.Empty : _array;
+    public ImmutableArray<T> AsImmutableArray() =>
+        _array.IsDefault ? ImmutableArray<T>.Empty : _array;
 
     /// <summary>
     /// Gets the number of elements in the array.
@@ -53,7 +54,8 @@ public readonly struct EquatableArray<T> : IEquatable<EquatableArray<T>>, IReadO
     /// <summary>
     /// Gets the element at the specified index.
     /// </summary>
-    public T this[int index] => _array.IsDefault ? throw new IndexOutOfRangeException() : _array[index];
+    public T this[int index] =>
+        _array.IsDefault ? throw new IndexOutOfRangeException() : _array[index];
 
     /// <inheritdoc/>
     public bool Equals(EquatableArray<T> other)
@@ -104,12 +106,14 @@ public readonly struct EquatableArray<T> : IEquatable<EquatableArray<T>>, IReadO
     /// <summary>
     /// Equality operator.
     /// </summary>
-    public static bool operator ==(EquatableArray<T> left, EquatableArray<T> right) => left.Equals(right);
+    public static bool operator ==(EquatableArray<T> left, EquatableArray<T> right) =>
+        left.Equals(right);
 
     /// <summary>
     /// Inequality operator.
     /// </summary>
-    public static bool operator !=(EquatableArray<T> left, EquatableArray<T> right) => !left.Equals(right);
+    public static bool operator !=(EquatableArray<T> left, EquatableArray<T> right) =>
+        !left.Equals(right);
 
     /// <summary>
     /// Implicit conversion from ImmutableArray.
@@ -119,7 +123,8 @@ public readonly struct EquatableArray<T> : IEquatable<EquatableArray<T>>, IReadO
     /// <summary>
     /// Implicit conversion to ImmutableArray.
     /// </summary>
-    public static implicit operator ImmutableArray<T>(EquatableArray<T> array) => array.AsImmutableArray();
+    public static implicit operator ImmutableArray<T>(EquatableArray<T> array) =>
+        array.AsImmutableArray();
 }
 
 /// <summary>

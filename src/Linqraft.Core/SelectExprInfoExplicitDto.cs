@@ -50,7 +50,8 @@ public record SelectExprInfoExplicitDto : SelectExprInfo
     {
         var baseId = base.GetEquatableIdentifier();
         var anonymousObjectText = AnonymousObject?.ToFullString() ?? "";
-        var tResultTypeName = TResultType?.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat) ?? "";
+        var tResultTypeName =
+            TResultType?.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat) ?? "";
         var parentClassesJoined = string.Join(",", ParentClasses ?? []);
         return $"{baseId}|explicit|{ExplicitDtoName}|{TargetNamespace}|{parentClassesJoined}|{tResultTypeName}|{HashUtility.GenerateSha256Hash(anonymousObjectText)}";
     }

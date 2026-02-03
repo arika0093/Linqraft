@@ -182,4 +182,3 @@ public sealed record MappingDeclareModel
     /// </summary>
     public required int SpanStart { get; init; }
 }
-
