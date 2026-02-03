@@ -117,24 +117,7 @@ public class LocalVariableCaptureAnalyzer : BaseLinqraftAnalyzer
                 // Extract variable names from the capture anonymous object
                 if (argument.Expression is AnonymousObjectCreationExpressionSyntax anonymousObject)
                 {
-                    foreach (var initializer in anonymousObject.Initializers)
-                    {
-                        // Get the property name from the initializer
-                        string propertyName;
-                        if (initializer.NameEquals != null)
-                        {
-                            propertyName = initializer.NameEquals.Name.Identifier.Text;
-                        }
-                        else if (initializer.Expression is IdentifierNameSyntax identifier)
-                        {
-                            propertyName = identifier.Identifier.Text;
-                        }
-                        else
-                        {
-                            continue;
-                        }
-                        capturedVariables.Add(propertyName);
-                    }
+                    AddCapturedVariablesFromAnonymousObject(anonymousObject, capturedVariables);
                 }
                 break;
             }
@@ -146,27 +129,59 @@ public class LocalVariableCaptureAnalyzer : BaseLinqraftAnalyzer
             var secondArg = invocation.ArgumentList.Arguments[1];
             if (secondArg.Expression is AnonymousObjectCreationExpressionSyntax anonymousObject)
             {
-                foreach (var initializer in anonymousObject.Initializers)
-                {
-                    string propertyName;
-                    if (initializer.NameEquals != null)
-                    {
-                        propertyName = initializer.NameEquals.Name.Identifier.Text;
-                    }
-                    else if (initializer.Expression is IdentifierNameSyntax identifier)
-                    {
-                        propertyName = identifier.Identifier.Text;
-                    }
-                    else
-                    {
-                        continue;
-                    }
-                    capturedVariables.Add(propertyName);
-                }
+                AddCapturedVariablesFromAnonymousObject(anonymousObject, capturedVariables);
             }
         }
 
         return capturedVariables;
+    }
+
+    private static void AddCapturedVariablesFromAnonymousObject(
+        AnonymousObjectCreationExpressionSyntax anonymousObject,
+        HashSet<string> capturedVariables
+    )
+    {
+        foreach (var initializer in anonymousObject.Initializers)
+        {
+            // Add the property name if explicitly provided
+            if (initializer.NameEquals != null)
+            {
+                var propertyName = initializer.NameEquals.Name.Identifier.Text;
+                capturedVariables.Add(propertyName);
+            }
+
+            AddCapturedVariablesFromExpression(initializer.Expression, capturedVariables);
+        }
+    }
+
+    private static void AddCapturedVariablesFromExpression(
+        ExpressionSyntax expression,
+        HashSet<string> capturedVariables
+    )
+    {
+        switch (expression)
+        {
+            case IdentifierNameSyntax identifier:
+                capturedVariables.Add(identifier.Identifier.Text);
+                break;
+            case MemberAccessExpressionSyntax memberAccess:
+                var rootIdentifier = GetRootIdentifierName(memberAccess.Expression);
+                if (rootIdentifier != null)
+                {
+                    capturedVariables.Add(rootIdentifier);
+                }
+                break;
+        }
+    }
+
+    private static string? GetRootIdentifierName(ExpressionSyntax expression)
+    {
+        return expression switch
+        {
+            IdentifierNameSyntax identifier => identifier.Identifier.Text,
+            MemberAccessExpressionSyntax memberAccess => GetRootIdentifierName(memberAccess.Expression),
+            _ => null,
+        };
     }
 
     private static bool HasCaptureParameter(InvocationExpressionSyntax invocation)
@@ -389,8 +404,8 @@ public class LocalVariableCaptureAnalyzer : BaseLinqraftAnalyzer
                                 && !lambda.Span.Contains(exprSymbolLocation.SourceSpan)
                             )
                             {
-                                var memberName = memberAccess.Name.Identifier.Text;
-                                variablesToCapture.Add((memberName, memberAccess.GetLocation()));
+                                var captureName = exprIdentifier.Identifier.Text;
+                                variablesToCapture.Add((captureName, memberAccess.GetLocation()));
                             }
                         }
                     }
