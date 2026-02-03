@@ -9,12 +9,13 @@ namespace Linqraft.Core;
 /// This model contains only value types and strings, ensuring proper equality comparison for incremental generator caching.
 /// </summary>
 /// <remarks>
+/// Reserved for future use when fully migrating to string-based pipeline models.
 /// Following the incremental generators cookbook pattern:
 /// - No ISymbol or SemanticModel references (they are never equatable between runs)
 /// - No SyntaxNode references (edits make them non-equatable)
 /// - Only string representations that uniquely identify the invocation
 /// </remarks>
-public sealed record SelectExprInvocationModel : IEquatable<SelectExprInvocationModel>
+public sealed record SelectExprInvocationModel
 {
     /// <summary>
     /// A hash of the lambda body text to detect changes
@@ -71,7 +72,10 @@ public sealed record SelectExprInvocationModel : IEquatable<SelectExprInvocation
 /// Equatable model representing the essential information extracted from a LinqraftMappingGenerate attributed method.
 /// This model contains only value types and strings, ensuring proper equality comparison for incremental generator caching.
 /// </summary>
-public sealed record MappingMethodModel : IEquatable<MappingMethodModel>
+/// <remarks>
+/// Reserved for future use when fully migrating to string-based pipeline models.
+/// </remarks>
+public sealed record MappingMethodModel
 {
     /// <summary>
     /// The name of the method to generate (from attribute parameter)
@@ -123,7 +127,10 @@ public sealed record MappingMethodModel : IEquatable<MappingMethodModel>
 /// Equatable model representing the essential information extracted from a LinqraftMappingDeclare class.
 /// This model contains only value types and strings, ensuring proper equality comparison for incremental generator caching.
 /// </summary>
-public sealed record MappingDeclareModel : IEquatable<MappingDeclareModel>
+/// <remarks>
+/// Reserved for future use when fully migrating to string-based pipeline models.
+/// </remarks>
+public sealed record MappingDeclareModel
 {
     /// <summary>
     /// The fully qualified name of the containing class
@@ -176,17 +183,3 @@ public sealed record MappingDeclareModel : IEquatable<MappingDeclareModel>
     public required int SpanStart { get; init; }
 }
 
-/// <summary>
-/// Extended context that pairs an equatable model with the syntax needed for generation.
-/// This is used internally during generation but the model part is used for equality/caching.
-/// </summary>
-/// <typeparam name="TModel">The equatable model type</typeparam>
-/// <typeparam name="TSyntax">The syntax type</typeparam>
-internal sealed record GenerationContext<TModel, TSyntax>
-    where TModel : IEquatable<TModel>
-    where TSyntax : SyntaxNode
-{
-    public required TModel Model { get; init; }
-    public required TSyntax Syntax { get; init; }
-    public required SemanticModel SemanticModel { get; init; }
-}
