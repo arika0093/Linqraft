@@ -1,12 +1,17 @@
+using System;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
 
 namespace Linqraft.Core;
 
 /// <summary>
-/// Information about a class that inherits from LinqraftMappingDeclare&lt;T&gt;
+/// Information about a class that inherits from LinqraftMappingDeclare&lt;T&gt;.
 /// </summary>
-public record LinqraftMappingDeclareInfo
+/// <remarks>
+/// This record implements custom equality comparison that excludes non-equatable Roslyn types
+/// (SemanticModel, ISymbol, SyntaxNode) to support incremental generator caching.
+/// </remarks>
+public record LinqraftMappingDeclareInfo : IEquatable<LinqraftMappingDeclareInfo>
 {
     /// <summary>
     /// The class declaration that inherits from LinqraftMappingDeclare
@@ -43,4 +48,43 @@ public record LinqraftMappingDeclareInfo
     /// If null, uses default naming convention: ProjectTo{EntityName}
     /// </summary>
     public string? CustomMethodName { get; init; }
+
+    #region Custom Equality for Incremental Generator Caching
+
+    /// <summary>
+    /// Gets a unique identifier for equality comparison.
+    /// </summary>
+    private string GetEquatableIdentifier()
+    {
+        var filePath = ClassDeclaration?.GetLocation()?.SourceTree?.FilePath ?? "";
+        var spanStart = ClassDeclaration?.SpanStart ?? 0;
+        var containingClassName = ContainingClass?.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat) ?? "";
+        var sourceTypeName = SourceType?.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat) ?? "";
+        var methodBodyHash = HashUtility.GenerateSha256Hash(DefineMappingMethod?.Body?.ToFullString() ?? DefineMappingMethod?.ExpressionBody?.ToFullString() ?? "");
+
+        return $"{filePath}|{spanStart}|{containingClassName}|{ContainingNamespace}|{sourceTypeName}|{CustomMethodName}|{methodBodyHash}";
+    }
+
+    /// <summary>
+    /// Determines whether the specified LinqraftMappingDeclareInfo is equal to this instance.
+    /// </summary>
+    public virtual bool Equals(LinqraftMappingDeclareInfo? other)
+    {
+        if (other is null)
+            return false;
+        if (ReferenceEquals(this, other))
+            return true;
+
+        return GetEquatableIdentifier() == other.GetEquatableIdentifier();
+    }
+
+    /// <summary>
+    /// Returns a hash code based on the equatable identifier.
+    /// </summary>
+    public override int GetHashCode()
+    {
+        return GetEquatableIdentifier().GetHashCode();
+    }
+
+    #endregion
 }

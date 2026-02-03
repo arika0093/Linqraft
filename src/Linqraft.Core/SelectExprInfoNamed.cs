@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
@@ -9,14 +10,28 @@ using Microsoft.CodeAnalysis.CSharp.Syntax;
 namespace Linqraft.Core;
 
 /// <summary>
-/// SelectExprInfo for named (predefined DTO) Select expressions
+/// SelectExprInfo for named (predefined DTO) Select expressions.
 /// </summary>
+/// <remarks>
+/// Inherits custom equality from SelectExprInfo that excludes non-equatable Roslyn types.
+/// </remarks>
 public record SelectExprInfoNamed : SelectExprInfo
 {
     /// <summary>
     /// The object creation expression for the named type
     /// </summary>
     public required ObjectCreationExpressionSyntax ObjectCreation { get; init; }
+
+    /// <summary>
+    /// Gets a unique identifier for this SelectExprInfo based on its essential characteristics.
+    /// Includes the object creation text for proper equality comparison.
+    /// </summary>
+    protected override string GetEquatableIdentifier()
+    {
+        var baseId = base.GetEquatableIdentifier();
+        var objectCreationText = ObjectCreation?.ToFullString() ?? "";
+        return $"{baseId}|named|{HashUtility.GenerateSha256Hash(objectCreationText)}";
+    }
 
     /// <summary>
     /// Generates DTO classes (predefined types don't generate new classes)

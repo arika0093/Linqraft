@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
@@ -9,8 +10,11 @@ using Microsoft.CodeAnalysis.CSharp.Syntax;
 namespace Linqraft.Core;
 
 /// <summary>
-/// SelectExprInfo for explicit DTO name Select expressions (SelectExpr&lt;TIn, TResult&gt; form)
+/// SelectExprInfo for explicit DTO name Select expressions (SelectExpr&lt;TIn, TResult&gt; form).
 /// </summary>
+/// <remarks>
+/// Inherits custom equality from SelectExprInfo that excludes non-equatable Roslyn types.
+/// </remarks>
 public record SelectExprInfoExplicitDto : SelectExprInfo
 {
     /// <summary>
@@ -37,6 +41,19 @@ public record SelectExprInfoExplicitDto : SelectExprInfo
     /// The ITypeSymbol of the TResult type (for extracting accessibility)
     /// </summary>
     public required ITypeSymbol TResultType { get; init; }
+
+    /// <summary>
+    /// Gets a unique identifier for this SelectExprInfo based on its essential characteristics.
+    /// Includes the explicit DTO name and related properties for proper equality comparison.
+    /// </summary>
+    protected override string GetEquatableIdentifier()
+    {
+        var baseId = base.GetEquatableIdentifier();
+        var anonymousObjectText = AnonymousObject?.ToFullString() ?? "";
+        var tResultTypeName = TResultType?.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat) ?? "";
+        var parentClassesJoined = string.Join(",", ParentClasses ?? []);
+        return $"{baseId}|explicit|{ExplicitDtoName}|{TargetNamespace}|{parentClassesJoined}|{tResultTypeName}|{HashUtility.GenerateSha256Hash(anonymousObjectText)}";
+    }
 
     /// <summary>
     /// Generates DTO classes (including nested DTOs)

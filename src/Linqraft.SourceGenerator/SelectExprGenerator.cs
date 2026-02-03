@@ -16,6 +16,10 @@ namespace Linqraft;
 [Generator]
 public partial class SelectExprGenerator : IIncrementalGenerator
 {
+    // Fully qualified metadata name for the LinqraftMappingGenerateAttribute
+    private const string LinqraftMappingGenerateAttributeFullName =
+        "Linqraft.LinqraftMappingGenerateAttribute";
+
     /// <summary>
     /// Initialize the generator
     /// </summary>
@@ -32,6 +36,7 @@ public partial class SelectExprGenerator : IIncrementalGenerator
         );
 
         // Provider to detect SelectExpr method invocations
+        // Note: SelectExpr invocations cannot use ForAttributeWithMetadataName because they are method calls, not attributed declarations
         var invocations = context
             .SyntaxProvider.CreateSyntaxProvider(
                 predicate: static (node, _) => IsSelectExprInvocation(node),
@@ -41,15 +46,19 @@ public partial class SelectExprGenerator : IIncrementalGenerator
             .Collect();
 
         // Provider to detect methods with [LinqraftMappingGenerate] attribute
+        // Using ForAttributeWithMetadataName for 99x+ performance improvement over CreateSyntaxProvider
         var mappingMethods = context
-            .SyntaxProvider.CreateSyntaxProvider(
-                predicate: static (node, _) => IsLinqraftMappingGenerateMethod(node),
-                transform: static (ctx, _) => GetMappingMethodInfo(ctx)
+            .SyntaxProvider.ForAttributeWithMetadataName(
+                fullyQualifiedMetadataName: LinqraftMappingGenerateAttributeFullName,
+                predicate: static (node, _) => node is MethodDeclarationSyntax,
+                transform: static (ctx, _) => GetMappingMethodInfoFromAttribute(ctx)
             )
             .Where(static info => info is not null)
             .Collect();
 
         // Provider to detect classes that inherit from LinqraftMappingDeclare<T>
+        // Note: Using CreateSyntaxProvider because LinqraftMappingDeclare is detected via inheritance, not attribute
+        // However, classes may also have [LinqraftMappingGenerate] attribute for custom method names
         var mappingDeclareClasses = context
             .SyntaxProvider.CreateSyntaxProvider(
                 predicate: static (node, _) => IsLinqraftMappingDeclareClass(node),
@@ -501,6 +510,53 @@ public partial class SelectExprGenerator : IIncrementalGenerator
                     || attrName == "Linqraft.LinqraftMappingGenerate"
                     || attrName == "Linqraft.LinqraftMappingGenerateAttribute";
             });
+    }
+
+    /// <summary>
+    /// Gets mapping method info from ForAttributeWithMetadataName context.
+    /// This is more efficient than CreateSyntaxProvider because ForAttributeWithMetadataName
+    /// uses compiler-level caching of attribute lookups.
+    /// </summary>
+    private static SelectExprMappingInfo? GetMappingMethodInfoFromAttribute(
+        GeneratorAttributeSyntaxContext context
+    )
+    {
+        // The target node is the method with the attribute
+        if (context.TargetNode is not MethodDeclarationSyntax method)
+            return null;
+
+        var semanticModel = context.SemanticModel;
+
+        // The target symbol is the method symbol
+        if (context.TargetSymbol is not IMethodSymbol methodSymbol)
+            return null;
+
+        // Get the attribute data from the context (already filtered to our attribute)
+        var attributeData = context.Attributes.FirstOrDefault();
+        if (attributeData is null)
+            return null;
+
+        // Get the target method name from the attribute
+        var targetMethodName = attributeData.ConstructorArguments.FirstOrDefault().Value as string;
+        if (string.IsNullOrEmpty(targetMethodName))
+            return null;
+
+        // Get the containing class (must be static partial)
+        var containingClass = methodSymbol.ContainingType;
+        if (containingClass is null || !containingClass.IsStatic)
+            return null;
+
+        // Get the namespace
+        var containingNamespace = containingClass.ContainingNamespace?.ToDisplayString() ?? "";
+
+        return new SelectExprMappingInfo
+        {
+            MethodDeclaration = method,
+            TargetMethodName = targetMethodName!,
+            ContainingClass = containingClass,
+            SemanticModel = semanticModel,
+            ContainingNamespace = containingNamespace,
+        };
     }
 
     private static SelectExprMappingInfo? GetMappingMethodInfo(GeneratorSyntaxContext context)
