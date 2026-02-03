@@ -125,9 +125,10 @@ public abstract record SelectExprInfo : IEquatable<SelectExprInfo>
         var spanStart = Invocation?.SpanStart ?? 0;
         var spanLength = Invocation?.Span.Length ?? 0;
         var captureText = CaptureArgumentExpression?.ToFullString() ?? "";
+        var captureTypeFullName = CaptureArgumentType?.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat) ?? "";
         var mappingClassName = MappingContainingClass?.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat) ?? "";
 
-        return $"{sourceTypeFullName}|{filePath}|{spanStart}|{spanLength}|{LambdaParameterName}|{CallerNamespace}|{MappingMethodName}|{mappingClassName}|{MappingDeclareClassNameHash}|{captureText}";
+        return $"{sourceTypeFullName}|{filePath}|{spanStart}|{spanLength}|{LambdaParameterName}|{CallerNamespace}|{MappingMethodName}|{mappingClassName}|{MappingDeclareClassNameHash}|{captureText}|{captureTypeFullName}";
     }
 
     /// <summary>
