@@ -19,6 +19,16 @@ public partial class SelectExprGenerator : IIncrementalGenerator
     // Fully qualified metadata name for the LinqraftMappingGenerateAttribute
     private const string LinqraftMappingGenerateAttributeFullName =
         "Linqraft.LinqraftMappingGenerateAttribute";
+    private const string MappingGenerateMethodNameMissingDiagnosticId = "LINQRAFT001";
+    private static readonly DiagnosticDescriptor MappingGenerateMethodNameMissingDescriptor =
+        new(
+            MappingGenerateMethodNameMissingDiagnosticId,
+            "LinqraftMappingGenerate requires a method name",
+            "Method '{0}' must specify a mapping method name. Use [LinqraftMappingGenerate(\"MethodName\")] on methods.",
+            "Linqraft",
+            DiagnosticSeverity.Error,
+            isEnabledByDefault: true
+        );
 
     /// <summary>
     /// Initialize the generator
@@ -55,6 +65,14 @@ public partial class SelectExprGenerator : IIncrementalGenerator
             )
             .Where(static info => info is not null)
             .Collect();
+        var mappingMethodDiagnostics = context
+            .SyntaxProvider.ForAttributeWithMetadataName(
+                fullyQualifiedMetadataName: LinqraftMappingGenerateAttributeFullName,
+                predicate: static (node, _) => node is MethodDeclarationSyntax,
+                transform: static (ctx, _) => GetMappingMethodDiagnostic(ctx)
+            )
+            .Where(static diag => diag is not null)
+            .Collect();
 
         // Provider to detect classes that inherit from LinqraftMappingDeclare<T>
         // Using ForAttributeWithMetadataName for performance - now requires [LinqraftMappingGenerate] attribute
@@ -71,18 +89,25 @@ public partial class SelectExprGenerator : IIncrementalGenerator
         var invocationsWithConfig = invocations.Combine(configurationProvider);
         var mappingMethodsWithConfig = mappingMethods.Combine(configurationProvider);
         var mappingDeclareClassesWithConfig = mappingDeclareClasses.Combine(configurationProvider);
+        var mappingMethodDiagnosticsWithConfig = mappingMethodDiagnostics.Combine(
+            configurationProvider
+        );
 
         // Combine all providers
         var combinedData = invocationsWithConfig
             .Combine(mappingMethodsWithConfig)
-            .Combine(mappingDeclareClassesWithConfig);
+            .Combine(mappingDeclareClassesWithConfig)
+            .Combine(mappingMethodDiagnosticsWithConfig);
 
         // Code generation
         context.RegisterSourceOutput(
             combinedData,
             (spc, data) =>
             {
-                var (((infos, config), (mappingInfos, _)), (mappingDeclareInfos, _)) = data;
+                var (
+                    (((infos, config), (mappingInfos, _)), (mappingDeclareInfos, _)),
+                    (mappingDiagnostics, _)
+                ) = data;
                 var infoWithoutNulls = infos.Where(info => info is not null).Select(info => info!);
                 var mappingInfoWithoutNulls = mappingInfos
                     .Where(info => info is not null)
@@ -110,6 +135,12 @@ public partial class SelectExprGenerator : IIncrementalGenerator
                     {
                         mappingSelectExprInfos.Add(selectExprInfo);
                     }
+                }
+
+                // Report diagnostics for invalid mapping methods
+                foreach (var diagnostic in mappingDiagnostics.Where(diag => diag is not null))
+                {
+                    spc.ReportDiagnostic(diagnostic!);
                 }
 
                 // Combine regular SelectExpr infos with mapping-generated ones
@@ -557,6 +588,26 @@ public partial class SelectExprGenerator : IIncrementalGenerator
             SemanticModel = semanticModel,
             ContainingNamespace = containingNamespace,
         };
+    }
+
+    private static Diagnostic? GetMappingMethodDiagnostic(GeneratorAttributeSyntaxContext context)
+    {
+        if (context.TargetNode is not MethodDeclarationSyntax method)
+            return null;
+
+        var attributeData = context.Attributes.FirstOrDefault();
+        if (attributeData is null)
+            return null;
+
+        var targetMethodName = attributeData.ConstructorArguments.FirstOrDefault().Value as string;
+        if (!string.IsNullOrWhiteSpace(targetMethodName))
+            return null;
+
+        return Diagnostic.Create(
+            MappingGenerateMethodNameMissingDescriptor,
+            method.Identifier.GetLocation(),
+            method.Identifier.Text
+        );
     }
 
     /// <summary>
