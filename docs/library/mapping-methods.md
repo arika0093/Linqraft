@@ -232,7 +232,7 @@ The same works with the static partial class approach - simply use the generated
 
 ### Static Partial Class Requirements:
 1. **Static Partial Class**: The containing class must be `static` and `partial`
-2. **[LinqraftMappingGenerate] attribute**: Methods must be marked with this attribute and specify the method name
+2. **[LinqraftMappingGenerate] attribute**: Methods must be marked with this attribute and specify the desired method name
 3. **Top-Level Class**: Extension methods must be in a non-nested class
 4. **SelectExpr Inside**: The template method must contain at least one `SelectExpr` call
 
