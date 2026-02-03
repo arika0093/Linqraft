@@ -136,13 +136,17 @@ public abstract record SelectExprInfo
     /// </summary>
     protected string GenerateAnonymousCaptureMemberAccessAliases()
     {
-        if (CaptureArgumentExpression is not AnonymousObjectCreationExpressionSyntax anonymousCapture)
+        if (
+            CaptureArgumentExpression
+            is not AnonymousObjectCreationExpressionSyntax anonymousCapture
+        )
         {
             return string.Empty;
         }
 
         var capturePropertyNames = new HashSet<string>();
-        var aliasMap = new Dictionary<string, List<(string MemberName, string CapturePropertyName)>>();
+        var aliasMap =
+            new Dictionary<string, List<(string MemberName, string CapturePropertyName)>>();
 
         foreach (var initializer in anonymousCapture.Initializers)
         {
@@ -189,17 +193,17 @@ public abstract record SelectExprInfo
         {
             var rootName = kvp.Key;
             var members = kvp.Value;
-            
+
             // Build a tree structure for nested member paths
             var tree = new Dictionary<string, object>();
             foreach (var memberPair in members)
             {
                 var memberPath = memberPair.MemberName;
                 var captureName = memberPair.CapturePropertyName;
-                
+
                 var pathParts = memberPath.Split('.');
                 var current = tree;
-                
+
                 for (int i = 0; i < pathParts.Length - 1; i++)
                 {
                     var part = pathParts[i];
@@ -215,7 +219,7 @@ public abstract record SelectExprInfo
                     }
                     current = childDict;
                 }
-                
+
                 // Add the leaf node with the capture name
                 var lastPart = pathParts[^1];
                 if (!current.ContainsKey(lastPart))
@@ -223,7 +227,7 @@ public abstract record SelectExprInfo
                     current[lastPart] = captureName;
                 }
             }
-            
+
             // Generate the nested anonymous object
             sb.AppendLine($"    var {rootName} = new");
             sb.AppendLine("    {");
@@ -234,14 +238,19 @@ public abstract record SelectExprInfo
         return sb.ToString();
     }
 
-    private static void GenerateNestedAnonymousObject(StringBuilder sb, Dictionary<string, object> tree, int indentLevel, string captureObjName)
+    private static void GenerateNestedAnonymousObject(
+        StringBuilder sb,
+        Dictionary<string, object> tree,
+        int indentLevel,
+        string captureObjName
+    )
     {
         var indent = new string(' ', indentLevel * 4);
         foreach (var kvp in tree)
         {
             var memberName = kvp.Key;
             var value = kvp.Value;
-            
+
             if (value is string captureName)
             {
                 // Leaf node: simple assignment
@@ -278,7 +287,9 @@ public abstract record SelectExprInfo
         return expression switch
         {
             IdentifierNameSyntax identifier => identifier.Identifier.Text,
-            MemberAccessExpressionSyntax memberAccess => GetRootIdentifierName(memberAccess.Expression),
+            MemberAccessExpressionSyntax memberAccess => GetRootIdentifierName(
+                memberAccess.Expression
+            ),
             _ => null,
         };
     }

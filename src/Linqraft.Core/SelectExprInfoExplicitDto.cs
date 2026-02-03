@@ -581,7 +581,9 @@ public record SelectExprInfoExplicitDto : SelectExprInfo
         sb.AppendLine(string.Join($",{CodeFormatter.DefaultNewLine}", propertyAssignments));
 
         sb.AppendLine($"    }});");
-        sb.AppendLine($"    return converted.AsQueryable() as object as {returnTypePrefix}<TResult>;");
+        sb.AppendLine(
+            $"    return converted.AsQueryable() as object as {returnTypePrefix}<TResult>;"
+        );
         sb.AppendLine($"}}");
         return sb.ToString();
     }

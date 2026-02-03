@@ -265,7 +265,7 @@ public class LocalVariableCaptureTest
             {
                 FromDate = new DateTimeOffset(2024, 1, 1, 0, 0, 0, TimeSpan.Zero),
                 ToDate = new DateTimeOffset(2024, 1, 3, 0, 0, 0, TimeSpan.Zero),
-            }
+            },
         };
         var users = BuildUsers();
 
@@ -289,24 +289,27 @@ public class LocalVariableCaptureTest
     }
 
     private static List<UserWithCommits> BuildUsers() =>
-    [
-        new()
-        {
-            Id = 1,
-            Commits =
-            [
-                new Commit { Created = new DateTimeOffset(2024, 1, 2, 0, 0, 0, TimeSpan.Zero) },
-            ],
-        },
-        new()
-        {
-            Id = 2,
-            Commits =
-            [
-                new Commit { Created = new DateTimeOffset(2024, 1, 10, 0, 0, 0, TimeSpan.Zero) },
-            ],
-        },
-    ];
+        [
+            new()
+            {
+                Id = 1,
+                Commits =
+                [
+                    new Commit { Created = new DateTimeOffset(2024, 1, 2, 0, 0, 0, TimeSpan.Zero) },
+                ],
+            },
+            new()
+            {
+                Id = 2,
+                Commits =
+                [
+                    new Commit
+                    {
+                        Created = new DateTimeOffset(2024, 1, 10, 0, 0, 0, TimeSpan.Zero),
+                    },
+                ],
+            },
+        ];
 
     private readonly List<TestItem> TestData =
     [

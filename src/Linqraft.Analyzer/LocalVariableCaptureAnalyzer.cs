@@ -179,7 +179,9 @@ public class LocalVariableCaptureAnalyzer : BaseLinqraftAnalyzer
         return expression switch
         {
             IdentifierNameSyntax identifier => identifier.Identifier.Text,
-            MemberAccessExpressionSyntax memberAccess => GetRootIdentifierName(memberAccess.Expression),
+            MemberAccessExpressionSyntax memberAccess => GetRootIdentifierName(
+                memberAccess.Expression
+            ),
             _ => null,
         };
     }
