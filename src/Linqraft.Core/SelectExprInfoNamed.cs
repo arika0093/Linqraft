@@ -250,7 +250,9 @@ public record SelectExprInfoNamed : SelectExprInfo
         // For methods with capture that use AsEnumerable, convert back to IQueryable
         if (hasCapture)
         {
-            sb.AppendLine($"    return converted.AsQueryable() as object as {returnTypePrefix}<TResult>;");
+            sb.AppendLine(
+                $"    return converted.AsQueryable() as object as {returnTypePrefix}<TResult>;"
+            );
         }
         else
         {
