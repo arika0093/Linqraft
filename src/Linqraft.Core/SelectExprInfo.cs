@@ -212,10 +212,10 @@ public abstract record SelectExprInfo
                 }
                 
                 // Add the leaf node with the capture name
-                var leafPart = pathParts[^1];
-                if (!current.ContainsKey(leafPart))
+                var lastPart = pathParts[^1];
+                if (!current.ContainsKey(lastPart))
                 {
-                    current[leafPart] = captureName;
+                    current[lastPart] = captureName;
                 }
             }
             
@@ -295,7 +295,10 @@ public abstract record SelectExprInfo
             return string.Join(".", parts);
         }
 
-        // Fallback: return the last member name if something unexpected happened
+        // Fallback: This should not happen in normal usage since we only call this method
+        // after verifying GetRootIdentifierName succeeds. Return the last member name as
+        // a safe fallback to avoid breaking the generation if the expression structure
+        // is unexpected (e.g., complex expressions that aren't simple member chains).
         return parts.Count > 0 ? parts[^1] : "";
     }
 
