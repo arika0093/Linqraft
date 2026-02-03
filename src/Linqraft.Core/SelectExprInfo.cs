@@ -27,9 +27,15 @@ public record LinqExpressionInfo
 
 /// <summary>
 /// Base class for SelectExpr information, providing common functionality for
-/// analyzing LINQ Select expressions and generating corresponding DTO structures
+/// analyzing LINQ Select expressions and generating corresponding DTO structures.
 /// </summary>
-public abstract record SelectExprInfo
+/// <remarks>
+/// This record implements custom equality comparison that excludes non-equatable Roslyn types
+/// (SemanticModel, ISymbol, SyntaxNode) to support incremental generator caching.
+/// According to the incremental generators cookbook, pipeline models must be value-equatable
+/// for proper caching behavior.
+/// </remarks>
+public abstract record SelectExprInfo : IEquatable<SelectExprInfo>
 {
     /// <summary>
     /// The source type being selected from (e.g., T in IQueryable&lt;T&gt;)
@@ -96,6 +102,59 @@ public abstract record SelectExprInfo
     /// Used to avoid name collisions when generating extension method classes.
     /// </summary>
     public string? MappingDeclareClassNameHash { get; init; }
+
+    #region Custom Equality for Incremental Generator Caching
+
+    /// <summary>
+    /// Gets a unique identifier for this SelectExprInfo based on its essential characteristics.
+    /// This is used for equality comparison to enable incremental generator caching.
+    /// </summary>
+    /// <remarks>
+    /// The identifier is computed from:
+    /// - Source type full name
+    /// - File path and span of the invocation
+    /// - Lambda parameter name
+    /// - Caller namespace
+    /// - Mapping-related properties
+    /// - Capture expression text (if any)
+    /// </remarks>
+    protected virtual string GetEquatableIdentifier()
+    {
+        var sourceTypeFullName = SourceType?.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat) ?? "";
+        var filePath = Invocation?.GetLocation()?.SourceTree?.FilePath ?? "";
+        var spanStart = Invocation?.SpanStart ?? 0;
+        var spanLength = Invocation?.Span.Length ?? 0;
+        var captureText = CaptureArgumentExpression?.ToFullString() ?? "";
+        var mappingClassName = MappingContainingClass?.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat) ?? "";
+
+        return $"{sourceTypeFullName}|{filePath}|{spanStart}|{spanLength}|{LambdaParameterName}|{CallerNamespace}|{MappingMethodName}|{mappingClassName}|{MappingDeclareClassNameHash}|{captureText}";
+    }
+
+    /// <summary>
+    /// Determines whether the specified SelectExprInfo is equal to this instance.
+    /// Equality is based on essential identifying characteristics, excluding non-equatable Roslyn types.
+    /// </summary>
+    public virtual bool Equals(SelectExprInfo? other)
+    {
+        if (other is null)
+            return false;
+        if (ReferenceEquals(this, other))
+            return true;
+        if (GetType() != other.GetType())
+            return false;
+
+        return GetEquatableIdentifier() == other.GetEquatableIdentifier();
+    }
+
+    /// <summary>
+    /// Returns a hash code based on the equatable identifier.
+    /// </summary>
+    public override int GetHashCode()
+    {
+        return GetEquatableIdentifier().GetHashCode();
+    }
+
+    #endregion
 
     /// <summary>
     /// Generates DTO class information (including nested DTOs)
