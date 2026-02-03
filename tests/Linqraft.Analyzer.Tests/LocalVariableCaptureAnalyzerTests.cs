@@ -101,6 +101,88 @@ class Test
     }
 
     [Fact]
+    public async Task MemberAccess_OnCapturedRequest_NoDiagnostic()
+    {
+        var test =
+            @"
+using System.Linq;
+using System.Collections.Generic;
+
+class Request
+{
+    public int FromDate { get; set; }
+    public int ToDate { get; set; }
+}
+
+class Commit
+{
+    public int Created { get; set; }
+}
+
+class User
+{
+    public List<Commit> Commits { get; set; } = new();
+}
+
+class Test
+{
+    void Method(Request request)
+    {
+        var users = new List<User>();
+        var result = users.AsQueryable().SelectExpr(u => new
+        {
+            Commits = u.Commits.Where(c => request.FromDate <= c.Created && c.Created <= request.ToDate)
+        }, capture: new { request });
+    }
+}
+
+" + TestSourceCodes.SelectExprWithFuncAndCapture;
+
+        await VerifyCS.VerifyAnalyzerAsync(test);
+    }
+
+    [Fact]
+    public async Task MemberAccess_OnCapturedRequestFields_NoDiagnostic()
+    {
+        var test =
+            @"
+using System.Linq;
+using System.Collections.Generic;
+
+class Request
+{
+    public int FromDate { get; set; }
+    public int ToDate { get; set; }
+}
+
+class Commit
+{
+    public int Created { get; set; }
+}
+
+class User
+{
+    public List<Commit> Commits { get; set; } = new();
+}
+
+class Test
+{
+    void Method(Request request)
+    {
+        var users = new List<User>();
+        var result = users.AsQueryable().SelectExpr(u => new
+        {
+            Commits = u.Commits.Where(c => request.FromDate <= c.Created && c.Created <= request.ToDate)
+        }, capture: new { request.FromDate, request.ToDate });
+    }
+}
+
+" + TestSourceCodes.SelectExprWithFuncAndCapture;
+
+        await VerifyCS.VerifyAnalyzerAsync(test);
+    }
+
+    [Fact]
     public async Task ParameterFromOuterScope_InSelectExpr_ReportsDiagnostic()
     {
         var test =
