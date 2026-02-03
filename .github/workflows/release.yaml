@@ -1,4 +1,4 @@
-﻿name: Package Release to GitHub and Nuget
+name: Package Release to GitHub and Nuget
 
 on:
   workflow_dispatch:
@@ -19,7 +19,7 @@ jobs:
       version: ${{ steps.version.outputs.semver }}
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v5
+        uses: actions/checkout@v6
         with:
           fetch-depth: 0
 
@@ -47,7 +47,7 @@ jobs:
         run: dotnet pack --no-build -c Release --output ./artifacts
       
       - name: Upload Artifacts
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         with:
           name: nuget-packages
           path: ./artifacts/*.nupkg
@@ -58,7 +58,7 @@ jobs:
     needs: package-build
     steps:
       - name: Download Artifacts
-        uses: actions/download-artifact@v5
+        uses: actions/download-artifact@v7
         with:
           name: nuget-packages
           path: ./artifacts
@@ -84,7 +84,7 @@ jobs:
     needs: package-build
     steps:
       - name: Download Artifacts
-        uses: actions/download-artifact@v5
+        uses: actions/download-artifact@v7
         with:
           name: nuget-packages
           path: ./artifacts
@@ -105,7 +105,7 @@ jobs:
       - package-build
       - release-github
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
         with:
           fetch-depth: 0
         
@@ -119,7 +119,8 @@ jobs:
           GITHUB_REPO: ${{ github.repository }}
 
       - name: Commit and Push changelog
-        uses: stefanzweifel/git-auto-commit-action@v4
+        uses: stefanzweifel/git-auto-commit-action@v7
         with:
           commit_message: "chore: update changelog for release ${{ needs.package-build.outputs.version }}"
+          branch: main
           file_pattern: CHANGELOG.md

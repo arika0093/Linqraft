@@ -1,256 +1,147 @@
-This document describes the development guidelines, project structure, and technical background for this repository.
+# CLAUDE.md
+
+This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
 ## Overview
 
-This project is a C# source generator and analyzer suite that automatically generates Expression trees and DTO classes corresponding to IQueryable<T>.Select usages. It also provides code analyzers and fixes to improve LINQ query patterns and API design.
+Linqraft is a C# source generator and analyzer suite that automatically generates Expression trees and DTO classes for IQueryable<T>.Select operations. It enables writing LINQ queries with null-propagation operators (?.) in expression trees and auto-generates DTOs from anonymous types.
 
-The source generator analyzes the contents of `.SelectExpr` calls and generates the corresponding `Select` expressions and DTO classes.
+The project consists of:
+- **Source Generator**: Analyzes `.SelectExpr` calls and generates Select expressions and DTO classes
+- **Interceptors**: Replaces SelectExpr calls with generated expressions at compile time
+- **Roslyn Analyzers**: Detects patterns and suggests code improvements with automatic fixes
 
-Here is an example:
+## Build and Test Commands
 
-```csharp
-public class SampleClass
-{
-    public void GetSample(List<BaseClass> data)
-    {
-        var query = data.AsQueryable();
-        // pattern 1: use anonymous type to specify selection
-        // return type is anonymous type
-        query.SelectExpr(x => new
-        {
-            x.Id,
-            // you can use the null-conditional operator
-            ChildDescription = x.Child?.Description,
-        });
-
-        // pattern 2: use an explicit DTO class
-        // return type is SampleDto (auto-generated)
-        query.SelectExpr<SampleDto>(x => new
-        {
-            x.Id,
-            // you can select child properties
-            ChildNames = x.Children.Select(c => c.Name).ToList(),
-        });
-
-        // pattern 3: use an already defined DTO class
-        query.SelectExpr(x => new PredefinedDto
-        {
-            x.Name,
-            x.Value,
-        });
-    }
-}
-
-public class PredefinedDto
-{
-    public string Name { get; set; }
-    public int Value { get; set; }
-}
-```
-
-## Project structure
-
-The repository is organized as follows (relevant folders under `src/`):
-
-### `src/Linqraft/`
-The runtime library distributed as a NuGet package. Notable file:
-- `DummyExpression.cs`: an empty extension method that acts as a marker for the Source Generator to detect `SelectExpr` usages. It performs no runtime work and exists only to be recognized at compile time.
-
-### `src/Linqraft.Core/`
-Common infrastructure and helper classes shared between analyzers and source generators. This project contains:
-
-#### AnalyzerHelpers/
-Analyzer-specific helper classes and base infrastructure:
-- `BaseLinqraftAnalyzer.cs`: Abstract base class for all analyzers, eliminating boilerplate code
-- `CaptureHelper.cs`: Helper for detecting captured variables in lambda expressions
-- `ExpressionHelper.cs`: Helper for extracting property names and member access chains from expressions
-- `LinqMethodHelper.cs`: Helper for detecting LINQ method calls (Select, SelectMany, ToList)
-- `NullCheckHelper.cs`: Helper for null checking patterns
-- `SyntaxGenerationHelper.cs`: Helper for generating typed SelectExpr calls
-- `SyntaxHelper.cs`: Helper for syntax node analysis and manipulation
-- `UsingDirectiveHelper.cs`: Helper for managing using directives
-
-#### RoslynHelpers/
-Roslyn semantic analysis helpers:
-- `RoslynTypeHelper.cs`: Type checking using Roslyn semantic analysis instead of string matching. Provides methods for nullable type checking, IQueryable/IEnumerable detection, anonymous type detection, and more.
-
-#### SyntaxHelpers/
-Syntax manipulation and formatting helpers:
-- `NullConditionalHelper.cs`: Helper for null-conditional operator (?.) handling and null check pattern detection
-- `TriviaHelper.cs`: Helper for preserving whitespace, comments, and formatting. Includes cross-platform line ending detection (CRLF vs LF).
-
-### `src/Linqraft.Analyzer/`
-Roslyn analyzers and code fix providers that detect code patterns and suggest improvements. This project contains:
-
-#### Analyzers (7 total)
-All analyzers inherit from `BaseLinqraftAnalyzer`:
-- `AnonymousTypeToDtoAnalyzer.cs`: Detects anonymous types that can be converted to DTOs
-- `ApiControllerProducesResponseTypeAnalyzer.cs`: Detects API controllers missing ProducesResponseType attributes
-- `LocalVariableCaptureAnalyzer.cs`: Detects local variables that should be captured in SelectExpr
-- `SelectExprToTypedAnalyzer.cs`: Detects SelectExpr calls that can use explicit type parameters
-- `SelectToSelectExprAnonymousAnalyzer.cs`: Detects Select calls with anonymous types that should use SelectExpr
-- `SelectToSelectExprNamedAnalyzer.cs`: Detects Select calls with named types that should use SelectExpr
-- `TernaryNullCheckToConditionalAnalyzer.cs`: Detects ternary null checks that can be simplified to null-conditional operators
-
-#### Code Fix Providers (7 total)
-Each analyzer has a corresponding code fix provider:
-- `AnonymousTypeToDtoCodeFixProvider.cs`
-- `ApiControllerProducesResponseTypeCodeFixProvider.cs`
-- `LocalVariableCaptureCodeFixProvider.cs`
-- `SelectExprToTypedCodeFixProvider.cs`
-- `SelectToSelectExprAnonymousCodeFixProvider.cs`
-- `SelectToSelectExprNamedCodeFixProvider.cs`
-- `TernaryNullCheckToConditionalCodeFixProvider.cs`
-
-#### Utilities
-- `TernaryNullCheckSimplifier.cs`: Centralized logic for simplifying ternary null checks to null-conditional operators
-
-### `src/Linqraft.SourceGenerator/`
-The Source Generator implementation that performs the actual code generation. Important files include:
-- `SelectExprGenerator.cs`: the generator entry point
-- `SelectExprGroups.cs`: grouping SelectExpr information (grouped per namespace)
-- `SelectExprInfo.cs`: holds information for each SelectExpr and provides the foundation for code generation
-  - `SelectExprInfoAnonymous.cs`: handles anonymous-type SelectExpr information (pattern 1)
-  - `SelectExprInfoExplicitDto.cs`: handles explicit DTO SelectExpr information (pattern 2)
-  - `SelectExprInfoPredefinedDto.cs`: handles pre-existing DTO SelectExpr information (pattern 3)
-
-### `tests/Linqraft.Tests/`
-The test project for source generators. Contains test cases exercising various scenarios and verifies generated output.
-
-### `tests/Linqraft.Analyzer.Tests/`
-The test project for analyzers and code fix providers. Contains comprehensive tests for all 7 analyzers and their corresponding code fixes.
-
-### `examples/Linqraft.Sample/`
-A sample project demonstrating usage examples.
-
-### `docs/developments/`
-Development documentation and guides:
-- `refactoring-guide.md`: Comprehensive guide documenting the refactored codebase architecture, helper class organization, code quality standards, and migration guidelines. **Read this before making significant changes to analyzers or helper classes.**
-
-## Technical background
-
-This project consists of three main components:
-
-1. **C# Source Generator**: A compile-time code generation feature (available since C# 9). The generator inspects `SelectExpr` calls and emits expression trees and DTO classes.
-
-2. **Interceptor**: A technique used to intercept method calls and replace the `SelectExpr` call with the generated expression trees at runtime.
-
-3. **Roslyn Analyzers**: Compile-time code analyzers that detect patterns and suggest improvements. Analyzers use the Roslyn API for semantic analysis and syntax tree manipulation.
-
-## Build and test
-
-Always perform a clean build to avoid stale generator caches:
-
+### Clean build (required to avoid stale generator caches)
 ```bash
-dotnet clean
+sh scripts/cleanup.sh
 dotnet build --no-incremental
-dotnet test --no-build
 ```
 
-If you want to inspect the generated sources on disk, follow these steps:
-
-1. Remove the `(test-project)/.generated` directory if it already exists.
-2. Enable `EmitCompilerGeneratedFiles` in `Linqraft.Tests.csproj`.
-3. The generated code will be emitted to `(test-project)/.generated/**/*.g.cs`.
-
-You can use the `./scripts/clean-test.sh` script as a shortcut.
-
-## Development guidelines
-
-### Test-driven development recommended
-
-- When adding new features, write tests first.
-- Verify the generated code in the test project to ensure it matches expectations.
-- Ensure all existing tests pass before committing changes.
-- For analyzers, add test cases to `tests/Linqraft.Analyzer.Tests/`.
-- For source generators, add test cases to `tests/Linqraft.Tests/`.
-
-### Source generator-specific considerations
-
-- Cache issues: if changes to the generator are not reflected, run `dotnet clean`.
-- IDE restart: if generated code is not visible in Visual Studio or Rider, an IDE restart may be required.
-- Debugging: debugging source generators can be more involved than regular code. Use `EmitCompilerGeneratedFiles` to inspect emitted sources when necessary.
-
-### Analyzer development guidelines
-
-When developing or modifying analyzers:
-
-1. **Inherit from BaseLinqraftAnalyzer**
-   - All new analyzers should inherit from `BaseLinqraftAnalyzer`
-   - Override the required abstract properties: `DiagnosticId`, `Title`, `MessageFormat`, `Description`, `Severity`, `Rule`
-   - Define a public const `AnalyzerId` for use by code fix providers
-
-2. **Use Helper Classes**
-   - **Always prefer semantic analysis over string matching**: Use `RoslynTypeHelper` instead of string-based type checking
-   - **Use TriviaHelper for formatting**: Preserve whitespace and comments, and detect line endings for cross-platform compatibility
-   - **Centralize common patterns**: If you write the same logic twice, extract it to a helper class
-   - See `docs/developments/refactoring-guide.md` for detailed guidelines on when and how to create helper classes
-
-3. **Code Quality Standards**
-   ```csharp
-   // Bad: string-based type checking
-   if (typeName.EndsWith("?")) { }
-
-   // Good: semantic analysis
-   if (RoslynTypeHelper.IsNullableType(typeSymbol)) { }
-   ```
-
-   ```csharp
-   // Bad: hardcoded line endings
-   var newNode = node.WithTrailingTrivia(SyntaxFactory.EndOfLine("\n"));
-
-   // Good: cross-platform line ending detection
-   var newNode = node.WithTrailingTrivia(TriviaHelper.EndOfLine(root));
-   ```
-
-4. **Follow Naming Conventions**
-   - Analyzers: `*Analyzer.cs` inheriting from `BaseLinqraftAnalyzer`
-   - Code Fix Providers: `*CodeFixProvider.cs`
-   - Analyzer helpers: `*Helper.cs` in `Linqraft.Core/AnalyzerHelpers/`
-   - Roslyn helpers: `Roslyn*Helper.cs` in `Linqraft.Core/RoslynHelpers/`
-   - Syntax helpers: `*Helper.cs` in `Linqraft.Core/SyntaxHelpers/`
-
-5. **Performance Considerations**
-   - Helper methods are called frequently during analysis
-   - Keep helper methods lightweight and focused
-   - Cache expensive operations when possible
-   - Use `ISymbolEqualityComparer` for symbol comparisons
-
-### Code editing guidelines
-
-- Do not edit `DummyExpression.cs` (it serves only as a marker).
-- When modifying the source generator, always add or update tests.
-- When modifying analyzers or code fix providers, always add or update tests.
-- Pay attention to the readability and performance of the generated code.
-- Document complex helper methods with XML comments.
-- Consult `docs/developments/refactoring-guide.md` for architecture guidelines and best practices.
-
-### Helper class organization
-
-Helper classes are organized by purpose:
-
-```
-src/Linqraft.Core/
-├── AnalyzerHelpers/          # Analyzer-specific helpers
-│   ├── BaseLinqraftAnalyzer.cs
-│   ├── CaptureHelper.cs
-│   ├── ExpressionHelper.cs
-│   ├── LinqMethodHelper.cs
-│   ├── NullCheckHelper.cs
-│   ├── SyntaxGenerationHelper.cs
-│   ├── SyntaxHelper.cs
-│   └── UsingDirectiveHelper.cs
-├── RoslynHelpers/            # Roslyn semantic analysis helpers
-│   └── RoslynTypeHelper.cs
-└── SyntaxHelpers/            # Syntax manipulation helpers
-    ├── NullConditionalHelper.cs
-    └── TriviaHelper.cs
+### Instant feedback build (runtime library only)
+```bash
+sh scripts/instant-build.sh
 ```
 
-**When to create a new helper class:**
-1. Same code appears in 3+ locations
-2. You're using string-based type checking (use RoslynTypeHelper instead)
-3. Repeated syntax patterns (use SyntaxHelper)
-4. Complex trivia handling (use TriviaHelper)
+### Quick test (single framework)
+```bash
+sh scripts/clean-test.sh
+```
 
-See `docs/developments/refactoring-guide.md` for detailed examples and migration guidelines.
+### Run specific test
+```bash
+dotnet test --filter "FullyQualifiedName~YourTestName" --no-build
+```
+
+### Inspect generated sources
+1. Run `sh scripts/instant-build.sh` to build the project
+2. Generated code appears in `tests/Linqraft.Tests/.generated/**/*.g.cs`
+
+## Architecture
+
+### Three SelectExpr patterns
+
+The codebase handles three distinct patterns, each with its own SelectExprInfo implementation:
+
+1. **Anonymous pattern** (`SelectExprInfoAnonymous.cs`): `query.SelectExpr(x => new { x.Id, x.Name })`
+   - Returns anonymous type
+   - No DTO generation needed
+
+2. **Explicit DTO pattern** (`SelectExprInfoExplicitDto.cs`): `query.SelectExpr<Entity, EntityDto>(x => new { x.Id })`
+   - Auto-generates EntityDto class from anonymous type structure
+   - Type parameter specifies desired DTO name
+
+3. **Predefined DTO pattern** (`SelectExprInfoPredefinedDto.cs`): `query.SelectExpr(x => new PredefinedDto { x.Id })`
+   - Uses existing DTO class
+   - No generation, only expression tree creation
+
+### Core components
+
+**Source Generator** (`src/Linqraft.SourceGenerator/`):
+- `SelectExprGenerator.cs`: Entry point, orchestrates generation
+- `SelectExprGroups.cs`: Groups SelectExpr calls by namespace
+- `SelectExprInfo.cs` and subclasses: Parse and hold information for each SelectExpr call
+
+**Analyzer Infrastructure** (`src/Linqraft.Core/`):
+- `AnalyzerHelpers/`: Analyzer-specific helpers (BaseLinqraftAnalyzer, CaptureHelper, ExpressionHelper, etc.)
+- `RoslynHelpers/`: Roslyn semantic analysis helpers (RoslynTypeHelper for type checking)
+- `SyntaxHelpers/`: Syntax manipulation helpers (TriviaHelper for formatting, NullConditionalHelper)
+
+**Analyzers** (`src/Linqraft.Analyzer/`):
+- 7 analyzers inheriting from `BaseLinqraftAnalyzer`
+- Each analyzer has a corresponding code fix provider
+- Examples: `SelectToSelectExprAnonymousAnalyzer`, `LocalVariableCaptureAnalyzer`, `TernaryNullCheckToConditionalAnalyzer`
+
+**Runtime Library** (`src/Linqraft/`):
+- `DummyExpression.cs`: Marker method for generator detection (do not edit)
+
+### Key technical details
+
+**Null-propagation conversion**: The generator converts `x.Customer?.Name` to `x.Customer != null ? x.Customer.Name : null` in expression trees (EF Core/IQueryable compatible).
+
+**Interceptors**: Uses C# 12 interceptor feature to replace SelectExpr calls with generated code at compile time, enabling zero-runtime-dependency.
+
+**Helper class organization**:
+- **RoslynTypeHelper**: Use for semantic type checking (never use string-based type matching)
+- **TriviaHelper**: Preserves formatting and detects cross-platform line endings
+- **BaseLinqraftAnalyzer**: Abstract base for all analyzers, reduces boilerplate
+
+Please refer to README.md and docs/library/*.md for more details.
+
+## Development Guidelines
+
+### Analyzer development
+
+1. **Inherit from BaseLinqraftAnalyzer** for all new analyzers
+2. **Use semantic analysis over string matching**: Always use `RoslynTypeHelper` instead of string-based type checks
+3. **Use TriviaHelper for formatting**: Preserve whitespace/comments and handle cross-platform line endings
+4. **Follow naming conventions**:
+   - Analyzers: `*Analyzer.cs`
+   - Code fixes: `*CodeFixProvider.cs`
+   - Helpers: `*Helper.cs` in appropriate subfolder
+
+Example:
+```csharp
+// Bad: string-based type checking
+if (typeName.EndsWith("?")) { }
+
+// Good: semantic analysis
+if (RoslynTypeHelper.IsNullableType(typeSymbol)) { }
+```
+
+### Source generator development
+
+- **Cache issues**: Run `sh scripts/cleanup.sh` if changes aren't reflected
+- **IDE issues**: Restart IDE if generated code isn't visible
+- **Always add/update tests** when modifying generators
+
+### Test-driven development
+
+- Write tests first when adding features
+- Verify generated code matches expectations
+- Ensure all existing tests pass before committing
+- Analyzer tests: `tests/Linqraft.Analyzer.Tests/`
+- Source generator tests: `tests/Linqraft.Tests/`
+
+## Project Structure
+
+```
+src/
+├── Linqraft/                    # Runtime library (NuGet package)
+├── Linqraft.Core/               # Shared helpers and infrastructure
+│   ├── AnalyzerHelpers/         # Analyzer-specific helpers
+│   ├── RoslynHelpers/           # Semantic analysis helpers
+│   └── SyntaxHelpers/           # Syntax manipulation helpers
+├── Linqraft.Analyzer/           # 7 analyzers + code fix providers
+└── Linqraft.SourceGenerator/    # Source generator implementation
+
+tests/
+├── Linqraft.Tests/              # Source generator tests
+└── Linqraft.Analyzer.Tests/     # Analyzer and code fix tests
+
+examples/
+├── Linqraft.Sample/             # Basic usage with EF Core
+├── Linqraft.MinimumSample/      # Minimal example
+└── Linqraft.ApiSample/          # API integration example
+```
