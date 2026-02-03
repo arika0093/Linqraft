@@ -131,6 +131,118 @@ public abstract record SelectExprInfo
     public abstract string GetExprTypeString();
 
     /// <summary>
+    /// Builds capture alias variables for anonymous capture objects that contain member access.
+    /// This allows expressions like request.FromDate to work when capture is new { request.FromDate }.
+    /// This is only applicable when NOT using pre-built expressions since expression trees don't support dynamic.
+    /// </summary>
+    protected string GenerateAnonymousCaptureMemberAccessAliases()
+    {
+        // Don't generate aliases if we're using pre-built expressions (expression trees can't have dynamic)
+        if (Configuration.UsePrebuildExpression && !IsEnumerableInvocation())
+        {
+            return string.Empty;
+        }
+
+        if (CaptureArgumentExpression is not AnonymousObjectCreationExpressionSyntax anonymousCapture)
+        {
+            return string.Empty;
+        }
+
+        var capturePropertyNames = new HashSet<string>();
+        var aliasMap = new Dictionary<string, List<(string MemberName, string CapturePropertyName)>>();
+
+        foreach (var initializer in anonymousCapture.Initializers)
+        {
+            var capturePropertyName = GetCapturePropertyName(initializer);
+            if (capturePropertyName != null)
+            {
+                capturePropertyNames.Add(capturePropertyName);
+            }
+
+            if (initializer.Expression is MemberAccessExpressionSyntax memberAccess)
+            {
+                var rootName = GetRootIdentifierName(memberAccess.Expression);
+                if (rootName == null)
+                {
+                    continue;
+                }
+
+                var memberName = memberAccess.Name.Identifier.Text;
+                var captureName = capturePropertyName ?? memberName;
+
+                if (!aliasMap.TryGetValue(rootName, out var members))
+                {
+                    members = new List<(string MemberName, string CapturePropertyName)>();
+                    aliasMap[rootName] = members;
+                }
+
+                members.Add((memberName, captureName));
+            }
+        }
+
+        // Avoid creating aliases that would shadow existing captured root variables
+        foreach (var rootName in capturePropertyNames)
+        {
+            aliasMap.Remove(rootName);
+        }
+
+        if (aliasMap.Count == 0)
+        {
+            return string.Empty;
+        }
+
+        var sb = new StringBuilder();
+        foreach (var kvp in aliasMap)
+        {
+            var rootName = kvp.Key;
+            var members = kvp.Value;
+            sb.AppendLine($"    var {rootName} = new");
+            sb.AppendLine("    {");
+
+            var usedMemberNames = new HashSet<string>();
+            foreach (var memberPair in members)
+            {
+                var memberName = memberPair.MemberName;
+                var captureName = memberPair.CapturePropertyName;
+                if (!usedMemberNames.Add(memberName))
+                {
+                    continue;
+                }
+                sb.AppendLine($"        {memberName} = captureObj.{captureName},");
+            }
+
+            sb.AppendLine("    };");
+        }
+
+        return sb.ToString();
+    }
+
+    private static string? GetCapturePropertyName(AnonymousObjectMemberDeclaratorSyntax initializer)
+    {
+        if (initializer.NameEquals != null)
+        {
+            return initializer.NameEquals.Name.Identifier.Text;
+        }
+
+        return initializer.Expression switch
+        {
+            IdentifierNameSyntax identifier => identifier.Identifier.Text,
+            MemberAccessExpressionSyntax memberAccess => memberAccess.Name.Identifier.Text,
+            _ => null,
+        };
+    }
+
+    private static string? GetRootIdentifierName(ExpressionSyntax expression)
+    {
+        return expression switch
+        {
+            IdentifierNameSyntax identifier => identifier.Identifier.Text,
+            MemberAccessExpressionSyntax memberAccess => GetRootIdentifierName(memberAccess.Expression),
+            _ => null,
+        };
+    }
+
+    /// <summary>
     /// Gets the full name for a nested DTO class using the structure.
     /// This allows derived classes to compute namespace-based naming using the structure's hash.
     /// </summary>

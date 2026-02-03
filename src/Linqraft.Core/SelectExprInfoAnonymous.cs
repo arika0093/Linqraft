@@ -122,6 +122,8 @@ public record SelectExprInfoAnonymous : SelectExprInfo
                     );
                     sb.AppendLine($"    {propTypeName} {prop.Name} = captureObj.{prop.Name};");
                 }
+
+                sb.Append(GenerateAnonymousCaptureMemberAccessAliases());
             }
             else
             {
