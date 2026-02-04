@@ -1,4 +1,4 @@
-## [0.7.0] - 2025-12-22
+## [0.8.0] - 2026-02-04
 
 ### 🐛 Bug Fixes
 
@@ -6,6 +6,7 @@
 - Add playground CSS file to .gitignore
 - NestedSelectExprTest and update documentation (#229)
 - Update job dependencies for changelog generation
+- Member access for anonymous captures (#278)
 
 ### 📚 Documentation
 
@@ -27,6 +28,7 @@
 - Benchmark add NativeAOT performance (#241)
 - Update usage guides for Nested SelectExpr and Mapping Methods
 - Clarify comparison of mapping approaches in documentation
+- Update CLAUDE.md for clarity and structure improvements
 
 ### 🚀 Features
 
@@ -34,6 +36,7 @@
 - Optimize DTO generation and performance documentation (#235)
 - Add EmbeddedAttribute for source generation in ExportAllConstantSnippets (#242)
 - Add GetParentDtoFullName method to SelectExprInfo and its implementations
+- Add LQRF003 analyzer to generate async API response methods (#284)
 
 ### 🚜 Refactor
 
