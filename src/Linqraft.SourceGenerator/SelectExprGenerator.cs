@@ -19,6 +19,7 @@ public partial class SelectExprGenerator : IIncrementalGenerator
     // Fully qualified metadata name for the LinqraftMappingGenerateAttribute
     private const string LinqraftMappingGenerateAttributeFullName =
         "Linqraft.LinqraftMappingGenerateAttribute";
+
     /// <summary>
     /// Initialize the generator
     /// </summary>
