@@ -19,7 +19,6 @@ public partial class SelectExprGenerator : IIncrementalGenerator
     // Fully qualified metadata name for the LinqraftMappingGenerateAttribute
     private const string LinqraftMappingGenerateAttributeFullName =
         "Linqraft.LinqraftMappingGenerateAttribute";
-
     /// <summary>
     /// Initialize the generator
     /// </summary>
@@ -55,14 +54,13 @@ public partial class SelectExprGenerator : IIncrementalGenerator
             )
             .Where(static info => info is not null)
             .Collect();
-
         // Provider to detect classes that inherit from LinqraftMappingDeclare<T>
-        // Note: Using CreateSyntaxProvider because LinqraftMappingDeclare is detected via inheritance, not attribute
-        // However, classes may also have [LinqraftMappingGenerate] attribute for custom method names
+        // Using ForAttributeWithMetadataName for performance - now requires [LinqraftMappingGenerate] attribute
         var mappingDeclareClasses = context
-            .SyntaxProvider.CreateSyntaxProvider(
-                predicate: static (node, _) => IsLinqraftMappingDeclareClass(node),
-                transform: static (ctx, _) => GetMappingDeclareInfo(ctx)
+            .SyntaxProvider.ForAttributeWithMetadataName(
+                fullyQualifiedMetadataName: LinqraftMappingGenerateAttributeFullName,
+                predicate: static (node, _) => node is ClassDeclarationSyntax,
+                transform: static (ctx, _) => GetMappingDeclareInfoFromAttribute(ctx)
             )
             .Where(static info => info is not null)
             .Collect();
@@ -71,7 +69,6 @@ public partial class SelectExprGenerator : IIncrementalGenerator
         var invocationsWithConfig = invocations.Combine(configurationProvider);
         var mappingMethodsWithConfig = mappingMethods.Combine(configurationProvider);
         var mappingDeclareClassesWithConfig = mappingDeclareClasses.Combine(configurationProvider);
-
         // Combine all providers
         var combinedData = invocationsWithConfig
             .Combine(mappingMethodsWithConfig)
@@ -538,8 +535,10 @@ public partial class SelectExprGenerator : IIncrementalGenerator
 
         // Get the target method name from the attribute
         var targetMethodName = attributeData.ConstructorArguments.FirstOrDefault().Value as string;
-        if (string.IsNullOrEmpty(targetMethodName))
-            return null;
+        if (string.IsNullOrWhiteSpace(targetMethodName))
+        {
+            targetMethodName = method.Identifier.Text;
+        }
 
         // Get the containing class (must be static partial)
         var containingClass = methodSymbol.ContainingType;
@@ -556,6 +555,84 @@ public partial class SelectExprGenerator : IIncrementalGenerator
             ContainingClass = containingClass,
             SemanticModel = semanticModel,
             ContainingNamespace = containingNamespace,
+        };
+    }
+
+    /// <summary>
+    /// Gets mapping declare info from ForAttributeWithMetadataName context.
+    /// This is more efficient than CreateSyntaxProvider because ForAttributeWithMetadataName
+    /// uses compiler-level caching of attribute lookups.
+    /// </summary>
+    private static LinqraftMappingDeclareInfo? GetMappingDeclareInfoFromAttribute(
+        GeneratorAttributeSyntaxContext context
+    )
+    {
+        // The target node is the class with the attribute
+        if (context.TargetNode is not ClassDeclarationSyntax classDecl)
+            return null;
+
+        var semanticModel = context.SemanticModel;
+
+        // The target symbol is the class symbol
+        if (context.TargetSymbol is not INamedTypeSymbol classSymbol)
+            return null;
+
+        // Check if the class inherits from LinqraftMappingDeclare<T>
+        INamedTypeSymbol? baseLinqraftMappingDeclare = null;
+        ITypeSymbol? sourceType = null;
+
+        var currentBase = classSymbol.BaseType;
+        while (currentBase is not null)
+        {
+            var fullName = currentBase.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat);
+            if (fullName.StartsWith("global::Linqraft.LinqraftMappingDeclare<"))
+            {
+                baseLinqraftMappingDeclare = currentBase;
+                // Extract T from LinqraftMappingDeclare<T>
+                if (currentBase.TypeArguments.Length > 0)
+                {
+                    sourceType = currentBase.TypeArguments[0];
+                }
+                break;
+            }
+            currentBase = currentBase.BaseType;
+        }
+
+        if (baseLinqraftMappingDeclare is null || sourceType is null)
+            return null;
+
+        // Find the DefineMapping method
+        var defineMappingMethod = classDecl
+            .Members.OfType<MethodDeclarationSyntax>()
+            .FirstOrDefault(m => m.Identifier.Text == "DefineMapping");
+
+        if (defineMappingMethod is null)
+            return null;
+
+        // Get the namespace
+        var containingNamespace = classSymbol.ContainingNamespace?.ToDisplayString() ?? "";
+
+        // Get the attribute data from the context (already filtered to our attribute)
+        var attributeData = context.Attributes.FirstOrDefault();
+        if (attributeData is null)
+            return null;
+
+        // Get the custom method name from the attribute (may be null if parameterless constructor was used)
+        string? customMethodName = null;
+        if (attributeData.ConstructorArguments.Length > 0)
+        {
+            customMethodName = attributeData.ConstructorArguments[0].Value as string;
+        }
+
+        return new LinqraftMappingDeclareInfo
+        {
+            ClassDeclaration = classDecl,
+            DefineMappingMethod = defineMappingMethod,
+            ContainingClass = classSymbol,
+            SemanticModel = semanticModel,
+            ContainingNamespace = containingNamespace,
+            SourceType = sourceType,
+            CustomMethodName = customMethodName,
         };
     }
 
@@ -588,8 +665,10 @@ public partial class SelectExprGenerator : IIncrementalGenerator
 
         // Get the target method name from the attribute
         var targetMethodName = attributeData.ConstructorArguments.FirstOrDefault().Value as string;
-        if (string.IsNullOrEmpty(targetMethodName))
-            return null;
+        if (string.IsNullOrWhiteSpace(targetMethodName))
+        {
+            targetMethodName = method.Identifier.Text;
+        }
 
         // Get the containing class (must be static partial)
         var containingClass = methodSymbol.ContainingType;
@@ -864,101 +943,6 @@ public partial class SelectExprGenerator : IIncrementalGenerator
             CaptureParameterName = null,
             CaptureArgumentExpression = captureArgumentExpression,
             CaptureArgumentType = captureArgumentType,
-        };
-    }
-
-    private static bool IsLinqraftMappingDeclareClass(SyntaxNode node)
-    {
-        // Detect class declaration that might inherit from LinqraftMappingDeclare<T>
-        if (node is not ClassDeclarationSyntax classDecl)
-            return false;
-
-        // Check if the class has a base list
-        if (classDecl.BaseList is null || classDecl.BaseList.Types.Count == 0)
-            return false;
-
-        // Quick syntax-level check for base types that look like LinqraftMappingDeclare
-        return classDecl.BaseList.Types.Any(baseType =>
-        {
-            var baseTypeName = baseType.Type.ToString();
-            return baseTypeName.Contains("LinqraftMappingDeclare");
-        });
-    }
-
-    private static LinqraftMappingDeclareInfo? GetMappingDeclareInfo(GeneratorSyntaxContext context)
-    {
-        var classDecl = (ClassDeclarationSyntax)context.Node;
-        var semanticModel = context.SemanticModel;
-
-        // Get the class symbol
-        var classSymbol = semanticModel.GetDeclaredSymbol(classDecl);
-        if (classSymbol is null)
-            return null;
-
-        // Check if the class inherits from LinqraftMappingDeclare<T>
-        INamedTypeSymbol? baseLinqraftMappingDeclare = null;
-        ITypeSymbol? sourceType = null;
-
-        var currentBase = classSymbol.BaseType;
-        while (currentBase is not null)
-        {
-            var fullName = currentBase.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat);
-            if (fullName.StartsWith("global::Linqraft.LinqraftMappingDeclare<"))
-            {
-                baseLinqraftMappingDeclare = currentBase;
-                // Extract T from LinqraftMappingDeclare<T>
-                if (currentBase.TypeArguments.Length > 0)
-                {
-                    sourceType = currentBase.TypeArguments[0];
-                }
-                break;
-            }
-            currentBase = currentBase.BaseType;
-        }
-
-        if (baseLinqraftMappingDeclare is null || sourceType is null)
-            return null;
-
-        // Find the DefineMapping method
-        var defineMappingMethod = classDecl
-            .Members.OfType<MethodDeclarationSyntax>()
-            .FirstOrDefault(m => m.Identifier.Text == "DefineMapping");
-
-        if (defineMappingMethod is null)
-            return null;
-
-        // Get the namespace
-        var containingNamespace = classSymbol.ContainingNamespace?.ToDisplayString() ?? "";
-
-        // Check for optional [LinqraftMappingGenerate] attribute at class level
-        string? customMethodName = null;
-        var classAttribute = classSymbol
-            .GetAttributes()
-            .FirstOrDefault(attr =>
-            {
-                if (attr.AttributeClass is null)
-                    return false;
-
-                var fullName = attr.AttributeClass.ToDisplayString(
-                    SymbolDisplayFormat.FullyQualifiedFormat
-                );
-                return fullName == "global::Linqraft.LinqraftMappingGenerateAttribute";
-            });
-
-        if (classAttribute is not null)
-        {
-            customMethodName = classAttribute.ConstructorArguments.FirstOrDefault().Value as string;
-        }
-
-        return new LinqraftMappingDeclareInfo
-        {
-            ClassDeclaration = classDecl,
-            DefineMappingMethod = defineMappingMethod,
-            ContainingClass = classSymbol,
-            SemanticModel = semanticModel,
-            ContainingNamespace = containingNamespace,
-            SourceType = sourceType,
-            CustomMethodName = customMethodName,
         };
     }
 
