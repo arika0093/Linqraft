@@ -1,8 +1,10 @@
-# LQRF003: Generate API Response Methods
+# LQRF003: Generate Async API Response Methods (EntityFramework)
 
 ## Overview
 
-The LQRF003 analyzer detects void or Task (non-generic) methods that contain unassigned Select operations with anonymous types on IQueryable sources. These methods can be automatically converted to async API response methods that return `Task<List<TDto>>`.
+The LQRF003 analyzer detects void or Task (non-generic) methods that contain unassigned Select operations with anonymous types on **DbSet** sources from **EntityFramework Core**. These methods can be automatically converted to async API response methods that return `Task<List<TDto>>`.
+
+This analyzer is specifically designed for EntityFramework Core scenarios and requires EF Core to be referenced in the project.
 
 ## Diagnostic Information
 
@@ -15,24 +17,26 @@ The LQRF003 analyzer detects void or Task (non-generic) methods that contain una
 
 ## Description
 
-When writing API methods, developers often start by writing "mockup" code with void or Task methods that contain a query but don't return anything. This analyzer identifies such patterns and offers a code fix to convert them into proper async API response methods.
+When writing API methods with EntityFramework Core, developers often start by writing "mockup" code with void or Task methods that contain a query on DbContext/DbSet but don't return anything. This analyzer identifies such patterns and offers a code fix to convert them into proper async API response methods.
 
 ### Triggering Conditions
 
 The analyzer will report a diagnostic when ALL of the following conditions are met:
 
-1. The method has a `void` or `Task` (non-generic) return type
-2. The method contains a `.Select()` call with an anonymous type
-3. The Select is called on an `IQueryable<T>` source (not IEnumerable<T>)
-4. The Select result is **not** assigned to a variable (it's a standalone expression statement)
+1. **EntityFramework Core is available** (the project references Microsoft.EntityFrameworkCore)
+2. The method has a `void` or `Task` (non-generic) return type
+3. The method contains a `.Select()` call with an anonymous type
+4. The Select is called on a **DbSet<T>** (from EntityFramework Core DbContext)
+5. The Select result is **not** assigned to a variable (it's a standalone expression statement)
 
 ### Non-Triggering Conditions
 
 The analyzer will NOT report a diagnostic when:
 
+- EntityFramework Core is not available in the project
+- The Select is called on `IQueryable<T>` that is not a DbSet (e.g., `list.AsQueryable()`)
 - The method returns `Task<T>` (already has a return type)
 - The Select uses a named type instead of an anonymous type
-- The Select is called on `IEnumerable<T>` instead of `IQueryable<T>`
 - The Select result is assigned to a variable
 
 ## Code Fix
@@ -104,35 +108,64 @@ class MyClass
 }
 ```
 
-### Example 2: Task Method
+### Example 2: Task Method with DbContext
 
 **Before:**
 
 ```csharp
-async Task GetItems()  // LQRF003: Method 'GetItems' can be converted to an async API response method
+using System.Linq;
+using System.Threading.Tasks;
+using Microsoft.EntityFrameworkCore;
+
+class MyClass
 {
-    var list = new List<Item>();
-    await list.AsQueryable()
-        .Where(i => i.Id > 0)
-        .Select(i => new { i.Id, i.Name });
+    private readonly MyAppDbContext _dbContext;
+
+    public MyClass(MyAppDbContext dbContext)
+    {
+        _dbContext = dbContext;
+    }
+
+    async Task GetItems()  // LQRF003: Method 'GetItems' can be converted to an async API response method
+    {
+        await _dbContext.Items
+            .Where(i => i.Id > 0)
+            .Select(i => new { i.Id, i.Name });
+    }
 }
 ```
 
 **After applying code fix:**
 
 ```csharp
-async Task<List<ItemDto_XXXXXXX>> GetItemsAsync()
+using System.Linq;
+using System.Threading.Tasks;
+using Microsoft.EntityFrameworkCore;
+using System.Collections.Generic;
+
+class MyClass
 {
-    var list = new List<Item>();
-    return await list.AsQueryable()
-        .Where(i => i.Id > 0)
-        .SelectExpr<Item, ItemDto_XXXXXXX>(i => new { i.Id, i.Name })
-        .ToListAsync();
+    private readonly MyAppDbContext _dbContext;
+
+    public MyClass(MyAppDbContext dbContext)
+    {
+        _dbContext = dbContext;
+    }
+
+    async Task<List<ItemDto_XXXXXXX>> GetItemsAsync()
+    {
+        return await _dbContext.Items
+            .Where(i => i.Id > 0)
+            .SelectExpr<Item, ItemDto_XXXXXXX>(i => new { i.Id, i.Name })
+            .ToListAsync();
+    }
 }
 ```
 
 ## Notes
 
+- This analyzer **requires EntityFramework Core** to be referenced in the project
+- The Select must be called on a **DbSet<T>** property from a DbContext
 - The generated DTO name follows the same naming conventions as other Linqraft analyzers
 - The code fix automatically adds required using directives:
   - `System.Threading.Tasks`
@@ -144,6 +177,7 @@ async Task<List<ItemDto_XXXXXXX>> GetItemsAsync()
 
 ## Related Analyzers
 
+- **LQRF004**: Convert method to synchronous API response method (non-EF, synchronous version)
 - **LQRS002**: IQueryable.Select can be converted to SelectExpr (anonymous)
 - **LQRS003**: IQueryable.Select can be converted to SelectExpr (named DTO)
 - **LQRF002**: Add ProducesResponseType to clarify API return type

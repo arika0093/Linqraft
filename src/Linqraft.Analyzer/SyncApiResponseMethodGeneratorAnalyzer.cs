@@ -8,21 +8,21 @@ using Microsoft.CodeAnalysis.Diagnostics;
 namespace Linqraft.Analyzer;
 
 /// <summary>
-/// Analyzer that detects void/Task methods with Select using anonymous types that can be converted to API response methods.
+/// Analyzer that detects void methods with Select using anonymous types that can be converted to synchronous API response methods.
 /// </summary>
 [DiagnosticAnalyzer(LanguageNames.CSharp)]
-public class ApiResponseMethodGeneratorAnalyzer : BaseLinqraftAnalyzer
+public class SyncApiResponseMethodGeneratorAnalyzer : BaseLinqraftAnalyzer
 {
-    public const string AnalyzerId = "LQRF003";
+    public const string AnalyzerId = "LQRF004";
 
     private static readonly DiagnosticDescriptor RuleInstance = new(
         AnalyzerId,
-        "Method can be converted to API response method",
-        "Method '{0}' can be converted to an async API response method",
+        "Method can be converted to synchronous API response method",
+        "Method '{0}' can be converted to a synchronous API response method",
         "Design",
         DiagnosticSeverity.Info,
         isEnabledByDefault: true,
-        description: "This void/Task method contains a Select with anonymous type on DbSet that can be converted to an async API response method.",
+        description: "This void method contains a Select with anonymous type that can be converted to a synchronous API response method.",
         helpLinkUri: $"https://github.com/arika0093/Linqraft/blob/main/docs/analyzers/{AnalyzerId}.md"
     );
 
@@ -42,17 +42,8 @@ public class ApiResponseMethodGeneratorAnalyzer : BaseLinqraftAnalyzer
     {
         var methodDeclaration = (MethodDeclarationSyntax)context.Node;
 
-        // Check if EntityFramework is available
-        var dbContextType = context.Compilation.GetTypeByMetadataName(
-            "Microsoft.EntityFrameworkCore.DbContext"
-        );
-        if (dbContextType == null)
-        {
-            return;
-        }
-
-        // Check if the method has void or Task return type
-        if (!IsVoidOrTaskReturnType(methodDeclaration, context.SemanticModel))
+        // Check if the method has void return type (not Task)
+        if (!IsVoidReturnType(methodDeclaration, context.SemanticModel))
         {
             return;
         }
@@ -64,8 +55,8 @@ public class ApiResponseMethodGeneratorAnalyzer : BaseLinqraftAnalyzer
             return;
         }
 
-        // Verify it's on DbSet (from DbContext)
-        if (!IsDbSetSelect(selectInvocation, context.SemanticModel, context.CancellationToken))
+        // Verify it's on IQueryable
+        if (!IsIQueryableSelect(selectInvocation, context.SemanticModel, context.CancellationToken))
         {
             return;
         }
@@ -79,7 +70,7 @@ public class ApiResponseMethodGeneratorAnalyzer : BaseLinqraftAnalyzer
         context.ReportDiagnostic(diagnostic);
     }
 
-    private static bool IsVoidOrTaskReturnType(
+    private static bool IsVoidReturnType(
         MethodDeclarationSyntax methodDeclaration,
         SemanticModel semanticModel
     )
@@ -92,23 +83,8 @@ public class ApiResponseMethodGeneratorAnalyzer : BaseLinqraftAnalyzer
             return false;
         }
 
-        // Check for void
-        if (returnType.SpecialType == SpecialType.System_Void)
-        {
-            return true;
-        }
-
-        // Check for Task (non-generic)
-        if (
-            returnType.Name == "Task"
-            && returnType is INamedTypeSymbol namedType
-            && !namedType.IsGenericType
-        )
-        {
-            return true;
-        }
-
-        return false;
+        // Check for void only
+        return returnType.SpecialType == SpecialType.System_Void;
     }
 
     private static InvocationExpressionSyntax? FindUnassignedSelectWithAnonymousType(
@@ -140,7 +116,6 @@ public class ApiResponseMethodGeneratorAnalyzer : BaseLinqraftAnalyzer
 
             // Check if the invocation is not assigned to a variable
             // The invocation should be in an expression statement (standalone)
-            // or in an await expression that is in an expression statement
             if (IsUnassignedInvocation(invocation))
             {
                 return invocation;
@@ -153,12 +128,6 @@ public class ApiResponseMethodGeneratorAnalyzer : BaseLinqraftAnalyzer
     private static bool IsUnassignedInvocation(InvocationExpressionSyntax invocation)
     {
         var parent = invocation.Parent;
-
-        // Handle await expression
-        if (parent is AwaitExpressionSyntax awaitExpr)
-        {
-            parent = awaitExpr.Parent;
-        }
 
         // Check if it's in an expression statement (standalone)
         return parent is ExpressionStatementSyntax;
@@ -175,7 +144,7 @@ public class ApiResponseMethodGeneratorAnalyzer : BaseLinqraftAnalyzer
         };
     }
 
-    private static bool IsDbSetSelect(
+    private static bool IsIQueryableSelect(
         InvocationExpressionSyntax invocation,
         SemanticModel semanticModel,
         System.Threading.CancellationToken cancellationToken
@@ -195,13 +164,24 @@ public class ApiResponseMethodGeneratorAnalyzer : BaseLinqraftAnalyzer
             return false;
         }
 
-        // Check if it's DbSet<T>
+        // Check if it's IQueryable<T> or implements IQueryable<T>
         if (type is INamedTypeSymbol namedType)
         {
+            // Check if it's IQueryable<T> itself
             var displayString = namedType.OriginalDefinition.ToDisplayString();
-            if (displayString.StartsWith("Microsoft.EntityFrameworkCore.DbSet<"))
+            if (displayString.StartsWith("System.Linq.IQueryable<"))
             {
                 return true;
+            }
+
+            // Check if it implements IQueryable<T>
+            foreach (var iface in namedType.AllInterfaces)
+            {
+                var ifaceDisplayString = iface.OriginalDefinition.ToDisplayString();
+                if (ifaceDisplayString.StartsWith("System.Linq.IQueryable<"))
+                {
+                    return true;
+                }
             }
         }
 
