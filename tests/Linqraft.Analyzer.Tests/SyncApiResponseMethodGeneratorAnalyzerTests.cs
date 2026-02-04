@@ -1,24 +1,17 @@
 using System.Threading.Tasks;
 using Microsoft.CodeAnalysis;
 using VerifyCS = Microsoft.CodeAnalysis.CSharp.Testing.CSharpAnalyzerVerifier<
-    Linqraft.Analyzer.ApiResponseMethodGeneratorAnalyzer,
+    Linqraft.Analyzer.SyncApiResponseMethodGeneratorAnalyzer,
     Microsoft.CodeAnalysis.Testing.DefaultVerifier
 >;
 
 namespace Linqraft.Analyzer.Tests;
 
-/// <summary>
-/// Tests for LQRF003 analyzer.
-/// Note: LQRF003 requires EntityFramework Core to be available and the Select to be on DbSet.
-/// Since this test project doesn't reference EF Core, these tests verify that the analyzer
-/// does NOT trigger when EF is not available or when Select is on non-DbSet IQueryable.
-/// </summary>
-public class ApiResponseMethodGeneratorAnalyzerTests
+public class SyncApiResponseMethodGeneratorAnalyzerTests
 {
     [Fact]
-    public async Task VoidMethod_WithUnassignedSelectAnonymousType_NoDiagnostic_NoEntityFramework()
+    public async Task VoidMethod_WithUnassignedSelectAnonymousType_ReportsDiagnostic()
     {
-        // LQRF003 requires EntityFramework to be available, which it isn't in this test
         var test =
             @"
 using System.Linq;
@@ -32,7 +25,7 @@ class Item
 
 class Test
 {
-    void GetItems()
+    void {|#0:GetItems|}()
     {
         var list = new List<Item>();
         list.AsQueryable()
@@ -41,13 +34,19 @@ class Test
     }
 }";
 
-        await VerifyCS.VerifyAnalyzerAsync(test);
+        var expected = VerifyCS
+            .Diagnostic(SyncApiResponseMethodGeneratorAnalyzer.AnalyzerId)
+            .WithLocation(0)
+            .WithSeverity(DiagnosticSeverity.Info)
+            .WithArguments("GetItems");
+
+        await VerifyCS.VerifyAnalyzerAsync(test, expected);
     }
 
     [Fact]
-    public async Task TaskMethod_WithUnassignedSelectAnonymousType_NoDiagnostic_NoEntityFramework()
+    public async Task TaskMethod_WithUnassignedSelectAnonymousType_NoDiagnostic()
     {
-        // LQRF003 requires EntityFramework to be available, which it isn't in this test
+        // LQRF004 only triggers on void methods, not Task methods
         var test =
             @"
 using System.Linq;
@@ -212,9 +211,8 @@ class Test
     }
 
     [Fact]
-    public async Task VoidMethod_MultipleSelects_NoDiagnostic_NoEntityFramework()
+    public async Task VoidMethod_MultipleSelects_OnlyUnassignedReportsDiagnostic()
     {
-        // LQRF003 requires EntityFramework to be available, which it isn't in this test
         var test =
             @"
 using System.Linq;
@@ -228,18 +226,24 @@ class Item
 
 class Test
 {
-    void GetItems()
+    void {|#0:GetItems|}()
     {
         var list = new List<Item>();
         
         // This is assigned, should not trigger
         var assigned = list.AsQueryable().Select(i => new { i.Id });
         
-        // This is unassigned, would trigger but EF is not available
+        // This is unassigned, should trigger
         list.AsQueryable().Select(i => new { i.Id, i.Name });
     }
 }";
 
-        await VerifyCS.VerifyAnalyzerAsync(test);
+        var expected = VerifyCS
+            .Diagnostic(SyncApiResponseMethodGeneratorAnalyzer.AnalyzerId)
+            .WithLocation(0)
+            .WithSeverity(DiagnosticSeverity.Info)
+            .WithArguments("GetItems");
+
+        await VerifyCS.VerifyAnalyzerAsync(test, expected);
     }
 }
