@@ -83,7 +83,11 @@ public class ApiResponseMethodGeneratorCodeFixProvider : CodeFixProvider
             return document;
 
         // Get the source type from the Select
-        var sourceType = GetSourceType(selectInvocation.Expression, semanticModel, cancellationToken);
+        var sourceType = GetSourceType(
+            selectInvocation.Expression,
+            semanticModel,
+            cancellationToken
+        );
         if (sourceType == null)
             return document;
 
@@ -142,7 +146,7 @@ public class ApiResponseMethodGeneratorCodeFixProvider : CodeFixProvider
 
         // Track the method declaration to update it after statement replacement
         var newRoot = root.TrackNodes(methodDeclaration, expressionStatement);
-        
+
         var currentExpressionStatement = newRoot.GetCurrentNode(expressionStatement);
         if (currentExpressionStatement != null)
         {
@@ -155,11 +159,7 @@ public class ApiResponseMethodGeneratorCodeFixProvider : CodeFixProvider
             return document;
 
         // Step 6: Update method signature
-        var updatedMethod = UpdateMethodSignature(
-            currentMethodDeclaration,
-            dtoName,
-            semanticModel
-        );
+        var updatedMethod = UpdateMethodSignature(currentMethodDeclaration, dtoName, semanticModel);
 
         newRoot = newRoot.ReplaceNode(currentMethodDeclaration, updatedMethod);
 
@@ -220,10 +220,7 @@ public class ApiResponseMethodGeneratorCodeFixProvider : CodeFixProvider
             SyntaxFactory.IdentifierName("ToListAsync")
         );
 
-        return SyntaxFactory.InvocationExpression(
-            memberAccess,
-            SyntaxFactory.ArgumentList()
-        );
+        return SyntaxFactory.InvocationExpression(memberAccess, SyntaxFactory.ArgumentList());
     }
 
     private static ExpressionStatementSyntax? FindExpressionStatement(
@@ -290,8 +287,8 @@ public class ApiResponseMethodGeneratorCodeFixProvider : CodeFixProvider
     {
         return expression switch
         {
-            MemberAccessExpressionSyntax memberAccess
-                => memberAccess.Name.Identifier.Text == "Select",
+            MemberAccessExpressionSyntax memberAccess => memberAccess.Name.Identifier.Text
+                == "Select",
             IdentifierNameSyntax identifier => identifier.Identifier.Text == "Select",
             _ => false,
         };

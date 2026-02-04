@@ -159,8 +159,8 @@ public class ApiResponseMethodGeneratorAnalyzer : BaseLinqraftAnalyzer
     {
         return expression switch
         {
-            MemberAccessExpressionSyntax memberAccess
-                => memberAccess.Name.Identifier.Text == "Select",
+            MemberAccessExpressionSyntax memberAccess => memberAccess.Name.Identifier.Text
+                == "Select",
             IdentifierNameSyntax identifier => identifier.Identifier.Text == "Select",
             _ => false,
         };
