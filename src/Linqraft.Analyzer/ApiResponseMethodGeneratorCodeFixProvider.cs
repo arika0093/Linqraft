@@ -143,7 +143,6 @@ public class ApiResponseMethodGeneratorCodeFixProvider : CodeFixProvider
         // Track the method declaration to update it after statement replacement
         var newRoot = root.TrackNodes(methodDeclaration, expressionStatement);
         
-        // Replace the expression statement with return statement
         var currentExpressionStatement = newRoot.GetCurrentNode(expressionStatement);
         if (currentExpressionStatement != null)
         {
