@@ -186,23 +186,37 @@ public class ApiResponseMethodGeneratorAnalyzer : BaseLinqraftAnalyzer
             return false;
         }
 
-        // Get the type of the expression before .Select()
-        var typeInfo = semanticModel.GetTypeInfo(memberAccess.Expression, cancellationToken);
-        var type = typeInfo.Type;
+        return IsDbSetExpression(memberAccess.Expression, semanticModel, cancellationToken);
+    }
 
-        if (type == null)
-        {
-            return false;
-        }
+    private static bool IsDbSetExpression(
+        ExpressionSyntax expression,
+        SemanticModel semanticModel,
+        System.Threading.CancellationToken cancellationToken
+    )
+    {
+        var current = expression;
 
-        // Check if it's DbSet<T>
-        if (type is INamedTypeSymbol namedType)
+        while (true)
         {
-            var displayString = namedType.OriginalDefinition.ToDisplayString();
-            if (displayString.StartsWith("Microsoft.EntityFrameworkCore.DbSet<"))
+            var typeInfo = semanticModel.GetTypeInfo(current, cancellationToken);
+            if (typeInfo.Type is INamedTypeSymbol namedType)
             {
-                return true;
+                var displayString = namedType.OriginalDefinition.ToDisplayString();
+                if (displayString.StartsWith("Microsoft.EntityFrameworkCore.DbSet<"))
+                {
+                    return true;
+                }
             }
+
+            if (current is InvocationExpressionSyntax invocation
+                && invocation.Expression is MemberAccessExpressionSyntax invocationMemberAccess)
+            {
+                current = invocationMemberAccess.Expression;
+                continue;
+            }
+
+            break;
         }
 
         return false;
