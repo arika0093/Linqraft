@@ -128,7 +128,7 @@ class MyClass
 
     async Task GetItems()  // LQRF003: Method 'GetItems' can be converted to an async API response method
     {
-        await _dbContext.Items
+        _dbContext.Items
             .Where(i => i.Id > 0)
             .Select(i => new { i.Id, i.Name });
     }
