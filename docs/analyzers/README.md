@@ -5,6 +5,8 @@
 |---------------|----------|-------------|-------|---------|
 | [LQRF001](./LQRF001.md) | AnonymousTypeToDtoAnalyzer | Suggest converting anonymous types to DTO classes | Hidden | ✅️ |
 | [LQRF002](./LQRF002.md) | ApiControllerProducesResponseTypeAnalyzer | Suggest adding `ProducesResponseType` for untyped API actions using `SelectExpr` | Info | ✅️ |
+| [LQRF003](./LQRF003.md) | ApiResponseMethodGeneratorAnalyzer | Convert void/Task method with DbSet Select to async API response method | Info | ✅️ |
+| [LQRF004](./LQRF004.md) | SyncApiResponseMethodGeneratorAnalyzer | Convert void method with IQueryable Select to synchronous API response method | Info | ✅️ |
 | [LQRS001](./LQRS001.md) | SelectExprToTypedAnalyzer | Suggest converting untyped `SelectExpr` to generic form `SelectExpr<TSource, TDto>` | Hidden | ✅️ |
 | [LQRS002](./LQRS002.md) | SelectToSelectExprAnonymousAnalyzer | `IQueryable.Select` with anonymous projection → `SelectExpr` suggestion | Info | ✅️ |
 | [LQRS003](./LQRS003.md) | SelectToSelectExprNamedAnalyzer | `IQueryable.Select` with named-object projection → `SelectExpr` suggestion | Info | ✅️ |

@@ -5,10 +5,10 @@ using Microsoft.CodeAnalysis.Testing;
 
 namespace Linqraft.Analyzer.Tests;
 
-public class ApiResponseMethodGeneratorCodeFixProviderTests
+public class SyncApiResponseMethodGeneratorCodeFixProviderTests
 {
     [Fact]
-    public async Task CodeFix_VoidMethod_ConvertsToAsyncApiResponseMethod()
+    public async Task CodeFix_VoidMethod_ConvertsToSyncApiResponseMethod()
     {
         var test =
             @"
@@ -36,8 +36,6 @@ class Test
             @"
 using System.Linq;
 using System.Collections.Generic;
-using System.Threading.Tasks;
-using Microsoft.EntityFrameworkCore;
 
 class Item
 {
@@ -47,17 +45,17 @@ class Item
 
 class Test
 {
-    async Task<List<ItemsDto_T27C3JAA>> GetItemsAsync()
+    List<ItemsDto_T27C3JAA> GetItems()
     {
         var list = new List<Item>();
-        return await list.AsQueryable()
+        return list.AsQueryable()
             .Where(i => i.Id > 0)
-            .SelectExpr<Item, ItemsDto_T27C3JAA>(i => new { i.Id, i.Name }).ToListAsync();
+            .SelectExpr<Item, ItemsDto_T27C3JAA>(i => new { i.Id, i.Name }).ToList();
     }
 }";
 
         var expected = new DiagnosticResult(
-            ApiResponseMethodGeneratorAnalyzer.AnalyzerId,
+            SyncApiResponseMethodGeneratorAnalyzer.AnalyzerId,
             DiagnosticSeverity.Info
         ).WithLocation(0);
 
@@ -65,13 +63,61 @@ class Test
     }
 
     [Fact]
-    public async Task CodeFix_TaskMethod_ConvertsToAsyncApiResponseMethod()
+    public async Task CodeFix_VoidMethod_WithSingleProperty_ConvertsToSyncApiResponseMethod()
     {
         var test =
             @"
 using System.Linq;
 using System.Collections.Generic;
-using System.Threading.Tasks;
+
+class Item
+{
+    public int Id { get; set; }
+}
+
+class Test
+{
+    void {|#0:GetItems|}()
+    {
+        var list = new List<Item>();
+        list.AsQueryable().Select(i => new { i.Id });
+    }
+}";
+
+        var fixedCode =
+            @"
+using System.Linq;
+using System.Collections.Generic;
+
+class Item
+{
+    public int Id { get; set; }
+}
+
+class Test
+{
+    List<ItemsDto_REIXTLBA> GetItems()
+    {
+        var list = new List<Item>();
+        return list.AsQueryable().SelectExpr<Item, ItemsDto_REIXTLBA>(i => new { i.Id }).ToList();
+    }
+}";
+
+        var expected = new DiagnosticResult(
+            SyncApiResponseMethodGeneratorAnalyzer.AnalyzerId,
+            DiagnosticSeverity.Info
+        ).WithLocation(0);
+
+        await RunCodeFixTestAsync(test, expected, fixedCode);
+    }
+
+    [Fact]
+    public async Task CodeFix_VoidMethod_WithChainedOperations_ConvertsToSyncApiResponseMethod()
+    {
+        var test =
+            @"
+using System.Linq;
+using System.Collections.Generic;
 
 class Item
 {
@@ -81,10 +127,12 @@ class Item
 
 class Test
 {
-    async Task {|#0:GetItems|}()
+    void {|#0:GetActiveItems|}()
     {
-        var list = new List<Item>();
-        await list.AsQueryable()
+        var items = new List<Item>();
+        items.AsQueryable()
+            .Where(i => i.Id > 0)
+            .OrderBy(i => i.Name)
             .Select(i => new { i.Id, i.Name });
     }
 }";
@@ -93,8 +141,6 @@ class Test
             @"
 using System.Linq;
 using System.Collections.Generic;
-using System.Threading.Tasks;
-using Microsoft.EntityFrameworkCore;
 
 class Item
 {
@@ -104,68 +150,18 @@ class Item
 
 class Test
 {
-    async Task<List<ItemsDto_T27C3JAA>> GetItemsAsync()
+    List<ActiveItemsDto_T27C3JAA> GetActiveItems()
     {
-        var list = new List<Item>();
-        return await list.AsQueryable()
-            .SelectExpr<Item, ItemsDto_T27C3JAA>(i => new { i.Id, i.Name }).ToListAsync();
+        var items = new List<Item>();
+        return items.AsQueryable()
+            .Where(i => i.Id > 0)
+            .OrderBy(i => i.Name)
+            .SelectExpr<Item, ActiveItemsDto_T27C3JAA>(i => new { i.Id, i.Name }).ToList();
     }
 }";
 
         var expected = new DiagnosticResult(
-            ApiResponseMethodGeneratorAnalyzer.AnalyzerId,
-            DiagnosticSeverity.Info
-        ).WithLocation(0);
-
-        await RunCodeFixTestAsync(test, expected, fixedCode);
-    }
-
-    [Fact]
-    public async Task CodeFix_MethodAlreadyEndsWithAsync_DoesNotDuplicateSuffix()
-    {
-        var test =
-            @"
-using System.Linq;
-using System.Collections.Generic;
-using System.Threading.Tasks;
-
-class Item
-{
-    public int Id { get; set; }
-}
-
-class Test
-{
-    async Task {|#0:GetItemsAsync|}()
-    {
-        var list = new List<Item>();
-        await list.AsQueryable().Select(i => new { i.Id });
-    }
-}";
-
-        var fixedCode =
-            @"
-using System.Linq;
-using System.Collections.Generic;
-using System.Threading.Tasks;
-using Microsoft.EntityFrameworkCore;
-
-class Item
-{
-    public int Id { get; set; }
-}
-
-class Test
-{
-    async Task<List<ItemsAsyncDto_REIXTLBA>> GetItemsAsync()
-    {
-        var list = new List<Item>();
-        return await list.AsQueryable().SelectExpr<Item, ItemsAsyncDto_REIXTLBA>(i => new { i.Id }).ToListAsync();
-    }
-}";
-
-        var expected = new DiagnosticResult(
-            ApiResponseMethodGeneratorAnalyzer.AnalyzerId,
+            SyncApiResponseMethodGeneratorAnalyzer.AnalyzerId,
             DiagnosticSeverity.Info
         ).WithLocation(0);
 
@@ -179,15 +175,15 @@ class Test
     )
     {
         var test = new CSharpCodeFixTest<
-            ApiResponseMethodGeneratorAnalyzer,
-            ApiResponseMethodGeneratorCodeFixProvider,
+            SyncApiResponseMethodGeneratorAnalyzer,
+            SyncApiResponseMethodGeneratorCodeFixProvider,
             DefaultVerifier
         >
         {
             TestCode = source,
             FixedCode = fixedSource,
             ReferenceAssemblies = ReferenceAssemblies.Net.Net90,
-            // Allow compiler errors for undefined SelectExpr and ToListAsync (they will be available at runtime)
+            // Allow compiler errors for undefined SelectExpr and ToList (they will be available at runtime)
             CompilerDiagnostics = CompilerDiagnostics.None,
         };
 
