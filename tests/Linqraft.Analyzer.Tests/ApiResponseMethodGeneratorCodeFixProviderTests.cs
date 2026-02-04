@@ -104,12 +104,11 @@ class Item
 
 class Test
 {
-    async Task<List<ItemDto_TDTQC6QA>> GetItemsAsync()
+    async Task<List<ItemsDto_T27C3JAA>> GetItemsAsync()
     {
         var list = new List<Item>();
         return await list.AsQueryable()
-            .SelectExpr<Item, ItemDto_TDTQC6QA>(i => new { i.Id, i.Name })
-            .ToListAsync();
+            .SelectExpr<Item, ItemsDto_T27C3JAA>(i => new { i.Id, i.Name }).ToListAsync();
     }
 }";
 
@@ -158,11 +157,10 @@ class Item
 
 class Test
 {
-    async Task<List<ItemDto_O5YHCJJA>> GetItemsAsync()
+    async Task<List<ItemsAsyncDto_REIXTLBA>> GetItemsAsync()
     {
         var list = new List<Item>();
-        return await list.AsQueryable().SelectExpr<Item, ItemDto_O5YHCJJA>(i => new { i.Id })
-            .ToListAsync();
+        return await list.AsQueryable().SelectExpr<Item, ItemsAsyncDto_REIXTLBA>(i => new { i.Id }).ToListAsync();
     }
 }";
 

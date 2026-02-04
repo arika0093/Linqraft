@@ -119,11 +119,18 @@ public class ApiResponseMethodGeneratorCodeFixProvider : CodeFixProvider
         // Step 2: Add ToListAsync() call
         var toListAsyncInvocation = CreateToListAsyncInvocation(newSelectInvocation);
 
-        // Step 3: Wrap with await
-        var awaitExpression = SyntaxFactory.AwaitExpression(toListAsyncInvocation);
+        // Step 3: Wrap with await (with proper spacing)
+        var awaitExpression = SyntaxFactory.AwaitExpression(
+            SyntaxFactory.Token(SyntaxKind.AwaitKeyword).WithTrailingTrivia(SyntaxFactory.Space),
+            toListAsyncInvocation
+        );
 
-        // Step 4: Wrap with return statement
-        var returnStatement = SyntaxFactory.ReturnStatement(awaitExpression);
+        // Step 4: Wrap with return statement (with proper spacing)
+        var returnStatement = SyntaxFactory.ReturnStatement(
+            SyntaxFactory.Token(SyntaxKind.ReturnKeyword).WithTrailingTrivia(SyntaxFactory.Space),
+            awaitExpression,
+            SyntaxFactory.Token(SyntaxKind.SemicolonToken)
+        );
 
         // Step 5: Find and replace the expression statement
         var expressionStatement = FindExpressionStatement(selectInvocation);
@@ -466,9 +473,12 @@ public class ApiResponseMethodGeneratorCodeFixProvider : CodeFixProvider
         if (hasUsing)
             return root;
 
-        // Add using directive
+        // Add using directive with proper trivia
         var usingDirective = SyntaxFactory
             .UsingDirective(SyntaxFactory.ParseName(namespaceName))
+            .WithUsingKeyword(
+                SyntaxFactory.Token(SyntaxKind.UsingKeyword).WithTrailingTrivia(SyntaxFactory.Space)
+            )
             .WithTrailingTrivia(TriviaHelper.EndOfLine(root));
 
         return compilationUnit.AddUsings(usingDirective);
