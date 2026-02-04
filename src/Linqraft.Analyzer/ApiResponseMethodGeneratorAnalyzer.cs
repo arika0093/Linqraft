@@ -209,8 +209,10 @@ public class ApiResponseMethodGeneratorAnalyzer : BaseLinqraftAnalyzer
                 }
             }
 
-            if (current is InvocationExpressionSyntax invocation
-                && invocation.Expression is MemberAccessExpressionSyntax invocationMemberAccess)
+            if (
+                current is InvocationExpressionSyntax invocation
+                && invocation.Expression is MemberAccessExpressionSyntax invocationMemberAccess
+            )
             {
                 current = invocationMemberAccess.Expression;
                 continue;
