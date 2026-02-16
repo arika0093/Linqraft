@@ -14,7 +14,7 @@
     <PackageReference Include="PublishSPAforGitHubPages.Build" Version="3.0.3" />
     <PackageReference
       Include="Microsoft.AspNetCore.Components.WebAssembly.DevServer"
-      Version="10.0.2"
+      Version="10.0.3"
       PrivateAssets="all"
     />
     <PackageReference
