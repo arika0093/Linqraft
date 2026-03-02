@@ -23,14 +23,7 @@ public class Issue_OfTypeInSelectExprTest
                 new OfTypeChildA { Name = "A2", AValue = 30 },
             ],
         },
-        new OfTypeParent
-        {
-            Id = 2,
-            Items =
-            [
-                new OfTypeChildB { Name = "B2", BValue = 40 },
-            ],
-        },
+        new OfTypeParent { Id = 2, Items = [new OfTypeChildB { Name = "B2", BValue = 40 }] },
     ];
 
     [Fact]
@@ -39,11 +32,7 @@ public class Issue_OfTypeInSelectExprTest
         // OfType<OfTypeChildA> should only include OfTypeChildA instances
         var result = _testData
             .AsQueryable()
-            .SelectExpr(x => new
-            {
-                x.Id,
-                AItems = x.Items.OfType<OfTypeChildA>().ToList(),
-            })
+            .SelectExpr(x => new { x.Id, AItems = x.Items.OfType<OfTypeChildA>().ToList() })
             .ToList();
 
         result.Count.ShouldBe(2);
