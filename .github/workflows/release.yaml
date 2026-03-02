@@ -3,8 +3,8 @@ name: Package Release to GitHub and Nuget
 on:
   workflow_dispatch:
   push:
-    branches:
-      - release/*
+    paths:
+      - 'version.json'
         
 permissions:
   contents: write
