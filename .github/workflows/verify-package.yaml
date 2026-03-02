@@ -41,8 +41,13 @@ jobs:
       - name: Pack NuGet packages
         run: dotnet pack --no-build -c Release --output ./local-packages
 
-      - uses: dotnet/nbgv@master
-        id: nbgv
+      - name: Get package version from nupkg filename
+        id: get-version
+        shell: bash
+        run: |
+          NUPKG=$(find ./local-packages -name "Linqraft.[0-9]*.nupkg" | head -1)
+          VERSION=$(basename "$NUPKG" | sed 's/^Linqraft\.\(.*\)\.nupkg$/\1/')
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
 
       - name: Setup local NuGet source
         shell: bash
@@ -59,7 +64,7 @@ jobs:
       - name: Add package reference to generated nuget package
         shell: bash
         working-directory: ./verification-test/PackageVerification
-        run: dotnet add package Linqraft --version ${{ steps.nbgv.outputs.SemVer2 }} --source "$(pwd)/../../local-packages"
+        run: dotnet add package Linqraft --version ${{ steps.get-version.outputs.version }} --source "$(pwd)/../../local-packages"
         
       - name: Build verification project
         working-directory: ./verification-test/PackageVerification

@@ -831,8 +831,10 @@ public abstract record SelectExprInfo : IEquatable<SelectExprInfo>
             if (symbolInfo.Symbol is not IMethodSymbol methodSymbol)
                 continue;
 
-            // Check if it's a static method (like Enumerable.Empty)
-            if (!methodSymbol.IsStatic)
+            // Check if it's a static method (like Enumerable.Empty) or a generic extension method
+            // called on an instance (like collection.OfType<T>()).
+            // Reduced extension methods have IsStatic = false, but we still need to qualify their type args.
+            if (!methodSymbol.IsStatic && methodSymbol.MethodKind != MethodKind.ReducedExtension)
                 continue;
 
             // Get the expression that might need qualification
@@ -863,21 +865,45 @@ public abstract record SelectExprInfo : IEquatable<SelectExprInfo>
                             typeArg.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat)
                         );
                     }
-                    var fullyQualifiedInvocation =
-                        $"{fullTypeName}.{methodName}<{string.Join(", ", typeArgs)}>";
-                    var original = memberAccess.ToString();
 
-                    // Only add replacement if not already fully qualified
-                    if (!original.StartsWith("global::"))
+                    if (methodSymbol.MethodKind == MethodKind.ReducedExtension)
                     {
-                        replacements.Add(
-                            (original, fullyQualifiedInvocation, memberAccess.SpanStart)
-                        );
+                        // For extension methods called on an instance (e.g., collection.OfType<SomeType>()),
+                        // only qualify the type arguments and keep the receiver intact.
+                        // e.g., collection.OfType<SomeType>() -> collection.OfType<global::Namespace.SomeType>()
+                        var fullyQualifiedGenericName =
+                            $"{methodName}<{string.Join(", ", typeArgs)}>";
+                        var originalGenericName = genericName.ToString();
+
+                        if (originalGenericName != fullyQualifiedGenericName)
+                        {
+                            replacements.Add(
+                                (
+                                    originalGenericName,
+                                    fullyQualifiedGenericName,
+                                    genericName.SpanStart
+                                )
+                            );
+                        }
+                    }
+                    else
+                    {
+                        var fullyQualifiedInvocation =
+                            $"{fullTypeName}.{methodName}<{string.Join(", ", typeArgs)}>";
+                        var original = memberAccess.ToString();
+
+                        // Only add replacement if not already fully qualified
+                        if (!original.StartsWith("global::"))
+                        {
+                            replacements.Add(
+                                (original, fullyQualifiedInvocation, memberAccess.SpanStart)
+                            );
+                        }
                     }
                 }
-                else
+                else if (methodSymbol.MethodKind != MethodKind.ReducedExtension)
                 {
-                    // Non-generic static method
+                    // Non-generic static method (not an extension method called on an instance)
                     var fullyQualifiedMethod = $"{fullTypeName}.{methodName}";
                     var original = memberAccess.ToString();
 
