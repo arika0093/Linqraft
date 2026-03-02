@@ -28,7 +28,7 @@ jobs:
         with:
           dotnet-version: ${{ env.DOTNET_VERSION }}
 
-      - uses: dotnet/nbgv@master
+      - uses: dotnet/nbgv@v0.4
         id: nbgv
 
       - name: export version to env
