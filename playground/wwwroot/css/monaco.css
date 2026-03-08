@@ -1,0 +1,19 @@
+.monaco-editor-container {
+		height: 100%;
+}
+.monaco-editor, .monaco-editor .view-lines {
+		font-family: 'JetBrains Mono', 'Consolas', 'Monaco', monospace !important;
+}
+/* Semantic highlighting colors matching Visual Studio dark theme */
+.semantic-class { color: #4EC9B0 !important; }
+.semantic-interface { color: #B8D7A3 !important; }
+.semantic-struct { color: #86C691 !important; }
+.semantic-enum { color: #B8D7A3 !important; }
+.semantic-delegate { color: #4EC9B0 !important; }
+.semantic-method { color: #DCDCAA !important; }
+.semantic-property { color: #9CDCFE !important; }
+.semantic-field { color: #9CDCFE !important; }
+.semantic-variable { color: #9CDCFE !important; }
+.semantic-parameter { color: #9CDCFE !important; }
+.semantic-namespace { color: #C8C8C8 !important; }
+.semantic-keyword { color: #569CD6 !important; }

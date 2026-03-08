@@ -1,0 +1,33 @@
+@using System.Reflection
+<Router AppAssembly="@typeof(App).Assembly" OnNavigateAsync="OnNavigateAsync"
+        AdditionalAssemblies="lazyLoadedAssemblies">
+    <Found Context="routeData">
+        <RouteView RouteData="@routeData" DefaultLayout="@typeof(MainLayout)"/>
+        <FocusOnNavigate RouteData="@routeData" Selector="h1" />
+    </Found>
+    <NotFound>
+        <LayoutView Layout="@typeof(MainLayout)">
+            <p>Sorry, there's nothing at this address.</p>
+        </LayoutView>
+    </NotFound>
+    <Navigating>
+        <LoadingAssemblies />
+    </Navigating>
+</Router>
+
+@inject Microsoft.AspNetCore.Components.WebAssembly.Services.LazyAssemblyLoader AssemblyLoader
+@code {
+    private List<Assembly> lazyLoadedAssemblies = [];
+    private async Task OnNavigateAsync(NavigationContext args)
+    {
+        // if playground page is requested, load the assembly
+        if (args.Path.StartsWith("playground"))
+        {
+            var assemblies = await AssemblyLoader.LoadAssembliesAsync(new[] {
+                "BlazorMonaco.dll",
+                "Basic.Reference.Assemblies.Net90.dll"
+            });
+            lazyLoadedAssemblies.AddRange(assemblies);
+        }
+    }
+}

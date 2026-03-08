@@ -1,0 +1,35 @@
+@using Linqraft.Playground.Services
+@inject ShikiHighlightService ShikiHighlighter
+
+<div class="code-block max-w-full">
+    @if(!string.IsNullOrEmpty(Title))
+    {
+        <div class="code-block-header @(Highlight ? "bg-green-800/50" : "")">
+            <span class="px-2 text-xs @(Highlight ? "text-green-400" : "text-gray-400")">● @Title</span>
+        </div>
+    }
+    <div class="code-block-shiki max-h-120 overflow-y-auto" translate="no">
+        @((MarkupString)highlightedCode)
+    </div>
+</div>
+
+@code {
+    [Parameter] public string Title { get; set; } = "";
+    [Parameter] public string Code { get; set; } = "";
+    [Parameter] public string Size { get; set; } = "sm";
+    [Parameter] public bool Highlight { get; set; } = false;
+
+    private string highlightedCode = "";
+
+    protected override async Task OnParametersSetAsync()
+    {
+        if (!string.IsNullOrWhiteSpace(Code))
+        {
+            highlightedCode = await ShikiHighlighter.HighlightAsync(Code);
+        }
+        else
+        {
+            highlightedCode = "";
+        }
+    }
+}
