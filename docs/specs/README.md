@@ -54,6 +54,8 @@ If the existing documentation is inconsistent, use this precedence order while i
 | `04-configuration-and-behavior.md` | MSBuild properties, naming, comments, nullability rules, and extensibility contracts |
 | `05-analyzers-and-tooling.md` | Diagnostic catalog, triggers, code fixes, and migration/tooling expectations |
 | `06-constraints-and-nonfunctional.md` | Environment constraints, compatibility matrix, stability rules, performance expectations, and acceptance checklist |
+| `07_test-suite-guarantees.md` | Concrete behaviors enforced by the current tests, plus overlap and gap analysis for future test slimming |
+| `08_implementation-notes.md` | Rewrite-time implementation cautions derived from Roslyn guidance and project-specific generation rules |
 
 ## Core compatibility invariants
 
