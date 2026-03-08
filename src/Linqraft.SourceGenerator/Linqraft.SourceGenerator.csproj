@@ -17,12 +17,6 @@
       PackagePath="analyzers/dotnet/cs"
       Visible="false"
     />
-    <None
-      Include="$(OutputPath)\Linqraft.Core.dll"
-      Pack="true"
-      PackagePath="analyzers/dotnet/cs"
-      Visible="false"
-    />
   </ItemGroup>
   <ItemGroup>
     <PackageReference Include="Microsoft.CodeAnalysis.Analyzers" Version="3.11.0">
@@ -34,8 +28,5 @@
       <PrivateAssets>all</PrivateAssets>
       <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
     </PackageReference>
-  </ItemGroup>
-  <ItemGroup>
-    <ProjectReference Include="..\Linqraft.Core\Linqraft.Core.csproj" OutputItemType="Analyzer" />
   </ItemGroup>
 </Project>

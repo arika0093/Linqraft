@@ -4,7 +4,6 @@
     <IsPackable>true</IsPackable>
     <LangVersion>latest</LangVersion>
     <Nullable>enable</Nullable>
-    <RestorePackagesWithLockFile>true</RestorePackagesWithLockFile>
     <PackageDescription>Write Select queries easily with on-demand DTO generation and null-propagation operators.</PackageDescription>
     <PackageProjectUrl>https://github.com/arika0093/Linqraft</PackageProjectUrl>
     <RepositoryUrl>https://github.com/arika0093/Linqraft</RepositoryUrl>
