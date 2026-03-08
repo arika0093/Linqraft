@@ -83,3 +83,19 @@ A compatible clone MUST preserve the following high-level promises from the curr
 
 These specs are intended to preserve the current feature set during a large internal rewrite.
 A future implementation MAY reorganize internals, but it SHOULD NOT alter any documented authoring pattern, generated-shape contract, or diagnostic behavior unless the spec set is updated first.
+
+## Project structure
+
+The final project structure is expected to look like this:
+
+```
+src/
+  Linqraft                 -- only reference to Linqraft.SourceGenerator and Linqraft.Analyzers
+  Linqraft.SourceGenerator -- source generator call only
+  Linqraft.Analyzers       -- roslyn analyzers and code fixes
+tests/
+  Linqraft.Tests           -- tests for generator
+  Linqraft.Analyzers.Tests -- tests for analyzers
+```
+
+Linqraft.Core
