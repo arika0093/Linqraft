@@ -1,6 +1,2 @@
 <Project>
-  <PropertyGroup>
-    <InterceptorsNamespaces>$(InterceptorsNamespaces);Linqraft</InterceptorsNamespaces>
-    <InterceptorsPreviewNamespaces>$(InterceptorsPreviewNamespaces);Linqraft</InterceptorsPreviewNamespaces>
-  </PropertyGroup>
 </Project>

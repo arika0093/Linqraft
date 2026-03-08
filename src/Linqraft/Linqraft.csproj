@@ -34,6 +34,7 @@
       Include="..\Linqraft.SourceGenerator\Linqraft.SourceGenerator.csproj"
       PrivateAssets="all"
     />
+    <ProjectReference Include="..\Linqraft.Core\Linqraft.Core.csproj" PrivateAssets="all" />
     <ProjectReference Include="..\Linqraft.Analyzer\Linqraft.Analyzer.csproj" PrivateAssets="all" />
   </ItemGroup>
 </Project>

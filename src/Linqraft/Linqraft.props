@@ -1,4 +1,7 @@
-﻿<Project>
+<Project>
+  <PropertyGroup>
+    <InterceptorsNamespaces>$(InterceptorsNamespaces);Linqraft</InterceptorsNamespaces>
+  </PropertyGroup>
   <ItemGroup>
     <CompilerVisibleProperty Include="RootNamespace" />
     <CompilerVisibleProperty Include="LinqraftGlobalNamespace" />
@@ -8,5 +11,6 @@
     <CompilerVisibleProperty Include="LinqraftCommentOutput" />
     <CompilerVisibleProperty Include="LinqraftArrayNullabilityRemoval" />
     <CompilerVisibleProperty Include="LinqraftNestedDtoUseHashNamespace" />
+    <CompilerVisibleProperty Include="LinqraftUsePrebuildExpression" />
   </ItemGroup>
 </Project>
