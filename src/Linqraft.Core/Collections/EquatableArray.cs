@@ -22,7 +22,8 @@ internal readonly struct EquatableArray<T> : IEquatable<EquatableArray<T>>, IEnu
 
     public T this[int index] => _items[index];
 
-    public ImmutableArray<T> ToImmutableArray() => _items.IsDefault ? ImmutableArray<T>.Empty : _items;
+    public ImmutableArray<T> ToImmutableArray() =>
+        _items.IsDefault ? ImmutableArray<T>.Empty : _items;
 
     public bool Equals(EquatableArray<T> other)
     {

@@ -11,11 +11,18 @@ namespace Linqraft.Analyzer;
 
 internal static class AnalyzerHelpers
 {
-    private static readonly Regex HashNamespacePattern = new(@"(^|\.)(LinqraftGenerated_[A-Za-z0-9]{8,})($|\.)", RegexOptions.Compiled);
+    private static readonly Regex HashNamespacePattern = new(
+        @"(^|\.)(LinqraftGenerated_[A-Za-z0-9]{8,})($|\.)",
+        RegexOptions.Compiled
+    );
 
     public static bool IsSelectExprInvocation(InvocationExpressionSyntax invocation)
     {
-        return string.Equals(GetInvocationName(invocation.Expression), "SelectExpr", StringComparison.Ordinal);
+        return string.Equals(
+            GetInvocationName(invocation.Expression),
+            "SelectExpr",
+            StringComparison.Ordinal
+        );
     }
 
     public static bool IsQueryableSelectInvocation(
@@ -24,12 +31,19 @@ internal static class AnalyzerHelpers
         CancellationToken cancellationToken
     )
     {
-        if (!string.Equals(GetInvocationName(invocation.Expression), "Select", StringComparison.Ordinal))
+        if (
+            !string.Equals(
+                GetInvocationName(invocation.Expression),
+                "Select",
+                StringComparison.Ordinal
+            )
+        )
         {
             return false;
         }
 
-        var symbol = semanticModel.GetSymbolInfo(invocation, cancellationToken).Symbol as IMethodSymbol;
+        var symbol =
+            semanticModel.GetSymbolInfo(invocation, cancellationToken).Symbol as IMethodSymbol;
         if (symbol?.Name != "Select")
         {
             return false;
@@ -40,14 +54,15 @@ internal static class AnalyzerHelpers
         return ImplementsOpenGeneric(receiverType, "System.Linq.IQueryable<T>");
     }
 
-    public static bool IsDbSet(
-        ITypeSymbol? symbol
-    )
+    public static bool IsDbSet(ITypeSymbol? symbol)
     {
         var current = symbol as INamedTypeSymbol;
         while (current is not null)
         {
-            if (current.Name == "DbSet" && current.ContainingNamespace.ToDisplayString() == "Microsoft.EntityFrameworkCore")
+            if (
+                current.Name == "DbSet"
+                && current.ContainingNamespace.ToDisplayString() == "Microsoft.EntityFrameworkCore"
+            )
             {
                 return true;
             }
@@ -65,8 +80,8 @@ internal static class AnalyzerHelpers
 
     public static LambdaExpressionSyntax? GetSelectorLambda(InvocationExpressionSyntax invocation)
     {
-        return invocation.ArgumentList.Arguments
-            .Select(argument => argument.Expression)
+        return invocation
+            .ArgumentList.Arguments.Select(argument => argument.Expression)
             .OfType<LambdaExpressionSyntax>()
             .FirstOrDefault();
     }
@@ -110,7 +125,10 @@ internal static class AnalyzerHelpers
 
     public static string GenerateDtoName(SyntaxNode contextNode)
     {
-        var method = contextNode.AncestorsAndSelf().OfType<MethodDeclarationSyntax>().FirstOrDefault();
+        var method = contextNode
+            .AncestorsAndSelf()
+            .OfType<MethodDeclarationSyntax>()
+            .FirstOrDefault();
         if (method is not null)
         {
             var methodName = method.Identifier.ValueText;
@@ -120,7 +138,10 @@ internal static class AnalyzerHelpers
             return $"{trimmed}Dto";
         }
 
-        var variable = contextNode.AncestorsAndSelf().OfType<VariableDeclaratorSyntax>().FirstOrDefault();
+        var variable = contextNode
+            .AncestorsAndSelf()
+            .OfType<VariableDeclaratorSyntax>()
+            .FirstOrDefault();
         if (variable is not null)
         {
             return $"{FirstCharToUpper(variable.Identifier.ValueText)}Dto";
@@ -136,14 +157,18 @@ internal static class AnalyzerHelpers
     )
     {
         var locallyDeclaredSymbols = new HashSet<ISymbol>(
-            lambda.DescendantNodesAndSelf()
+            lambda
+                .DescendantNodesAndSelf()
                 .OfType<ParameterSyntax>()
                 .Select(parameter => semanticModel.GetDeclaredSymbol(parameter, cancellationToken))
                 .OfType<ISymbol>()
                 .Concat(
-                    lambda.DescendantNodes()
+                    lambda
+                        .DescendantNodes()
                         .OfType<VariableDeclaratorSyntax>()
-                        .Select(variable => semanticModel.GetDeclaredSymbol(variable, cancellationToken))
+                        .Select(variable =>
+                            semanticModel.GetDeclaredSymbol(variable, cancellationToken)
+                        )
                         .OfType<ISymbol>()
                 ),
             SymbolEqualityComparer.Default
@@ -151,22 +176,32 @@ internal static class AnalyzerHelpers
 
         foreach (var identifier in lambda.DescendantNodes().OfType<IdentifierNameSyntax>())
         {
-            if (identifier.Parent is MemberAccessExpressionSyntax memberAccess && memberAccess.Name == identifier)
+            if (
+                identifier.Parent is MemberAccessExpressionSyntax memberAccess
+                && memberAccess.Name == identifier
+            )
             {
                 continue;
             }
 
-            if (identifier.Parent is MemberBindingExpressionSyntax memberBinding && memberBinding.Name == identifier)
+            if (
+                identifier.Parent is MemberBindingExpressionSyntax memberBinding
+                && memberBinding.Name == identifier
+            )
             {
                 continue;
             }
 
-            if (identifier.Parent is NameEqualsSyntax
+            if (
+                identifier.Parent is NameEqualsSyntax
                 || identifier.Parent is NameColonSyntax
-                || identifier.Parent is AnonymousObjectMemberDeclaratorSyntax { NameEquals: not null }
-                || identifier.Parent is AssignmentExpressionSyntax assignment && assignment.Left == identifier
+                || identifier.Parent
+                    is AnonymousObjectMemberDeclaratorSyntax { NameEquals: not null }
+                || identifier.Parent is AssignmentExpressionSyntax assignment
+                    && assignment.Left == identifier
                 || identifier.Parent is VariableDeclaratorSyntax
-                || identifier.Parent is ParameterSyntax)
+                || identifier.Parent is ParameterSyntax
+            )
             {
                 continue;
             }
@@ -192,13 +227,21 @@ internal static class AnalyzerHelpers
                 continue;
             }
 
-            if (symbol.Kind is SymbolKind.Local or SymbolKind.Parameter or SymbolKind.Field or SymbolKind.Property)
+            if (
+                symbol.Kind
+                is SymbolKind.Local
+                    or SymbolKind.Parameter
+                    or SymbolKind.Field
+                    or SymbolKind.Property
+            )
             {
                 yield return symbol;
             }
         }
 
-        foreach (var memberAccess in lambda.DescendantNodes().OfType<MemberAccessExpressionSyntax>())
+        foreach (
+            var memberAccess in lambda.DescendantNodes().OfType<MemberAccessExpressionSyntax>()
+        )
         {
             var symbol = semanticModel.GetSymbolInfo(memberAccess, cancellationToken).Symbol;
             if (symbol is not IFieldSymbol and not IPropertySymbol)
@@ -206,7 +249,14 @@ internal static class AnalyzerHelpers
                 continue;
             }
 
-            if (IsLocalAccess(memberAccess.Expression, semanticModel, cancellationToken, locallyDeclaredSymbols))
+            if (
+                IsLocalAccess(
+                    memberAccess.Expression,
+                    semanticModel,
+                    cancellationToken,
+                    locallyDeclaredSymbols
+                )
+            )
             {
                 continue;
             }
@@ -217,11 +267,16 @@ internal static class AnalyzerHelpers
 
     public static IEnumerable<string> GetCaptureNames(InvocationExpressionSyntax invocation)
     {
-        var capture = invocation.ArgumentList.Arguments
-            .FirstOrDefault(argument =>
-                argument.NameColon?.Name.Identifier.ValueText == "capture"
-                || (!argument.Equals(invocation.ArgumentList.Arguments.First()) && argument.Expression is AnonymousObjectCreationExpressionSyntax)
-            )?.Expression as AnonymousObjectCreationExpressionSyntax;
+        var capture =
+            invocation
+                .ArgumentList.Arguments.FirstOrDefault(argument =>
+                    argument.NameColon?.Name.Identifier.ValueText == "capture"
+                    || (
+                        !argument.Equals(invocation.ArgumentList.Arguments.First())
+                        && argument.Expression is AnonymousObjectCreationExpressionSyntax
+                    )
+                )
+                ?.Expression as AnonymousObjectCreationExpressionSyntax;
 
         if (capture is null)
         {
@@ -246,13 +301,26 @@ internal static class AnalyzerHelpers
         };
     }
 
-    public static bool ContainsNullCheckedObjectTernary(ConditionalExpressionSyntax conditionalExpression)
+    public static bool ContainsNullCheckedObjectTernary(
+        ConditionalExpressionSyntax conditionalExpression
+    )
     {
-        var whenTrueIsNull = conditionalExpression.WhenTrue.IsKind(SyntaxKind.NullLiteralExpression);
-        var whenFalseIsNull = conditionalExpression.WhenFalse.IsKind(SyntaxKind.NullLiteralExpression);
-        var otherBranch = whenTrueIsNull ? conditionalExpression.WhenFalse : whenFalseIsNull ? conditionalExpression.WhenTrue : null;
-        return otherBranch is ObjectCreationExpressionSyntax or AnonymousObjectCreationExpressionSyntax
-            && conditionalExpression.Condition.ToString().Contains("!= null", StringComparison.Ordinal);
+        var whenTrueIsNull = conditionalExpression.WhenTrue.IsKind(
+            SyntaxKind.NullLiteralExpression
+        );
+        var whenFalseIsNull = conditionalExpression.WhenFalse.IsKind(
+            SyntaxKind.NullLiteralExpression
+        );
+        var otherBranch =
+            whenTrueIsNull ? conditionalExpression.WhenFalse
+            : whenFalseIsNull ? conditionalExpression.WhenTrue
+            : null;
+        return otherBranch
+                is ObjectCreationExpressionSyntax
+                    or AnonymousObjectCreationExpressionSyntax
+            && conditionalExpression
+                .Condition.ToString()
+                .Contains("!= null", StringComparison.Ordinal);
     }
 
     public static bool ImplementsOpenGeneric(ITypeSymbol? typeSymbol, string metadataName)
@@ -262,13 +330,17 @@ internal static class AnalyzerHelpers
             return false;
         }
 
-        if (typeSymbol is INamedTypeSymbol namedType
-            && namedType.ConstructedFrom.ToDisplayString() == metadataName)
+        if (
+            typeSymbol is INamedTypeSymbol namedType
+            && namedType.ConstructedFrom.ToDisplayString() == metadataName
+        )
         {
             return true;
         }
 
-        return typeSymbol.AllInterfaces.Any(interfaceType => interfaceType.ConstructedFrom.ToDisplayString() == metadataName);
+        return typeSymbol.AllInterfaces.Any(interfaceType =>
+            interfaceType.ConstructedFrom.ToDisplayString() == metadataName
+        );
     }
 
     private static string FirstCharToUpper(string value)
@@ -296,13 +368,34 @@ internal static class AnalyzerHelpers
                 return symbol is not null && locallyDeclaredSymbols.Contains(symbol);
             }
             case MemberAccessExpressionSyntax memberAccess:
-                return IsLocalAccess(memberAccess.Expression, semanticModel, cancellationToken, locallyDeclaredSymbols);
+                return IsLocalAccess(
+                    memberAccess.Expression,
+                    semanticModel,
+                    cancellationToken,
+                    locallyDeclaredSymbols
+                );
             case ConditionalAccessExpressionSyntax conditionalAccess:
-                return IsLocalAccess(conditionalAccess.Expression, semanticModel, cancellationToken, locallyDeclaredSymbols);
+                return IsLocalAccess(
+                    conditionalAccess.Expression,
+                    semanticModel,
+                    cancellationToken,
+                    locallyDeclaredSymbols
+                );
             case ElementAccessExpressionSyntax elementAccess:
-                return IsLocalAccess(elementAccess.Expression, semanticModel, cancellationToken, locallyDeclaredSymbols);
-            case InvocationExpressionSyntax invocation when invocation.Expression is MemberAccessExpressionSyntax memberAccess:
-                return IsLocalAccess(memberAccess.Expression, semanticModel, cancellationToken, locallyDeclaredSymbols);
+                return IsLocalAccess(
+                    elementAccess.Expression,
+                    semanticModel,
+                    cancellationToken,
+                    locallyDeclaredSymbols
+                );
+            case InvocationExpressionSyntax invocation
+                when invocation.Expression is MemberAccessExpressionSyntax memberAccess:
+                return IsLocalAccess(
+                    memberAccess.Expression,
+                    semanticModel,
+                    cancellationToken,
+                    locallyDeclaredSymbols
+                );
             default:
                 return false;
         }

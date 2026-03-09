@@ -18,7 +18,9 @@ internal sealed class ProjectionAnalyzer
     private readonly LinqraftConfiguration _configuration;
     private readonly SourceProductionContext _context;
     private readonly CancellationToken _cancellationToken;
-    private readonly Dictionary<string, GeneratedDtoModel> _generatedDtos = new(StringComparer.Ordinal);
+    private readonly Dictionary<string, GeneratedDtoModel> _generatedDtos = new(
+        StringComparer.Ordinal
+    );
     private readonly List<ProjectionRequest> _projectionRequests = new();
     private readonly List<MappingRequest> _mappingRequests = new();
 
@@ -91,19 +93,26 @@ internal sealed class ProjectionAnalyzer
         var receiver = GetReceiverExpression(invocation);
         if (receiver is null)
         {
-            return ReportInvalid(invocation, "Linqraft could not determine the SelectExpr receiver expression.");
+            return ReportInvalid(
+                invocation,
+                "Linqraft could not determine the SelectExpr receiver expression."
+            );
         }
 
-        var receiverType = semanticModel.GetTypeInfo(receiver, _cancellationToken).ConvertedType
+        var receiverType =
+            semanticModel.GetTypeInfo(receiver, _cancellationToken).ConvertedType
             ?? semanticModel.GetTypeInfo(receiver, _cancellationToken).Type;
         var receiverKind = ResolveReceiverKind(receiverType);
         if (receiverKind is null)
         {
-            return ReportInvalid(invocation, "SelectExpr is only supported on IQueryable<T> and IEnumerable<T> receivers.");
+            return ReportInvalid(
+                invocation,
+                "SelectExpr is only supported on IQueryable<T> and IEnumerable<T> receivers."
+            );
         }
 
-        var lambda = invocation.ArgumentList.Arguments
-            .Select(argument => argument.Expression)
+        var lambda = invocation
+            .ArgumentList.Arguments.Select(argument => argument.Expression)
             .OfType<LambdaExpressionSyntax>()
             .FirstOrDefault();
 
@@ -126,13 +135,19 @@ internal sealed class ProjectionAnalyzer
         var pattern = ResolveProjectionPattern(selectorBody, typeArguments.Count);
         if (pattern is null)
         {
-            return ReportInvalid(invocation, "Linqraft currently supports anonymous-object or object-initializer selectors.");
+            return ReportInvalid(
+                invocation,
+                "Linqraft currently supports anonymous-object or object-initializer selectors."
+            );
         }
 
         var sourceType = ResolveSourceType(semanticModel, receiverType, typeArguments);
         if (sourceType is null)
         {
-            return ReportInvalid(invocation, "Linqraft could not determine the source element type for SelectExpr.");
+            return ReportInvalid(
+                invocation,
+                "Linqraft could not determine the source element type for SelectExpr."
+            );
         }
 
         var sourceTypeName = sourceType.ToFullyQualifiedTypeName();
@@ -170,7 +185,8 @@ internal sealed class ProjectionAnalyzer
             }
             case ProjectionPattern.ExplicitDto:
             {
-                var resultTypeSyntax = typeArguments.Count >= 2 ? typeArguments[1] : typeArguments[0];
+                var resultTypeSyntax =
+                    typeArguments.Count >= 2 ? typeArguments[1] : typeArguments[0];
                 rootDto = CreateRootDtoModel(
                     resultTypeSyntax,
                     semanticModel,
@@ -179,10 +195,15 @@ internal sealed class ProjectionAnalyzer
                     effectiveOwnerHintName
                 );
                 var existingProperties = new HashSet<string>(
-                    rootDto.Properties.Where(property => property.IsSuppressed).Select(property => property.Name),
+                    rootDto
+                        .Properties.Where(property => property.IsSuppressed)
+                        .Select(property => property.Name),
                     StringComparer.Ordinal
                 );
-                rootDocumentation = DocumentationExtractor.GetTypeDocumentation(sourceType as INamedTypeSymbol, _configuration.CommentOutput);
+                rootDocumentation = DocumentationExtractor.GetTypeDocumentation(
+                    sourceType as INamedTypeSymbol,
+                    _configuration.CommentOutput
+                );
                 var buildResult = BuildProjectionObject(
                     selectorBody,
                     semanticModel,
@@ -202,7 +223,8 @@ internal sealed class ProjectionAnalyzer
             case ProjectionPattern.PredefinedDto:
             {
                 var predefinedTypeSyntax = ((ObjectCreationExpressionSyntax)selectorBody).Type;
-                resultTypeName = ResolveNamedType(predefinedTypeSyntax, semanticModel, callerNamespace)
+                resultTypeName =
+                    ResolveNamedType(predefinedTypeSyntax, semanticModel, callerNamespace)
                     ?? predefinedTypeSyntax.ToString();
                 var buildResult = BuildProjectionObject(
                     selectorBody,
@@ -263,8 +285,10 @@ internal sealed class ProjectionAnalyzer
         }
 
         var methodName = GetMappingMethodName(classSymbol.GetAttributes());
-        var mappingHintName = $"Mapping_{HashingHelper.ComputeHash(classSymbol.ToDisplayString(), 16)}";
-        var defineMapping = declaration.Members.OfType<MethodDeclarationSyntax>()
+        var mappingHintName =
+            $"Mapping_{HashingHelper.ComputeHash(classSymbol.ToDisplayString(), 16)}";
+        var defineMapping = declaration
+            .Members.OfType<MethodDeclarationSyntax>()
             .FirstOrDefault(method => method.Identifier.ValueText == "DefineMapping");
 
         if (defineMapping is null)
@@ -272,13 +296,20 @@ internal sealed class ProjectionAnalyzer
             return;
         }
 
-        var selectExpr = defineMapping.DescendantNodes().OfType<InvocationExpressionSyntax>().FirstOrDefault(IsSelectExprInvocation);
+        var selectExpr = defineMapping
+            .DescendantNodes()
+            .OfType<InvocationExpressionSyntax>()
+            .FirstOrDefault(IsSelectExprInvocation);
         if (selectExpr is null)
         {
             return;
         }
 
-        var projection = AnalyzeProjectionInvocation(selectExpr, allowInterceptor: false, ownerHintName: mappingHintName);
+        var projection = AnalyzeProjectionInvocation(
+            selectExpr,
+            allowInterceptor: false,
+            ownerHintName: mappingHintName
+        );
         if (projection is null)
         {
             return;
@@ -295,14 +326,19 @@ internal sealed class ProjectionAnalyzer
                 HintName = mappingHintName,
                 SourceNode = declaration,
                 Namespace = SymbolNameHelper.GetNamespace(classSymbol.ContainingNamespace),
-                ContainingTypeName = $"{classSymbol.Name}_{HashingHelper.ComputeHash(classSymbol.ToDisplayString(), 8)}",
-                AccessibilityKeyword = SymbolNameHelper.GetAccessibilityKeyword(classSymbol.DeclaredAccessibility),
+                ContainingTypeName =
+                    $"{classSymbol.Name}_{HashingHelper.ComputeHash(classSymbol.ToDisplayString(), 8)}",
+                AccessibilityKeyword = SymbolNameHelper.GetAccessibilityKeyword(
+                    classSymbol.DeclaredAccessibility
+                ),
                 MethodAccessibilityKeyword = GetMappingMethodAccessibilityKeyword(
                     classSymbol.DeclaredAccessibility,
                     selectExpr,
                     semanticModel
                 ),
-                MethodName = string.IsNullOrWhiteSpace(methodName) ? $"ProjectTo{classSymbol.BaseType?.TypeArguments.FirstOrDefault()?.Name}" : methodName!,
+                MethodName = string.IsNullOrWhiteSpace(methodName)
+                    ? $"ProjectTo{classSymbol.BaseType?.TypeArguments.FirstOrDefault()?.Name}"
+                    : methodName!,
                 ReceiverKind = projection.ReceiverKind,
                 SourceTypeName = projection.SourceTypeName,
                 ResultTypeName = projection.ResultTypeName,
@@ -323,19 +359,30 @@ internal sealed class ProjectionAnalyzer
             return;
         }
 
-        if (!methodSymbol.ContainingType.IsStatic || !methodSymbol.ContainingType.DeclaringSyntaxReferences.Any())
+        if (
+            !methodSymbol.ContainingType.IsStatic
+            || !methodSymbol.ContainingType.DeclaringSyntaxReferences.Any()
+        )
         {
             return;
         }
 
-        var selectExpr = declaration.DescendantNodes().OfType<InvocationExpressionSyntax>().FirstOrDefault(IsSelectExprInvocation);
+        var selectExpr = declaration
+            .DescendantNodes()
+            .OfType<InvocationExpressionSyntax>()
+            .FirstOrDefault(IsSelectExprInvocation);
         if (selectExpr is null)
         {
             return;
         }
 
-        var mappingHintName = $"Mapping_{HashingHelper.ComputeHash(methodSymbol.ToDisplayString(), 16)}";
-        var projection = AnalyzeProjectionInvocation(selectExpr, allowInterceptor: false, ownerHintName: mappingHintName);
+        var mappingHintName =
+            $"Mapping_{HashingHelper.ComputeHash(methodSymbol.ToDisplayString(), 16)}";
+        var projection = AnalyzeProjectionInvocation(
+            selectExpr,
+            allowInterceptor: false,
+            ownerHintName: mappingHintName
+        );
         if (projection is null)
         {
             return;
@@ -351,15 +398,21 @@ internal sealed class ProjectionAnalyzer
             {
                 HintName = mappingHintName,
                 SourceNode = declaration,
-                Namespace = SymbolNameHelper.GetNamespace(methodSymbol.ContainingType.ContainingNamespace),
+                Namespace = SymbolNameHelper.GetNamespace(
+                    methodSymbol.ContainingType.ContainingNamespace
+                ),
                 ContainingTypeName = methodSymbol.ContainingType.Name,
-                AccessibilityKeyword = SymbolNameHelper.GetAccessibilityKeyword(methodSymbol.ContainingType.DeclaredAccessibility),
+                AccessibilityKeyword = SymbolNameHelper.GetAccessibilityKeyword(
+                    methodSymbol.ContainingType.DeclaredAccessibility
+                ),
                 MethodAccessibilityKeyword = GetMappingMethodAccessibilityKeyword(
                     methodSymbol.DeclaredAccessibility,
                     selectExpr,
                     semanticModel
                 ),
-                MethodName = GetMappingMethodName(methodSymbol.GetAttributes()) ?? declaration.Identifier.ValueText,
+                MethodName =
+                    GetMappingMethodName(methodSymbol.GetAttributes())
+                    ?? declaration.Identifier.ValueText,
                 ReceiverKind = projection.ReceiverKind,
                 SourceTypeName = projection.SourceTypeName,
                 ResultTypeName = projection.ResultTypeName,
@@ -384,7 +437,10 @@ internal sealed class ProjectionAnalyzer
     {
         var members = GetProjectionMembers(expression).ToList();
         var replacementTypes = new Dictionary<SyntaxNode, string>();
-        if (replacementTypeName is not null && expression is AnonymousObjectCreationExpressionSyntax anonymousRoot)
+        if (
+            replacementTypeName is not null
+            && expression is AnonymousObjectCreationExpressionSyntax anonymousRoot
+        )
         {
             replacementTypes[anonymousRoot] = replacementTypeName;
         }
@@ -424,7 +480,9 @@ internal sealed class ProjectionAnalyzer
                 {
                     Name = member.Name,
                     Expression = member.Expression,
-                    TypeName = useEmptyCollectionFallback ? RemoveNullableAnnotation(typeName) : typeName,
+                    TypeName = useEmptyCollectionFallback
+                        ? RemoveNullableAnnotation(typeName)
+                        : typeName,
                     IsSuppressed = existingPropertyNames?.Contains(member.Name) == true,
                     UseEmptyCollectionFallback = useEmptyCollectionFallback,
                     Documentation = documentation,
@@ -443,23 +501,18 @@ internal sealed class ProjectionAnalyzer
 
         if (dtoModel is null)
         {
-            return new ProjectionBuildResult
-            {
-                Projection = projection,
-                DtoModel = null,
-            };
+            return new ProjectionBuildResult { Projection = projection, DtoModel = null };
         }
 
-        var properties = projectedMembers.Select(
-            member =>
-                new GeneratedPropertyModel
-                {
-                    Name = member.Name,
-                    TypeName = member.TypeName,
-                    Documentation = member.Documentation,
-                    IsSuppressed = member.IsSuppressed,
-                }
-        ).ToList();
+        var properties = projectedMembers
+            .Select(member => new GeneratedPropertyModel
+            {
+                Name = member.Name,
+                TypeName = member.TypeName,
+                Documentation = member.Documentation,
+                IsSuppressed = member.IsSuppressed,
+            })
+            .ToList();
 
         return new ProjectionBuildResult
         {
@@ -483,7 +536,10 @@ internal sealed class ProjectionAnalyzer
         string ownerHintName
     )
     {
-        if (expression is ConditionalExpressionSyntax conditionalExpression && TryGetNullGuardBranch(conditionalExpression, out var nonNullBranch))
+        if (
+            expression is ConditionalExpressionSyntax conditionalExpression
+            && TryGetNullGuardBranch(conditionalExpression, out var nonNullBranch)
+        )
         {
             var branchType = AnalyzeMemberType(
                 nonNullBranch,
@@ -505,7 +561,12 @@ internal sealed class ProjectionAnalyzer
                 return inferred?.ToFullyQualifiedTypeName() ?? "object";
             }
 
-            var nestedDto = CreateNestedDtoModel(memberName, anonymousObject, defaultNamespace, ownerHintName);
+            var nestedDto = CreateNestedDtoModel(
+                memberName,
+                anonymousObject,
+                defaultNamespace,
+                ownerHintName
+            );
             replacementTypes[anonymousObject] = nestedDto.FullyQualifiedName;
             var nestedBuildResult = BuildProjectionObject(
                 anonymousObject,
@@ -556,17 +617,28 @@ internal sealed class ProjectionAnalyzer
 
             if (collectionProjection.IsNestedExplicitDto)
             {
-                var nestedResultType = ResolveNamedType(collectionProjection.NestedResultTypeSyntax!, semanticModel, defaultNamespace);
+                var nestedResultType = ResolveNamedType(
+                    collectionProjection.NestedResultTypeSyntax!,
+                    semanticModel,
+                    defaultNamespace
+                );
                 if (nestedResultType is not null)
                 {
-                    if (collectionProjection.LambdaBody is AnonymousObjectCreationExpressionSyntax nestedAnonymous)
+                    if (
+                        collectionProjection.LambdaBody
+                        is AnonymousObjectCreationExpressionSyntax nestedAnonymous
+                    )
                     {
                         var nestedDto = CreateRootDtoModel(
                             collectionProjection.NestedResultTypeSyntax!,
                             semanticModel,
                             collectionProjection.Invocation,
-                            semanticModel.GetTypeInfo(collectionProjection.SourceTypeSyntax!, _cancellationToken).Type
-                                as INamedTypeSymbol,
+                            semanticModel
+                                .GetTypeInfo(
+                                    collectionProjection.SourceTypeSyntax!,
+                                    _cancellationToken
+                                )
+                                .Type as INamedTypeSymbol,
                             ownerHintName
                         );
                         replacementTypes[nestedAnonymous] = nestedDto.FullyQualifiedName;
@@ -609,9 +681,18 @@ internal sealed class ProjectionAnalyzer
                 }
             }
 
-            if (collectionProjection.LambdaBody is AnonymousObjectCreationExpressionSyntax anonymousBody && namedContext)
+            if (
+                collectionProjection.LambdaBody
+                    is AnonymousObjectCreationExpressionSyntax anonymousBody
+                && namedContext
+            )
             {
-                var nestedDto = CreateNestedDtoModel(memberName, anonymousBody, defaultNamespace, ownerHintName);
+                var nestedDto = CreateNestedDtoModel(
+                    memberName,
+                    anonymousBody,
+                    defaultNamespace,
+                    ownerHintName
+                );
                 replacementTypes[anonymousBody] = nestedDto.FullyQualifiedName;
                 var nestedBuildResult = BuildProjectionObject(
                     anonymousBody,
@@ -655,7 +736,9 @@ internal sealed class ProjectionAnalyzer
                     );
                 }
 
-                var elementType = semanticModel.GetTypeInfo(namedBody.Type, _cancellationToken).Type;
+                var elementType = semanticModel
+                    .GetTypeInfo(namedBody.Type, _cancellationToken)
+                    .Type;
                 projectedTypeName =
                     ResolveNamedType(namedBody.Type, semanticModel, defaultNamespace)
                     ?? elementType?.ToFullyQualifiedTypeName()
@@ -689,7 +772,8 @@ internal sealed class ProjectionAnalyzer
             );
         }
 
-        var type = semanticModel.GetTypeInfo(expression, _cancellationToken).ConvertedType
+        var type =
+            semanticModel.GetTypeInfo(expression, _cancellationToken).ConvertedType
             ?? semanticModel.GetTypeInfo(expression, _cancellationToken).Type;
         return type?.ToFullyQualifiedTypeName() ?? "object";
     }
@@ -711,7 +795,9 @@ internal sealed class ProjectionAnalyzer
                 ? $"LinqraftGenerated_{hash}"
                 : $"{defaultNamespace}.LinqraftGenerated_{hash}"
             : defaultNamespace;
-        var dtoName = _configuration.NestedDtoUseHashNamespace ? dtoBaseName : $"{dtoBaseName}_{hash}";
+        var dtoName = _configuration.NestedDtoUseHashNamespace
+            ? dtoBaseName
+            : $"{dtoBaseName}_{hash}";
         var fullyQualifiedName = string.IsNullOrWhiteSpace(dtoNamespace)
             ? $"global::{dtoName}"
             : $"global::{dtoNamespace}.{dtoName}";
@@ -742,14 +828,17 @@ internal sealed class ProjectionAnalyzer
         string ownerHintName
     )
     {
-        var resultType = semanticModel.GetTypeInfo(resultTypeSyntax, _cancellationToken).Type as INamedTypeSymbol;
+        var resultType =
+            semanticModel.GetTypeInfo(resultTypeSyntax, _cancellationToken).Type
+            as INamedTypeSymbol;
         if (resultType is IErrorTypeSymbol)
         {
             resultType = null;
         }
-        var namespaceName = resultType is not null && !resultType.ContainingNamespace.IsGlobalNamespace
-            ? SymbolNameHelper.GetNamespace(resultType.ContainingNamespace)
-            : ResolveCallerNamespace(invocation, semanticModel);
+        var namespaceName =
+            resultType is not null && !resultType.ContainingNamespace.IsGlobalNamespace
+                ? SymbolNameHelper.GetNamespace(resultType.ContainingNamespace)
+                : ResolveCallerNamespace(invocation, semanticModel);
 
         if (string.IsNullOrWhiteSpace(namespaceName))
         {
@@ -763,12 +852,13 @@ internal sealed class ProjectionAnalyzer
         var fullyQualifiedName = string.IsNullOrWhiteSpace(namespaceName)
             ? $"global::{containingTypePrefix}{dtoName}"
             : $"global::{namespaceName}.{containingTypePrefix}{dtoName}";
-        var existingPropertyNames = resultType?.GetMembers()
-            .OfType<IPropertySymbol>()
-            .Select(property => property.Name)
-            .Distinct(StringComparer.Ordinal)
-            .ToList()
-            ?? new List<string>();
+        var existingPropertyNames =
+            resultType
+                ?.GetMembers()
+                .OfType<IPropertySymbol>()
+                .Select(property => property.Name)
+                .Distinct(StringComparer.Ordinal)
+                .ToList() ?? new List<string>();
 
         var dto = new GeneratedDtoModel
         {
@@ -779,24 +869,26 @@ internal sealed class ProjectionAnalyzer
             AccessibilityKeyword = resultType is null
                 ? "public"
                 : SymbolNameHelper.GetAccessibilityKeyword(resultType.DeclaredAccessibility),
-            IsRecord = resultType?.IsRecord == true || (resultType is null && _configuration.RecordGenerate),
+            IsRecord =
+                resultType?.IsRecord == true
+                || (resultType is null && _configuration.RecordGenerate),
             IsRoot = true,
             IsAutoGeneratedNested = false,
-            Documentation = DocumentationExtractor.GetTypeDocumentation(sourceType, _configuration.CommentOutput),
+            Documentation = DocumentationExtractor.GetTypeDocumentation(
+                sourceType,
+                _configuration.CommentOutput
+            ),
             OwnerHintName = ownerHintName,
             ShapeSignature = $"{fullyQualifiedName}|{GetUnqualifiedTypeName(resultTypeSyntax)}",
             ContainingTypes = GetContainingTypes(resultType),
             Properties = existingPropertyNames
-                .Select(
-                    name =>
-                        new GeneratedPropertyModel
-                        {
-                            Name = name,
-                            TypeName = string.Empty,
-                            Documentation = null,
-                            IsSuppressed = true,
-                        }
-                )
+                .Select(name => new GeneratedPropertyModel
+                {
+                    Name = name,
+                    TypeName = string.Empty,
+                    Documentation = null,
+                    IsSuppressed = true,
+                })
                 .ToList(),
         };
 
@@ -816,7 +908,10 @@ internal sealed class ProjectionAnalyzer
 
     private static void MergeDtoShape(GeneratedDtoModel existing, GeneratedDtoModel incoming)
     {
-        var merged = existing.Properties.ToDictionary(property => property.Name, StringComparer.Ordinal);
+        var merged = existing.Properties.ToDictionary(
+            property => property.Name,
+            StringComparer.Ordinal
+        );
         foreach (var property in incoming.Properties)
         {
             if (!merged.TryGetValue(property.Name, out var current))
@@ -836,7 +931,9 @@ internal sealed class ProjectionAnalyzer
 
         existing.Properties.Clear();
         existing.Properties.AddRange(
-            merged.Values.OrderByDescending(property => property.IsSuppressed).ThenBy(property => property.Name, StringComparer.Ordinal)
+            merged
+                .Values.OrderByDescending(property => property.IsSuppressed)
+                .ThenBy(property => property.Name, StringComparer.Ordinal)
         );
         existing.ShapeSignature =
             $"{existing.FullyQualifiedName}|{string.Join(";", existing.Properties.Select(property => $"{property.Name}:{property.TypeName}:{property.IsSuppressed}"))}";
@@ -849,7 +946,10 @@ internal sealed class ProjectionAnalyzer
             return incomingTypeName;
         }
 
-        if (string.IsNullOrWhiteSpace(incomingTypeName) || string.Equals(existingTypeName, incomingTypeName, StringComparison.Ordinal))
+        if (
+            string.IsNullOrWhiteSpace(incomingTypeName)
+            || string.Equals(existingTypeName, incomingTypeName, StringComparison.Ordinal)
+        )
         {
             return existingTypeName;
         }
@@ -857,17 +957,21 @@ internal sealed class ProjectionAnalyzer
         return existingTypeName;
     }
 
-    private IReadOnlyList<(string Name, ExpressionSyntax Expression)> GetProjectionMembers(ExpressionSyntax expression)
+    private IReadOnlyList<(string Name, ExpressionSyntax Expression)> GetProjectionMembers(
+        ExpressionSyntax expression
+    )
     {
         return expression switch
         {
-            AnonymousObjectCreationExpressionSyntax anonymousObject => anonymousObject.Initializers
-                .Select(initializer => (GetAnonymousMemberName(initializer), initializer.Expression))
+            AnonymousObjectCreationExpressionSyntax anonymousObject => anonymousObject
+                .Initializers.Select(initializer =>
+                    (GetAnonymousMemberName(initializer), initializer.Expression)
+                )
                 .ToList(),
-            ObjectCreationExpressionSyntax objectCreation when objectCreation.Initializer is not null => objectCreation.Initializer.Expressions
-                .OfType<AssignmentExpressionSyntax>()
-                .Select(
-                    assignment =>
+            ObjectCreationExpressionSyntax objectCreation
+                when objectCreation.Initializer is not null => objectCreation
+                .Initializer.Expressions.OfType<AssignmentExpressionSyntax>()
+                .Select(assignment =>
                     (
                         assignment.Left switch
                         {
@@ -894,8 +998,8 @@ internal sealed class ProjectionAnalyzer
             return false;
         }
 
-        var lambda = invocation.ArgumentList.Arguments
-            .Select(argument => argument.Expression)
+        var lambda = invocation
+            .ArgumentList.Arguments.Select(argument => argument.Expression)
             .OfType<LambdaExpressionSyntax>()
             .FirstOrDefault();
         if (lambda is null)
@@ -920,10 +1024,14 @@ internal sealed class ProjectionAnalyzer
         {
             Invocation = invocation,
             LambdaBody = body,
-            ExpressionType = semanticModel.GetTypeInfo(expression, _cancellationToken).Type
+            ExpressionType =
+                semanticModel.GetTypeInfo(expression, _cancellationToken).Type
                 ?? semanticModel.GetTypeInfo(expression, _cancellationToken).ConvertedType,
             ProjectionMethodName = GetInvocationName(invocation.Expression),
-            IsNestedExplicitDto = IsSelectExprInvocation(invocation) && genericArgs.Count >= 2 && body is AnonymousObjectCreationExpressionSyntax,
+            IsNestedExplicitDto =
+                IsSelectExprInvocation(invocation)
+                && genericArgs.Count >= 2
+                && body is AnonymousObjectCreationExpressionSyntax,
             NestedResultTypeSyntax = genericArgs.Count >= 2 ? genericArgs[1] : null,
             SourceTypeSyntax = genericArgs.Count >= 1 ? genericArgs[0] : null,
         };
@@ -945,14 +1053,16 @@ internal sealed class ProjectionAnalyzer
                 }
 
                 return TryFindProjectionInvocation(conditionalExpression.WhenFalse, out invocation);
-            case BinaryExpressionSyntax binaryExpression when binaryExpression.IsKind(SyntaxKind.CoalesceExpression):
+            case BinaryExpressionSyntax binaryExpression
+                when binaryExpression.IsKind(SyntaxKind.CoalesceExpression):
                 if (TryFindProjectionInvocation(binaryExpression.Left, out invocation))
                 {
                     return true;
                 }
 
                 return TryFindProjectionInvocation(binaryExpression.Right, out invocation);
-            case InvocationExpressionSyntax directInvocation when IsProjectionInvocation(directInvocation):
+            case InvocationExpressionSyntax directInvocation
+                when IsProjectionInvocation(directInvocation):
                 invocation = directInvocation;
                 return true;
             case InvocationExpressionSyntax nestedInvocation
@@ -961,13 +1071,16 @@ internal sealed class ProjectionAnalyzer
             case MemberAccessExpressionSyntax memberAccess:
                 return TryFindProjectionInvocation(memberAccess.Expression, out invocation);
             case ConditionalAccessExpressionSyntax conditionalAccess
-                when conditionalAccess.WhenNotNull is InvocationExpressionSyntax whenNotNullInvocation
+                when conditionalAccess.WhenNotNull
+                    is InvocationExpressionSyntax whenNotNullInvocation
                     && IsProjectionInvocation(whenNotNullInvocation):
                 invocation = whenNotNullInvocation;
                 return true;
             case ConditionalAccessExpressionSyntax conditionalAccess:
-                if (conditionalAccess.WhenNotNull is ExpressionSyntax whenNotNull
-                    && TryFindProjectionInvocation(whenNotNull, out invocation))
+                if (
+                    conditionalAccess.WhenNotNull is ExpressionSyntax whenNotNull
+                    && TryFindProjectionInvocation(whenNotNull, out invocation)
+                )
                 {
                     return true;
                 }
@@ -986,11 +1099,16 @@ internal sealed class ProjectionAnalyzer
         return name is "Select" or "SelectMany" or "SelectExpr";
     }
 
-    private static ProjectionPattern? ResolveProjectionPattern(ExpressionSyntax selectorBody, int typeArgumentCount)
+    private static ProjectionPattern? ResolveProjectionPattern(
+        ExpressionSyntax selectorBody,
+        int typeArgumentCount
+    )
     {
         if (selectorBody is AnonymousObjectCreationExpressionSyntax)
         {
-            return typeArgumentCount == 0 ? ProjectionPattern.Anonymous : ProjectionPattern.ExplicitDto;
+            return typeArgumentCount == 0
+                ? ProjectionPattern.Anonymous
+                : ProjectionPattern.ExplicitDto;
         }
 
         if (selectorBody is ObjectCreationExpressionSyntax)
@@ -1011,8 +1129,10 @@ internal sealed class ProjectionAnalyzer
         return lambda switch
         {
             SimpleLambdaExpressionSyntax simple => simple.Parameter.Identifier.ValueText,
-            ParenthesizedLambdaExpressionSyntax parenthesized => parenthesized.ParameterList.Parameters.FirstOrDefault()?.Identifier.ValueText
-                ?? "x",
+            ParenthesizedLambdaExpressionSyntax parenthesized => parenthesized
+                .ParameterList.Parameters.FirstOrDefault()
+                ?.Identifier.ValueText
+            ?? "x",
             _ => "x",
         };
     }
@@ -1052,8 +1172,11 @@ internal sealed class ProjectionAnalyzer
 
             var interfaceType = namedType.AllInterfaces.FirstOrDefault(candidate =>
                 candidate.TypeArguments.Length == 1
-                && (candidate.ConstructedFrom.ToDisplayString() == "System.Linq.IQueryable<T>"
-                    || candidate.ConstructedFrom.ToDisplayString() == "System.Collections.Generic.IEnumerable<T>")
+                && (
+                    candidate.ConstructedFrom.ToDisplayString() == "System.Linq.IQueryable<T>"
+                    || candidate.ConstructedFrom.ToDisplayString()
+                        == "System.Collections.Generic.IEnumerable<T>"
+                )
             );
             return interfaceType?.TypeArguments[0];
         }
@@ -1066,23 +1189,30 @@ internal sealed class ProjectionAnalyzer
         SemanticModel semanticModel
     )
     {
-        var captureArgument = invocation.ArgumentList.Arguments
-            .FirstOrDefault(argument =>
-                argument.NameColon?.Name.Identifier.ValueText == "capture"
-                || (!argument.Equals(invocation.ArgumentList.Arguments.First()) && argument.Expression is AnonymousObjectCreationExpressionSyntax)
-            );
+        var captureArgument = invocation.ArgumentList.Arguments.FirstOrDefault(argument =>
+            argument.NameColon?.Name.Identifier.ValueText == "capture"
+            || (
+                !argument.Equals(invocation.ArgumentList.Arguments.First())
+                && argument.Expression is AnonymousObjectCreationExpressionSyntax
+            )
+        );
 
-        if (captureArgument?.Expression is not AnonymousObjectCreationExpressionSyntax anonymousCapture)
+        if (
+            captureArgument?.Expression
+            is not AnonymousObjectCreationExpressionSyntax anonymousCapture
+        )
         {
             return Array.Empty<CaptureEntryModel>();
         }
 
-        return anonymousCapture.Initializers
-            .Select(
+        return anonymousCapture
+            .Initializers.Select(
                 (initializer, index) =>
                 {
                     var propertyName = GetAnonymousMemberName(initializer);
-                    var type = semanticModel.GetTypeInfo(initializer.Expression, _cancellationToken).Type;
+                    var type = semanticModel
+                        .GetTypeInfo(initializer.Expression, _cancellationToken)
+                        .Type;
                     return new CaptureEntryModel
                     {
                         PropertyName = propertyName,
@@ -1127,11 +1257,18 @@ internal sealed class ProjectionAnalyzer
     {
         return expression switch
         {
-            MemberAccessExpressionSyntax memberAccess => GetCaptureRootExpression(memberAccess.Expression),
-            ConditionalAccessExpressionSyntax conditionalAccess => GetCaptureRootExpression(conditionalAccess.Expression),
-            ElementAccessExpressionSyntax elementAccess => GetCaptureRootExpression(elementAccess.Expression),
-            InvocationExpressionSyntax invocation when invocation.Expression is MemberAccessExpressionSyntax memberAccess
-                => GetCaptureRootExpression(memberAccess.Expression),
+            MemberAccessExpressionSyntax memberAccess => GetCaptureRootExpression(
+                memberAccess.Expression
+            ),
+            ConditionalAccessExpressionSyntax conditionalAccess => GetCaptureRootExpression(
+                conditionalAccess.Expression
+            ),
+            ElementAccessExpressionSyntax elementAccess => GetCaptureRootExpression(
+                elementAccess.Expression
+            ),
+            InvocationExpressionSyntax invocation
+                when invocation.Expression is MemberAccessExpressionSyntax memberAccess =>
+                GetCaptureRootExpression(memberAccess.Expression),
             InvocationExpressionSyntax invocation => invocation,
             _ => expression,
         };
@@ -1152,7 +1289,12 @@ internal sealed class ProjectionAnalyzer
             return false;
         }
 
-        if (!expression.DescendantNodesAndSelf().OfType<InvocationExpressionSyntax>().Any(IsProjectionInvocation))
+        if (
+            !expression
+                .DescendantNodesAndSelf()
+                .OfType<InvocationExpressionSyntax>()
+                .Any(IsProjectionInvocation)
+        )
         {
             return false;
         }
@@ -1164,7 +1306,10 @@ internal sealed class ProjectionAnalyzer
             && SymbolNameHelper.IsEnumerable(type);
     }
 
-    private static string BuildCollectionTypeName(ITypeSymbol? collectionType, string elementTypeName)
+    private static string BuildCollectionTypeName(
+        ITypeSymbol? collectionType,
+        string elementTypeName
+    )
     {
         if (collectionType is IArrayTypeSymbol arrayType)
         {
@@ -1193,13 +1338,14 @@ internal sealed class ProjectionAnalyzer
         SemanticModel semanticModel
     )
     {
-        var effectiveTypeName = projectionMethodName == "SelectMany"
-            ? UnwrapProjectedTypeName(
-                projectedTypeName,
-                semanticModel.GetTypeInfo(lambdaBody, _cancellationToken).Type
-                    ?? semanticModel.GetTypeInfo(lambdaBody, _cancellationToken).ConvertedType
-            )
-            : projectedTypeName;
+        var effectiveTypeName =
+            projectionMethodName == "SelectMany"
+                ? UnwrapProjectedTypeName(
+                    projectedTypeName,
+                    semanticModel.GetTypeInfo(lambdaBody, _cancellationToken).Type
+                        ?? semanticModel.GetTypeInfo(lambdaBody, _cancellationToken).ConvertedType
+                )
+                : projectedTypeName;
 
         if (IsCollectionLikeResultExpression(expression) || IsCollectionLikeType(expressionType))
         {
@@ -1211,7 +1357,9 @@ internal sealed class ProjectionAnalyzer
 
     private static string ApplyExpressionNullability(string typeName, ITypeSymbol? expressionType)
     {
-        return expressionType?.NullableAnnotation == NullableAnnotation.Annotated && !typeName.EndsWith("?", StringComparison.Ordinal)
+        return
+            expressionType?.NullableAnnotation == NullableAnnotation.Annotated
+            && !typeName.EndsWith("?", StringComparison.Ordinal)
             ? $"{typeName}?"
             : typeName;
     }
@@ -1227,32 +1375,51 @@ internal sealed class ProjectionAnalyzer
         {
             InvocationExpressionSyntax invocation => GetInvocationName(invocation.Expression) switch
             {
-                "First" or "FirstOrDefault" or "Single" or "SingleOrDefault" or "Last" or "LastOrDefault" or "ElementAt" or "ElementAtOrDefault" => false,
+                "First"
+                or "FirstOrDefault"
+                or "Single"
+                or "SingleOrDefault"
+                or "Last"
+                or "LastOrDefault"
+                or "ElementAt"
+                or "ElementAtOrDefault" => false,
                 _ => true,
             },
-            ConditionalExpressionSyntax conditionalExpression =>
-                IsCollectionLikeResultExpression(conditionalExpression.WhenTrue)
-                && IsCollectionLikeResultExpression(conditionalExpression.WhenFalse),
-            BinaryExpressionSyntax binaryExpression when binaryExpression.IsKind(SyntaxKind.CoalesceExpression) =>
+            ConditionalExpressionSyntax conditionalExpression => IsCollectionLikeResultExpression(
+                conditionalExpression.WhenTrue
+            ) && IsCollectionLikeResultExpression(conditionalExpression.WhenFalse),
+            BinaryExpressionSyntax binaryExpression
+                when binaryExpression.IsKind(SyntaxKind.CoalesceExpression) =>
                 IsCollectionLikeResultExpression(binaryExpression.Left)
-                || IsCollectionLikeResultExpression(binaryExpression.Right),
+                    || IsCollectionLikeResultExpression(binaryExpression.Right),
             _ => false,
         };
     }
 
-    private static string UnwrapProjectedTypeName(string projectedTypeName, ITypeSymbol? lambdaBodyType)
+    private static string UnwrapProjectedTypeName(
+        string projectedTypeName,
+        ITypeSymbol? lambdaBodyType
+    )
     {
         if (lambdaBodyType is IArrayTypeSymbol arrayType)
         {
-            return arrayType.ElementType.IsAnonymousType && TryGetSingleGenericArgument(projectedTypeName, out var parsedArrayElement)
+            return
+                arrayType.ElementType.IsAnonymousType
+                && TryGetSingleGenericArgument(projectedTypeName, out var parsedArrayElement)
                 ? parsedArrayElement
                 : arrayType.ElementType.ToFullyQualifiedTypeName();
         }
 
-        if (lambdaBodyType is INamedTypeSymbol namedType && namedType.IsGenericType && namedType.TypeArguments.Length == 1)
+        if (
+            lambdaBodyType is INamedTypeSymbol namedType
+            && namedType.IsGenericType
+            && namedType.TypeArguments.Length == 1
+        )
         {
             var elementType = namedType.TypeArguments[0];
-            return elementType.IsAnonymousType && TryGetSingleGenericArgument(projectedTypeName, out var parsedElement)
+            return
+                elementType.IsAnonymousType
+                && TryGetSingleGenericArgument(projectedTypeName, out var parsedElement)
                 ? parsedElement
                 : elementType.ToFullyQualifiedTypeName();
         }
@@ -1324,10 +1491,7 @@ internal sealed class ProjectionAnalyzer
         return false;
     }
 
-    private static string ResolveCallerNamespace(
-        SyntaxNode node,
-        SemanticModel semanticModel
-    )
+    private static string ResolveCallerNamespace(SyntaxNode node, SemanticModel semanticModel)
     {
         var symbol = semanticModel.GetEnclosingSymbol(node.SpanStart);
         var namespaceName = SymbolNameHelper.GetNamespace(symbol?.ContainingNamespace);
@@ -1354,7 +1518,11 @@ internal sealed class ProjectionAnalyzer
 
         if (type is null && typeSyntax is IdentifierNameSyntax identifierName)
         {
-            type = semanticModel.LookupNamespacesAndTypes(identifierName.SpanStart, name: identifierName.Identifier.ValueText)
+            type = semanticModel
+                .LookupNamespacesAndTypes(
+                    identifierName.SpanStart,
+                    name: identifierName.Identifier.ValueText
+                )
                 .OfType<ITypeSymbol>()
                 .FirstOrDefault();
         }
@@ -1389,7 +1557,9 @@ internal sealed class ProjectionAnalyzer
         var nameSyntax = GetInvocationNameSyntax(selectExpr.Expression) as GenericNameSyntax;
         if (nameSyntax?.TypeArgumentList.Arguments.Count >= 2)
         {
-            var resultType = semanticModel.GetTypeInfo(nameSyntax.TypeArgumentList.Arguments[1]).Type;
+            var resultType = semanticModel
+                .GetTypeInfo(nameSyntax.TypeArgumentList.Arguments[1])
+                .Type;
             if (resultType is not null && resultType.DeclaredAccessibility != Accessibility.Public)
             {
                 return "internal";
@@ -1401,16 +1571,26 @@ internal sealed class ProjectionAnalyzer
 
     private static bool IsSelectExprInvocation(InvocationExpressionSyntax invocation)
     {
-        return string.Equals(GetInvocationName(invocation.Expression), "SelectExpr", StringComparison.Ordinal);
+        return string.Equals(
+            GetInvocationName(invocation.Expression),
+            "SelectExpr",
+            StringComparison.Ordinal
+        );
     }
 
     private static bool IsInsideMappingDeclaration(SyntaxNode node)
     {
-        return node.Ancestors().OfType<MemberDeclarationSyntax>().Any(
-            member => member.AttributeLists.SelectMany(list => list.Attributes).Any(
-                attribute => attribute.Name.ToString().Contains("LinqraftMappingGenerate", StringComparison.Ordinal)
-            )
-        );
+        return node.Ancestors()
+            .OfType<MemberDeclarationSyntax>()
+            .Any(member =>
+                member
+                    .AttributeLists.SelectMany(list => list.Attributes)
+                    .Any(attribute =>
+                        attribute
+                            .Name.ToString()
+                            .Contains("LinqraftMappingGenerate", StringComparison.Ordinal)
+                    )
+            );
     }
 
     private static ExpressionSyntax? GetReceiverExpression(InvocationExpressionSyntax invocation)
@@ -1465,8 +1645,11 @@ internal sealed class ProjectionAnalyzer
     private static string? GetMappingMethodName(ImmutableArray<AttributeData> attributes)
     {
         return attributes
-            .FirstOrDefault(attribute => attribute.AttributeClass?.Name == "LinqraftMappingGenerateAttribute")
-            ?.ConstructorArguments.FirstOrDefault().Value as string;
+                .FirstOrDefault(attribute =>
+                    attribute.AttributeClass?.Name == "LinqraftMappingGenerateAttribute"
+                )
+                ?.ConstructorArguments.FirstOrDefault()
+                .Value as string;
     }
 
     private static IReadOnlyList<ContainingTypeInfo> GetContainingTypes(INamedTypeSymbol? symbol)
@@ -1483,7 +1666,9 @@ internal sealed class ProjectionAnalyzer
             stack.Push(
                 new ContainingTypeInfo
                 {
-                    AccessibilityKeyword = SymbolNameHelper.GetAccessibilityKeyword(current.DeclaredAccessibility),
+                    AccessibilityKeyword = SymbolNameHelper.GetAccessibilityKeyword(
+                        current.DeclaredAccessibility
+                    ),
                     DeclarationKeyword = current.IsRecord ? "record" : "class",
                     Name = current.Name,
                 }
@@ -1498,13 +1683,24 @@ internal sealed class ProjectionAnalyzer
     {
         var canonicalized = node switch
         {
-            AnonymousObjectCreationExpressionSyntax anonymousObject => NormalizeAnonymousObject(anonymousObject),
-            ObjectCreationExpressionSyntax objectCreation when objectCreation.Initializer is not null => NormalizeObjectCreation(objectCreation),
+            AnonymousObjectCreationExpressionSyntax anonymousObject => NormalizeAnonymousObject(
+                anonymousObject
+            ),
+            ObjectCreationExpressionSyntax objectCreation
+                when objectCreation.Initializer is not null => NormalizeObjectCreation(
+                objectCreation
+            ),
             InitializerExpressionSyntax initializer => NormalizeInitializer(initializer),
-            AssignmentExpressionSyntax assignment => $"{NormalizeWhitespace(assignment.Left)} = {NormalizeWhitespace(assignment.Right)}",
-            CollectionExpressionSyntax collectionExpression => NormalizeCollectionExpression(collectionExpression),
-            ExpressionElementSyntax expressionElement => NormalizeWhitespace(expressionElement.Expression),
-            SpreadElementSyntax spreadElement => $"..{NormalizeWhitespace(spreadElement.Expression)}",
+            AssignmentExpressionSyntax assignment =>
+                $"{NormalizeWhitespace(assignment.Left)} = {NormalizeWhitespace(assignment.Right)}",
+            CollectionExpressionSyntax collectionExpression => NormalizeCollectionExpression(
+                collectionExpression
+            ),
+            ExpressionElementSyntax expressionElement => NormalizeWhitespace(
+                expressionElement.Expression
+            ),
+            SpreadElementSyntax spreadElement =>
+                $"..{NormalizeWhitespace(spreadElement.Expression)}",
             _ => node.WithoutTrivia().NormalizeWhitespace().ToFullString(),
         };
 
@@ -1514,17 +1710,21 @@ internal sealed class ProjectionAnalyzer
         );
     }
 
-    private static string NormalizeAnonymousObject(AnonymousObjectCreationExpressionSyntax anonymousObject)
+    private static string NormalizeAnonymousObject(
+        AnonymousObjectCreationExpressionSyntax anonymousObject
+    )
     {
-        var initializers = anonymousObject.Initializers.Select(
-            initializer => $"{GetAnonymousMemberName(initializer)} = {NormalizeWhitespace(initializer.Expression)}"
+        var initializers = anonymousObject.Initializers.Select(initializer =>
+            $"{GetAnonymousMemberName(initializer)} = {NormalizeWhitespace(initializer.Expression)}"
         );
         return $"new {{ {string.Join(", ", initializers)} }}";
     }
 
     private static string NormalizeObjectCreation(ObjectCreationExpressionSyntax objectCreation)
     {
-        var arguments = objectCreation.ArgumentList is null ? string.Empty : NormalizeWhitespace(objectCreation.ArgumentList);
+        var arguments = objectCreation.ArgumentList is null
+            ? string.Empty
+            : NormalizeWhitespace(objectCreation.ArgumentList);
         return $"new {NormalizeWhitespace(objectCreation.Type)}{arguments} {NormalizeInitializer(objectCreation.Initializer!)}";
     }
 
@@ -1534,13 +1734,18 @@ internal sealed class ProjectionAnalyzer
         return $"{{ {string.Join(", ", items)} }}";
     }
 
-    private static string NormalizeCollectionExpression(CollectionExpressionSyntax collectionExpression)
+    private static string NormalizeCollectionExpression(
+        CollectionExpressionSyntax collectionExpression
+    )
     {
-        var elements = collectionExpression.Elements.Select(
-            element => element switch
+        var elements = collectionExpression.Elements.Select(element =>
+            element switch
             {
-                ExpressionElementSyntax expressionElement => NormalizeWhitespace(expressionElement.Expression),
-                SpreadElementSyntax spreadElement => $"..{NormalizeWhitespace(spreadElement.Expression)}",
+                ExpressionElementSyntax expressionElement => NormalizeWhitespace(
+                    expressionElement.Expression
+                ),
+                SpreadElementSyntax spreadElement =>
+                    $"..{NormalizeWhitespace(spreadElement.Expression)}",
                 _ => NormalizeWhitespace(element),
             }
         );

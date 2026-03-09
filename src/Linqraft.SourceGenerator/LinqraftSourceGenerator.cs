@@ -14,12 +14,17 @@ public sealed class LinqraftSourceGenerator : IIncrementalGenerator
 {
     public void Initialize(IncrementalGeneratorInitializationContext context)
     {
-        context.RegisterPostInitializationOutput(
-            static output => output.AddSource("Linqraft.Declarations.g.cs", SupportSourceEmitter.CreateSupportSource())
+        context.RegisterPostInitializationOutput(static output =>
+            output.AddSource(
+                "Linqraft.Declarations.g.cs",
+                SupportSourceEmitter.CreateSupportSource()
+            )
         );
 
         var selectExprInvocations = context.SyntaxProvider.CreateSyntaxProvider(
-            static (node, _) => node is InvocationExpressionSyntax invocation && IsPotentialSelectExprInvocation(invocation),
+            static (node, _) =>
+                node is InvocationExpressionSyntax invocation
+                && IsPotentialSelectExprInvocation(invocation),
             static (syntaxContext, _) => (InvocationExpressionSyntax)syntaxContext.Node
         );
 
@@ -39,8 +44,8 @@ public sealed class LinqraftSourceGenerator : IIncrementalGenerator
             static (provider, _) => LinqraftConfiguration.Parse(provider.GlobalOptions)
         );
 
-        var pipeline = context.CompilationProvider
-            .Combine(configuration)
+        var pipeline = context
+            .CompilationProvider.Combine(configuration)
             .Combine(selectExprInvocations.Collect())
             .Combine(mappingClasses.Collect())
             .Combine(mappingMethods.Collect());
@@ -49,7 +54,10 @@ public sealed class LinqraftSourceGenerator : IIncrementalGenerator
             pipeline,
             static (output, data) =>
             {
-                var ((((compilation, configuration), selectExprs), mappingClassDeclarations), mappingMethodDeclarations) = data;
+                var (
+                    (((compilation, configuration), selectExprs), mappingClassDeclarations),
+                    mappingMethodDeclarations
+                ) = data;
                 var analyzer = new ProjectionAnalyzer(
                     compilation,
                     configuration,
@@ -61,8 +69,8 @@ public sealed class LinqraftSourceGenerator : IIncrementalGenerator
                 analyzer.AnalyzeMappingClasses(mappingClassDeclarations);
                 analyzer.AnalyzeMappingMethods(mappingMethodDeclarations);
 
-                var dtosByOwner = analyzer.GeneratedDtos
-                    .GroupBy(dto => dto.OwnerHintName, StringComparer.Ordinal)
+                var dtosByOwner = analyzer
+                    .GeneratedDtos.GroupBy(dto => dto.OwnerHintName, StringComparer.Ordinal)
                     .ToDictionary(
                         group => group.Key,
                         group => (IReadOnlyCollection<GeneratedDtoModel>)group.ToList(),
@@ -102,7 +110,11 @@ public sealed class LinqraftSourceGenerator : IIncrementalGenerator
                     );
                 }
 
-                foreach (var dto in analyzer.GeneratedDtos.Where(dto => !emittedOwners.Contains(dto.OwnerHintName)))
+                foreach (
+                    var dto in analyzer.GeneratedDtos.Where(dto =>
+                        !emittedOwners.Contains(dto.OwnerHintName)
+                    )
+                )
                 {
                     output.AddSource(
                         $"{SymbolNameHelper.SanitizeHintName(dto.Key)}.g.cs",
@@ -117,8 +129,10 @@ public sealed class LinqraftSourceGenerator : IIncrementalGenerator
     {
         return invocation.Expression switch
         {
-            MemberAccessExpressionSyntax memberAccess when memberAccess.Name.Identifier.ValueText == "SelectExpr" => true,
-            GenericNameSyntax genericName when genericName.Identifier.ValueText == "SelectExpr" => true,
+            MemberAccessExpressionSyntax memberAccess
+                when memberAccess.Name.Identifier.ValueText == "SelectExpr" => true,
+            GenericNameSyntax genericName when genericName.Identifier.ValueText == "SelectExpr" =>
+                true,
             _ => false,
         };
     }

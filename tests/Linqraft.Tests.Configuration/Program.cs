@@ -32,11 +32,9 @@ public sealed class GlobalPropertyConfigurationTests
             {
                 order.Id,
                 CustomerName = order.Customer?.Name,
-                Items = order.Items?.Select(item => new
-                {
-                    item.ProductName,
-                    item.Quantity,
-                }).ToList(),
+                Items = order
+                    .Items?.Select(item => new { item.ProductName, item.Quantity })
+                    .ToList(),
             })
             .ToList();
 
@@ -57,8 +55,12 @@ public sealed class GlobalPropertyConfigurationTests
         var idProperty = typeof(ConfiguredOrderDto).GetProperty(nameof(ConfiguredOrderDto.Id))!;
         idProperty.SetMethod.ShouldNotBeNull();
         idProperty.SetMethod!.IsAssembly.ShouldBeTrue();
-        typeof(ConfiguredOrderDto).GetCustomAttributes(typeof(RequiredMemberAttribute), inherit: false).ShouldBeEmpty();
-        idProperty.GetCustomAttributes(typeof(RequiredMemberAttribute), inherit: false).ShouldBeEmpty();
+        typeof(ConfiguredOrderDto)
+            .GetCustomAttributes(typeof(RequiredMemberAttribute), inherit: false)
+            .ShouldBeEmpty();
+        idProperty
+            .GetCustomAttributes(typeof(RequiredMemberAttribute), inherit: false)
+            .ShouldBeEmpty();
 
         results[1].Items.ShouldBeNull();
     }
@@ -66,7 +68,12 @@ public sealed class GlobalPropertyConfigurationTests
     [Test]
     public void Generated_files_reflect_non_runtime_property_settings()
     {
-        var generatedRoot = Path.Combine(GetRepositoryRoot(), "tests", "Linqraft.Tests.Configuration", ".generated");
+        var generatedRoot = Path.Combine(
+            GetRepositoryRoot(),
+            "tests",
+            "Linqraft.Tests.Configuration",
+            ".generated"
+        );
         Directory.Exists(generatedRoot).ShouldBeTrue();
 
         var generatedSources = Directory
@@ -76,20 +83,33 @@ public sealed class GlobalPropertyConfigurationTests
 
         generatedSources.ShouldNotBeEmpty();
 
-        var dtoSource = generatedSources.First(source => source.Contains("partial record ConfiguredOrderDto"));
+        var dtoSource = generatedSources.First(source =>
+            source.Contains("partial record ConfiguredOrderDto")
+        );
         dtoSource.Contains("/// <summary>").ShouldBeFalse();
 
         generatedSources
-            .Any(source => source.Contains("ConfiguredOrderDto") && source.Contains("private static readonly global::System.Linq.Expressions.Expression"))
+            .Any(source =>
+                source.Contains("ConfiguredOrderDto")
+                && source.Contains(
+                    "private static readonly global::System.Linq.Expressions.Expression"
+                )
+            )
             .ShouldBeTrue();
     }
 
     [Test]
     public void Generated_support_file_uses_declarations_name()
     {
-        var generatedRoot = Path.Combine(GetRepositoryRoot(), "tests", "Linqraft.Tests.Configuration", ".generated");
+        var generatedRoot = Path.Combine(
+            GetRepositoryRoot(),
+            "tests",
+            "Linqraft.Tests.Configuration",
+            ".generated"
+        );
 
-        Directory.GetFiles(generatedRoot, "Linqraft.Declarations.g.cs", SearchOption.AllDirectories)
+        Directory
+            .GetFiles(generatedRoot, "Linqraft.Declarations.g.cs", SearchOption.AllDirectories)
             .ShouldNotBeEmpty();
     }
 
@@ -106,16 +126,17 @@ public sealed class GlobalPropertyConfigurationTests
         var offset = 5;
         var results = Orders
             .AsQueryable()
-            .SelectExpr(order => new
-            {
-                order.Id,
-                OffsetId = order.Id + offset,
-            }, new { offset })
+            .SelectExpr(order => new { order.Id, OffsetId = order.Id + offset }, new { offset })
             .ToList();
 
         results.Select(result => result.OffsetId).ShouldBe([6, 7]);
 
-        var generatedRoot = Path.Combine(GetRepositoryRoot(), "tests", "Linqraft.Tests.Configuration", ".generated");
+        var generatedRoot = Path.Combine(
+            GetRepositoryRoot(),
+            "tests",
+            "Linqraft.Tests.Configuration",
+            ".generated"
+        );
         var captureSource = Directory
             .GetFiles(generatedRoot, "SelectExpr_*.g.cs", SearchOption.AllDirectories)
             .OrderByDescending(path => File.GetLastWriteTimeUtc(path))
@@ -131,22 +152,29 @@ public sealed class GlobalPropertyConfigurationTests
 
         captureSource.Contains("GetProperty(\"offset\"", StringComparison.Ordinal).ShouldBeTrue();
         captureSource.Contains("LinqraftCaptureHelper", StringComparison.Ordinal).ShouldBeFalse();
-        declarationsSource.Contains("LinqraftCaptureHelper", StringComparison.Ordinal).ShouldBeFalse();
+        declarationsSource
+            .Contains("LinqraftCaptureHelper", StringComparison.Ordinal)
+            .ShouldBeFalse();
     }
 
     [Test]
     public void Generated_projection_source_formats_nested_linq_over_multiple_lines()
     {
-        var generatedRoot = Path.Combine(GetRepositoryRoot(), "tests", "Linqraft.Tests.Configuration", ".generated");
+        var generatedRoot = Path.Combine(
+            GetRepositoryRoot(),
+            "tests",
+            "Linqraft.Tests.Configuration",
+            ".generated"
+        );
         var projectionFile = Directory
             .GetFiles(generatedRoot, "SelectExpr_*.g.cs", SearchOption.AllDirectories)
-            .Where(path => File.ReadAllText(path).Contains("Items = order.Items", StringComparison.Ordinal))
+            .Where(path =>
+                File.ReadAllText(path).Contains("Items = order.Items", StringComparison.Ordinal)
+            )
             .OrderByDescending(path => File.GetLastWriteTimeUtc(path))
             .First();
         var projectionSource = File.ReadAllText(projectionFile);
-        var lines = projectionSource
-            .Replace("\r\n", "\n", StringComparison.Ordinal)
-            .Split('\n');
+        var lines = projectionSource.Replace("\r\n", "\n", StringComparison.Ordinal).Split('\n');
 
         var itemsLineIndex = Array.FindIndex(
             lines,
@@ -155,16 +183,17 @@ public sealed class GlobalPropertyConfigurationTests
 
         itemsLineIndex.ShouldBeGreaterThanOrEqualTo(0);
         lines[itemsLineIndex + 1].Trim().ShouldBe("? order.Items");
-        lines[itemsLineIndex + 2].Trim().ShouldStartWith(".Select(item => new global::GlobalGenerated.ItemsDto_");
+        lines[itemsLineIndex + 2]
+            .Trim()
+            .ShouldStartWith(".Select(item => new global::GlobalGenerated.ItemsDto_");
         lines[itemsLineIndex + 3].Trim().ShouldBe("ProductName = item.ProductName,");
         lines[itemsLineIndex + 4].Trim().ShouldBe("Quantity = item.Quantity,");
         lines[itemsLineIndex + 5].Trim().ShouldBe("})");
         lines[itemsLineIndex + 6].Trim().ShouldBe(".ToList()");
         lines[itemsLineIndex + 7].Trim().ShouldBe(": null,");
-        projectionSource.Contains(
-            "Items = order.Items != null ? order.Items.Select(",
-            StringComparison.Ordinal
-        ).ShouldBeFalse();
+        projectionSource
+            .Contains("Items = order.Items != null ? order.Items.Select(", StringComparison.Ordinal)
+            .ShouldBeFalse();
     }
 
     private static string GetRepositoryRoot()
@@ -172,8 +201,10 @@ public sealed class GlobalPropertyConfigurationTests
         var directory = new DirectoryInfo(AppContext.BaseDirectory);
         while (directory is not null)
         {
-            if (File.Exists(Path.Combine(directory.FullName, "README.md"))
-                && Directory.Exists(Path.Combine(directory.FullName, "src")))
+            if (
+                File.Exists(Path.Combine(directory.FullName, "README.md"))
+                && Directory.Exists(Path.Combine(directory.FullName, "src"))
+            )
             {
                 return directory.FullName;
             }

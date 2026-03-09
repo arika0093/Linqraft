@@ -442,11 +442,16 @@ public sealed class AnalyzerSmokeTests
             assemblyName: "AnalyzerTests",
             syntaxTrees: [syntaxTree],
             references: GetMetadataReferences(),
-            options: new CSharpCompilationOptions(OutputKind.DynamicallyLinkedLibrary, nullableContextOptions: NullableContextOptions.Enable)
+            options: new CSharpCompilationOptions(
+                OutputKind.DynamicallyLinkedLibrary,
+                nullableContextOptions: NullableContextOptions.Enable
+            )
         );
 
         var analyzer = new LinqraftCompositeAnalyzer();
-        var compilationWithAnalyzers = compilation.WithAnalyzers(ImmutableArray.Create<DiagnosticAnalyzer>(analyzer));
+        var compilationWithAnalyzers = compilation.WithAnalyzers(
+            ImmutableArray.Create<DiagnosticAnalyzer>(analyzer)
+        );
         return await compilationWithAnalyzers.GetAnalyzerDiagnosticsAsync();
     }
 
@@ -462,16 +467,18 @@ public sealed class AnalyzerSmokeTests
             typeof(Task).Assembly,
         };
 
-        foreach (var assemblyName in new[]
-        {
-            "System.Runtime",
-            "netstandard",
-            "System.Collections",
-            "System.Linq",
-            "System.Linq.Queryable",
-            "System.Linq.Expressions",
-            "System.Threading.Tasks",
-        })
+        foreach (
+            var assemblyName in new[]
+            {
+                "System.Runtime",
+                "netstandard",
+                "System.Collections",
+                "System.Linq",
+                "System.Linq.Queryable",
+                "System.Linq.Expressions",
+                "System.Threading.Tasks",
+            }
+        )
         {
             try
             {
@@ -483,8 +490,8 @@ public sealed class AnalyzerSmokeTests
             }
         }
 
-        return AppDomain.CurrentDomain
-            .GetAssemblies()
+        return AppDomain
+            .CurrentDomain.GetAssemblies()
             .Concat(explicitAssemblies)
             .Where(assembly => !assembly.IsDynamic && !string.IsNullOrWhiteSpace(assembly.Location))
             .Where(assembly =>

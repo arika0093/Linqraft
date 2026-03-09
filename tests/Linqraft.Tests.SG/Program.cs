@@ -17,7 +17,11 @@ public sealed class SourceGeneratorSmokeTests
         var driver = CreateDriver();
         var compilation = CreateCompilation(CreateProjectionTree(), CreateMarkerTree("initial"));
 
-        driver = driver.RunGeneratorsAndUpdateCompilation(compilation, out var outputCompilation, out var diagnostics);
+        driver = driver.RunGeneratorsAndUpdateCompilation(
+            compilation,
+            out var outputCompilation,
+            out var diagnostics
+        );
 
         diagnostics.ShouldBeEmpty();
         outputCompilation
@@ -29,15 +33,19 @@ public sealed class SourceGeneratorSmokeTests
 
         var generatedSources = GetGeneratedSourceMap(driver.GetRunResult());
         generatedSources.ShouldNotBeEmpty();
-        generatedSources.Keys.Any(path => path.EndsWith("Linqraft.Declarations.g.cs", StringComparison.Ordinal))
+        generatedSources
+            .Keys.Any(path => path.EndsWith("Linqraft.Declarations.g.cs", StringComparison.Ordinal))
             .ShouldBeTrue();
-        generatedSources.Keys.Count(path => path.Contains("SelectExpr_", StringComparison.Ordinal))
+        generatedSources
+            .Keys.Count(path => path.Contains("SelectExpr_", StringComparison.Ordinal))
             .ShouldBe(2);
-        generatedSources.Values.Any(source =>
+        generatedSources
+            .Values.Any(source =>
                 source.Contains("partial class SmokeOrderSummaryDto", StringComparison.Ordinal)
             )
             .ShouldBeTrue();
-        generatedSources.Values.Any(source =>
+        generatedSources
+            .Values.Any(source =>
                 source.Contains("partial class SmokeOrderTotalsDto", StringComparison.Ordinal)
             )
             .ShouldBeTrue();
@@ -89,17 +97,17 @@ public sealed class SourceGeneratorSmokeTests
         var secondRunResult = driver.GetRunResult();
         var secondGeneratedSources = GetGeneratedSourceMap(secondRunResult);
         secondGeneratedSources.Count.ShouldBe(firstGeneratedSources.Count);
-        foreach (var entry in firstGeneratedSources.OrderBy(pair => pair.Key, StringComparer.Ordinal))
+        foreach (
+            var entry in firstGeneratedSources.OrderBy(pair => pair.Key, StringComparer.Ordinal)
+        )
         {
             secondGeneratedSources.ContainsKey(entry.Key).ShouldBeTrue();
             secondGeneratedSources[entry.Key].ShouldBe(entry.Value);
         }
 
         var trackedStepReasons = secondRunResult
-            .Results
-            .Single()
-            .TrackedSteps
-            .SelectMany(pair => pair.Value)
+            .Results.Single()
+            .TrackedSteps.SelectMany(pair => pair.Value)
             .SelectMany(step => step.Outputs, (step, output) => output.Item2)
             .ToArray();
         var trackedStepReasonSummary = string.Join(
@@ -238,13 +246,13 @@ public sealed class SourceGeneratorSmokeTests
         );
     }
 
-    private static Dictionary<string, string> GetGeneratedSourceMap(GeneratorDriverRunResult runResult)
+    private static Dictionary<string, string> GetGeneratedSourceMap(
+        GeneratorDriverRunResult runResult
+    )
     {
         return runResult
-            .Results
-            .Single()
-            .GeneratedSources
-            .OrderBy(source => source.HintName, StringComparer.Ordinal)
+            .Results.Single()
+            .GeneratedSources.OrderBy(source => source.HintName, StringComparer.Ordinal)
             .ToDictionary(
                 source => source.HintName,
                 source => source.SourceText.ToString(),
@@ -263,7 +271,15 @@ public sealed class SourceGeneratorSmokeTests
             typeof(System.Runtime.CompilerServices.DynamicAttribute).Assembly,
         };
 
-        foreach (var assemblyName in new[] { "System.Runtime", "netstandard", "System.Collections", "System.Linq" })
+        foreach (
+            var assemblyName in new[]
+            {
+                "System.Runtime",
+                "netstandard",
+                "System.Collections",
+                "System.Linq",
+            }
+        )
         {
             try
             {
@@ -275,8 +291,8 @@ public sealed class SourceGeneratorSmokeTests
             }
         }
 
-        return AppDomain.CurrentDomain
-            .GetAssemblies()
+        return AppDomain
+            .CurrentDomain.GetAssemblies()
             .Concat(explicitAssemblies)
             .Where(assembly => !assembly.IsDynamic && !string.IsNullOrWhiteSpace(assembly.Location))
             .Where(assembly =>
@@ -318,9 +334,8 @@ public sealed class SourceGeneratorSmokeTests
         }
     }
 
-    private sealed class TestAnalyzerConfigOptions(
-        IReadOnlyDictionary<string, string> values
-    ) : AnalyzerConfigOptions
+    private sealed class TestAnalyzerConfigOptions(IReadOnlyDictionary<string, string> values)
+        : AnalyzerConfigOptions
     {
         public override bool TryGetValue(string key, out string value)
         {

@@ -36,8 +36,18 @@ public sealed class GeneratedProjectionRuntimeTests
 
     private static readonly List<ProjectionPerson> People =
     [
-        new() { Id = 1, FirstName = "Ada", LastName = "Lovelace" },
-        new() { Id = 2, FirstName = "Grace", LastName = "Hopper" },
+        new()
+        {
+            Id = 1,
+            FirstName = "Ada",
+            LastName = "Lovelace",
+        },
+        new()
+        {
+            Id = 2,
+            FirstName = "Grace",
+            LastName = "Hopper",
+        },
     ];
 
     private static readonly List<ProjectionInvoice> Invoices =
@@ -126,11 +136,7 @@ public sealed class GeneratedProjectionRuntimeTests
         var result = Invoices
             .AsQueryable()
             .SelectExpr<ProjectionInvoice, ProjectionDecisionDto>(
-                invoice => new
-                {
-                    invoice.Id,
-                    IsLarge = invoice.Total >= threshold,
-                },
+                invoice => new { invoice.Id, IsLarge = invoice.Total >= threshold },
                 new { threshold }
             )
             .ToList();
@@ -147,11 +153,7 @@ public sealed class GeneratedProjectionRuntimeTests
         var source = TrackingQueryable.Create<ProjectionInvoice>();
 
         var result = source.SelectExpr<ProjectionInvoice, ProjectionDecisionDto>(
-            invoice => new
-            {
-                invoice.Id,
-                IsLarge = invoice.Total >= threshold,
-            },
+            invoice => new { invoice.Id, IsLarge = invoice.Total >= threshold },
             new { threshold }
         );
 
@@ -174,7 +176,9 @@ public sealed class GeneratedProjectionRuntimeTests
         result.Count.ShouldBe(2);
         result[0].Id.ShouldBe(1);
         result[0].CustomerName.ShouldBe("Ada");
-        typeof(ProjectionDeclaredOrderDto).GetProperty(nameof(ProjectionDeclaredOrderDto.Id))!.SetMethod!.IsPrivate.ShouldBeTrue();
+        typeof(ProjectionDeclaredOrderDto)
+            .GetProperty(nameof(ProjectionDeclaredOrderDto.Id))!
+            .SetMethod!.IsPrivate.ShouldBeTrue();
     }
 }
 
@@ -237,9 +241,7 @@ internal static class TrackingQueryable
 internal sealed class TrackingQueryable<T> : IQueryable<T>
 {
     public TrackingQueryable(TrackingQueryProvider provider)
-        : this(provider, null)
-    {
-    }
+        : this(provider, null) { }
 
     public TrackingQueryable(TrackingQueryProvider provider, Expression? expression)
     {
@@ -263,11 +265,12 @@ internal sealed class TrackingQueryProvider : IQueryProvider
     public IQueryable CreateQuery(Expression expression)
     {
         var elementType = expression.Type.GetGenericArguments().Last();
-        return (IQueryable)Activator.CreateInstance(
-            typeof(TrackingQueryable<>).MakeGenericType(elementType),
-            this,
-            expression
-        )!;
+        return (IQueryable)
+            Activator.CreateInstance(
+                typeof(TrackingQueryable<>).MakeGenericType(elementType),
+                this,
+                expression
+            )!;
     }
 
     public IQueryable<TElement> CreateQuery<TElement>(Expression expression)

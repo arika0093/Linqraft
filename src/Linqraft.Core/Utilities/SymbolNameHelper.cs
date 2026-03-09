@@ -6,13 +6,12 @@ namespace Linqraft.Core.Utilities;
 
 internal static class SymbolNameHelper
 {
-    private static readonly SymbolDisplayFormat FullyQualifiedFormat =
-        SymbolDisplayFormat.FullyQualifiedFormat
-            .WithGlobalNamespaceStyle(SymbolDisplayGlobalNamespaceStyle.Included)
-            .WithMiscellaneousOptions(
-                SymbolDisplayMiscellaneousOptions.IncludeNullableReferenceTypeModifier
+    private static readonly SymbolDisplayFormat FullyQualifiedFormat = SymbolDisplayFormat
+        .FullyQualifiedFormat.WithGlobalNamespaceStyle(SymbolDisplayGlobalNamespaceStyle.Included)
+        .WithMiscellaneousOptions(
+            SymbolDisplayMiscellaneousOptions.IncludeNullableReferenceTypeModifier
                 | SymbolDisplayMiscellaneousOptions.ExpandNullable
-            );
+        );
 
     public static string ToFullyQualifiedTypeName(this ITypeSymbol symbol)
     {
@@ -78,7 +77,10 @@ internal static class SymbolNameHelper
             return false;
         }
 
-        if (symbol is INamedTypeSymbol namedType && namedType.ConstructedFrom.ToDisplayString() == metadataName)
+        if (
+            symbol is INamedTypeSymbol namedType
+            && namedType.ConstructedFrom.ToDisplayString() == metadataName
+        )
         {
             return true;
         }

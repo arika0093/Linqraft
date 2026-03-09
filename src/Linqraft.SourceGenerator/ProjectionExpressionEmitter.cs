@@ -17,23 +17,22 @@ internal sealed class AnonymousReplacementRewriter : CSharpSyntaxRewriter
         _replacementTypes = replacementTypes;
     }
 
-    public override SyntaxNode? VisitAnonymousObjectCreationExpression(AnonymousObjectCreationExpressionSyntax node)
+    public override SyntaxNode? VisitAnonymousObjectCreationExpression(
+        AnonymousObjectCreationExpressionSyntax node
+    )
     {
         if (!_replacementTypes.TryGetValue(node, out var targetType))
         {
             return base.VisitAnonymousObjectCreationExpression(node);
         }
 
-        var assignments = node.Initializers
-            .Select(
-                initializer =>
-                {
-                    var visited = Visit(initializer.Expression);
-                    var value = visited as ExpressionSyntax ?? initializer.Expression;
-                    var memberName = GetMemberName(initializer);
-                    return $"{memberName} = {value}";
-                }
-            );
+        var assignments = node.Initializers.Select(initializer =>
+        {
+            var visited = Visit(initializer.Expression);
+            var value = visited as ExpressionSyntax ?? initializer.Expression;
+            var memberName = GetMemberName(initializer);
+            return $"{memberName} = {value}";
+        });
 
         var text = $"new {targetType} {{ {string.Join(", ", assignments)} }}";
         return SyntaxFactory.ParseExpression(text).WithTriviaFrom(node);
@@ -91,29 +90,49 @@ internal sealed class ProjectionExpressionEmitter
 
         return expression switch
         {
-            AnonymousObjectCreationExpressionSyntax anonymousObject => EmitAnonymousObject(anonymousObject),
+            AnonymousObjectCreationExpressionSyntax anonymousObject => EmitAnonymousObject(
+                anonymousObject
+            ),
             ObjectCreationExpressionSyntax objectCreation => EmitObjectCreation(objectCreation),
-            CollectionExpressionSyntax collectionExpression => EmitCollectionExpression(collectionExpression),
+            CollectionExpressionSyntax collectionExpression => EmitCollectionExpression(
+                collectionExpression
+            ),
             InvocationExpressionSyntax invocation => EmitInvocation(invocation),
-            MemberAccessExpressionSyntax memberAccess => $"{Emit(memberAccess.Expression)}.{EmitSimpleName(memberAccess.Name)}",
-            ElementAccessExpressionSyntax elementAccess => $"{Emit(elementAccess.Expression)}{EmitBracketArguments(elementAccess.ArgumentList)}",
-            ConditionalExpressionSyntax conditionalExpression => EmitConditionalExpression(conditionalExpression),
+            MemberAccessExpressionSyntax memberAccess =>
+                $"{Emit(memberAccess.Expression)}.{EmitSimpleName(memberAccess.Name)}",
+            ElementAccessExpressionSyntax elementAccess =>
+                $"{Emit(elementAccess.Expression)}{EmitBracketArguments(elementAccess.ArgumentList)}",
+            ConditionalExpressionSyntax conditionalExpression => EmitConditionalExpression(
+                conditionalExpression
+            ),
             BinaryExpressionSyntax binaryExpression => EmitBinaryExpression(binaryExpression),
-            PrefixUnaryExpressionSyntax prefixUnary => $"{prefixUnary.OperatorToken.Text}{Emit(prefixUnary.Operand)}",
-            PostfixUnaryExpressionSyntax postfixUnary => $"{Emit(postfixUnary.Operand)}{postfixUnary.OperatorToken.Text}",
+            PrefixUnaryExpressionSyntax prefixUnary =>
+                $"{prefixUnary.OperatorToken.Text}{Emit(prefixUnary.Operand)}",
+            PostfixUnaryExpressionSyntax postfixUnary =>
+                $"{Emit(postfixUnary.Operand)}{postfixUnary.OperatorToken.Text}",
             ParenthesizedExpressionSyntax parenthesized => $"({Emit(parenthesized.Expression)})",
-            CastExpressionSyntax castExpression => $"({QualifyType(castExpression.Type)}){Emit(castExpression.Expression)}",
-            AssignmentExpressionSyntax assignment => $"{Emit(assignment.Left)} {assignment.OperatorToken.Text} {Emit(assignment.Right)}",
-            SimpleLambdaExpressionSyntax lambda => EmitLambda(lambda.Parameter.Identifier.ValueText, lambda.Body),
-            ParenthesizedLambdaExpressionSyntax lambda => EmitLambda($"({string.Join(", ", lambda.ParameterList.Parameters.Select(parameter => parameter.Identifier.ValueText))})", lambda.Body),
+            CastExpressionSyntax castExpression =>
+                $"({QualifyType(castExpression.Type)}){Emit(castExpression.Expression)}",
+            AssignmentExpressionSyntax assignment =>
+                $"{Emit(assignment.Left)} {assignment.OperatorToken.Text} {Emit(assignment.Right)}",
+            SimpleLambdaExpressionSyntax lambda => EmitLambda(
+                lambda.Parameter.Identifier.ValueText,
+                lambda.Body
+            ),
+            ParenthesizedLambdaExpressionSyntax lambda => EmitLambda(
+                $"({string.Join(", ", lambda.ParameterList.Parameters.Select(parameter => parameter.Identifier.ValueText))})",
+                lambda.Body
+            ),
             IdentifierNameSyntax identifier => EmitIdentifier(identifier),
             GenericNameSyntax genericName => EmitSimpleName(genericName),
             ThisExpressionSyntax => "this",
             BaseExpressionSyntax => "base",
             LiteralExpressionSyntax => expression.ToString(),
             InterpolatedStringExpressionSyntax => expression.ToString(),
-            TypeOfExpressionSyntax typeOfExpression => $"typeof({QualifyType(typeOfExpression.Type)})",
-            DefaultExpressionSyntax defaultExpression => $"default({QualifyType(defaultExpression.Type)})",
+            TypeOfExpressionSyntax typeOfExpression =>
+                $"typeof({QualifyType(typeOfExpression.Type)})",
+            DefaultExpressionSyntax defaultExpression =>
+                $"default({QualifyType(defaultExpression.Type)})",
             InitializerExpressionSyntax initializer => EmitInitializer(initializer),
             ImplicitArrayCreationExpressionSyntax => expression.ToString(),
             ArrayCreationExpressionSyntax => expression.ToString(),
@@ -126,23 +145,22 @@ internal sealed class ProjectionExpressionEmitter
         var replacementType = _replacementTypes.TryGetValue(expression, out var resolvedType)
             ? resolvedType
             : null;
-        var initializers = expression.Initializers
-            .Select(
-                initializer =>
+        var initializers = expression
+            .Initializers.Select(initializer =>
+            {
+                if (replacementType is null && initializer.NameEquals is null)
                 {
-                    if (replacementType is null && initializer.NameEquals is null)
-                    {
-                        return EmitNestedExpression(initializer.Expression);
-                    }
-
-                    var memberName = initializer.NameEquals?.Name.Identifier.ValueText
-                        ?? GetAnonymousMemberName(initializer);
-                    return AppendValueWithContinuation(
-                        $"{memberName} = ",
-                        EmitNestedExpression(initializer.Expression)
-                    );
+                    return EmitNestedExpression(initializer.Expression);
                 }
-            )
+
+                var memberName =
+                    initializer.NameEquals?.Name.Identifier.ValueText
+                    ?? GetAnonymousMemberName(initializer);
+                return AppendValueWithContinuation(
+                    $"{memberName} = ",
+                    EmitNestedExpression(initializer.Expression)
+                );
+            })
             .ToList();
 
         return BuildInitializerExpression(
@@ -153,7 +171,9 @@ internal sealed class ProjectionExpressionEmitter
 
     private string EmitObjectCreation(ObjectCreationExpressionSyntax expression)
     {
-        var arguments = expression.ArgumentList is null ? string.Empty : EmitArgumentList(expression.ArgumentList);
+        var arguments = expression.ArgumentList is null
+            ? string.Empty
+            : EmitArgumentList(expression.ArgumentList);
         var header = $"new {QualifyType(expression.Type)}{arguments}";
         if (expression.Initializer is null)
         {
@@ -192,8 +212,8 @@ internal sealed class ProjectionExpressionEmitter
             return CreateEmptyCollectionFallback(targetTypeName);
         }
 
-        var items = expression.Elements.Select(
-            element => element switch
+        var items = expression.Elements.Select(element =>
+            element switch
             {
                 ExpressionElementSyntax expressionElement => Emit(expressionElement.Expression),
                 SpreadElementSyntax spreadElement => Emit(spreadElement.Expression),
@@ -210,7 +230,12 @@ internal sealed class ProjectionExpressionEmitter
             return $"new {normalizedTypeName} {{ {string.Join(", ", items)} }}";
         }
 
-        if (normalizedTypeName.StartsWith("global::System.Collections.Generic.List<", System.StringComparison.Ordinal))
+        if (
+            normalizedTypeName.StartsWith(
+                "global::System.Collections.Generic.List<",
+                System.StringComparison.Ordinal
+            )
+        )
         {
             return $"new {normalizedTypeName} {{ {string.Join(", ", items)} }}";
         }
@@ -228,9 +253,11 @@ internal sealed class ProjectionExpressionEmitter
         var condition = Emit(expression.Condition);
         var whenTrue = Emit(expression.WhenTrue);
         var whenFalse = Emit(expression.WhenFalse);
-        if (!ContainsLineBreak(condition)
+        if (
+            !ContainsLineBreak(condition)
             && !ContainsLineBreak(whenTrue)
-            && !ContainsLineBreak(whenFalse))
+            && !ContainsLineBreak(whenFalse)
+        )
         {
             return $"{condition} ? {whenTrue} : {whenFalse}";
         }
@@ -279,8 +306,8 @@ internal sealed class ProjectionExpressionEmitter
             MemberAccessExpressionSyntax memberAccess => Emit(memberAccess.Expression),
             _ => Emit(expression.Expression),
         };
-        var selector = expression.ArgumentList.Arguments
-            .Select(argument => argument.Expression)
+        var selector = expression
+            .ArgumentList.Arguments.Select(argument => argument.Expression)
             .OfType<LambdaExpressionSyntax>()
             .FirstOrDefault();
         if (selector is null)
@@ -293,16 +320,16 @@ internal sealed class ProjectionExpressionEmitter
 
     private string EmitArgumentList(ArgumentListSyntax argumentList)
     {
-        var arguments = argumentList.Arguments.Select(
-            argument =>
-            {
-                var prefix = argument.NameColon is null ? string.Empty : $"{argument.NameColon.Name.Identifier.ValueText}: ";
-                var refKind = argument.RefKindKeyword.IsKind(SyntaxKind.None)
-                    ? string.Empty
-                    : $"{argument.RefKindKeyword.Text} ";
-                return $"{prefix}{refKind}{Emit(argument.Expression)}";
-            }
-        );
+        var arguments = argumentList.Arguments.Select(argument =>
+        {
+            var prefix = argument.NameColon is null
+                ? string.Empty
+                : $"{argument.NameColon.Name.Identifier.ValueText}: ";
+            var refKind = argument.RefKindKeyword.IsKind(SyntaxKind.None)
+                ? string.Empty
+                : $"{argument.RefKindKeyword.Text} ";
+            return $"{prefix}{refKind}{Emit(argument.Expression)}";
+        });
         return $"({string.Join(", ", arguments)})";
     }
 
@@ -367,13 +394,13 @@ internal sealed class ProjectionExpressionEmitter
             return Emit(expression);
         }
 
-        var rootTypeName = _replacementTypes.TryGetValue(expression, out var replacementType)
-            ? replacementType
+        var rootTypeName =
+            _replacementTypes.TryGetValue(expression, out var replacementType) ? replacementType
             : expressionType is not null
-                && expressionType is not IErrorTypeSymbol
-                && !ContainsAnonymousType(expressionType)
+            && expressionType is not IErrorTypeSymbol
+            && !ContainsAnonymousType(expressionType)
                 ? expressionType.ToFullyQualifiedTypeName()
-                : _rootTypeName;
+            : _rootTypeName;
         var nestedEmitter = new ProjectionExpressionEmitter(
             _semanticModel,
             expression,
@@ -419,7 +446,12 @@ internal sealed class ProjectionExpressionEmitter
         return true;
     }
 
-    private bool TryBuildConditional(ExpressionSyntax expression, string tail, ExpressionSyntax rootConditionalExpression, out string rewritten)
+    private bool TryBuildConditional(
+        ExpressionSyntax expression,
+        string tail,
+        ExpressionSyntax rootConditionalExpression,
+        out string rewritten
+    )
     {
         switch (expression)
         {
@@ -428,9 +460,14 @@ internal sealed class ProjectionExpressionEmitter
                 var checks = new List<string>();
                 var receiver = Emit(conditionalAccess.Expression);
                 checks.Add(receiver);
-                var access = BindConditionalReceiver(receiver, conditionalAccess.WhenNotNull, checks) + tail;
+                var access =
+                    BindConditionalReceiver(receiver, conditionalAccess.WhenNotNull, checks) + tail;
                 var expressionType = GetExpressionType(expression);
-                var expressionTypeName = GetExpressionTypeName(expression, expressionType, out var canCast);
+                var expressionTypeName = GetExpressionTypeName(
+                    expression,
+                    expressionType,
+                    out var canCast
+                );
                 var rootExpressionType = ReferenceEquals(rootConditionalExpression, expression)
                     ? expressionType
                     : GetExpressionType(rootConditionalExpression);
@@ -441,18 +478,26 @@ internal sealed class ProjectionExpressionEmitter
                     ReferenceEquals(rootConditionalExpression, _rootExpression)
                     && (
                         _useEmptyCollectionFallback
-                        || ShouldUseCollectionFallback(rootConditionalExpression, rootExpressionType)
+                        || ShouldUseCollectionFallback(
+                            rootConditionalExpression,
+                            rootExpressionType
+                        )
                     );
                 var fallback = useEmptyFallback
                     ? CreateEmptyCollectionFallback(rootExpressionTypeName)
                     : "null";
 
-                var castPrefix = !useEmptyFallback && canCast && !ShouldOmitConditionalCast(expression, expressionType)
-                    ? $"({expressionTypeName})"
-                    : string.Empty;
+                var castPrefix =
+                    !useEmptyFallback
+                    && canCast
+                    && !ShouldOmitConditionalCast(expression, expressionType)
+                        ? $"({expressionTypeName})"
+                        : string.Empty;
                 var formattedAccess = castPrefix + access;
-                if (string.IsNullOrEmpty(castPrefix)
-                    && TryFormatFluentAccess(receiver, access, out var multilineAccess))
+                if (
+                    string.IsNullOrEmpty(castPrefix)
+                    && TryFormatFluentAccess(receiver, access, out var multilineAccess)
+                )
                 {
                     formattedAccess = multilineAccess;
                 }
@@ -475,7 +520,8 @@ internal sealed class ProjectionExpressionEmitter
                 }
                 return true;
             }
-            case MemberAccessExpressionSyntax memberAccess when ContainsConditionalAccess(memberAccess.Expression):
+            case MemberAccessExpressionSyntax memberAccess
+                when ContainsConditionalAccess(memberAccess.Expression):
                 return TryBuildConditional(
                     memberAccess.Expression,
                     "." + EmitSimpleName(memberAccess.Name) + tail,
@@ -487,19 +533,32 @@ internal sealed class ProjectionExpressionEmitter
                     && ContainsConditionalAccess(memberInvocation.Expression):
                 return TryBuildConditional(
                     memberInvocation.Expression,
-                    "." + EmitSimpleName(memberInvocation.Name) + EmitArgumentList(invocation.ArgumentList) + tail,
+                    "."
+                        + EmitSimpleName(memberInvocation.Name)
+                        + EmitArgumentList(invocation.ArgumentList)
+                        + tail,
                     rootConditionalExpression,
                     out rewritten
                 );
-            case ElementAccessExpressionSyntax elementAccess when ContainsConditionalAccess(elementAccess.Expression):
-                return TryBuildConditional(elementAccess.Expression, EmitBracketArguments(elementAccess.ArgumentList) + tail, rootConditionalExpression, out rewritten);
+            case ElementAccessExpressionSyntax elementAccess
+                when ContainsConditionalAccess(elementAccess.Expression):
+                return TryBuildConditional(
+                    elementAccess.Expression,
+                    EmitBracketArguments(elementAccess.ArgumentList) + tail,
+                    rootConditionalExpression,
+                    out rewritten
+                );
             default:
                 rewritten = string.Empty;
                 return false;
         }
     }
 
-    private string BindConditionalReceiver(string receiver, ExpressionSyntax whenNotNull, IList<string> checks)
+    private string BindConditionalReceiver(
+        string receiver,
+        ExpressionSyntax whenNotNull,
+        IList<string> checks
+    )
     {
         switch (whenNotNull)
         {
@@ -528,15 +587,25 @@ internal sealed class ProjectionExpressionEmitter
 
     private static bool ContainsConditionalAccess(ExpressionSyntax expression)
     {
-        return expression.DescendantNodesAndSelf().OfType<ConditionalAccessExpressionSyntax>().Any();
+        return expression
+            .DescendantNodesAndSelf()
+            .OfType<ConditionalAccessExpressionSyntax>()
+            .Any();
     }
 
     private bool TryEmitFluentChain(ExpressionSyntax expression, out string rewritten)
     {
         rewritten = string.Empty;
-        if (!TryDecomposeFluentChain(expression, out var root, out var segments, out var hasInvocation)
+        if (
+            !TryDecomposeFluentChain(
+                expression,
+                out var root,
+                out var segments,
+                out var hasInvocation
+            )
             || !hasInvocation
-            || segments.Count == 0)
+            || segments.Count == 0
+        )
         {
             return false;
         }
@@ -561,23 +630,41 @@ internal sealed class ProjectionExpressionEmitter
     {
         switch (expression)
         {
-            case InvocationExpressionSyntax invocation when invocation.Expression is MemberAccessExpressionSyntax memberAccess:
-                TryDecomposeFluentChain(memberAccess.Expression, out root, out segments, out hasInvocation);
+            case InvocationExpressionSyntax invocation
+                when invocation.Expression is MemberAccessExpressionSyntax memberAccess:
+                TryDecomposeFluentChain(
+                    memberAccess.Expression,
+                    out root,
+                    out segments,
+                    out hasInvocation
+                );
                 segments.Add(GetFluentInvocationSegment(invocation, memberAccess));
                 hasInvocation = true;
                 return true;
             case MemberAccessExpressionSyntax memberAccess
-                when memberAccess.Expression is InvocationExpressionSyntax
-                    or MemberAccessExpressionSyntax
-                    or ElementAccessExpressionSyntax:
-                TryDecomposeFluentChain(memberAccess.Expression, out root, out segments, out hasInvocation);
+                when memberAccess.Expression
+                    is InvocationExpressionSyntax
+                        or MemberAccessExpressionSyntax
+                        or ElementAccessExpressionSyntax:
+                TryDecomposeFluentChain(
+                    memberAccess.Expression,
+                    out root,
+                    out segments,
+                    out hasInvocation
+                );
                 segments.Add($".{EmitSimpleName(memberAccess.Name)}");
                 return true;
             case ElementAccessExpressionSyntax elementAccess
-                when elementAccess.Expression is InvocationExpressionSyntax
-                    or MemberAccessExpressionSyntax
-                    or ElementAccessExpressionSyntax:
-                TryDecomposeFluentChain(elementAccess.Expression, out root, out segments, out hasInvocation);
+                when elementAccess.Expression
+                    is InvocationExpressionSyntax
+                        or MemberAccessExpressionSyntax
+                        or ElementAccessExpressionSyntax:
+                TryDecomposeFluentChain(
+                    elementAccess.Expression,
+                    out root,
+                    out segments,
+                    out hasInvocation
+                );
                 segments.Add(EmitBracketArguments(elementAccess.ArgumentList));
                 return true;
             default:
@@ -595,8 +682,8 @@ internal sealed class ProjectionExpressionEmitter
     {
         if (memberAccess.Name.Identifier.ValueText == "SelectExpr")
         {
-            var selector = invocation.ArgumentList.Arguments
-                .Select(argument => argument.Expression)
+            var selector = invocation
+                .ArgumentList.Arguments.Select(argument => argument.Expression)
                 .OfType<LambdaExpressionSyntax>()
                 .FirstOrDefault();
             return selector is null
@@ -620,7 +707,13 @@ internal sealed class ProjectionExpressionEmitter
 
         foreach (var captureEntry in _captureEntries)
         {
-            if (!string.Equals(captureEntry.ExpressionText, normalizedExpression, System.StringComparison.Ordinal))
+            if (
+                !string.Equals(
+                    captureEntry.ExpressionText,
+                    normalizedExpression,
+                    System.StringComparison.Ordinal
+                )
+            )
             {
                 continue;
             }
@@ -649,7 +742,12 @@ internal sealed class ProjectionExpressionEmitter
             return $"global::System.Array.Empty<{elementType}>()";
         }
 
-        if (normalizedTypeName.StartsWith("global::System.Collections.Generic.List<", System.StringComparison.Ordinal))
+        if (
+            normalizedTypeName.StartsWith(
+                "global::System.Collections.Generic.List<",
+                System.StringComparison.Ordinal
+            )
+        )
         {
             return $"new {normalizedTypeName}()";
         }
@@ -666,7 +764,11 @@ internal sealed class ProjectionExpressionEmitter
     private string ResolveCollectionTargetTypeName(CollectionExpressionSyntax expression)
     {
         var targetType = GetExpressionType(expression);
-        if (targetType is not null && targetType is not IErrorTypeSymbol && !ContainsAnonymousType(targetType))
+        if (
+            targetType is not null
+            && targetType is not IErrorTypeSymbol
+            && !ContainsAnonymousType(targetType)
+        )
         {
             return targetType.ToFullyQualifiedTypeName();
         }
@@ -685,9 +787,12 @@ internal sealed class ProjectionExpressionEmitter
         {
             case ParenthesizedExpressionSyntax parenthesized:
                 return TryResolveCollectionTargetTypeNameFromContext(parenthesized, out typeName);
-            case BinaryExpressionSyntax binaryExpression when binaryExpression.IsKind(SyntaxKind.CoalesceExpression):
+            case BinaryExpressionSyntax binaryExpression
+                when binaryExpression.IsKind(SyntaxKind.CoalesceExpression):
             {
-                var sibling = ReferenceEquals(binaryExpression.Left, node) ? binaryExpression.Right : binaryExpression.Left;
+                var sibling = ReferenceEquals(binaryExpression.Left, node)
+                    ? binaryExpression.Right
+                    : binaryExpression.Left;
                 return TryGetContextualCollectionTypeName(sibling, out typeName);
             }
             case ConditionalExpressionSyntax conditionalExpression:
@@ -705,10 +810,17 @@ internal sealed class ProjectionExpressionEmitter
         }
     }
 
-    private bool TryGetContextualCollectionTypeName(ExpressionSyntax expression, out string typeName)
+    private bool TryGetContextualCollectionTypeName(
+        ExpressionSyntax expression,
+        out string typeName
+    )
     {
         var expressionType = GetExpressionType(expression);
-        if (expressionType is not null && expressionType is not IErrorTypeSymbol && !ContainsAnonymousType(expressionType))
+        if (
+            expressionType is not null
+            && expressionType is not IErrorTypeSymbol
+            && !ContainsAnonymousType(expressionType)
+        )
         {
             typeName = expressionType.ToFullyQualifiedTypeName();
             return true;
@@ -747,7 +859,9 @@ internal sealed class ProjectionExpressionEmitter
             return true;
         }
 
-        var expressionType = _semanticModel.GetTypeInfo(expression).Type ?? _semanticModel.GetTypeInfo(expression).ConvertedType;
+        var expressionType =
+            _semanticModel.GetTypeInfo(expression).Type
+            ?? _semanticModel.GetTypeInfo(expression).ConvertedType;
         if (expressionType is not null && expressionType is not IErrorTypeSymbol)
         {
             typeName = expressionType.ToFullyQualifiedTypeName();
@@ -810,10 +924,15 @@ internal sealed class ProjectionExpressionEmitter
         return expression switch
         {
             MemberAccessExpressionSyntax memberAccess => GetRootExpression(memberAccess.Expression),
-            ConditionalAccessExpressionSyntax conditionalAccess => GetRootExpression(conditionalAccess.Expression),
-            ElementAccessExpressionSyntax elementAccess => GetRootExpression(elementAccess.Expression),
-            InvocationExpressionSyntax invocation when invocation.Expression is MemberAccessExpressionSyntax memberAccess
-                => GetRootExpression(memberAccess.Expression),
+            ConditionalAccessExpressionSyntax conditionalAccess => GetRootExpression(
+                conditionalAccess.Expression
+            ),
+            ElementAccessExpressionSyntax elementAccess => GetRootExpression(
+                elementAccess.Expression
+            ),
+            InvocationExpressionSyntax invocation
+                when invocation.Expression is MemberAccessExpressionSyntax memberAccess =>
+                GetRootExpression(memberAccess.Expression),
             InvocationExpressionSyntax invocation => invocation,
             _ => expression,
         };
@@ -840,23 +959,43 @@ internal sealed class ProjectionExpressionEmitter
 
         return type switch
         {
-            IdentifierNameSyntax identifier => _semanticModel.LookupNamespacesAndTypes(type.SpanStart, name: identifier.Identifier.ValueText)
+            IdentifierNameSyntax identifier => _semanticModel
+                .LookupNamespacesAndTypes(type.SpanStart, name: identifier.Identifier.ValueText)
                 .OfType<ITypeSymbol>()
                 .FirstOrDefault(),
-            QualifiedNameSyntax qualifiedName => _semanticModel.LookupNamespacesAndTypes(type.SpanStart, name: qualifiedName.Right.Identifier.ValueText)
+            QualifiedNameSyntax qualifiedName => _semanticModel
+                .LookupNamespacesAndTypes(
+                    type.SpanStart,
+                    name: qualifiedName.Right.Identifier.ValueText
+                )
                 .OfType<ITypeSymbol>()
-                .FirstOrDefault(candidate => candidate.ToDisplayString().EndsWith(qualifiedName.ToString(), System.StringComparison.Ordinal)),
-            AliasQualifiedNameSyntax aliasQualifiedName => _semanticModel.LookupNamespacesAndTypes(type.SpanStart, name: aliasQualifiedName.Name.Identifier.ValueText)
+                .FirstOrDefault(candidate =>
+                    candidate
+                        .ToDisplayString()
+                        .EndsWith(qualifiedName.ToString(), System.StringComparison.Ordinal)
+                ),
+            AliasQualifiedNameSyntax aliasQualifiedName => _semanticModel
+                .LookupNamespacesAndTypes(
+                    type.SpanStart,
+                    name: aliasQualifiedName.Name.Identifier.ValueText
+                )
                 .OfType<ITypeSymbol>()
                 .FirstOrDefault(),
-            GenericNameSyntax genericName => _semanticModel.LookupNamespacesAndTypes(type.SpanStart, name: genericName.Identifier.ValueText)
+            GenericNameSyntax genericName => _semanticModel
+                .LookupNamespacesAndTypes(type.SpanStart, name: genericName.Identifier.ValueText)
                 .OfType<INamedTypeSymbol>()
-                .FirstOrDefault(candidate => candidate.Arity == genericName.TypeArgumentList.Arguments.Count),
+                .FirstOrDefault(candidate =>
+                    candidate.Arity == genericName.TypeArgumentList.Arguments.Count
+                ),
             _ => null,
         };
     }
 
-    private string GetExpressionTypeName(ExpressionSyntax expression, ITypeSymbol? expressionType, out bool canCast)
+    private string GetExpressionTypeName(
+        ExpressionSyntax expression,
+        ITypeSymbol? expressionType,
+        out bool canCast
+    )
     {
         canCast = true;
         if (!BelongsToSemanticModel(expression))
@@ -928,7 +1067,8 @@ internal sealed class ProjectionExpressionEmitter
 
     private static bool ContainsProjectionLikeInvocation(ExpressionSyntax expression)
     {
-        return expression.DescendantNodesAndSelf()
+        return expression
+            .DescendantNodesAndSelf()
             .OfType<InvocationExpressionSyntax>()
             .Any(invocation =>
             {
@@ -977,10 +1117,7 @@ internal sealed class ProjectionExpressionEmitter
             return false;
         }
 
-        formatted = string.Join(
-            "\n",
-            new[] { receiver }.Concat(segments)
-        );
+        formatted = string.Join("\n", new[] { receiver }.Concat(segments));
         return true;
     }
 
@@ -1072,9 +1209,7 @@ internal sealed class ProjectionExpressionEmitter
     {
         if (!ShouldExpandInitializer(items))
         {
-            return items.Count == 0
-                ? "{ }"
-                : $"{{ {string.Join(", ", items)} }}";
+            return items.Count == 0 ? "{ }" : $"{{ {string.Join(", ", items)} }}";
         }
 
         var builder = new IndentedStringBuilder();
@@ -1096,7 +1231,11 @@ internal sealed class ProjectionExpressionEmitter
         return items.Count > 1 || items.Any(ContainsLineBreak);
     }
 
-    private static void AppendMultilineItem(IndentedStringBuilder builder, string value, string suffix)
+    private static void AppendMultilineItem(
+        IndentedStringBuilder builder,
+        string value,
+        string suffix
+    )
     {
         var lines = SplitLines(value);
         for (var index = 0; index < lines.Length; index++)
@@ -1149,9 +1288,7 @@ internal sealed class ProjectionExpressionEmitter
 
     private static string[] SplitLines(string value)
     {
-        return value.Replace("\r\n", "\n")
-            .Replace('\r', '\n')
-            .Split('\n');
+        return value.Replace("\r\n", "\n").Replace('\r', '\n').Split('\n');
     }
 
     private static string GetAnonymousMemberName(AnonymousObjectMemberDeclaratorSyntax initializer)

@@ -1,8 +1,8 @@
 using System.Collections.Generic;
+using Linqraft.Core.Documentation;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
-using Linqraft.Core.Documentation;
 
 namespace Linqraft.SourceGenerator;
 

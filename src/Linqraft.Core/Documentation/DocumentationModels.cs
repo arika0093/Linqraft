@@ -6,5 +6,6 @@ internal sealed record DocumentationInfo
 
     public string? Remarks { get; init; }
 
-    public bool HasContent => !string.IsNullOrWhiteSpace(Summary) || !string.IsNullOrWhiteSpace(Remarks);
+    public bool HasContent =>
+        !string.IsNullOrWhiteSpace(Summary) || !string.IsNullOrWhiteSpace(Remarks);
 }

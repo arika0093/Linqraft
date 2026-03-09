@@ -94,7 +94,9 @@ public sealed class AnalyzerCodeFixSmokeTests
             }
             """;
 
-        var fixedText = (await ApplyFixAsync(source, "LQRS005", "Remove capture")).PrimaryDocumentText;
+        var fixedText = (
+            await ApplyFixAsync(source, "LQRS005", "Remove capture")
+        ).PrimaryDocumentText;
 
         fixedText.ShouldNotContain("capture:");
     }
@@ -244,7 +246,9 @@ public sealed class AnalyzerCodeFixSmokeTests
         var compilationErrors = await GetCompilationErrorsAsync(result.ChangedSolution);
 
         compilationErrors.ShouldBeEmpty();
-        fixedText.ShouldContain("[global::Microsoft.AspNetCore.Mvc.ProducesResponseType(typeof(EntityDto))]");
+        fixedText.ShouldContain(
+            "[global::Microsoft.AspNetCore.Mvc.ProducesResponseType(typeof(EntityDto))]"
+        );
     }
 
     [Test]
@@ -280,7 +284,9 @@ public sealed class AnalyzerCodeFixSmokeTests
             }
             """;
 
-        var fixedText = (await ApplyFixAsync(source, "LQRS001", "SelectExpr<T, TDto>")).PrimaryDocumentText;
+        var fixedText = (
+            await ApplyFixAsync(source, "LQRS001", "SelectExpr<T, TDto>")
+        ).PrimaryDocumentText;
 
         fixedText.ShouldContain("SelectExpr<Entity, ProjectDto>");
     }
@@ -450,7 +456,11 @@ public sealed class AnalyzerCodeFixSmokeTests
         fixedText.ShouldContain("using System.Collections.Generic;");
     }
 
-    private static async Task<AppliedFixResult> ApplyFixAsync(string source, string diagnosticId, string titleFragment)
+    private static async Task<AppliedFixResult> ApplyFixAsync(
+        string source,
+        string diagnosticId,
+        string titleFragment
+    )
     {
         var document = CreateDocument(source);
         var diagnostic = await GetDiagnosticAsync(document, diagnosticId);
@@ -464,15 +474,16 @@ public sealed class AnalyzerCodeFixSmokeTests
         );
         await provider.RegisterCodeFixesAsync(context);
 
-        var actionToApply = actions.FirstOrDefault(
-            action => action.Title.Contains(titleFragment, StringComparison.OrdinalIgnoreCase)
+        var actionToApply = actions.FirstOrDefault(action =>
+            action.Title.Contains(titleFragment, StringComparison.OrdinalIgnoreCase)
         );
         actionToApply.ShouldNotBeNull();
         var operations = await actionToApply!.GetOperationsAsync(CancellationToken.None);
         var applyChangesOperation = operations.OfType<ApplyChangesOperation>().SingleOrDefault();
         applyChangesOperation.ShouldNotBeNull();
         var changedSolution = applyChangesOperation!.ChangedSolution;
-        var changedDocument = changedSolution.GetDocument(document.Id)
+        var changedDocument =
+            changedSolution.GetDocument(document.Id)
             ?? changedSolution.Projects.SelectMany(project => project.Documents).First();
         var text = await changedDocument.GetTextAsync();
         return new AppliedFixResult
@@ -494,7 +505,9 @@ public sealed class AnalyzerCodeFixSmokeTests
         return diagnostic!;
     }
 
-    private static async Task<ImmutableArray<Diagnostic>> GetCompilationErrorsAsync(Solution solution)
+    private static async Task<ImmutableArray<Diagnostic>> GetCompilationErrorsAsync(
+        Solution solution
+    )
     {
         var builder = ImmutableArray.CreateBuilder<Diagnostic>();
         foreach (var project in solution.Projects)
@@ -505,7 +518,11 @@ public sealed class AnalyzerCodeFixSmokeTests
                 continue;
             }
 
-            builder.AddRange(compilation.GetDiagnostics().Where(diagnostic => diagnostic.Severity == DiagnosticSeverity.Error));
+            builder.AddRange(
+                compilation
+                    .GetDiagnostics()
+                    .Where(diagnostic => diagnostic.Severity == DiagnosticSeverity.Error)
+            );
         }
 
         return builder.ToImmutable();
@@ -517,8 +534,13 @@ public sealed class AnalyzerCodeFixSmokeTests
         var projectId = ProjectId.CreateNewId();
         var documentId = DocumentId.CreateNewId(projectId);
 
-        var solution = workspace.CurrentSolution
-            .AddProject(projectId, "AnalyzerCodeFixTests", "AnalyzerCodeFixTests", LanguageNames.CSharp)
+        var solution = workspace
+            .CurrentSolution.AddProject(
+                projectId,
+                "AnalyzerCodeFixTests",
+                "AnalyzerCodeFixTests",
+                LanguageNames.CSharp
+            )
             .WithProjectParseOptions(projectId, new CSharpParseOptions(LanguageVersion.Preview))
             .WithProjectCompilationOptions(
                 projectId,
@@ -549,21 +571,23 @@ public sealed class AnalyzerCodeFixSmokeTests
             typeof(Task).Assembly,
         };
 
-        foreach (var assemblyName in new[]
-        {
-            "System.Runtime",
-            "netstandard",
-            "System.Collections",
-            "System.Linq",
-            "System.Linq.Queryable",
-            "System.Linq.Expressions",
-            "System.Threading.Tasks",
-            "Microsoft.CodeAnalysis.Workspaces",
-            "Microsoft.CodeAnalysis.Features",
-            "Microsoft.CodeAnalysis.CSharp.Workspaces",
-            "System.Composition.AttributedModel",
-            "System.Composition.Runtime",
-        })
+        foreach (
+            var assemblyName in new[]
+            {
+                "System.Runtime",
+                "netstandard",
+                "System.Collections",
+                "System.Linq",
+                "System.Linq.Queryable",
+                "System.Linq.Expressions",
+                "System.Threading.Tasks",
+                "Microsoft.CodeAnalysis.Workspaces",
+                "Microsoft.CodeAnalysis.Features",
+                "Microsoft.CodeAnalysis.CSharp.Workspaces",
+                "System.Composition.AttributedModel",
+                "System.Composition.Runtime",
+            }
+        )
         {
             try
             {
@@ -575,8 +599,8 @@ public sealed class AnalyzerCodeFixSmokeTests
             }
         }
 
-        return AppDomain.CurrentDomain
-            .GetAssemblies()
+        return AppDomain
+            .CurrentDomain.GetAssemblies()
             .Concat(explicitAssemblies)
             .Where(assembly => !assembly.IsDynamic && !string.IsNullOrWhiteSpace(assembly.Location))
             .Where(assembly =>

@@ -18,10 +18,12 @@ public class ExplicitDtoLocationTest
         );
 
         var simpleDtoFile = expressionFiles.SingleOrDefault(file =>
-            File.ReadAllText(file).Contains("partial class SimpleNullableDto", StringComparison.Ordinal)
+            File.ReadAllText(file)
+                .Contains("partial class SimpleNullableDto", StringComparison.Ordinal)
         );
         var nullConditionalDtoFile = expressionFiles.SingleOrDefault(file =>
-            File.ReadAllText(file).Contains("partial class NullConditionalDto", StringComparison.Ordinal)
+            File.ReadAllText(file)
+                .Contains("partial class NullConditionalDto", StringComparison.Ordinal)
         );
 
         simpleDtoFile.ShouldNotBeNull();
@@ -30,7 +32,11 @@ public class ExplicitDtoLocationTest
         Path.GetFileName(simpleDtoFile).ShouldStartWith("SelectExpr_");
         Path.GetFileName(nullConditionalDtoFile).ShouldStartWith("SelectExpr_");
 
-        var dtoFiles = Directory.GetFiles(generatorDir, "GeneratedDtos.g.cs", SearchOption.AllDirectories);
+        var dtoFiles = Directory.GetFiles(
+            generatorDir,
+            "GeneratedDtos.g.cs",
+            SearchOption.AllDirectories
+        );
         foreach (var dtoFile in dtoFiles)
         {
             var dtoCode = File.ReadAllText(dtoFile);
@@ -50,7 +56,11 @@ public class ExplicitDtoLocationTest
             "Linqraft.SourceGenerator.LinqraftSourceGenerator"
         );
         var supportFile = Path.Combine(generatorDir, "Linqraft.Declarations.g.cs");
-        var expressionFiles = Directory.GetFiles(generatorDir, "SelectExpr_*.g.cs", SearchOption.AllDirectories);
+        var expressionFiles = Directory.GetFiles(
+            generatorDir,
+            "SelectExpr_*.g.cs",
+            SearchOption.AllDirectories
+        );
 
         File.ReadAllText(supportFile).ShouldNotContain("SelectExprRuntimeHelper");
 
@@ -60,7 +70,8 @@ public class ExplicitDtoLocationTest
             File.ReadAllText(expressionFile).ShouldNotContain("SelectExprRuntimeHelper");
         }
 
-        expressionFiles.Any(file =>
+        expressionFiles
+            .Any(file =>
                 File.ReadAllText(file).Contains("matchedQuery.Select(", StringComparison.Ordinal)
             )
             .ShouldBeTrue();

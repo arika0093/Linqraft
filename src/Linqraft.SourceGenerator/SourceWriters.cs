@@ -142,8 +142,16 @@ internal static class SourceWriters
             using (builder.Indent())
             {
                 var expressionFieldName = $"s_expression_{request.MethodName}";
-                var lambda = WriteProjectionLambda(request.RootProjection, request, semanticModel, request.Captures);
-                if (request.CanUsePrebuiltExpression && request.ReceiverKind == ReceiverKind.IQueryable)
+                var lambda = WriteProjectionLambda(
+                    request.RootProjection,
+                    request,
+                    semanticModel,
+                    request.Captures
+                );
+                if (
+                    request.CanUsePrebuiltExpression
+                    && request.ReceiverKind == ReceiverKind.IQueryable
+                )
                 {
                     AppendMultilineLine(
                         builder,
@@ -156,9 +164,10 @@ internal static class SourceWriters
                 var selectorResultType = request.UseObjectSelectorSignature ? "object" : "TResult";
                 var captureParameter =
                     "[global::System.Diagnostics.CodeAnalysis.DynamicallyAccessedMembers(global::System.Diagnostics.CodeAnalysis.DynamicallyAccessedMemberTypes.PublicProperties)] object capture";
-                var signature = request.Captures.Count == 0
-                    ? $"public static {receiverType}<TResult> {request.MethodName}<TIn, TResult>(this {receiverType}<TIn> query, global::System.Func<TIn, {selectorResultType}> selector) where TIn : class"
-                    : $"public static {receiverType}<TResult> {request.MethodName}<TIn, TResult>(this {receiverType}<TIn> query, global::System.Func<TIn, {selectorResultType}> selector, {captureParameter}) where TIn : class";
+                var signature =
+                    request.Captures.Count == 0
+                        ? $"public static {receiverType}<TResult> {request.MethodName}<TIn, TResult>(this {receiverType}<TIn> query, global::System.Func<TIn, {selectorResultType}> selector) where TIn : class"
+                        : $"public static {receiverType}<TResult> {request.MethodName}<TIn, TResult>(this {receiverType}<TIn> query, global::System.Func<TIn, {selectorResultType}> selector, {captureParameter}) where TIn : class";
                 if (request.InterceptableLocation is not null)
                 {
                     builder.AppendLine(
@@ -172,13 +181,19 @@ internal static class SourceWriters
                 {
                     var matchedQueryType = $"{receiverType}<{request.SourceTypeName}>";
                     builder.AppendLine("global::System.ArgumentNullException.ThrowIfNull(query);");
-                    builder.AppendLine("global::System.ArgumentNullException.ThrowIfNull(selector);");
+                    builder.AppendLine(
+                        "global::System.ArgumentNullException.ThrowIfNull(selector);"
+                    );
                     if (request.Captures.Count != 0)
                     {
-                        builder.AppendLine("global::System.ArgumentNullException.ThrowIfNull(capture);");
+                        builder.AppendLine(
+                            "global::System.ArgumentNullException.ThrowIfNull(capture);"
+                        );
                     }
 
-                    builder.AppendLine($"var matchedQuery = query as object as {matchedQueryType};");
+                    builder.AppendLine(
+                        $"var matchedQuery = query as object as {matchedQueryType};"
+                    );
                     builder.AppendLine("if (matchedQuery is null)");
                     builder.AppendLine("{");
                     using (builder.Indent())
@@ -219,10 +234,15 @@ internal static class SourceWriters
                     }
 
                     builder.AppendLine();
-                    var selectArgument = request.CanUsePrebuiltExpression && request.ReceiverKind == ReceiverKind.IQueryable
-                        ? expressionFieldName
-                        : lambda;
-                    AppendMultilineLine(builder, $"var converted = matchedQuery.Select({selectArgument});");
+                    var selectArgument =
+                        request.CanUsePrebuiltExpression
+                        && request.ReceiverKind == ReceiverKind.IQueryable
+                            ? expressionFieldName
+                            : lambda;
+                    AppendMultilineLine(
+                        builder,
+                        $"var converted = matchedQuery.Select({selectArgument});"
+                    );
                     builder.AppendLine(
                         $"return converted as object as {receiverType}<TResult> ?? throw new global::System.InvalidOperationException(\"Linqraft generated projection returned an unexpected result type.\");"
                     );
@@ -250,7 +270,9 @@ internal static class SourceWriters
             builder.IncreaseIndent();
         }
 
-        builder.AppendLine($"{request.AccessibilityKeyword} static partial class {request.ContainingTypeName}");
+        builder.AppendLine(
+            $"{request.AccessibilityKeyword} static partial class {request.ContainingTypeName}"
+        );
         builder.AppendLine("{");
         using (builder.Indent())
         {
@@ -272,7 +294,10 @@ internal static class SourceWriters
             builder.AppendLine("{");
             using (builder.Indent())
             {
-                if (request.CanUsePrebuiltExpression && request.ReceiverKind == ReceiverKind.IQueryable)
+                if (
+                    request.CanUsePrebuiltExpression
+                    && request.ReceiverKind == ReceiverKind.IQueryable
+                )
                 {
                     builder.AppendLine($"return source.Select({expressionFieldName});");
                 }
@@ -303,7 +328,13 @@ internal static class SourceWriters
     {
         return AppendValueInline(
             $"{request.SelectorParameterName} => ",
-            WriteProjectionBody(projection, request.Pattern, request.ResultTypeName, semanticModel, captures)
+            WriteProjectionBody(
+                projection,
+                request.Pattern,
+                request.ResultTypeName,
+                semanticModel,
+                captures
+            )
         );
     }
 
@@ -335,43 +366,39 @@ internal static class SourceWriters
     {
         var kind = pattern == ProjectionPattern.Anonymous ? "anonymous" : "named";
         var targetType = pattern == ProjectionPattern.Anonymous ? null : resultTypeName;
-        var constructorArguments = projection.Members
-            .Where(member => member.IsSuppressed)
+        var constructorArguments = projection
+            .Members.Where(member => member.IsSuppressed)
             .OrderBy(member => member.Name, StringComparer.Ordinal)
-            .Select(
-                member =>
-                {
-                    var emitter = new ProjectionExpressionEmitter(
-                        semanticModel,
-                        member.Expression,
-                        member.TypeName,
-                        member.UseEmptyCollectionFallback,
-                        member.ReplacementTypes,
-                        captures
-                    );
-                    return emitter.Emit(member.Expression);
-                }
-            )
+            .Select(member =>
+            {
+                var emitter = new ProjectionExpressionEmitter(
+                    semanticModel,
+                    member.Expression,
+                    member.TypeName,
+                    member.UseEmptyCollectionFallback,
+                    member.ReplacementTypes,
+                    captures
+                );
+                return emitter.Emit(member.Expression);
+            })
             .ToList();
-        var assignments = projection.Members
-            .Where(member => !member.IsSuppressed)
-            .Select(
-                member =>
-                {
-                    var emitter = new ProjectionExpressionEmitter(
-                        semanticModel,
-                        member.Expression,
-                        member.TypeName,
-                        member.UseEmptyCollectionFallback,
-                        member.ReplacementTypes,
-                        captures
-                    );
-                    return AppendValueWithContinuation(
-                        $"{member.Name} = ",
-                        emitter.Emit(member.Expression)
-                    );
-                }
-            )
+        var assignments = projection
+            .Members.Where(member => !member.IsSuppressed)
+            .Select(member =>
+            {
+                var emitter = new ProjectionExpressionEmitter(
+                    semanticModel,
+                    member.Expression,
+                    member.TypeName,
+                    member.UseEmptyCollectionFallback,
+                    member.ReplacementTypes,
+                    captures
+                );
+                return AppendValueWithContinuation(
+                    $"{member.Name} = ",
+                    emitter.Emit(member.Expression)
+                );
+            })
             .ToList();
 
         return kind == "anonymous"
@@ -445,7 +472,10 @@ internal static class SourceWriters
             builder.AppendLine("/// </summary>");
         }
 
-        if (outputMode == LinqraftCommentOutput.All && !string.IsNullOrWhiteSpace(documentation.Remarks))
+        if (
+            outputMode == LinqraftCommentOutput.All
+            && !string.IsNullOrWhiteSpace(documentation.Remarks)
+        )
         {
             var remarks = documentation.Remarks!;
             builder.AppendLine("/// <remarks>");
@@ -511,9 +541,8 @@ internal static class SourceWriters
         IReadOnlyList<string> assignments
     )
     {
-        var constructorSuffix = constructorArguments.Count == 0
-            ? "()"
-            : $"({string.Join(", ", constructorArguments)})";
+        var constructorSuffix =
+            constructorArguments.Count == 0 ? "()" : $"({string.Join(", ", constructorArguments)})";
         if (assignments.Count == 0)
         {
             return $"new {targetType}{constructorSuffix}";
@@ -558,7 +587,11 @@ internal static class SourceWriters
         return items.Count > 1 || items.Any(ContainsLineBreak);
     }
 
-    private static void AppendMultilineItem(IndentedStringBuilder builder, string value, string suffix)
+    private static void AppendMultilineItem(
+        IndentedStringBuilder builder,
+        string value,
+        string suffix
+    )
     {
         var lines = SplitLines(value);
         for (var index = 0; index < lines.Length; index++)
@@ -611,9 +644,7 @@ internal static class SourceWriters
 
     private static string[] SplitLines(string value)
     {
-        return value.Replace("\r\n", "\n")
-            .Replace('\r', '\n')
-            .Split('\n');
+        return value.Replace("\r\n", "\n").Replace('\r', '\n').Split('\n');
     }
 
     private static string ToParameterName(string propertyName)

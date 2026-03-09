@@ -42,8 +42,8 @@ public sealed class EfCoreSqliteProjectionTests
     {
         await using var database = await SqliteTestDatabase.CreateAsync();
 
-        var result = await database.Context
-            .Orders.AsNoTracking()
+        var result = await database
+            .Context.Orders.AsNoTracking()
             .OrderBy(order => order.OrderNumber)
             .SelectExpr<EfOrder, EfSqliteOrderRow>(order => new
             {
@@ -68,8 +68,8 @@ public sealed class EfCoreSqliteProjectionTests
     {
         await using var database = await SqliteTestDatabase.CreateAsync();
 
-        var result = await database.Context
-            .Orders.AsNoTracking()
+        var result = await database
+            .Context.Orders.AsNoTracking()
             .OrderBy(order => order.OrderNumber)
             .ProjectToEfCompiledOrderRow()
             .ToListAsync();
@@ -125,15 +125,33 @@ internal sealed class SqliteTestDatabase : IAsyncDisposable
             Customer = ada,
             Items =
             [
-                new() { ProductName = "Keyboard", Quantity = 2, UnitPrice = 10 },
-                new() { ProductName = "Cable", Quantity = 1, UnitPrice = 5 },
+                new()
+                {
+                    ProductName = "Keyboard",
+                    Quantity = 2,
+                    UnitPrice = 10,
+                },
+                new()
+                {
+                    ProductName = "Cable",
+                    Quantity = 1,
+                    UnitPrice = 5,
+                },
             ],
         };
         var order2 = new EfOrder
         {
             OrderNumber = "ORD-002",
             Customer = null,
-            Items = [new() { ProductName = "Mouse", Quantity = 3, UnitPrice = 7 }],
+            Items =
+            [
+                new()
+                {
+                    ProductName = "Mouse",
+                    Quantity = 3,
+                    UnitPrice = 7,
+                },
+            ],
         };
 
         context.Orders.AddRange(order1, order2);

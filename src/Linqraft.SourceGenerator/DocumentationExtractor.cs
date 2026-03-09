@@ -35,7 +35,8 @@ internal static class DocumentationExtractor
         return new DocumentationInfo
         {
             Summary = summary,
-            Remarks = outputMode == LinqraftCommentOutput.All ? $"From: <c>{symbol.Name}</c>" : null,
+            Remarks =
+                outputMode == LinqraftCommentOutput.All ? $"From: <c>{symbol.Name}</c>" : null,
         };
     }
 
@@ -57,7 +58,8 @@ internal static class DocumentationExtractor
             return null;
         }
 
-        var summary = ExtractSummary(symbol)
+        var summary =
+            ExtractSummary(symbol)
             ?? ExtractCommentAttribute(symbol)
             ?? ExtractDisplayAttribute(symbol)
             ?? ExtractSingleLineComment(symbol);
@@ -67,15 +69,9 @@ internal static class DocumentationExtractor
             return null;
         }
 
-        var remarks = outputMode == LinqraftCommentOutput.All
-            ? BuildRemarks(symbol)
-            : null;
+        var remarks = outputMode == LinqraftCommentOutput.All ? BuildRemarks(symbol) : null;
 
-        return new DocumentationInfo
-        {
-            Summary = summary,
-            Remarks = remarks,
-        };
+        return new DocumentationInfo { Summary = summary, Remarks = remarks };
     }
 
     private static ISymbol? FindDocumentationSymbol(
@@ -88,20 +84,40 @@ internal static class DocumentationExtractor
         {
             case MemberAccessExpressionSyntax memberAccess:
                 return semanticModel.GetSymbolInfo(memberAccess, cancellationToken).Symbol
-                    ?? FindDocumentationSymbol(memberAccess.Expression, semanticModel, cancellationToken);
+                    ?? FindDocumentationSymbol(
+                        memberAccess.Expression,
+                        semanticModel,
+                        cancellationToken
+                    );
             case ConditionalAccessExpressionSyntax conditionalAccess:
-                return FindDocumentationSymbol(conditionalAccess.WhenNotNull, semanticModel, cancellationToken)
-                    ?? FindDocumentationSymbol(conditionalAccess.Expression, semanticModel, cancellationToken);
+                return FindDocumentationSymbol(
+                        conditionalAccess.WhenNotNull,
+                        semanticModel,
+                        cancellationToken
+                    )
+                    ?? FindDocumentationSymbol(
+                        conditionalAccess.Expression,
+                        semanticModel,
+                        cancellationToken
+                    );
             case MemberBindingExpressionSyntax memberBinding:
                 return semanticModel.GetSymbolInfo(memberBinding, cancellationToken).Symbol;
             case IdentifierNameSyntax identifier:
                 return semanticModel.GetSymbolInfo(identifier, cancellationToken).Symbol;
             case InvocationExpressionSyntax invocation:
-                foreach (var lambda in invocation.ArgumentList.Arguments.Select(argument => argument.Expression).OfType<LambdaExpressionSyntax>())
+                foreach (
+                    var lambda in invocation
+                        .ArgumentList.Arguments.Select(argument => argument.Expression)
+                        .OfType<LambdaExpressionSyntax>()
+                )
                 {
                     if (lambda.Body is ExpressionSyntax lambdaExpression)
                     {
-                        var nested = FindDocumentationSymbol(lambdaExpression, semanticModel, cancellationToken);
+                        var nested = FindDocumentationSymbol(
+                            lambdaExpression,
+                            semanticModel,
+                            cancellationToken
+                        );
                         if (nested is not null)
                         {
                             return nested;
@@ -111,15 +127,31 @@ internal static class DocumentationExtractor
 
                 return semanticModel.GetSymbolInfo(invocation, cancellationToken).Symbol;
             case ConditionalExpressionSyntax conditionalExpression:
-                return FindDocumentationSymbol(conditionalExpression.WhenTrue, semanticModel, cancellationToken)
-                    ?? FindDocumentationSymbol(conditionalExpression.WhenFalse, semanticModel, cancellationToken);
+                return FindDocumentationSymbol(
+                        conditionalExpression.WhenTrue,
+                        semanticModel,
+                        cancellationToken
+                    )
+                    ?? FindDocumentationSymbol(
+                        conditionalExpression.WhenFalse,
+                        semanticModel,
+                        cancellationToken
+                    );
             case AnonymousObjectCreationExpressionSyntax anonymousObject:
-                return anonymousObject.Initializers
-                    .Select(initializer => FindDocumentationSymbol(initializer.Expression, semanticModel, cancellationToken))
+                return anonymousObject
+                    .Initializers.Select(initializer =>
+                        FindDocumentationSymbol(
+                            initializer.Expression,
+                            semanticModel,
+                            cancellationToken
+                        )
+                    )
                     .FirstOrDefault(symbol => symbol is not null);
             case ObjectCreationExpressionSyntax objectCreation:
-                return objectCreation.Initializer?.Expressions
-                    .Select(initializer => FindDocumentationSymbol(initializer, semanticModel, cancellationToken))
+                return objectCreation
+                    .Initializer?.Expressions.Select(initializer =>
+                        FindDocumentationSymbol(initializer, semanticModel, cancellationToken)
+                    )
                     .FirstOrDefault(symbol => symbol is not null);
             case AssignmentExpressionSyntax assignment:
                 return FindDocumentationSymbol(assignment.Right, semanticModel, cancellationToken);
@@ -152,17 +184,20 @@ internal static class DocumentationExtractor
 
     private static string? ExtractCommentAttribute(ISymbol symbol)
     {
-        return symbol.GetAttributes()
-            .FirstOrDefault(attribute => attribute.AttributeClass?.Name == "CommentAttribute")
-            ?.ConstructorArguments.FirstOrDefault().Value as string;
+        return symbol
+                .GetAttributes()
+                .FirstOrDefault(attribute => attribute.AttributeClass?.Name == "CommentAttribute")
+                ?.ConstructorArguments.FirstOrDefault()
+                .Value as string;
     }
 
     private static string? ExtractDisplayAttribute(ISymbol symbol)
     {
-        return symbol.GetAttributes()
-            .FirstOrDefault(attribute => attribute.AttributeClass?.Name == "DisplayAttribute")
-            ?.NamedArguments.FirstOrDefault(argument => argument.Key == "Name")
-            .Value.Value as string;
+        return symbol
+                .GetAttributes()
+                .FirstOrDefault(attribute => attribute.AttributeClass?.Name == "DisplayAttribute")
+                ?.NamedArguments.FirstOrDefault(argument => argument.Key == "Name")
+                .Value.Value as string;
     }
 
     private static string? ExtractSingleLineComment(ISymbol symbol)
@@ -191,7 +226,8 @@ internal static class DocumentationExtractor
     private static string BuildRemarks(ISymbol symbol)
     {
         var parts = new List<string> { $"From: <c>{BuildSymbolPath(symbol)}</c>" };
-        var attributes = symbol.GetAttributes()
+        var attributes = symbol
+            .GetAttributes()
             .Select(attribute => attribute.AttributeClass?.Name)
             .Where(name => !string.IsNullOrWhiteSpace(name))
             .Distinct()
@@ -218,6 +254,9 @@ internal static class DocumentationExtractor
 
     private static string Normalize(string value)
     {
-        return string.Join(" ", value.Split((char[]?)null, System.StringSplitOptions.RemoveEmptyEntries));
+        return string.Join(
+            " ",
+            value.Split((char[]?)null, System.StringSplitOptions.RemoveEmptyEntries)
+        );
     }
 }

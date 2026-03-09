@@ -2,16 +2,17 @@ using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.Linq;
 using Microsoft.CodeAnalysis;
-using Microsoft.CodeAnalysis.Diagnostics;
-using Microsoft.CodeAnalysis.CSharp.Syntax;
 using Microsoft.CodeAnalysis.CSharp;
+using Microsoft.CodeAnalysis.CSharp.Syntax;
+using Microsoft.CodeAnalysis.Diagnostics;
 
 namespace Linqraft.Analyzer;
 
 [DiagnosticAnalyzer(LanguageNames.CSharp)]
 public sealed class LinqraftCompositeAnalyzer : DiagnosticAnalyzer
 {
-    public override ImmutableArray<DiagnosticDescriptor> SupportedDiagnostics => DiagnosticDescriptors.All;
+    public override ImmutableArray<DiagnosticDescriptor> SupportedDiagnostics =>
+        DiagnosticDescriptors.All;
 
     public override void Initialize(AnalysisContext context)
     {
@@ -19,8 +20,14 @@ public sealed class LinqraftCompositeAnalyzer : DiagnosticAnalyzer
         context.EnableConcurrentExecution();
 
         context.RegisterSyntaxNodeAction(AnalyzeInvocation, SyntaxKind.InvocationExpression);
-        context.RegisterSyntaxNodeAction(AnalyzeAnonymousObject, SyntaxKind.AnonymousObjectCreationExpression);
-        context.RegisterSyntaxNodeAction(AnalyzeConditionalExpression, SyntaxKind.ConditionalExpression);
+        context.RegisterSyntaxNodeAction(
+            AnalyzeAnonymousObject,
+            SyntaxKind.AnonymousObjectCreationExpression
+        );
+        context.RegisterSyntaxNodeAction(
+            AnalyzeConditionalExpression,
+            SyntaxKind.ConditionalExpression
+        );
         context.RegisterSyntaxNodeAction(AnalyzeUsingDirective, SyntaxKind.UsingDirective);
         context.RegisterSyntaxNodeAction(
             AnalyzeExplicitGeneratedDtoUsage,
@@ -43,7 +50,13 @@ public sealed class LinqraftCompositeAnalyzer : DiagnosticAnalyzer
             return;
         }
 
-        if (!AnalyzerHelpers.IsQueryableSelectInvocation(invocation, context.SemanticModel, context.CancellationToken))
+        if (
+            !AnalyzerHelpers.IsQueryableSelectInvocation(
+                invocation,
+                context.SemanticModel,
+                context.CancellationToken
+            )
+        )
         {
             return;
         }
@@ -56,13 +69,23 @@ public sealed class LinqraftCompositeAnalyzer : DiagnosticAnalyzer
 
         if (AnalyzerHelpers.IsAnonymousProjection(lambda))
         {
-            context.ReportDiagnostic(Diagnostic.Create(DiagnosticDescriptors.SelectToSelectExprAnonymous, invocation.GetLocation()));
+            context.ReportDiagnostic(
+                Diagnostic.Create(
+                    DiagnosticDescriptors.SelectToSelectExprAnonymous,
+                    invocation.GetLocation()
+                )
+            );
             return;
         }
 
         if (AnalyzerHelpers.IsNamedProjection(lambda))
         {
-            context.ReportDiagnostic(Diagnostic.Create(DiagnosticDescriptors.SelectToSelectExprNamed, invocation.GetLocation()));
+            context.ReportDiagnostic(
+                Diagnostic.Create(
+                    DiagnosticDescriptors.SelectToSelectExprNamed,
+                    invocation.GetLocation()
+                )
+            );
         }
     }
 
@@ -78,20 +101,25 @@ public sealed class LinqraftCompositeAnalyzer : DiagnosticAnalyzer
         }
 
         var selectorBody = AnalyzerHelpers.GetLambdaExpressionBody(lambda);
-        if (selectorBody is AnonymousObjectCreationExpressionSyntax
-            && AnalyzerHelpers.GetInvocationNameSyntax(invocation.Expression) is not GenericNameSyntax)
+        if (
+            selectorBody is AnonymousObjectCreationExpressionSyntax
+            && AnalyzerHelpers.GetInvocationNameSyntax(invocation.Expression)
+                is not GenericNameSyntax
+        )
         {
-            context.ReportDiagnostic(Diagnostic.Create(DiagnosticDescriptors.SelectExprToTyped, invocation.GetLocation()));
+            context.ReportDiagnostic(
+                Diagnostic.Create(DiagnosticDescriptors.SelectExprToTyped, invocation.GetLocation())
+            );
         }
 
-        var outerReferences = AnalyzerHelpers.CollectOuterReferences(
-            lambda,
-            context.SemanticModel,
-            context.CancellationToken
-        )
-        .Distinct(SymbolEqualityComparer.Default)
-        .ToList();
-        var capturedNames = new HashSet<string>(AnalyzerHelpers.GetCaptureNames(invocation), System.StringComparer.Ordinal);
+        var outerReferences = AnalyzerHelpers
+            .CollectOuterReferences(lambda, context.SemanticModel, context.CancellationToken)
+            .Distinct(SymbolEqualityComparer.Default)
+            .ToList();
+        var capturedNames = new HashSet<string>(
+            AnalyzerHelpers.GetCaptureNames(invocation),
+            System.StringComparer.Ordinal
+        );
 
         foreach (var reference in outerReferences)
         {
@@ -104,7 +132,10 @@ public sealed class LinqraftCompositeAnalyzer : DiagnosticAnalyzer
                 Diagnostic.Create(
                     DiagnosticDescriptors.LocalVariableCapture,
                     invocation.GetLocation(),
-                    properties: ImmutableDictionary<string, string?>.Empty.Add("CaptureName", reference.Name),
+                    properties: ImmutableDictionary<string, string?>.Empty.Add(
+                        "CaptureName",
+                        reference.Name
+                    ),
                     messageArgs: new object[] { reference.Name }
                 )
             );
@@ -118,7 +149,10 @@ public sealed class LinqraftCompositeAnalyzer : DiagnosticAnalyzer
                     Diagnostic.Create(
                         DiagnosticDescriptors.UnnecessaryCapture,
                         invocation.GetLocation(),
-                        properties: ImmutableDictionary<string, string?>.Empty.Add("CaptureName", captureName),
+                        properties: ImmutableDictionary<string, string?>.Empty.Add(
+                            "CaptureName",
+                            captureName
+                        ),
                         messageArgs: new object[] { captureName }
                     )
                 );
@@ -128,7 +162,10 @@ public sealed class LinqraftCompositeAnalyzer : DiagnosticAnalyzer
         if (FlowsFromAnonymousGroupBy(invocation))
         {
             context.ReportDiagnostic(
-                Diagnostic.Create(DiagnosticDescriptors.GroupByAnonymousKey, invocation.GetLocation())
+                Diagnostic.Create(
+                    DiagnosticDescriptors.GroupByAnonymousKey,
+                    invocation.GetLocation()
+                )
             );
         }
     }
@@ -141,20 +178,33 @@ public sealed class LinqraftCompositeAnalyzer : DiagnosticAnalyzer
             return;
         }
 
-        if (anonymousObject.Ancestors().OfType<InvocationExpressionSyntax>().Any(AnalyzerHelpers.IsSelectExprInvocation))
+        if (
+            anonymousObject
+                .Ancestors()
+                .OfType<InvocationExpressionSyntax>()
+                .Any(AnalyzerHelpers.IsSelectExprInvocation)
+        )
         {
             return;
         }
 
         context.ReportDiagnostic(
-            Diagnostic.Create(DiagnosticDescriptors.AnonymousTypeToDto, anonymousObject.GetLocation())
+            Diagnostic.Create(
+                DiagnosticDescriptors.AnonymousTypeToDto,
+                anonymousObject.GetLocation()
+            )
         );
     }
 
     private static void AnalyzeConditionalExpression(SyntaxNodeAnalysisContext context)
     {
         var conditionalExpression = (ConditionalExpressionSyntax)context.Node;
-        if (!conditionalExpression.Ancestors().OfType<InvocationExpressionSyntax>().Any(AnalyzerHelpers.IsSelectExprInvocation))
+        if (
+            !conditionalExpression
+                .Ancestors()
+                .OfType<InvocationExpressionSyntax>()
+                .Any(AnalyzerHelpers.IsSelectExprInvocation)
+        )
         {
             return;
         }
@@ -195,13 +245,23 @@ public sealed class LinqraftCompositeAnalyzer : DiagnosticAnalyzer
     {
         ITypeSymbol? typeSymbol = context.Node switch
         {
-            ObjectCreationExpressionSyntax objectCreation => context.SemanticModel.GetTypeInfo(objectCreation, context.CancellationToken).Type,
+            ObjectCreationExpressionSyntax objectCreation => context
+                .SemanticModel.GetTypeInfo(objectCreation, context.CancellationToken)
+                .Type,
             VariableDeclarationSyntax declaration when declaration.Type.IsVar => null,
-            VariableDeclarationSyntax declaration => context.SemanticModel.GetTypeInfo(declaration.Type, context.CancellationToken).Type,
-            ParameterSyntax parameter when parameter.Type is not null => context.SemanticModel.GetTypeInfo(parameter.Type, context.CancellationToken).Type,
+            VariableDeclarationSyntax declaration => context
+                .SemanticModel.GetTypeInfo(declaration.Type, context.CancellationToken)
+                .Type,
+            ParameterSyntax parameter when parameter.Type is not null => context
+                .SemanticModel.GetTypeInfo(parameter.Type, context.CancellationToken)
+                .Type,
             ParameterSyntax => null,
-            PropertyDeclarationSyntax property => context.SemanticModel.GetTypeInfo(property.Type, context.CancellationToken).Type,
-            FieldDeclarationSyntax field => context.SemanticModel.GetTypeInfo(field.Declaration.Type, context.CancellationToken).Type,
+            PropertyDeclarationSyntax property => context
+                .SemanticModel.GetTypeInfo(property.Type, context.CancellationToken)
+                .Type,
+            FieldDeclarationSyntax field => context
+                .SemanticModel.GetTypeInfo(field.Declaration.Type, context.CancellationToken)
+                .Type,
             _ => null,
         };
 
@@ -210,7 +270,13 @@ public sealed class LinqraftCompositeAnalyzer : DiagnosticAnalyzer
             return;
         }
 
-        if (!namedType.GetAttributes().Any(attribute => attribute.AttributeClass?.Name == "LinqraftAutoGeneratedDtoAttribute"))
+        if (
+            !namedType
+                .GetAttributes()
+                .Any(attribute =>
+                    attribute.AttributeClass?.Name == "LinqraftAutoGeneratedDtoAttribute"
+                )
+        )
         {
             return;
         }
@@ -232,7 +298,10 @@ public sealed class LinqraftCompositeAnalyzer : DiagnosticAnalyzer
             return;
         }
 
-        var methodSymbol = context.SemanticModel.GetDeclaredSymbol(method, context.CancellationToken);
+        var methodSymbol = context.SemanticModel.GetDeclaredSymbol(
+            method,
+            context.CancellationToken
+        );
         if (methodSymbol is null)
         {
             return;
@@ -250,27 +319,42 @@ public sealed class LinqraftCompositeAnalyzer : DiagnosticAnalyzer
     )
     {
         var containingType = methodSymbol.ContainingType;
-        if (containingType is null
-            || !containingType.GetAttributes().Any(attribute => attribute.AttributeClass?.Name == "ApiControllerAttribute"))
+        if (
+            containingType is null
+            || !containingType
+                .GetAttributes()
+                .Any(attribute => attribute.AttributeClass?.Name == "ApiControllerAttribute")
+        )
         {
             return;
         }
 
         var returnTypeName = methodSymbol.ReturnType.ToDisplayString();
-        if (returnTypeName is not "Microsoft.AspNetCore.Mvc.IActionResult" and not "Microsoft.AspNetCore.Mvc.ActionResult")
+        if (
+            returnTypeName
+            is not "Microsoft.AspNetCore.Mvc.IActionResult"
+                and not "Microsoft.AspNetCore.Mvc.ActionResult"
+        )
         {
             return;
         }
 
-        if (method.AttributeLists.SelectMany(list => list.Attributes).Any(attribute => attribute.Name.ToString().Contains("ProducesResponseType")))
+        if (
+            method
+                .AttributeLists.SelectMany(list => list.Attributes)
+                .Any(attribute => attribute.Name.ToString().Contains("ProducesResponseType"))
+        )
         {
             return;
         }
 
-        var selectExpr = method.DescendantNodes().OfType<InvocationExpressionSyntax>()
+        var selectExpr = method
+            .DescendantNodes()
+            .OfType<InvocationExpressionSyntax>()
             .FirstOrDefault(invocation =>
                 AnalyzerHelpers.IsSelectExprInvocation(invocation)
-                && AnalyzerHelpers.GetInvocationNameSyntax(invocation.Expression) is GenericNameSyntax genericName
+                && AnalyzerHelpers.GetInvocationNameSyntax(invocation.Expression)
+                    is GenericNameSyntax genericName
                 && genericName.TypeArgumentList.Arguments.Count >= 2
             );
 
@@ -279,7 +363,8 @@ public sealed class LinqraftCompositeAnalyzer : DiagnosticAnalyzer
             return;
         }
 
-        var generic = (GenericNameSyntax)AnalyzerHelpers.GetInvocationNameSyntax(selectExpr.Expression)!;
+        var generic = (GenericNameSyntax)
+            AnalyzerHelpers.GetInvocationNameSyntax(selectExpr.Expression)!;
         var dtoName = generic.TypeArgumentList.Arguments[1].ToString();
         context.ReportDiagnostic(
             Diagnostic.Create(
@@ -298,24 +383,38 @@ public sealed class LinqraftCompositeAnalyzer : DiagnosticAnalyzer
     )
     {
         var returnType = methodSymbol.ReturnType;
-        if (returnType.SpecialType != SpecialType.System_Void
-            && !(returnType is INamedTypeSymbol namedType && namedType.Name == "Task" && namedType.TypeArguments.Length == 0))
+        if (
+            returnType.SpecialType != SpecialType.System_Void
+            && !(
+                returnType is INamedTypeSymbol namedType
+                && namedType.Name == "Task"
+                && namedType.TypeArguments.Length == 0
+            )
+        )
         {
             return;
         }
 
-        var expressionStatement = method.DescendantNodes().OfType<ExpressionStatementSyntax>()
+        var expressionStatement = method
+            .DescendantNodes()
+            .OfType<ExpressionStatementSyntax>()
             .Select(statement => statement.Expression)
             .OfType<InvocationExpressionSyntax>()
             .FirstOrDefault(invocation =>
-                AnalyzerHelpers.IsQueryableSelectInvocation(invocation, context.SemanticModel, context.CancellationToken)
+                AnalyzerHelpers.IsQueryableSelectInvocation(
+                    invocation,
+                    context.SemanticModel,
+                    context.CancellationToken
+                )
                 && AnalyzerHelpers.GetSelectorLambda(invocation) is { } lambda
                 && AnalyzerHelpers.IsAnonymousProjection(lambda)
                 && AnalyzerHelpers.IsDbSet(
-                    context.SemanticModel.GetTypeInfo(
-                        ((MemberAccessExpressionSyntax)invocation.Expression).Expression,
-                        context.CancellationToken
-                    ).Type
+                    context
+                        .SemanticModel.GetTypeInfo(
+                            ((MemberAccessExpressionSyntax)invocation.Expression).Expression,
+                            context.CancellationToken
+                        )
+                        .Type
                 )
             );
 
@@ -342,18 +441,26 @@ public sealed class LinqraftCompositeAnalyzer : DiagnosticAnalyzer
             return;
         }
 
-        var expressionStatement = method.DescendantNodes().OfType<ExpressionStatementSyntax>()
+        var expressionStatement = method
+            .DescendantNodes()
+            .OfType<ExpressionStatementSyntax>()
             .Select(statement => statement.Expression)
             .OfType<InvocationExpressionSyntax>()
             .FirstOrDefault(invocation =>
-                AnalyzerHelpers.IsQueryableSelectInvocation(invocation, context.SemanticModel, context.CancellationToken)
+                AnalyzerHelpers.IsQueryableSelectInvocation(
+                    invocation,
+                    context.SemanticModel,
+                    context.CancellationToken
+                )
                 && AnalyzerHelpers.GetSelectorLambda(invocation) is { } lambda
                 && AnalyzerHelpers.IsAnonymousProjection(lambda)
                 && !AnalyzerHelpers.IsDbSet(
-                    context.SemanticModel.GetTypeInfo(
-                        ((MemberAccessExpressionSyntax)invocation.Expression).Expression,
-                        context.CancellationToken
-                    ).Type
+                    context
+                        .SemanticModel.GetTypeInfo(
+                            ((MemberAccessExpressionSyntax)invocation.Expression).Expression,
+                            context.CancellationToken
+                        )
+                        .Type
                 )
             );
 
@@ -380,7 +487,9 @@ public sealed class LinqraftCompositeAnalyzer : DiagnosticAnalyzer
             if (AnalyzerHelpers.GetInvocationName(invocation.Expression) == "GroupBy")
             {
                 var lambda = AnalyzerHelpers.GetSelectorLambda(invocation);
-                return lambda is not null && AnalyzerHelpers.GetLambdaExpressionBody(lambda) is AnonymousObjectCreationExpressionSyntax;
+                return lambda is not null
+                    && AnalyzerHelpers.GetLambdaExpressionBody(lambda)
+                        is AnonymousObjectCreationExpressionSyntax;
             }
 
             current = invocation.Expression is MemberAccessExpressionSyntax chainedAccess

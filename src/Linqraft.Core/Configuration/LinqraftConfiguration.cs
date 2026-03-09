@@ -23,7 +23,8 @@ internal sealed record LinqraftConfiguration
 
     public bool RecordGenerate { get; init; }
 
-    public LinqraftPropertyAccessor PropertyAccessor { get; init; } = LinqraftPropertyAccessor.Default;
+    public LinqraftPropertyAccessor PropertyAccessor { get; init; } =
+        LinqraftPropertyAccessor.Default;
 
     public bool HasRequired { get; init; } = true;
 
@@ -39,14 +40,38 @@ internal sealed record LinqraftConfiguration
     {
         return new LinqraftConfiguration
         {
-            GlobalNamespace = GetOption(options, "build_property.LinqraftGlobalNamespace", string.Empty),
+            GlobalNamespace = GetOption(
+                options,
+                "build_property.LinqraftGlobalNamespace",
+                string.Empty
+            ),
             RecordGenerate = GetBool(options, "build_property.LinqraftRecordGenerate", false),
-            PropertyAccessor = GetEnum(options, "build_property.LinqraftPropertyAccessor", LinqraftPropertyAccessor.Default),
+            PropertyAccessor = GetEnum(
+                options,
+                "build_property.LinqraftPropertyAccessor",
+                LinqraftPropertyAccessor.Default
+            ),
             HasRequired = GetBool(options, "build_property.LinqraftHasRequired", true),
-            CommentOutput = GetEnum(options, "build_property.LinqraftCommentOutput", LinqraftCommentOutput.All),
-            ArrayNullabilityRemoval = GetBool(options, "build_property.LinqraftArrayNullabilityRemoval", true),
-            NestedDtoUseHashNamespace = GetBool(options, "build_property.LinqraftNestedDtoUseHashNamespace", true),
-            UsePrebuildExpression = GetBool(options, "build_property.LinqraftUsePrebuildExpression", false),
+            CommentOutput = GetEnum(
+                options,
+                "build_property.LinqraftCommentOutput",
+                LinqraftCommentOutput.All
+            ),
+            ArrayNullabilityRemoval = GetBool(
+                options,
+                "build_property.LinqraftArrayNullabilityRemoval",
+                true
+            ),
+            NestedDtoUseHashNamespace = GetBool(
+                options,
+                "build_property.LinqraftNestedDtoUseHashNamespace",
+                true
+            ),
+            UsePrebuildExpression = GetBool(
+                options,
+                "build_property.LinqraftUsePrebuildExpression",
+                false
+            ),
         };
     }
 
@@ -60,7 +85,11 @@ internal sealed record LinqraftConfiguration
         return bool.TryParse(value, out var parsed) ? parsed : defaultValue;
     }
 
-    private static TEnum GetEnum<TEnum>(AnalyzerConfigOptions options, string key, TEnum defaultValue)
+    private static TEnum GetEnum<TEnum>(
+        AnalyzerConfigOptions options,
+        string key,
+        TEnum defaultValue
+    )
         where TEnum : struct
     {
         if (!options.TryGetValue(key, out var value))

@@ -1,7 +1,7 @@
-using Microsoft.CodeAnalysis;
-using Microsoft.CodeAnalysis.CSharp;
 using System.Linq;
 using System.Text;
+using Microsoft.CodeAnalysis;
+using Microsoft.CodeAnalysis.CSharp;
 
 namespace Linqraft.SourceGenerator;
 
@@ -41,9 +41,10 @@ internal static class GeneratedSourceFormatter
             var effectiveIndent = baseIndent;
             if (trimmed[0] is '.' or '[')
             {
-                effectiveIndent = lastTrimmed.Length != 0 && (lastTrimmed[0] is '.' or '[' or '}')
-                    ? lastNonEmptyIndent
-                    : lastNonEmptyIndent + 1;
+                effectiveIndent =
+                    lastTrimmed.Length != 0 && (lastTrimmed[0] is '.' or '[' or '}')
+                        ? lastNonEmptyIndent
+                        : lastNonEmptyIndent + 1;
             }
             else if (trimmed[0] == '?')
             {
@@ -52,7 +53,8 @@ internal static class GeneratedSourceFormatter
             }
             else if (trimmed[0] == ':')
             {
-                effectiveIndent = lastQuestionIndent >= 0 ? lastQuestionIndent : lastNonEmptyIndent + 1;
+                effectiveIndent =
+                    lastQuestionIndent >= 0 ? lastQuestionIndent : lastNonEmptyIndent + 1;
                 lastQuestionIndent = -1;
             }
 
@@ -63,7 +65,10 @@ internal static class GeneratedSourceFormatter
             lastNonEmptyIndent = effectiveIndent;
             scopeIndent = System.Math.Max(
                 0,
-                baseIndent + CountOpenBraces(trimmed) - CountCloseBraces(trimmed) + leadingCloseCount
+                baseIndent
+                    + CountOpenBraces(trimmed)
+                    - CountCloseBraces(trimmed)
+                    + leadingCloseCount
             );
         }
 
