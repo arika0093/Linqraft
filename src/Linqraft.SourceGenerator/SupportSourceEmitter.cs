@@ -14,7 +14,6 @@ internal static class SupportSourceEmitter
             using System.Collections;
             using System.Collections.Generic;
             using System.Linq;
-            using System.Reflection;
             namespace Microsoft.CodeAnalysis
             {
                 [global::System.AttributeUsage(global::System.AttributeTargets.All)]
@@ -95,35 +94,6 @@ internal static class SupportSourceEmitter
                     protected abstract void DefineMapping();
                 }
 
-                {{CodeTemplateContents.EditorBrowsableNeverAttribute}}
-                internal static class LinqraftCaptureHelper
-                {
-                    private static readonly global::System.Collections.Concurrent.ConcurrentDictionary<string, PropertyInfo?> Cache = new();
-
-                    public static T GetRequired<T>(object capture, string propertyName)
-                    {
-                        global::System.ArgumentNullException.ThrowIfNull(capture);
-                        global::System.ArgumentNullException.ThrowIfNull(propertyName);
-
-                        var key = capture.GetType().AssemblyQualifiedName + ":" + propertyName;
-                        var property = Cache.GetOrAdd(
-                            key,
-                            _ => capture.GetType().GetProperty(
-                                propertyName,
-                                BindingFlags.Instance | BindingFlags.Public
-                            )
-                        );
-                        if (property is null)
-                        {
-                            throw new global::System.InvalidOperationException(
-                                $"Captured value '{propertyName}' was not found."
-                            );
-                        }
-
-                        var value = property.GetValue(capture);
-                        return value is null ? default! : (T)value;
-                    }
-                }
             }
 
             namespace System.Linq

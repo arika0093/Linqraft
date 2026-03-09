@@ -94,11 +94,46 @@ public sealed class GlobalPropertyConfigurationTests
     }
 
     [Fact]
+    public void Captured_values_are_inlined_without_runtime_helper()
+    {
+        var offset = 5;
+        var results = Orders
+            .AsQueryable()
+            .SelectExpr(order => new
+            {
+                order.Id,
+                OffsetId = order.Id + offset,
+            }, new { offset })
+            .ToList();
+
+        results.Select(result => result.OffsetId).ShouldBe([6, 7]);
+
+        var generatedRoot = Path.Combine(GetRepositoryRoot(), "tests", "Linqraft.Tests.Configuration", ".generated");
+        var captureSource = Directory
+            .GetFiles(generatedRoot, "SelectExpr_*.g.cs", SearchOption.AllDirectories)
+            .OrderByDescending(path => File.GetLastWriteTimeUtc(path))
+            .Select(File.ReadAllText)
+            .First(source =>
+                source.Contains("OffsetId", StringComparison.Ordinal)
+                && source.Contains("GetProperty(\"offset\"", StringComparison.Ordinal)
+            );
+        var declarationsSource = Directory
+            .GetFiles(generatedRoot, "Linqraft.Declarations.g.cs", SearchOption.AllDirectories)
+            .Select(File.ReadAllText)
+            .First();
+
+        captureSource.Contains("GetProperty(\"offset\"", StringComparison.Ordinal).ShouldBeTrue();
+        captureSource.Contains("LinqraftCaptureHelper", StringComparison.Ordinal).ShouldBeFalse();
+        declarationsSource.Contains("LinqraftCaptureHelper", StringComparison.Ordinal).ShouldBeFalse();
+    }
+
+    [Fact]
     public void Generated_projection_source_formats_nested_linq_over_multiple_lines()
     {
         var generatedRoot = Path.Combine(GetRepositoryRoot(), "tests", "Linqraft.Tests.Configuration", ".generated");
         var projectionFile = Directory
             .GetFiles(generatedRoot, "SelectExpr_*.g.cs", SearchOption.AllDirectories)
+            .Where(path => File.ReadAllText(path).Contains("Items = order.Items", StringComparison.Ordinal))
             .OrderByDescending(path => File.GetLastWriteTimeUtc(path))
             .First();
         var projectionSource = File.ReadAllText(projectionFile);

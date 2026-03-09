@@ -190,10 +190,27 @@ internal static class SourceWriters
                     if (request.Captures.Count != 0)
                     {
                         builder.AppendLine();
+                        builder.AppendLine("var captureType = capture.GetType();");
                         foreach (var capture in request.Captures)
                         {
                             builder.AppendLine(
-                                $"var {capture.LocalName} = global::Linqraft.LinqraftCaptureHelper.GetRequired<{capture.TypeName}>(capture, \"{EscapeStringLiteral(capture.PropertyName)}\");"
+                                $"var {capture.LocalName}Property = captureType.GetProperty(\"{EscapeStringLiteral(capture.PropertyName)}\", global::System.Reflection.BindingFlags.Instance | global::System.Reflection.BindingFlags.Public);"
+                            );
+                            builder.AppendLine($"if ({capture.LocalName}Property is null)");
+                            builder.AppendLine("{");
+                            using (builder.Indent())
+                            {
+                                builder.AppendLine(
+                                    $"throw new global::System.InvalidOperationException(\"Captured value '{EscapeStringLiteral(capture.PropertyName)}' was not found.\");"
+                                );
+                            }
+
+                            builder.AppendLine("}");
+                            builder.AppendLine(
+                                $"var {capture.LocalName}Value = {capture.LocalName}Property.GetValue(capture);"
+                            );
+                            builder.AppendLine(
+                                $"var {capture.LocalName} = {capture.LocalName}Value is null ? default! : ({capture.TypeName}){capture.LocalName}Value;"
                             );
                         }
                     }
