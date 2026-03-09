@@ -11,4 +11,7 @@
     <EmitCompilerGeneratedFiles>true</EmitCompilerGeneratedFiles>
     <CompilerGeneratedFilesOutputPath>.generated</CompilerGeneratedFilesOutputPath>
   </PropertyGroup>
+  <PropertyGroup Condition="'$(EnableNativeAotTest)' == 'true' and '$(TargetFramework)' != ''">
+    <PublishAot>true</PublishAot>
+  </PropertyGroup>
 </Project>

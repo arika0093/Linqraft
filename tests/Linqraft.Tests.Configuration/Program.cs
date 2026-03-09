@@ -96,6 +96,13 @@ public sealed class GlobalPropertyConfigurationTests
     [Test]
     public void Captured_values_are_inlined_without_runtime_helper()
     {
+        if (!RuntimeFeature.IsDynamicCodeSupported)
+        {
+            global::TUnit.Core.Skip.Test(
+                "Anonymous-object capture reflection is currently not NativeAOT-safe."
+            );
+        }
+
         var offset = 5;
         var results = Orders
             .AsQueryable()

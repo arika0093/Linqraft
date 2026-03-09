@@ -153,9 +153,11 @@ internal static class SourceWriters
 
                 var receiverType = GetReceiverTypeName(request.ReceiverKind);
                 var selectorResultType = request.UseObjectSelectorSignature ? "object" : "TResult";
+                var captureParameter =
+                    "[global::System.Diagnostics.CodeAnalysis.DynamicallyAccessedMembers(global::System.Diagnostics.CodeAnalysis.DynamicallyAccessedMemberTypes.PublicProperties)] object capture";
                 var signature = request.Captures.Count == 0
                     ? $"public static {receiverType}<TResult> {request.MethodName}<TIn, TResult>(this {receiverType}<TIn> query, global::System.Func<TIn, {selectorResultType}> selector) where TIn : class"
-                    : $"public static {receiverType}<TResult> {request.MethodName}<TIn, TResult>(this {receiverType}<TIn> query, global::System.Func<TIn, {selectorResultType}> selector, object capture) where TIn : class";
+                    : $"public static {receiverType}<TResult> {request.MethodName}<TIn, TResult>(this {receiverType}<TIn> query, global::System.Func<TIn, {selectorResultType}> selector, {captureParameter}) where TIn : class";
                 if (request.InterceptableLocation is not null)
                 {
                     builder.AppendLine(
