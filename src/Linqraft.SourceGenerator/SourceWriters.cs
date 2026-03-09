@@ -319,6 +319,7 @@ internal static class SourceWriters
             #pragma warning disable CS8603
             #pragma warning disable CS8604
             #pragma warning disable CS8618
+            using System.Linq;
             """
         );
         return builder;

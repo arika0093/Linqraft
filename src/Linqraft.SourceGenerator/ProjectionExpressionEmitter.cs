@@ -40,17 +40,8 @@ internal sealed class AnonymousReplacementRewriter : CSharpSyntaxRewriter
 
     private static string GetMemberName(AnonymousObjectMemberDeclaratorSyntax initializer)
     {
-        if (initializer.NameEquals is not null)
-        {
-            return initializer.NameEquals.Name.Identifier.ValueText;
-        }
-
-        return initializer.Expression switch
-        {
-            IdentifierNameSyntax identifier => identifier.Identifier.ValueText,
-            MemberAccessExpressionSyntax memberAccess => memberAccess.Name.Identifier.ValueText,
-            _ => initializer.Expression.ToString(),
-        };
+        return initializer.NameEquals?.Name.Identifier.ValueText
+            ?? AnonymousMemberNameResolver.Get(initializer.Expression);
     }
 }
 
@@ -480,6 +471,11 @@ internal sealed class ProjectionExpressionEmitter
             return ReferenceEquals(expression, _rootExpression) ? _rootTypeName : "object";
         }
 
+        if (ReferenceEquals(expression, _rootExpression) && ContainsAnonymousType(type))
+        {
+            return _rootTypeName;
+        }
+
         if (type.IsAnonymousType)
         {
             canCast = false;
@@ -487,6 +483,21 @@ internal sealed class ProjectionExpressionEmitter
         }
 
         return type.ToFullyQualifiedTypeName();
+    }
+
+    private static bool ContainsAnonymousType(ITypeSymbol type)
+    {
+        if (type.IsAnonymousType)
+        {
+            return true;
+        }
+
+        return type switch
+        {
+            IArrayTypeSymbol arrayType => ContainsAnonymousType(arrayType.ElementType),
+            INamedTypeSymbol namedType => namedType.TypeArguments.Any(ContainsAnonymousType),
+            _ => false,
+        };
     }
 
     private bool ShouldOmitConditionalCast(ExpressionSyntax expression, ITypeSymbol? type)
@@ -522,12 +533,7 @@ internal sealed class ProjectionExpressionEmitter
 
     private static string GetAnonymousMemberName(AnonymousObjectMemberDeclaratorSyntax initializer)
     {
-        return initializer.Expression switch
-        {
-            IdentifierNameSyntax identifier => identifier.Identifier.ValueText,
-            MemberAccessExpressionSyntax memberAccess => memberAccess.Name.Identifier.ValueText,
-            _ => initializer.Expression.ToString(),
-        };
+        return AnonymousMemberNameResolver.Get(initializer.Expression);
     }
 
     private static string GetInvocationName(ExpressionSyntax expression)

@@ -1136,17 +1136,8 @@ internal sealed class ProjectionAnalyzer
 
     private static string GetAnonymousMemberName(AnonymousObjectMemberDeclaratorSyntax initializer)
     {
-        if (initializer.NameEquals is not null)
-        {
-            return initializer.NameEquals.Name.Identifier.ValueText;
-        }
-
-        return initializer.Expression switch
-        {
-            IdentifierNameSyntax identifier => identifier.Identifier.ValueText,
-            MemberAccessExpressionSyntax memberAccess => memberAccess.Name.Identifier.ValueText,
-            _ => initializer.Expression.ToString(),
-        };
+        return initializer.NameEquals?.Name.Identifier.ValueText
+            ?? AnonymousMemberNameResolver.Get(initializer.Expression);
     }
 
     private static bool InheritsFromMappingDeclare(INamedTypeSymbol symbol)

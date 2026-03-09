@@ -1,12 +1,14 @@
-<Project Sdk="Microsoft.NET.Sdk">
+﻿<Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
-    <OutputType>Exe</OutputType>
-    <TargetFramework>net10.0</TargetFramework>
-    <Nullable>enable</Nullable>
-    <ImplicitUsings>enable</ImplicitUsings>
+    <LinqraftGlobalNamespace>GlobalGenerated</LinqraftGlobalNamespace>
     <LinqraftRecordGenerate>true</LinqraftRecordGenerate>
-    <LinqraftPropertyAccessor>GetAndInit</LinqraftPropertyAccessor>
+    <LinqraftPropertyAccessor>GetAndInternalSet</LinqraftPropertyAccessor>
     <LinqraftHasRequired>false</LinqraftHasRequired>
+    <LinqraftCommentOutput>None</LinqraftCommentOutput>
+    <LinqraftArrayNullabilityRemoval>false</LinqraftArrayNullabilityRemoval>
     <LinqraftNestedDtoUseHashNamespace>false</LinqraftNestedDtoUseHashNamespace>
+    <LinqraftUsePrebuildExpression>true</LinqraftUsePrebuildExpression>
+    <EmitCompilerGeneratedFiles>true</EmitCompilerGeneratedFiles>
+    <CompilerGeneratedFilesOutputPath>.generated</CompilerGeneratedFilesOutputPath>
   </PropertyGroup>
 </Project>
