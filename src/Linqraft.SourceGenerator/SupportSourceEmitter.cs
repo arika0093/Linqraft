@@ -98,6 +98,8 @@ internal static class SupportSourceEmitter
                 {{CodeTemplateContents.EditorBrowsableNeverAttribute}}
                 internal static class SelectExprRuntimeHelper
                 {
+                    private static readonly global::System.Reflection.NullabilityInfoContext NullabilityContext = new();
+
                     public static IQueryable<TResult> ExecuteQueryable<TIn, TResult>(IQueryable<TIn> query, global::System.Func<TIn, TResult> selector)
                         where TIn : class
                     {
@@ -150,14 +152,21 @@ internal static class SupportSourceEmitter
                         return converted is null ? default! : (TResult)converted;
                     }
 
-                    private static object? ConvertValue(global::System.Type targetType, object? value)
+                    private static object? ConvertValue(
+                        global::System.Type targetType,
+                        object? value,
+                        PropertyInfo? propertyInfo = null,
+                        global::System.Reflection.ParameterInfo? parameterInfo = null
+                    )
                     {
+                        var effectiveTargetType = global::System.Nullable.GetUnderlyingType(targetType) ?? targetType;
                         if (value is null)
                         {
-                            return null;
+                            return ShouldCreateEmptyCollection(effectiveTargetType, propertyInfo, parameterInfo)
+                                ? CreateEmptyCollection(effectiveTargetType)
+                                : null;
                         }
 
-                        var effectiveTargetType = global::System.Nullable.GetUnderlyingType(targetType) ?? targetType;
                         if (effectiveTargetType == typeof(object) || effectiveTargetType.IsInstanceOfType(value))
                         {
                             return value;
@@ -190,55 +199,7 @@ internal static class SupportSourceEmitter
                             projectedValues.Add(ConvertValue(elementType, item));
                         }
 
-                        if (targetType.IsArray)
-                        {
-                            var array = global::System.Array.CreateInstance(elementType, projectedValues.Count);
-                            for (var index = 0; index < projectedValues.Count; index++)
-                            {
-                                array.SetValue(projectedValues[index], index);
-                            }
-
-                            converted = array;
-                            return true;
-                        }
-
-                        var listType = typeof(List<>).MakeGenericType(elementType);
-                        var list = (IList)global::System.Activator.CreateInstance(listType)!;
-                        foreach (var item in projectedValues)
-                        {
-                            list.Add(item);
-                        }
-
-                        if (targetType.IsAssignableFrom(listType))
-                        {
-                            converted = list;
-                            return true;
-                        }
-
-                        var enumerableType = typeof(IEnumerable<>).MakeGenericType(elementType);
-                        var enumerableConstructor = targetType.GetConstructor(new[] { enumerableType });
-                        if (enumerableConstructor is not null)
-                        {
-                            converted = enumerableConstructor.Invoke(new object[] { list });
-                            return true;
-                        }
-
-                        if (!targetType.IsInterface && !targetType.IsAbstract && global::System.Activator.CreateInstance(targetType) is { } instance)
-                        {
-                            var addMethod = targetType.GetMethod("Add", BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic, binder: null, types: new[] { elementType }, modifiers: null);
-                            if (addMethod is not null)
-                            {
-                                foreach (var item in projectedValues)
-                                {
-                                    addMethod.Invoke(instance, new[] { item });
-                                }
-
-                                converted = instance;
-                                return true;
-                            }
-                        }
-
-                        return false;
+                        return TryCreateCollection(targetType, elementType, projectedValues, out converted);
                     }
 
                     private static bool TryConvertSimpleValue(global::System.Type targetType, object value, out object? converted)
@@ -282,22 +243,191 @@ internal static class SupportSourceEmitter
 
                     private static object ConvertObject(global::System.Type targetType, object value)
                     {
-                        var instance = global::System.Activator.CreateInstance(targetType)
-                            ?? throw new global::System.InvalidOperationException($"Linqraft could not create an instance of '{targetType.FullName}'.");
-                        var sourceProperties = value.GetType().GetProperties(BindingFlags.Instance | BindingFlags.Public);
-                        foreach (var sourceProperty in sourceProperties)
+                        var sourceProperties = value.GetType()
+                            .GetProperties(BindingFlags.Instance | BindingFlags.Public)
+                            .ToDictionary(property => property.Name, global::System.StringComparer.OrdinalIgnoreCase);
+                        var instance = CreateObjectInstance(targetType, value, sourceProperties);
+                        foreach (var targetProperty in targetType.GetProperties(BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic))
                         {
-                            var targetProperty = targetType.GetProperty(sourceProperty.Name, BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic);
-                            if (targetProperty?.SetMethod is null)
+                            if (targetProperty.SetMethod is null || !sourceProperties.TryGetValue(targetProperty.Name, out var sourceProperty))
                             {
                                 continue;
                             }
 
-                            var projectedValue = ConvertValue(targetProperty.PropertyType, sourceProperty.GetValue(value));
-                            targetProperty.SetValue(instance, projectedValue);
+                            var projectedValue = ConvertValue(
+                                targetProperty.PropertyType,
+                                sourceProperty.GetValue(value),
+                                propertyInfo: targetProperty
+                            );
+                            targetProperty.SetMethod.Invoke(instance, new[] { projectedValue });
                         }
 
                         return instance;
+                    }
+
+                    private static object CreateObjectInstance(
+                        global::System.Type targetType,
+                        object source,
+                        IReadOnlyDictionary<string, PropertyInfo> sourceProperties
+                    )
+                    {
+                        var constructors = targetType.GetConstructors(BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic)
+                            .OrderByDescending(constructor => constructor.GetParameters().Length)
+                            .ToArray();
+                        foreach (var constructor in constructors)
+                        {
+                            var parameters = constructor.GetParameters();
+                            if (parameters.Length == 0)
+                            {
+                                return constructor.Invoke(null);
+                            }
+
+                            var arguments = new object?[parameters.Length];
+                            var matched = true;
+                            for (var index = 0; index < parameters.Length; index++)
+                            {
+                                var parameter = parameters[index];
+                                if (parameter.Name is null || !sourceProperties.TryGetValue(parameter.Name, out var sourceProperty))
+                                {
+                                    matched = false;
+                                    break;
+                                }
+
+                                arguments[index] = ConvertValue(
+                                    parameter.ParameterType,
+                                    sourceProperty.GetValue(source),
+                                    parameterInfo: parameter
+                                );
+                            }
+
+                            if (matched)
+                            {
+                                return constructor.Invoke(arguments);
+                            }
+                        }
+
+                        throw new global::System.InvalidOperationException(
+                            $"Linqraft could not create an instance of '{targetType.FullName}'."
+                        );
+                    }
+
+                    private static bool ShouldCreateEmptyCollection(
+                        global::System.Type targetType,
+                        PropertyInfo? propertyInfo,
+                        global::System.Reflection.ParameterInfo? parameterInfo
+                    )
+                    {
+                        if (!TryGetCollectionElementType(targetType, out _))
+                        {
+                            return false;
+                        }
+
+                        if (propertyInfo is not null)
+                        {
+                            var nullability = NullabilityContext.Create(propertyInfo);
+                            return nullability.ReadState == global::System.Reflection.NullabilityState.NotNull
+                                || nullability.WriteState == global::System.Reflection.NullabilityState.NotNull;
+                        }
+
+                        if (parameterInfo is not null)
+                        {
+                            var nullability = NullabilityContext.Create(parameterInfo);
+                            return nullability.ReadState == global::System.Reflection.NullabilityState.NotNull;
+                        }
+
+                        return false;
+                    }
+
+                    private static object? CreateEmptyCollection(global::System.Type targetType)
+                    {
+                        if (!TryGetCollectionElementType(targetType, out var elementType))
+                        {
+                            return null;
+                        }
+
+                        return TryCreateCollection(targetType, elementType, global::System.Array.Empty<object?>(), out var created)
+                            ? created
+                            : null;
+                    }
+
+                    private static bool TryCreateCollection(
+                        global::System.Type targetType,
+                        global::System.Type elementType,
+                        IReadOnlyList<object?> projectedValues,
+                        out object? converted
+                    )
+                    {
+                        converted = null;
+                        if (targetType.IsArray)
+                        {
+                            var array = global::System.Array.CreateInstance(elementType, projectedValues.Count);
+                            for (var index = 0; index < projectedValues.Count; index++)
+                            {
+                                array.SetValue(projectedValues[index], index);
+                            }
+
+                            converted = array;
+                            return true;
+                        }
+
+                        var listType = typeof(List<>).MakeGenericType(elementType);
+                        var list = (IList)global::System.Activator.CreateInstance(listType)!;
+                        foreach (var item in projectedValues)
+                        {
+                            list.Add(item);
+                        }
+
+                        if (targetType.IsAssignableFrom(listType))
+                        {
+                            converted = list;
+                            return true;
+                        }
+
+                        var enumerableType = typeof(IEnumerable<>).MakeGenericType(elementType);
+                        var enumerableConstructor = targetType.GetConstructor(
+                            BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic,
+                            binder: null,
+                            types: new[] { enumerableType },
+                            modifiers: null
+                        );
+                        if (enumerableConstructor is not null)
+                        {
+                            converted = enumerableConstructor.Invoke(new object[] { list });
+                            return true;
+                        }
+
+                        if (!targetType.IsInterface && !targetType.IsAbstract)
+                        {
+                            var parameterlessConstructor = targetType.GetConstructor(
+                                BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic,
+                                binder: null,
+                                types: global::System.Type.EmptyTypes,
+                                modifiers: null
+                            );
+                            if (parameterlessConstructor is not null)
+                            {
+                                var instance = parameterlessConstructor.Invoke(null);
+                                var addMethod = targetType.GetMethod(
+                                    "Add",
+                                    BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic,
+                                    binder: null,
+                                    types: new[] { elementType },
+                                    modifiers: null
+                                );
+                                if (addMethod is not null)
+                                {
+                                    foreach (var item in projectedValues)
+                                    {
+                                        addMethod.Invoke(instance, new[] { item });
+                                    }
+
+                                    converted = instance;
+                                    return true;
+                                }
+                            }
+                        }
+
+                        return false;
                     }
 
                     private static bool TryGetCollectionElementType(global::System.Type targetType, out global::System.Type elementType)
