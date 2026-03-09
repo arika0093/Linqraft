@@ -12,7 +12,7 @@ public partial class ClassInClassGeneratedExpr
 {
     private readonly List<NestedEntity> TestData = [];
 
-    [Fact]
+    [Test]
     public void NestedSelectExpr_WithExplicitDtoTypes_ShouldWork()
     {
         var query = TestData.AsQueryable();

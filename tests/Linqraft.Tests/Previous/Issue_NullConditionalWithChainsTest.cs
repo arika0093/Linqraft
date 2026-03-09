@@ -10,7 +10,7 @@ namespace Linqraft.Tests;
 /// </summary>
 public class Issue_NullConditionalWithChainsTest
 {
-    [Fact]
+    [Test]
     public void NullConditionalWithOrderByAndSelect_ShouldGenerateCorrectCode()
     {
         var testData = new List<TestData>
@@ -130,7 +130,7 @@ public class Issue_NullConditionalWithChainsTest
         secondChild.result2.ShouldBeNull();
     }
 
-    [Fact]
+    [Test]
     public void NullConditionalWithSimpleSelect_ShouldReturnNullForSingleResult()
     {
         var testData = new List<Parent2>

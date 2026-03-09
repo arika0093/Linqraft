@@ -6,7 +6,7 @@ namespace Linqraft.Tests;
 
 public class Issue_SelectFirstOrDefaultTest
 {
-    [Fact]
+    [Test]
     public void SelectFirstOrDefault_ShouldGenerateValidType()
     {
         var converted = TestData

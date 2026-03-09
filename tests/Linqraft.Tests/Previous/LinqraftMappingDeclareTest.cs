@@ -1,6 +1,5 @@
 using System.Collections.Generic;
 using System.Linq;
-using Xunit;
 
 namespace Linqraft.Tests;
 
@@ -60,7 +59,7 @@ internal partial class MappingDeclareChildDto;
 
 public class LinqraftMappingDeclareTest
 {
-    [Fact]
+    [Test]
     public void MappingDeclare_BasicTest()
     {
         // Arrange
@@ -96,7 +95,7 @@ public class LinqraftMappingDeclareTest
         result[1].ChildName.ShouldBeNull();
     }
 
-    [Fact]
+    [Test]
     public void MappingDeclare_CustomMethodName_Test()
     {
         // Arrange
@@ -131,7 +130,7 @@ public class LinqraftMappingDeclareTest
     }
 
 #if NET9_0_OR_GREATER
-    [Fact]
+    [Test]
     public void MappingDeclare_NestedCollection_Test()
     {
         // Arrange

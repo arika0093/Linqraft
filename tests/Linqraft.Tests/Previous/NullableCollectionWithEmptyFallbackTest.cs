@@ -55,7 +55,7 @@ public class NullableCollectionWithEmptyFallbackTest
         },
     ];
 
-    [Fact]
+    [Test]
     public void NullableParent_WithSelectAnonymous_ShouldGenerateNonNullableCollection()
     {
         // This is the exact scenario from the issue
@@ -72,7 +72,7 @@ public class NullableCollectionWithEmptyFallbackTest
         var rst = result[0].Child3Datas.First().Id;
     }
 
-    [Fact]
+    [Test]
     public void NullableParent_WithSelectAnonymous_ToList_ShouldGenerateNonNullableCollection()
     {
         // Same scenario with ToList() at the end
@@ -90,7 +90,7 @@ public class NullableCollectionWithEmptyFallbackTest
         var rst = result[0].Child3Datas.First().Id;
     }
 
-    [Fact]
+    [Test]
     public void NullableParent_WithSelectSimple_ShouldGenerateNonNullableCollection()
     {
         // When Select is used with simple type projection (not anonymous type),

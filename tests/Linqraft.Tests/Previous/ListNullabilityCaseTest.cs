@@ -34,7 +34,7 @@ public class ListNullabilityCaseTest
         },
     ];
 
-    [Fact]
+    [Test]
     public void ListProperty_ShouldBeNonNullable_WhenGeneratedFromNestedSelect()
     {
         var converted = TestData
@@ -58,7 +58,7 @@ public class ListNullabilityCaseTest
         second.ChildDescs[0].Description.ShouldBe("Child3");
     }
 
-    [Fact]
+    [Test]
     public void ListProperty_WithNullConditional_InNestedLambda_ShouldStillBeNonNullable()
     {
         // This is the exact scenario from issue #18
@@ -83,7 +83,7 @@ public class ListNullabilityCaseTest
         first.ChildDescs[1].FooBar.ShouldBeNull();
     }
 
-    [Fact]
+    [Test]
     public void MultipleListProperties_ShouldBeNonNullable()
     {
         var converted = TestData
@@ -101,7 +101,7 @@ public class ListNullabilityCaseTest
         first.Descriptions.ShouldBe(["Child1", "Child2"]);
     }
 
-    [Fact]
+    [Test]
     public void ListOfComplexType_ShouldBeNonNullable()
     {
         var converted = TestData

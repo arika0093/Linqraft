@@ -9,7 +9,7 @@ public class Issue157_UseStaticValueInQuery
     /// <summary>
     /// Test for issue #157: Using enum/static values inside SelectExpr query
     /// </summary>
-    [Fact]
+    [Test]
     public void CanUseEnumValueInSelectQuery()
     {
         PersonWithChildren[] people = [];

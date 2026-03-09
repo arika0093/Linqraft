@@ -34,7 +34,7 @@ public partial class DeclaredMappingOrderRow;
 
 public sealed class MappingRuntimeTests
 {
-    [Fact]
+    [Test]
     public void Mapping_generate_attribute_creates_extension_method()
     {
         var data = new[]
@@ -51,7 +51,7 @@ public sealed class MappingRuntimeTests
         result[1].CustomerName.ShouldBeNull();
     }
 
-    [Fact]
+    [Test]
     public void Mapping_declare_attribute_creates_extension_method()
     {
         var data = new[]

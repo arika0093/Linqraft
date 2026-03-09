@@ -22,7 +22,7 @@ public class TernaryNestedDtoTest
         public int Value { get; set; }
     }
 
-    [Fact]
+    [Test]
     public void TernaryWithNestedAnonymousType_ExplicitDto()
     {
         var testData = new List<Parent>
@@ -62,7 +62,7 @@ public class TernaryNestedDtoTest
         second.ChildItemInfo.ShouldBeNull();
     }
 
-    [Fact]
+    [Test]
     public void TernaryWithNestedAnonymousType_Anonymous()
     {
         var testData = new List<Parent>
@@ -102,7 +102,7 @@ public class TernaryNestedDtoTest
         second.ChildItemInfo.ShouldBeNull();
     }
 
-    [Fact]
+    [Test]
     public void TernaryWithNestedAnonymousType_ReversedCondition_ExplicitDto()
     {
         var testData = new List<Parent>

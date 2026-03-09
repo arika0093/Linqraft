@@ -2,6 +2,7 @@
   <PropertyGroup>
     <TargetFrameworks Condition="'$(TFMS)' != ''">$(TFMS)</TargetFrameworks>
     <TargetFrameworks Condition="'$(TFMS)' == ''">net10.0</TargetFrameworks>
+    <OutputType>Exe</OutputType>
     <LangVersion>latest</LangVersion>
     <Nullable>enable</Nullable>
     <IsPackable>false</IsPackable>
@@ -9,16 +10,11 @@
     <InterceptorsNamespaces>$(InterceptorsNamespaces);Linqraft</InterceptorsNamespaces>
     <InterceptorsPreviewNamespaces>$(InterceptorsPreviewNamespaces);Linqraft</InterceptorsPreviewNamespaces>
     <SuppressTfmSupportBuildErrors>true</SuppressTfmSupportBuildErrors>
+    <EnableTUnitPolyfills>false</EnableTUnitPolyfills>
   </PropertyGroup>
   <ItemGroup>
-    <PackageReference Include="GitHubActionsTestLogger" Version="3.0.1" />
-    <PackageReference Include="Microsoft.NET.Test.Sdk" Version="18.*" />
     <PackageReference Include="Shouldly" Version="4.*" />
-    <PackageReference Include="xunit" Version="2.*" />
-    <PackageReference Include="xunit.runner.visualstudio" Version="3.1.5">
-      <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
-      <PrivateAssets>all</PrivateAssets>
-    </PackageReference>
+    <PackageReference Include="TUnit" Version="1.*" />
     <PackageReference Include="PolySharp" Version="1.*">
       <PrivateAssets>all</PrivateAssets>
       <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
@@ -46,7 +42,6 @@
     <CompilerVisibleProperty Include="LinqraftUsePrebuildExpression" />
   </ItemGroup>
   <ItemGroup>
-    <Using Include="Xunit" />
     <Using Include="Shouldly" />
   </ItemGroup>
 </Project>

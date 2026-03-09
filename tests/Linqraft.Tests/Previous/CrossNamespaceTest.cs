@@ -5,7 +5,7 @@ namespace Linqraft.Tests.TestNamespace;
 
 public class CrossNamespaceTest
 {
-    [Fact]
+    [Test]
     public void GeneratedDtoShouldBeInCallerNamespace()
     {
         var rst = SampleData
@@ -21,7 +21,7 @@ public class CrossNamespaceTest
         rst.GetType().FullName.ShouldBe("Linqraft.Tests.TestNamespace.TestSampleDto");
     }
 
-    [Fact]
+    [Test]
     public void GeneratedDtoWithNestedPropertiesShouldBeInCallerNamespace()
     {
         var rst = SampleDataWithChild
@@ -38,7 +38,7 @@ public class CrossNamespaceTest
         rst.GetType().FullName.ShouldBe("Linqraft.Tests.TestNamespace.ParentDto");
     }
 
-    [Fact]
+    [Test]
     public void ManuallyDefinedDtoShouldUseDefinedNamespace()
     {
         var rst = SampleData

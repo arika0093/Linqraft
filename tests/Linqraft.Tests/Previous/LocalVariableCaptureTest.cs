@@ -6,7 +6,7 @@ namespace Linqraft.Tests;
 
 public class LocalVariableCaptureTest
 {
-    [Fact]
+    [Test]
     public void AnonymousPattern_WithSingleCapturedVariable()
     {
         var val = 100;
@@ -21,7 +21,7 @@ public class LocalVariableCaptureTest
         first.NewValue.ShouldBe(110); // 10 + 100
     }
 
-    [Fact]
+    [Test]
     public void AnonymousPattern_WithMultipleCapturedVariables()
     {
         var val = 100;
@@ -54,7 +54,7 @@ public class LocalVariableCaptureTest
         first.Description.ShouldBe("Item1 units");
     }
 
-    [Fact]
+    [Test]
     public void ExplicitPattern_WithSingleCapturedVariable()
     {
         var val = 100;
@@ -73,7 +73,7 @@ public class LocalVariableCaptureTest
         first.NewValue.ShouldBe(110);
     }
 
-    [Fact]
+    [Test]
     public void ExplicitPattern_WithMultipleCapturedVariables()
     {
         var val = 100;
@@ -99,7 +99,7 @@ public class LocalVariableCaptureTest
         first.DoubledValue.ShouldBe(20);
     }
 
-    [Fact]
+    [Test]
     public void PredefinedPattern_WithSingleCapturedVariable()
     {
         var val = 100;
@@ -118,7 +118,7 @@ public class LocalVariableCaptureTest
         first.NewValue.ShouldBe(110);
     }
 
-    [Fact]
+    [Test]
     public void PredefinedPattern_WithMultipleCapturedVariables()
     {
         var val = 100;
@@ -144,7 +144,7 @@ public class LocalVariableCaptureTest
         first.DoubledValue.ShouldBe(20);
     }
 
-    [Fact]
+    [Test]
     public void CapturedVariable_WithComplexExpression()
     {
         var baseValue = 50;
@@ -161,7 +161,7 @@ public class LocalVariableCaptureTest
         first.ComputedValue.ShouldBe(120); // 10 + 110
     }
 
-    [Fact]
+    [Test]
     public void CapturedVariable_WithDateTime()
     {
         var date = new DateTime(2024, 1, 1);
@@ -183,7 +183,7 @@ public class LocalVariableCaptureTest
         first.ProcessedDate.ShouldBe(new DateTime(2024, 1, 1));
     }
 
-    [Fact]
+    [Test]
     public void Case1_CapturedRequestObject_AllowsMemberAccess()
     {
         var request = new RequestRange
@@ -212,7 +212,7 @@ public class LocalVariableCaptureTest
         converted[1].CommitCount.ShouldBe(0);
     }
 
-    [Fact]
+    [Test]
     public void Case2_CapturedRequestFields_AllowsMemberAccess()
     {
         var request = new RequestRange
@@ -241,7 +241,7 @@ public class LocalVariableCaptureTest
         converted[1].CommitCount.ShouldBe(0);
     }
 
-    [Fact]
+    [Test]
     public void IEnumerable_WithCapturedVariable()
     {
         var val = 100;
@@ -256,7 +256,7 @@ public class LocalVariableCaptureTest
         first.NewValue.ShouldBe(110);
     }
 
-    [Fact]
+    [Test]
     public void Case3_NestedMemberAccess_InCapturedFields()
     {
         var request = new NestedRequest

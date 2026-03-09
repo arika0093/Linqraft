@@ -26,7 +26,7 @@ public class Issue193_NullConditionalInInitializerTest
     /// Output: new global::...ItemChildDto { Test = i != null ? i.Title : null }
     /// NOT:    new ItemChildDto { Test = i != null ? (Type?)new ItemChildDto { Test = i.Title } : null }
     /// </summary>
-    [Fact]
+    [Test]
     public void SelectExpr_PredefinedDto_NullConditionalInInitializer_ShouldOnlyAffectProperty()
     {
         var result = _data
@@ -65,7 +65,7 @@ public class Issue193_NullConditionalInInitializerTest
     /// Input:  x != null ? x.Select(y => new Xxx { ... }) : []
     /// Output: ... : global::System.Linq.Enumerable.Empty&lt;global::Namespace.Xxx&gt;()
     /// </summary>
-    [Fact]
+    [Test]
     public void SelectExpr_PredefinedDto_TernaryWithEmptyArrayLiteral_ShouldUseFullyQualifiedEmpty()
     {
         var data = new List<Issue193_Entity>
@@ -115,7 +115,7 @@ public class Issue193_NullConditionalInInitializerTest
     /// Input:  x != null ? x.Select(y => new Xxx { ... }) : Enumerable.Empty&lt;Xxx&gt;()
     /// Output: ... : global::System.Linq.Enumerable.Empty&lt;global::Namespace.Xxx&gt;()
     /// </summary>
-    [Fact]
+    [Test]
     public void SelectExpr_PredefinedDto_TernaryWithEnumerableEmpty_ShouldUseFullyQualifiedEmpty()
     {
         var data = new List<Issue193_Entity>

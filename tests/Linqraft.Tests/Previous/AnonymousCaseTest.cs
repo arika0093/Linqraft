@@ -5,7 +5,7 @@ namespace Linqraft.Tests;
 
 public class AnonymousCaseTest
 {
-    [Fact]
+    [Test]
     public void Case1Basic()
     {
         var converted = SampleData
@@ -17,7 +17,7 @@ public class AnonymousCaseTest
         first.FullName.ShouldBe("John + Doe");
     }
 
-    [Fact]
+    [Test]
     public void Case1Other1()
     {
         var converted = SampleData
@@ -29,7 +29,7 @@ public class AnonymousCaseTest
         first.FullName.ShouldBe("John - Doe");
     }
 
-    [Fact]
+    [Test]
     public void Case1Other2()
     {
         var converted = SampleData

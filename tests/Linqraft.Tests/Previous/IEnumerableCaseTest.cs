@@ -21,7 +21,7 @@ public class IEnumerableCaseTest
             },
         ];
 
-    [Fact]
+    [Test]
     public void BasicEnumerableCase()
     {
         var converted = EnumerableData
@@ -38,7 +38,7 @@ public class IEnumerableCaseTest
         first.FullName.ShouldBe("John Doe");
     }
 
-    [Fact]
+    [Test]
     public void EnumerableWithWhereClause()
     {
         var converted = EnumerableData
@@ -56,7 +56,7 @@ public class IEnumerableCaseTest
         first.FullName.ShouldBe("Jane Smith");
     }
 
-    [Fact]
+    [Test]
     public void EnumerableWithExplicitDto()
     {
         var converted = EnumerableData
@@ -73,7 +73,7 @@ public class IEnumerableCaseTest
         first.FullName.ShouldBe("John Doe");
     }
 
-    [Fact]
+    [Test]
     public void EnumerableWithAnonymous()
     {
         var converted = EnumerableData

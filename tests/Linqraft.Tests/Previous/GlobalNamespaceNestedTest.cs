@@ -9,7 +9,7 @@ namespace Linqraft.Tests;
 
 public class GlobalNamespaceNestedTest
 {
-    [Fact]
+    [Test]
     public void Test_GlobalNamespace_WithNestedSelect()
     {
         var result = SampleData
@@ -31,7 +31,7 @@ public class GlobalNamespaceNestedTest
         result[0].Children[0].ChildName.ShouldBe("Child1");
     }
 
-    [Fact]
+    [Test]
     public void Test_GlobalNamespace_AnonymousType_WithNestedSelect()
     {
         var result = SampleData

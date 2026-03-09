@@ -37,7 +37,7 @@ public class Issue159_NestedObjectCreationTest
     /// Test that nested object creations in Select use fully qualified type names
     /// and named types are preserved without DTO conversion
     /// </summary>
-    [Fact]
+    [Test]
     public void SelectExpr_NestedNamedType_ShouldPreserveOriginalType()
     {
         var result = _datas
@@ -66,7 +66,7 @@ public class Issue159_NestedObjectCreationTest
     /// <summary>
     /// Test that nested object creations use fully qualified type names in initializers
     /// </summary>
-    [Fact]
+    [Test]
     public void SelectExpr_NestedObjectInInitializer_ShouldUseFullyQualifiedNames()
     {
         var result = _datas
@@ -97,7 +97,7 @@ public class Issue159_NestedObjectCreationTest
     /// Test that nested object creations in Select use fully qualified type names
     /// and named types are preserved without DTO conversion
     /// </summary>
-    [Fact]
+    [Test]
     public void SelectExpr_NestedNamedType_ShouldPreserveOriginalType_WithExplicit()
     {
         var result = _datas
@@ -126,7 +126,7 @@ public class Issue159_NestedObjectCreationTest
     /// <summary>
     /// Test that nested object creations use fully qualified type names in initializers
     /// </summary>
-    [Fact]
+    [Test]
     public void SelectExpr_NestedObjectInInitializer_ShouldUseFullyQualifiedNames_WithExplicit()
     {
         var result = _datas

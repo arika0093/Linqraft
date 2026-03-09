@@ -3,7 +3,7 @@ using System.Linq;
 
 public class RootNamespaceTest
 {
-    [Fact]
+    [Test]
     public void Test_GlobalNamespaceHandling()
     {
         var rst = SampleData

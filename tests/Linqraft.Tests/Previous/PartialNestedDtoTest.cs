@@ -5,7 +5,7 @@ namespace Linqraft.Tests;
 
 public partial class PartialNestedDtoTest
 {
-    [Fact]
+    [Test]
     public void PartialNestedDto_ShouldGenerateInSameNestingLevel()
     {
         var testData = new List<Entity>
@@ -46,7 +46,7 @@ public partial class PartialNestedDtoTest
         second.CreatedAt.ShouldBe(new System.DateTime(2025, 1, 2));
     }
 
-    [Fact]
+    [Test]
     public void PartialNestedDto_MultiLevel_ShouldGenerateInSameNestingLevel()
     {
         var testData = new List<Entity>
@@ -70,7 +70,7 @@ public partial class PartialNestedDtoTest
         first.Name.ShouldBe("Entity1");
     }
 
-    [Fact]
+    [Test]
     public void PartialNestedDto_ShouldGenerateInSameClass()
     {
         var testData = new List<Entity>

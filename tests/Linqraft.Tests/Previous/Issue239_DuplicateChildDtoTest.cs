@@ -21,7 +21,7 @@ public partial class Issue239_DuplicateChildDtoTest
         },
     ];
 
-    [Fact]
+    [Test]
     public void ShouldGenerateSingleItemDtoForMultipleSelectExprWithSameShape()
     {
         // Arrange & Act - Two separate SelectExpr calls with identical anonymous structure

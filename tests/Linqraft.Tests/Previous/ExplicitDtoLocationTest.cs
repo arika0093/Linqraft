@@ -6,7 +6,7 @@ namespace Linqraft.Tests;
 
 public class ExplicitDtoLocationTest
 {
-    [Fact]
+    [Test]
     public void Explicit_dto_classes_are_emitted_with_expression_file()
     {
         var projectDir = GetProjectDirectory();
@@ -39,7 +39,7 @@ public class ExplicitDtoLocationTest
         }
     }
 
-    [Fact]
+    [Test]
     public void Generated_interceptors_inline_projection_logic()
     {
         var projectDir = GetProjectDirectory();

@@ -13,7 +13,7 @@ namespace Linqraft.Analyzer.Tests;
 
 public sealed class AnalyzerSmokeTests
 {
-    [Fact]
+    [Test]
     public async Task Missing_capture_reports_LQRE001()
     {
         const string source = """
@@ -54,7 +54,7 @@ public sealed class AnalyzerSmokeTests
         diagnostics.Select(diagnostic => diagnostic.Id).ShouldContain("LQRE001");
     }
 
-    [Fact]
+    [Test]
     public async Task Queryable_select_anonymous_reports_LQRS002()
     {
         const string source = """
@@ -78,7 +78,7 @@ public sealed class AnalyzerSmokeTests
         diagnostics.Select(diagnostic => diagnostic.Id).ShouldContain("LQRS002");
     }
 
-    [Fact]
+    [Test]
     public async Task Hash_namespace_usage_reports_LQRW001()
     {
         const string source = """
@@ -91,7 +91,7 @@ public sealed class AnalyzerSmokeTests
         diagnostics.Select(diagnostic => diagnostic.Id).ShouldContain("LQRW001");
     }
 
-    [Fact]
+    [Test]
     public async Task Auto_generated_dto_usage_reports_LQRW002()
     {
         const string source = """
@@ -115,7 +115,7 @@ public sealed class AnalyzerSmokeTests
         diagnostics.Select(diagnostic => diagnostic.Id).ShouldContain("LQRW002");
     }
 
-    [Fact]
+    [Test]
     public async Task Untyped_selectexpr_reports_LQRS001()
     {
         const string source = """
@@ -152,7 +152,7 @@ public sealed class AnalyzerSmokeTests
         diagnostics.Select(diagnostic => diagnostic.Id).ShouldContain("LQRS001");
     }
 
-    [Fact]
+    [Test]
     public async Task Queryable_select_named_reports_LQRS003()
     {
         const string source = """
@@ -184,7 +184,7 @@ public sealed class AnalyzerSmokeTests
         diagnostics.Select(diagnostic => diagnostic.Id).ShouldContain("LQRS003");
     }
 
-    [Fact]
+    [Test]
     public async Task Ternary_inside_selectexpr_reports_LQRS004()
     {
         const string source = """
@@ -225,7 +225,7 @@ public sealed class AnalyzerSmokeTests
         diagnostics.Select(diagnostic => diagnostic.Id).ShouldContain("LQRS004");
     }
 
-    [Fact]
+    [Test]
     public async Task Unused_capture_reports_LQRS005()
     {
         const string source = """
@@ -264,7 +264,7 @@ public sealed class AnalyzerSmokeTests
         diagnostics.Select(diagnostic => diagnostic.Id).ShouldContain("LQRS005");
     }
 
-    [Fact]
+    [Test]
     public async Task Anonymous_groupby_key_reports_LQRE002()
     {
         const string source = """
@@ -300,7 +300,7 @@ public sealed class AnalyzerSmokeTests
         diagnostics.Select(diagnostic => diagnostic.Id).ShouldContain("LQRE002");
     }
 
-    [Fact]
+    [Test]
     public async Task Anonymous_object_reports_LQRF001()
     {
         const string source = """
@@ -317,7 +317,7 @@ public sealed class AnalyzerSmokeTests
         diagnostics.Select(diagnostic => diagnostic.Id).ShouldContain("LQRF001");
     }
 
-    [Fact]
+    [Test]
     public async Task Api_controller_without_response_metadata_reports_LQRF002()
     {
         const string source = """
@@ -365,7 +365,7 @@ public sealed class AnalyzerSmokeTests
         diagnostics.Select(diagnostic => diagnostic.Id).ShouldContain("LQRF002");
     }
 
-    [Fact]
+    [Test]
     public async Task Void_dbset_select_reports_LQRF003()
     {
         const string source = """
@@ -410,7 +410,7 @@ public sealed class AnalyzerSmokeTests
         diagnostics.Select(diagnostic => diagnostic.Id).ShouldContain("LQRF003");
     }
 
-    [Fact]
+    [Test]
     public async Task Void_queryable_select_reports_LQRF004()
     {
         const string source = """
@@ -475,7 +475,7 @@ public sealed class AnalyzerSmokeTests
         {
             try
             {
-                explicitAssemblies.Add(Assembly.Load(assemblyName));
+                explicitAssemblies.Add(System.Reflection.Assembly.Load(assemblyName));
             }
             catch
             {

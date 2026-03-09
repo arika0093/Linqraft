@@ -5,7 +5,7 @@ namespace Linqraft.Tests;
 
 public class SimpleCaseTest
 {
-    [Fact]
+    [Test]
     public void Case1()
     {
         var converted = Case1Data
@@ -23,7 +23,7 @@ public class SimpleCaseTest
         first.FullName.ShouldBe("John Doe");
     }
 
-    [Fact]
+    [Test]
     public void Case1Other()
     {
         var converted = Case1Data
@@ -41,7 +41,7 @@ public class SimpleCaseTest
         first.FullName.ShouldBe("John + Doe");
     }
 
-    [Fact]
+    [Test]
     public void Case1AnotherParamName()
     {
         var converted = Case1Data
@@ -59,7 +59,7 @@ public class SimpleCaseTest
         first.FullName.ShouldBe("John + Doe");
     }
 
-    [Fact]
+    [Test]
     public void Case1ManyLinqMethods()
     {
         var converted = Case1Data
@@ -79,7 +79,7 @@ public class SimpleCaseTest
         first.FullName.ShouldBe("John Doe");
     }
 
-    [Fact]
+    [Test]
     public void Case1Manually()
     {
         var converted = Case1Data
@@ -97,7 +97,7 @@ public class SimpleCaseTest
         first.FullName.ShouldBe("John Doe");
     }
 
-    [Fact]
+    [Test]
     public void Case1ManuallyOther()
     {
         var converted = Case1Data
@@ -115,7 +115,7 @@ public class SimpleCaseTest
         first.FullName.ShouldBe("John + Doe");
     }
 
-    [Fact]
+    [Test]
     public void Case2()
     {
         var converted = Case2Data
@@ -135,7 +135,7 @@ public class SimpleCaseTest
         first.NumberSum.ShouldBe(6);
     }
 
-    [Fact]
+    [Test]
     public void Case2ManyLinqMethods()
     {
         var converted = Case2Data
@@ -157,7 +157,7 @@ public class SimpleCaseTest
         first.NumberSum.ShouldBe(2);
     }
 
-    [Fact]
+    [Test]
     public void Case2Manually()
     {
         var converted = Case2Data

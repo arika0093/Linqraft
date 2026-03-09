@@ -35,7 +35,7 @@ public class Issue172_PredefinedNestedNamedTypesTest
     /// Tests that named types in nested Select expressions are fully qualified.
     /// Issue: i.Childs.Select(c => new ItemChildDto { Test = c.Test }) was generated without full qualification
     /// </summary>
-    [Fact]
+    [Test]
     public void SelectExpr_PredefinedDto_NestedSelectWithNamedType_ShouldBeFullyQualified()
     {
         var result = _data
@@ -75,7 +75,7 @@ public class Issue172_PredefinedNestedNamedTypesTest
     /// Tests that named types in ternary expressions are fully qualified.
     /// Issue: i.Childs != null ? new ItemChildDto { Test = "" } : null was generated without full qualification
     /// </summary>
-    [Fact]
+    [Test]
     public void SelectExpr_PredefinedDto_TernaryWithNamedType_ShouldBeFullyQualified()
     {
         var result = _data
@@ -102,7 +102,7 @@ public class Issue172_PredefinedNestedNamedTypesTest
     /// Tests that named types with direct object creation are fully qualified.
     /// Issue: Child2Another = new ItemChildDto { Test = i.Title } should use fully qualified names
     /// </summary>
-    [Fact]
+    [Test]
     public void SelectExpr_PredefinedDto_DirectObjectCreation_ShouldBeFullyQualified()
     {
         var result = _data

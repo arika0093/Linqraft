@@ -286,7 +286,7 @@ public class ExplicitDtoComprehensiveTest
 
     #region Basic Nullable Operator Tests
 
-    [Fact]
+    [Test]
     public void ExplicitDto_SingleLevelNullableOperator()
     {
         var result = SimpleTestData
@@ -307,7 +307,7 @@ public class ExplicitDtoComprehensiveTest
         result[1].Value.ShouldBeNull();
     }
 
-    [Fact]
+    [Test]
     public void ExplicitDto_NullConditionalOnNullableProperty()
     {
         var result = NullableChildTestData
@@ -328,7 +328,7 @@ public class ExplicitDtoComprehensiveTest
         result[2].ChildValue.ShouldBeNull();
     }
 
-    [Fact]
+    [Test]
     public void ExplicitDto_MultiLevelNullConditional_TwoLevels()
     {
         var result = NullableChildTestData
@@ -349,7 +349,7 @@ public class ExplicitDtoComprehensiveTest
         result[2].GrandChildDetails.ShouldBeNull();
     }
 
-    [Fact]
+    [Test]
     public void ExplicitDto_MultiLevelNullConditional_ThreeLevels()
     {
         var result = NullableChildTestData
@@ -369,7 +369,7 @@ public class ExplicitDtoComprehensiveTest
         result[2].GreatGrandChildInfo.ShouldBeNull();
     }
 
-    [Fact]
+    [Test]
     public void ExplicitDto_MixedNullConditionalLevels()
     {
         var result = NullableChildTestData
@@ -400,7 +400,7 @@ public class ExplicitDtoComprehensiveTest
 
     #region Nested Select Tests
 
-    [Fact]
+    [Test]
     public void ExplicitDto_NestedSelectWithSimpleProjection()
     {
         var result = CollectionTestData
@@ -418,7 +418,7 @@ public class ExplicitDtoComprehensiveTest
         result[1].ItemNames.ShouldBe([]);
     }
 
-    [Fact]
+    [Test]
     public void ExplicitDto_NestedSelectWithComplexProjection()
     {
         var result = CollectionTestData
@@ -436,7 +436,7 @@ public class ExplicitDtoComprehensiveTest
         result[0].Items[0].Value.ShouldBe(10);
     }
 
-    [Fact]
+    [Test]
     public void ExplicitDto_NestedSelectWithNullConditional()
     {
         var result = CollectionTestData
@@ -463,7 +463,7 @@ public class ExplicitDtoComprehensiveTest
         result[0].Items[1].ChildScore.ShouldBeNull();
     }
 
-    [Fact]
+    [Test]
     public void ExplicitDto_MultipleNestedSelects()
     {
         var result = ComplexTestData
@@ -483,7 +483,7 @@ public class ExplicitDtoComprehensiveTest
         result[1].ChildValues.ShouldBe([]);
     }
 
-    [Fact]
+    [Test]
     public void ExplicitDto_TwoLevelNestedSelect()
     {
         var result = ComplexTestData
@@ -511,7 +511,7 @@ public class ExplicitDtoComprehensiveTest
 
     #region Complex Combinations
 
-    [Fact]
+    [Test]
     public void ExplicitDto_NullConditionalWithNestedSelect()
     {
         var result = ComplexTestData
@@ -538,7 +538,7 @@ public class ExplicitDtoComprehensiveTest
         result[1].PrimaryDetailDescriptions!.Count.ShouldBe(0);
     }
 
-    [Fact]
+    [Test]
     public void ExplicitDto_NestedSelectWithMultiLevelNullConditional()
     {
         var result = ComplexTestData
@@ -565,7 +565,7 @@ public class ExplicitDtoComprehensiveTest
         result[0].Children[1].ExtraNote.ShouldBeNull();
     }
 
-    [Fact]
+    [Test]
     public void ExplicitDto_TwoLevelNestedSelectWithNullConditionals()
     {
         var result = ComplexTestData
@@ -597,7 +597,7 @@ public class ExplicitDtoComprehensiveTest
         result[0].Children[1].Details[0].ExtraQuantity.ShouldBeNull();
     }
 
-    [Fact]
+    [Test]
     public void ExplicitDto_ComplexMixedScenario()
     {
         var result = ComplexTestData
@@ -648,7 +648,7 @@ public class ExplicitDtoComprehensiveTest
         result[1].Children.ShouldBe([]);
     }
 
-    [Fact]
+    [Test]
     public void ExplicitDto_NullableCollectionWithNestedSelect()
     {
         var result = CollectionTestData
@@ -667,7 +667,7 @@ public class ExplicitDtoComprehensiveTest
         result[1].NullableItemNames.Count.ShouldBe(0);
     }
 
-    [Fact]
+    [Test]
     public void ExplicitDto_ThreeLevelNestedSelectWithMixedNullConditionals()
     {
         // Create specific test data for this scenario
@@ -742,7 +742,7 @@ public class ExplicitDtoComprehensiveTest
 
     #region Edge Cases
 
-    [Fact]
+    [Test]
     public void ExplicitDto_AllNullValues()
     {
         var testData = new List<EntityWithNullableChild>
@@ -772,7 +772,7 @@ public class ExplicitDtoComprehensiveTest
         result[0].GreatGrandChildInfo.ShouldBeNull();
     }
 
-    [Fact]
+    [Test]
     public void ExplicitDto_EmptyCollections()
     {
         var testData = new List<ComplexEntity>
@@ -808,7 +808,7 @@ public class ExplicitDtoComprehensiveTest
         result[0].ChildNames.ShouldBe([]);
     }
 
-    [Fact]
+    [Test]
     public void ExplicitDto_MixedNullAndNonNullInCollection()
     {
         var result = CollectionTestData
@@ -835,7 +835,7 @@ public class ExplicitDtoComprehensiveTest
         result[0].Items[1].ChildDescription.ShouldBeNull();
     }
 
-    [Fact]
+    [Test]
     public void ExplicitDto_ConditionalNestedSelect()
     {
         var result = CollectionTestData
@@ -859,7 +859,7 @@ public class ExplicitDtoComprehensiveTest
 
     #region Additional Complex Scenarios
 
-    [Fact]
+    [Test]
     public void ExplicitDto_MultiplePropertiesWithSameNullConditionalChain()
     {
         var result = NullableChildTestData
@@ -881,7 +881,7 @@ public class ExplicitDtoComprehensiveTest
         result[0].GreatGrandChildCount.ShouldBe(30);
     }
 
-    [Fact]
+    [Test]
     public void ExplicitDto_NestedSelectWithAggregation()
     {
         var result = CollectionTestData
@@ -904,7 +904,7 @@ public class ExplicitDtoComprehensiveTest
         result[1].MaxValue.ShouldBe(0);
     }
 
-    [Fact]
+    [Test]
     public void ExplicitDto_NestedSelectWithFiltering()
     {
         var result = CollectionTestData
@@ -925,7 +925,7 @@ public class ExplicitDtoComprehensiveTest
         result[0].ItemsWithChildren.ShouldBe(["Item1"]);
     }
 
-    [Fact]
+    [Test]
     public void ExplicitDto_CombinedAggregationAndNullConditional()
     {
         var result = ComplexTestData

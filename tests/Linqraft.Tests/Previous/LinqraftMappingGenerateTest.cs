@@ -1,6 +1,5 @@
 using System.Collections.Generic;
 using System.Linq;
-using Xunit;
 
 namespace Linqraft.Tests;
 
@@ -38,7 +37,7 @@ public static partial class MappingTestQueries
 
 public class LinqraftMappingGenerateTest
 {
-    [Fact]
+    [Test]
     public void MappingGenerate_BasicTest()
     {
         // Arrange
@@ -64,22 +63,22 @@ public class LinqraftMappingGenerateTest
         var result = MappingTestQueries.ProjectToDto(data).ToList();
 
         // Assert
-        Assert.Equal(2, result.Count);
-        Assert.Equal(1, result[0].Id);
-        Assert.Equal("Test1", result[0].Name);
-        Assert.Equal("Description1", result[0].Description);
-        Assert.Equal(10, result[0].ChildId);
-        Assert.Equal("Child1", result[0].ChildName);
+        result.Count.ShouldBe(2);
+        result[0].Id.ShouldBe(1);
+        result[0].Name.ShouldBe("Test1");
+        result[0].Description.ShouldBe("Description1");
+        result[0].ChildId.ShouldBe(10);
+        result[0].ChildName.ShouldBe("Child1");
 
-        Assert.Equal(2, result[1].Id);
-        Assert.Equal("Test2", result[1].Name);
-        Assert.Null(result[1].Description);
-        Assert.Null(result[1].ChildId);
-        Assert.Null(result[1].ChildName);
+        result[1].Id.ShouldBe(2);
+        result[1].Name.ShouldBe("Test2");
+        result[1].Description.ShouldBeNull();
+        result[1].ChildId.ShouldBeNull();
+        result[1].ChildName.ShouldBeNull();
     }
 
 #if NET9_0_OR_GREATER
-    [Fact]
+    [Test]
     public void MappingGenerate_WithNestedCollection_Test()
     {
         // Arrange
@@ -107,18 +106,18 @@ public class LinqraftMappingGenerateTest
         var result = MappingTestQueries.ProjectToDtoWithChildren(data).ToList();
 
         // Assert
-        Assert.Equal(2, result.Count);
-        Assert.Equal(1, result[0].Id);
-        Assert.Equal("Parent1", result[0].Title);
+        result.Count.ShouldBe(2);
+        result[0].Id.ShouldBe(1);
+        result[0].Title.ShouldBe("Parent1");
 
         var children0 = result[0].Children.ToList();
-        Assert.Equal(2, children0.Count);
-        Assert.Equal(10, children0[0].ChildId);
-        Assert.Equal("Child1-1", children0[0].ChildName);
+        children0.Count.ShouldBe(2);
+        children0[0].ChildId.ShouldBe(10);
+        children0[0].ChildName.ShouldBe("Child1-1");
 
-        Assert.Equal(2, result[1].Id);
-        Assert.Equal("Parent2", result[1].Title);
-        Assert.Empty(result[1].Children);
+        result[1].Id.ShouldBe(2);
+        result[1].Title.ShouldBe("Parent2");
+        result[1].Children.ShouldBeEmpty();
     }
 #endif
 }

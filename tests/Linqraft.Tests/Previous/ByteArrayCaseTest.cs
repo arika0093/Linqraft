@@ -6,7 +6,7 @@ namespace Linqraft.Tests;
 
 public class ByteArrayCaseTest
 {
-    [Fact]
+    [Test]
     public void ByteArray_WithNullableAccess_ShouldBeGenerated()
     {
         var converted = TestData
@@ -31,7 +31,7 @@ public class ByteArrayCaseTest
         second.Salt.ShouldBeNull();
     }
 
-    [Fact]
+    [Test]
     public void ByteArray_WithoutNullableAccess_ShouldBeGenerated()
     {
         var dataWithNonNull = new List<ByteArrayEntity>

@@ -23,7 +23,7 @@ public sealed class CollectionNullabilityRuntimeTests
         },
     ];
 
-    [Fact]
+    [Test]
     public void Null_conditional_collection_projection_uses_empty_fallbacks_by_default()
     {
         var result = Parents

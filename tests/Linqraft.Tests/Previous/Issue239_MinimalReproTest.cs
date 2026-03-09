@@ -20,7 +20,7 @@ public class Issue239_MinimalReproTest
         },
     ];
 
-    [Fact]
+    [Test]
     public void TwoSelectExprWithSameStructureShouldShareNestedDto()
     {
         var data = _testData.AsQueryable();

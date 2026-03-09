@@ -43,4 +43,4 @@ jobs:
         run: dotnet build --no-restore
 
       - name: Run tests
-        run: dotnet test --no-build --verbosity normal --logger GitHubActions
+        run: dotnet test --solution Linqraft.slnx --no-build --verbosity normal

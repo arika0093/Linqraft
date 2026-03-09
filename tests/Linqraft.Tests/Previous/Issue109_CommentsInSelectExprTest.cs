@@ -5,7 +5,7 @@ namespace Linqraft.Tests;
 
 public class Issue109_CommentsInSelectExprTest
 {
-    [Fact]
+    [Test]
     public void Test_CommentsInLinqChain()
     {
         List<TestForIssue109> datas =
@@ -78,7 +78,7 @@ public class Issue109_CommentsInSelectExprTest
         result[1].ActiveChildren[1].Id.ShouldBe(4);
     }
 
-    [Fact]
+    [Test]
     public void Test_MultipleCommentsInLinqChain()
     {
         List<TestForIssue109> datas =

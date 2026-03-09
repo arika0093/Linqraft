@@ -8,7 +8,7 @@ public class TutorialCaseTest
 {
     private readonly List<Order> Orders = [];
 
-    [Fact]
+    [Test]
     public void TryTutorialCaseExplicit()
     {
         var orders = Orders

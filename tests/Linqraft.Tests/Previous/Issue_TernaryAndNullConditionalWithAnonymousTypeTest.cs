@@ -42,7 +42,7 @@ public class Issue_TernaryAndNullConditionalWithAnonymousTypeTest
     /// x.Items != null ? x.Items.Select(i => new { i.Title }) : []
     /// Expected: Replace [] with Enumerable.Empty{T}()
     /// </summary>
-    [Fact]
+    [Test]
     public void TernaryWithSelect_EmptyArrayLiteral_ShouldGenerateEnumerableEmpty()
     {
         var result = _testData
@@ -72,7 +72,7 @@ public class Issue_TernaryAndNullConditionalWithAnonymousTypeTest
     /// x.Items?.Select(i => new { i.Title }) ?? []
     /// Expected: Convert ?. to explicit null check, replace [] with Enumerable.Empty{T}()
     /// </summary>
-    [Fact]
+    [Test]
     public void NullConditionalSelect_WithNullCoalescing_ShouldGenerateExplicitNullCheck()
     {
         var result = _testData
@@ -102,7 +102,7 @@ public class Issue_TernaryAndNullConditionalWithAnonymousTypeTest
     /// x.NullableItems?.Select(i => new { i.Title }) ?? []
     /// Expected: Same handling as Pattern 2
     /// </summary>
-    [Fact]
+    [Test]
     public void NullableProperty_NullConditionalSelect_ShouldGenerateCorrectCode()
     {
         var result = _testData

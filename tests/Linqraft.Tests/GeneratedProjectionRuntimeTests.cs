@@ -46,7 +46,7 @@ public sealed class GeneratedProjectionRuntimeTests
         new() { Id = 2, Total = 150m },
     ];
 
-    [Fact]
+    [Test]
     public void Explicit_dto_projection_runs()
     {
         var result = Orders
@@ -67,7 +67,7 @@ public sealed class GeneratedProjectionRuntimeTests
         result[1].ItemCount.ShouldBe(2);
     }
 
-    [Fact]
+    [Test]
     public void Predefined_dto_projection_runs()
     {
         var result = Products
@@ -85,7 +85,7 @@ public sealed class GeneratedProjectionRuntimeTests
         result[1].DisplayName.ShouldBe("Phone!");
     }
 
-    [Fact]
+    [Test]
     public void Anonymous_projection_runs()
     {
         var result = People
@@ -102,7 +102,7 @@ public sealed class GeneratedProjectionRuntimeTests
         result[1].DisplayName.ShouldBe("Grace Hopper");
     }
 
-    [Fact]
+    [Test]
     public void IEnumerable_projection_runs()
     {
         var result = People
@@ -118,7 +118,7 @@ public sealed class GeneratedProjectionRuntimeTests
         result[1].DisplayName.ShouldBe("Hopper, Grace");
     }
 
-    [Fact]
+    [Test]
     public void Captured_value_projection_runs()
     {
         const decimal threshold = 50m;
@@ -140,7 +140,7 @@ public sealed class GeneratedProjectionRuntimeTests
         result[1].IsLarge.ShouldBeTrue();
     }
 
-    [Fact]
+    [Test]
     public void IQueryable_projection_preserves_query_provider()
     {
         const decimal threshold = 50m;
@@ -159,7 +159,7 @@ public sealed class GeneratedProjectionRuntimeTests
         result.Expression.ToString().ShouldContain("Select");
     }
 
-    [Fact]
+    [Test]
     public void Predeclared_property_is_populated()
     {
         var result = Orders

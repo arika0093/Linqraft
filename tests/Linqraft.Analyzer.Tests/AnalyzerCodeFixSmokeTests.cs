@@ -17,7 +17,7 @@ namespace Linqraft.Analyzer.Tests;
 
 public sealed class AnalyzerCodeFixSmokeTests
 {
-    [Fact]
+    [Test]
     public async Task Missing_capture_code_fix_adds_capture_argument()
     {
         const string source = """
@@ -59,7 +59,7 @@ public sealed class AnalyzerCodeFixSmokeTests
         fixedText.ShouldContain("capture: new { threshold }");
     }
 
-    [Fact]
+    [Test]
     public async Task Unused_capture_code_fix_removes_capture_argument()
     {
         const string source = """
@@ -99,7 +99,7 @@ public sealed class AnalyzerCodeFixSmokeTests
         fixedText.ShouldNotContain("capture:");
     }
 
-    [Fact]
+    [Test]
     public async Task Anonymous_object_current_file_fix_creates_dto()
     {
         const string source = """
@@ -125,7 +125,7 @@ public sealed class AnalyzerCodeFixSmokeTests
         fixedText.ShouldContain("partial class CreateDto");
     }
 
-    [Fact]
+    [Test]
     public async Task Anonymous_object_new_file_fix_creates_additional_document()
     {
         const string source = """
@@ -150,7 +150,7 @@ public sealed class AnalyzerCodeFixSmokeTests
         projectDocuments.Select(document => document.Name).ShouldContain("CreateDto.cs");
     }
 
-    [Fact]
+    [Test]
     public async Task Groupby_key_code_fix_creates_named_key_type()
     {
         const string source = """
@@ -191,7 +191,7 @@ public sealed class AnalyzerCodeFixSmokeTests
         fixedText.ShouldContain("class EntityGroupKey");
     }
 
-    [Fact]
+    [Test]
     public async Task Produces_response_type_code_fix_adds_attribute()
     {
         const string source = """
@@ -247,7 +247,7 @@ public sealed class AnalyzerCodeFixSmokeTests
         fixedText.ShouldContain("[global::Microsoft.AspNetCore.Mvc.ProducesResponseType(typeof(EntityDto))]");
     }
 
-    [Fact]
+    [Test]
     public async Task Untyped_selectexpr_code_fix_inserts_explicit_dto_types()
     {
         const string source = """
@@ -285,7 +285,7 @@ public sealed class AnalyzerCodeFixSmokeTests
         fixedText.ShouldContain("SelectExpr<Entity, ProjectDto>");
     }
 
-    [Fact]
+    [Test]
     public async Task Ternary_simplification_code_fix_applies_null_conditional()
     {
         const string source = """
@@ -330,7 +330,7 @@ public sealed class AnalyzerCodeFixSmokeTests
         fixedText.ShouldContain("new { ChildId = entity.Child?.Id }");
     }
 
-    [Fact]
+    [Test]
     public async Task Async_api_response_code_fix_rewrites_method_shape()
     {
         const string source = """
@@ -404,7 +404,7 @@ public sealed class AnalyzerCodeFixSmokeTests
         fixedText.ShouldContain("using Microsoft.EntityFrameworkCore;");
     }
 
-    [Fact]
+    [Test]
     public async Task Sync_api_response_code_fix_rewrites_method_shape()
     {
         const string source = """
@@ -567,7 +567,7 @@ public sealed class AnalyzerCodeFixSmokeTests
         {
             try
             {
-                explicitAssemblies.Add(Assembly.Load(assemblyName));
+                explicitAssemblies.Add(System.Reflection.Assembly.Load(assemblyName));
             }
             catch
             {

@@ -13,7 +13,7 @@ namespace Linqraft.Tests;
 /// </summary>
 public class Issue_NestedPropertyDocumentationTest
 {
-    [Fact]
+    [Test]
     public void Test_NestedPropertyCommentReference()
     {
         var orders = new List<Order>

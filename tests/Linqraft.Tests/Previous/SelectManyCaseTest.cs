@@ -69,7 +69,7 @@ public class SelectManyCaseTest
         },
     ];
 
-    [Fact]
+    [Test]
     public void SelectMany_SimpleCase_Anonymous()
     {
         // Flatten children collection using SelectMany
@@ -100,7 +100,7 @@ public class SelectManyCaseTest
         second.AllGrandChildren.Select(gc => gc.GrandChildId).ShouldBe([2001]);
     }
 
-    [Fact]
+    [Test]
     public void SelectMany_WithProjection_Anonymous()
     {
         // SelectMany with projection in lambda
@@ -130,7 +130,7 @@ public class SelectManyCaseTest
         second.AllGrandChildDescriptions.ShouldBe(["GrandChild2-1-1"]);
     }
 
-    [Fact]
+    [Test]
     public void SelectMany_ExplicitDto()
     {
         // SelectMany with explicit DTO type
@@ -152,7 +152,7 @@ public class SelectManyCaseTest
         first.AllGrandChildren.Count().ShouldBe(3);
     }
 
-    [Fact]
+    [Test]
     public void SelectMany_WithNullConditional()
     {
         // Test data with null collection

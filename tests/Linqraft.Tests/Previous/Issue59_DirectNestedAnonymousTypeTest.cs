@@ -113,7 +113,7 @@ public class Issue59DirectNestedAnonymousTypeTest
         },
     ];
 
-    [Fact]
+    [Test]
     public void ExplicitDto_SingleDirectNestedAnonymousType()
     {
         var result = TestData
@@ -145,7 +145,7 @@ public class Issue59DirectNestedAnonymousTypeTest
         result[1].Channel.IsActive.ShouldBeFalse();
     }
 
-    [Fact]
+    [Test]
     public void ExplicitDto_SingleDirectNestedAnonymousType2()
     {
         var result = TestData
@@ -178,7 +178,7 @@ public class Issue59DirectNestedAnonymousTypeTest
         result[1].Channel.AdditionalInfo.IsActive.ShouldBeFalse();
     }
 
-    [Fact]
+    [Test]
     public void ExplicitDto_MultipleDirectNestedAnonymousTypes()
     {
         var result = TestData
@@ -222,7 +222,7 @@ public class Issue59DirectNestedAnonymousTypeTest
         result[1].VehicleCategory.Name.ShouldBe("SUV");
     }
 
-    [Fact]
+    [Test]
     public void ExplicitDto_NestedAnonymousTypeInCollection()
     {
         var result = TestData
@@ -266,7 +266,7 @@ public class Issue59DirectNestedAnonymousTypeTest
         result[1].QuoteExtras.Count.ShouldBe(0);
     }
 
-    [Fact]
+    [Test]
     public void ExplicitDto_ComplexCombination()
     {
         // This is the pattern from issue #59
@@ -356,7 +356,7 @@ public class Issue59DirectNestedAnonymousTypeTest
         second.QuoteExtras.Count.ShouldBe(0);
     }
 
-    [Fact]
+    [Test]
     public void ExplicitDto_DirectNestedWithFirstOrDefault()
     {
         var result = TestData
@@ -374,7 +374,7 @@ public class Issue59DirectNestedAnonymousTypeTest
         result.Channel.Name.ShouldBe("Online");
     }
 
-    [Fact]
+    [Test]
     public void ExplicitDto_MultipleNestedSameStructure()
     {
         // Test case where multiple nested types have the same structure

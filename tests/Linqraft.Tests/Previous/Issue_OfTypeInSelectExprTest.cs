@@ -26,7 +26,7 @@ public class Issue_OfTypeInSelectExprTest
         new OfTypeParent { Id = 2, Items = [new OfTypeChildB { Name = "B2", BValue = 40 }] },
     ];
 
-    [Fact]
+    [Test]
     public void OfType_InSelectExpr_ShouldFilterCorrectly()
     {
         // OfType<OfTypeChildA> should only include OfTypeChildA instances
@@ -42,7 +42,7 @@ public class Issue_OfTypeInSelectExprTest
         result[1].AItems.Count.ShouldBe(0);
     }
 
-    [Fact]
+    [Test]
     public void OfType_InSelectExprWithExplicitDto_ShouldFilterCorrectly()
     {
         var result = _testData

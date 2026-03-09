@@ -17,7 +17,7 @@ public class SameClassManyPatternsTest
         },
     ];
 
-    [Fact]
+    [Test]
     public void Default()
     {
         var converted = Datas
@@ -31,7 +31,7 @@ public class SameClassManyPatternsTest
         converted[0].FullName.ShouldBe("Alice Smith");
     }
 
-    [Fact]
+    [Test]
     public void Default2()
     {
         var converted = Datas
@@ -45,7 +45,7 @@ public class SameClassManyPatternsTest
         converted[0].FullName.ShouldBe("Alice & Smith");
     }
 
-    [Fact]
+    [Test]
     public void Custom1()
     {
         var converted = Datas
@@ -59,7 +59,7 @@ public class SameClassManyPatternsTest
         converted[0].FullName.ShouldBe("Alice + Smith");
     }
 
-    [Fact]
+    [Test]
     public void Custom2()
     {
         var converted = Datas
@@ -73,7 +73,7 @@ public class SameClassManyPatternsTest
         converted[0].FullName.ShouldBe("Alice - Smith");
     }
 
-    [Fact]
+    [Test]
     public void AnotherOutput1()
     {
         var converted = Datas
@@ -87,7 +87,7 @@ public class SameClassManyPatternsTest
         converted[0].ScorePlusAge.ShouldBe(115); // 85 + 30
     }
 
-    [Fact]
+    [Test]
     public void AnotherOutput2()
     {
         var converted = Datas

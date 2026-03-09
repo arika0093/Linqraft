@@ -59,7 +59,7 @@ public class NestedCaseTest
         // Additional test data can be added here
     ];
 
-    [Fact]
+    [Test]
     public void NestedCase_SelectExpr_Anonymous()
     {
         var converted = NestData
@@ -100,7 +100,7 @@ public class NestedCaseTest
         child2First.GrandChild2Values.ShouldBe([1, 2]);
     }
 
-    [Fact]
+    [Test]
     public void NestedCase_SelectExpr_Explicit()
     {
         var converted = NestData
@@ -141,7 +141,7 @@ public class NestedCaseTest
         child2First.GrandChild2Values.ShouldBe([1, 2]);
     }
 
-    [Fact]
+    [Test]
     public void NestedCase_SelectExpr_PredefinedDto_WithNullConditional()
     {
         // Create test data with both null and non-null cases
@@ -199,7 +199,7 @@ public class NestedCaseTest
         second.GrandChildDetails.ShouldBeNull();
     }
 
-    [Fact]
+    [Test]
     public void NestedCase_SelectExpr_PredefinedDto_WithNestedNamedTypeAndNullConditional()
     {
         // This tests that nested Select with named types (not anonymous types) correctly converts

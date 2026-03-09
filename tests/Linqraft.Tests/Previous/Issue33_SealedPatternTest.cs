@@ -6,7 +6,7 @@ namespace Linqraft.Tests;
 
 public partial class Issue33_SealedPatternTest
 {
-    [Fact]
+    [Test]
     public void SealedPattern_DisposableDto_ShouldWork()
     {
         var order = new List<Order> { new() { Id = 1 } };

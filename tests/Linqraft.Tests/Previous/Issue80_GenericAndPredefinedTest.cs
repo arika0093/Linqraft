@@ -5,7 +5,7 @@ namespace Linqraft.Tests;
 
 public class Issue80_GenericAndPredefinedTest
 {
-    [Fact]
+    [Test]
     public void Test_GenericAndPredefined()
     {
         List<TestForIssue80> datas =

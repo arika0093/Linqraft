@@ -13,7 +13,7 @@ public class Issue132_LambdaNullabilityTest
     /// - A type that should be string? is converted to string
     /// - A type that should be List<string> (s.Children.Select(...).ToList()) is incorrectly made nullable
     /// </summary>
-    [Fact]
+    [Test]
     public void NullableTypeInLambda_ShouldPreserveNullability()
     {
         // Simulate minimal API lambda pattern
@@ -32,7 +32,7 @@ public class Issue132_LambdaNullabilityTest
         data.ShouldNotBeNull();
     }
 
-    [Fact]
+    [Test]
     public void CollectionSelectInLambda_ShouldNotBeNullable()
     {
         // Simulate minimal API lambda pattern
@@ -69,7 +69,7 @@ public class Issue132_LambdaNullabilityTest
         data.Count.ShouldBe(1);
     }
 
-    [Fact]
+    [Test]
     public void DirectCall_NullableType_ShouldPreserveNullability()
     {
         // Direct call (not in lambda) - this works correctly
@@ -82,7 +82,7 @@ public class Issue132_LambdaNullabilityTest
         result.ShouldNotBeNull();
     }
 
-    [Fact]
+    [Test]
     public void DirectCall_CollectionSelect_ShouldNotBeNullable()
     {
         // Direct call (not in lambda) - this works correctly
@@ -116,7 +116,7 @@ public class Issue132_LambdaNullabilityTest
         first.ChildNames.Count.ShouldBe(2);
     }
 
-    [Fact]
+    [Test]
     public void CollectionSelectWithNullablePropertyInLambda_ListShouldNotBeNullable()
     {
         // Issue: When using c?.Id inside Select, the entire List becomes nullable

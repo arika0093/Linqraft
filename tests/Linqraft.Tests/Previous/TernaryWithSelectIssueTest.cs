@@ -105,7 +105,7 @@ public class TernaryWithSelectIssueTest
         },
     ];
 
-    [Fact]
+    [Test]
     public void TernaryWithSelect_NotNullCondition_ExplicitDto()
     {
         // Pattern: c.Child2.Child3 != null ? c.Child2.Child3.Child4s.Select(...) : null
@@ -147,7 +147,7 @@ public class TernaryWithSelectIssueTest
         secondChild.ChildQuery.ShouldBeNull();
     }
 
-    [Fact]
+    [Test]
     public void TernaryWithSelect_EqualNullCondition_ExplicitDto()
     {
         // Pattern: c.Child2.Child3 == null ? null : c.Child2.Child3.Child4s.Select(...)

@@ -23,7 +23,7 @@ public sealed class GlobalPropertyConfigurationTests
         },
     ];
 
-    [Fact]
+    [Test]
     public void Project_wide_properties_are_applied_to_generated_types()
     {
         var results = Orders
@@ -63,7 +63,7 @@ public sealed class GlobalPropertyConfigurationTests
         results[1].Items.ShouldBeNull();
     }
 
-    [Fact]
+    [Test]
     public void Generated_files_reflect_non_runtime_property_settings()
     {
         var generatedRoot = Path.Combine(GetRepositoryRoot(), "tests", "Linqraft.Tests.Configuration", ".generated");
@@ -84,7 +84,7 @@ public sealed class GlobalPropertyConfigurationTests
             .ShouldBeTrue();
     }
 
-    [Fact]
+    [Test]
     public void Generated_support_file_uses_declarations_name()
     {
         var generatedRoot = Path.Combine(GetRepositoryRoot(), "tests", "Linqraft.Tests.Configuration", ".generated");
@@ -93,7 +93,7 @@ public sealed class GlobalPropertyConfigurationTests
             .ShouldNotBeEmpty();
     }
 
-    [Fact]
+    [Test]
     public void Captured_values_are_inlined_without_runtime_helper()
     {
         var offset = 5;
@@ -127,7 +127,7 @@ public sealed class GlobalPropertyConfigurationTests
         declarationsSource.Contains("LinqraftCaptureHelper", StringComparison.Ordinal).ShouldBeFalse();
     }
 
-    [Fact]
+    [Test]
     public void Generated_projection_source_formats_nested_linq_over_multiple_lines()
     {
         var generatedRoot = Path.Combine(GetRepositoryRoot(), "tests", "Linqraft.Tests.Configuration", ".generated");

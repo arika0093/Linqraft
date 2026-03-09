@@ -37,7 +37,7 @@ namespace Linqraft.Tests;
 /// </summary>
 public class PropertyAccessibilityTest
 {
-    [Fact]
+    [Test]
     public void ExplicitDto_WithInternalProperty_ShouldRespectAccessibility()
     {
         var data = new List<TestEntity>
@@ -59,14 +59,14 @@ public class PropertyAccessibilityTest
             })
             .ToList();
 
-        Assert.Single(result);
-        Assert.Equal(1, result[0].Id);
-        Assert.Equal("Public", result[0].PublicName);
+        result.Count.ShouldBe(1);
+        result[0].Id.ShouldBe(1);
+        result[0].PublicName.ShouldBe("Public");
         // InternalValue should be accessible since we're in the same assembly
-        Assert.Equal("Internal", result[0].InternalValue);
+        result[0].InternalValue.ShouldBe("Internal");
     }
 
-    [Fact]
+    [Test]
     public void ExplicitDto_WithMultipleAccessibilityLevels_ShouldRespectAll()
     {
         var data = new List<ComplexEntity>
@@ -88,13 +88,13 @@ public class PropertyAccessibilityTest
             })
             .ToList();
 
-        Assert.Single(result);
-        Assert.Equal("public", result[0].PublicField);
-        Assert.Equal("internal", result[0].InternalField);
-        Assert.Equal("protected internal", result[0].ProtectedInternalField);
+        result.Count.ShouldBe(1);
+        result[0].PublicField.ShouldBe("public");
+        result[0].InternalField.ShouldBe("internal");
+        result[0].ProtectedInternalField.ShouldBe("protected internal");
     }
 
-    [Fact]
+    [Test]
     public void ExplicitDto_OnlyInternalProperties_ShouldWork()
     {
         var data = new List<TestEntity>
@@ -111,12 +111,12 @@ public class PropertyAccessibilityTest
             .SelectExpr<TestEntity, AllInternalPropertiesDto>(x => new { x.Id, x.InternalValue })
             .ToList();
 
-        Assert.Single(result);
-        Assert.Equal(1, result[0].Id);
-        Assert.Equal("Value1", result[0].InternalValue);
+        result.Count.ShouldBe(1);
+        result[0].Id.ShouldBe(1);
+        result[0].InternalValue.ShouldBe("Value1");
     }
 
-    [Fact]
+    [Test]
     public void ExplicitDto_WithNestedSelect_ShouldRespectAccessibility()
     {
         var data = new List<ParentEntity>
@@ -140,14 +140,14 @@ public class PropertyAccessibilityTest
             })
             .ToList();
 
-        Assert.Single(result);
-        Assert.Equal(1, result[0].Id);
-        Assert.Equal(2, result[0].Children.Count);
-        Assert.Equal("Child1", result[0].Children[0].Name);
-        Assert.Equal(10, result[0].Children[0].InternalValue);
+        result.Count.ShouldBe(1);
+        result[0].Id.ShouldBe(1);
+        result[0].Children.Count.ShouldBe(2);
+        result[0].Children[0].Name.ShouldBe("Child1");
+        result[0].Children[0].InternalValue.ShouldBe(10);
     }
 
-    [Fact]
+    [Test]
     public void ExplicitDto_PartiallyPredefinedProperties_ShouldUseDefaultPublicForOthers()
     {
         var data = new List<TestEntity>
@@ -169,12 +169,12 @@ public class PropertyAccessibilityTest
             })
             .ToList();
 
-        Assert.Single(result);
-        Assert.Equal(1, result[0].Id);
+        result.Count.ShouldBe(1);
+        result[0].Id.ShouldBe(1);
         // PublicName is not predefined, should be public by default
-        Assert.Equal("Test", result[0].PublicName);
+        result[0].PublicName.ShouldBe("Test");
         // InternalValue is predefined as internal
-        Assert.Equal("Internal", result[0].InternalValue);
+        result[0].InternalValue.ShouldBe("Internal");
     }
 
     // Test entities

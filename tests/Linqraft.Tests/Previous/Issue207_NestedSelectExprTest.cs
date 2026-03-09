@@ -59,7 +59,7 @@ public partial class Issue207_NestedSelectExprTest
     /// - Inner SelectExpr generates NestedItem207Dto in user namespace (explicit type)
     /// - Innermost Select generates SubItemDto in LinqraftGenerated_ namespace (auto-generated)
     /// </summary>
-    [Fact]
+    [Test]
     public void NestedSelectExpr_WithExplicitDtoTypes_ShouldWork()
     {
         var query = TestData.AsQueryable();

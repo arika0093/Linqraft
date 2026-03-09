@@ -9,7 +9,7 @@ namespace Linqraft.Tests;
 public class InternalPartialClassTest
 {
     // Issue #27: Internal partial class should generate DTOs with internal accessibility
-    [Fact]
+    [Test]
     public void InternalPartialClass_ShouldGenerateInternalDto()
     {
         var data = new List<SampleEntity>
@@ -21,13 +21,13 @@ public class InternalPartialClassTest
             .SelectExpr<SampleEntity, InternalTestDto>(x => new { x.Id, x.Name })
             .ToList();
 
-        Assert.Single(result);
-        Assert.Equal(1, result[0].Id);
-        Assert.Equal("Test", result[0].Name);
+        result.Count.ShouldBe(1);
+        result[0].Id.ShouldBe(1);
+        result[0].Name.ShouldBe("Test");
     }
 
     // Issue #26: Nested DTOs within internal partial class should be properly referenced
-    [Fact]
+    [Test]
     public void InternalPartialClass_WithNestedSelect_ShouldReferenceNestedDtoProperly()
     {
         var data = new List<ParentEntity>
@@ -51,11 +51,11 @@ public class InternalPartialClassTest
             })
             .ToList();
 
-        Assert.Single(result);
-        Assert.Equal(1, result[0].Id);
-        Assert.Equal(2, result[0].Children.Count);
-        Assert.Equal("Child1", result[0].Children[0].Name);
-        Assert.Equal(10, result[0].Children[0].Value);
+        result.Count.ShouldBe(1);
+        result[0].Id.ShouldBe(1);
+        result[0].Children.Count.ShouldBe(2);
+        result[0].Children[0].Name.ShouldBe("Child1");
+        result[0].Children[0].Value.ShouldBe(10);
     }
 
     // Test entities
