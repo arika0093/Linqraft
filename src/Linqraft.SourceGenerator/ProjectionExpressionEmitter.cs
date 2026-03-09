@@ -1,5 +1,6 @@
 using System.Collections.Generic;
 using System.Linq;
+using Linqraft.Core.Formatting;
 using Linqraft.Core.Utilities;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
@@ -83,6 +84,11 @@ internal sealed class ProjectionExpressionEmitter
             return conditionalText;
         }
 
+        if (TryEmitFluentChain(expression, out var fluentChain))
+        {
+            return fluentChain;
+        }
+
         return expression switch
         {
             AnonymousObjectCreationExpressionSyntax anonymousObject => EmitAnonymousObject(anonymousObject),
@@ -91,15 +97,15 @@ internal sealed class ProjectionExpressionEmitter
             InvocationExpressionSyntax invocation => EmitInvocation(invocation),
             MemberAccessExpressionSyntax memberAccess => $"{Emit(memberAccess.Expression)}.{EmitSimpleName(memberAccess.Name)}",
             ElementAccessExpressionSyntax elementAccess => $"{Emit(elementAccess.Expression)}{EmitBracketArguments(elementAccess.ArgumentList)}",
-            ConditionalExpressionSyntax conditionalExpression => $"{Emit(conditionalExpression.Condition)} ? {Emit(conditionalExpression.WhenTrue)} : {Emit(conditionalExpression.WhenFalse)}",
+            ConditionalExpressionSyntax conditionalExpression => EmitConditionalExpression(conditionalExpression),
             BinaryExpressionSyntax binaryExpression => EmitBinaryExpression(binaryExpression),
             PrefixUnaryExpressionSyntax prefixUnary => $"{prefixUnary.OperatorToken.Text}{Emit(prefixUnary.Operand)}",
             PostfixUnaryExpressionSyntax postfixUnary => $"{Emit(postfixUnary.Operand)}{postfixUnary.OperatorToken.Text}",
             ParenthesizedExpressionSyntax parenthesized => $"({Emit(parenthesized.Expression)})",
             CastExpressionSyntax castExpression => $"({QualifyType(castExpression.Type)}){Emit(castExpression.Expression)}",
             AssignmentExpressionSyntax assignment => $"{Emit(assignment.Left)} {assignment.OperatorToken.Text} {Emit(assignment.Right)}",
-            SimpleLambdaExpressionSyntax lambda => $"{lambda.Parameter.Identifier.ValueText} => {EmitLambdaBody(lambda.Body)}",
-            ParenthesizedLambdaExpressionSyntax lambda => $"({string.Join(", ", lambda.ParameterList.Parameters.Select(parameter => parameter.Identifier.ValueText))}) => {EmitLambdaBody(lambda.Body)}",
+            SimpleLambdaExpressionSyntax lambda => EmitLambda(lambda.Parameter.Identifier.ValueText, lambda.Body),
+            ParenthesizedLambdaExpressionSyntax lambda => EmitLambda($"({string.Join(", ", lambda.ParameterList.Parameters.Select(parameter => parameter.Identifier.ValueText))})", lambda.Body),
             IdentifierNameSyntax identifier => EmitIdentifier(identifier),
             GenericNameSyntax genericName => EmitSimpleName(genericName),
             ThisExpressionSyntax => "this",
@@ -131,30 +137,48 @@ internal sealed class ProjectionExpressionEmitter
 
                     var memberName = initializer.NameEquals?.Name.Identifier.ValueText
                         ?? GetAnonymousMemberName(initializer);
-                    return $"{memberName} = {Emit(initializer.Expression)}";
+                    return AppendValueWithContinuation($"{memberName} = ", Emit(initializer.Expression));
                 }
-            );
+            )
+            .ToList();
 
-        return replacementType is null
-            ? $"new {{ {string.Join(", ", initializers)} }}"
-            : $"new {replacementType} {{ {string.Join(", ", initializers)} }}";
+        return BuildInitializerExpression(
+            replacementType is null ? "new" : $"new {replacementType}",
+            initializers
+        );
     }
 
     private string EmitObjectCreation(ObjectCreationExpressionSyntax expression)
     {
         var arguments = expression.ArgumentList is null ? string.Empty : EmitArgumentList(expression.ArgumentList);
+        var header = $"new {QualifyType(expression.Type)}{arguments}";
         if (expression.Initializer is null)
         {
-            return $"new {QualifyType(expression.Type)}{arguments}";
+            return header;
         }
 
-        return $"new {QualifyType(expression.Type)}{arguments} {EmitInitializer(expression.Initializer)}";
+        return BuildInitializerExpression(
+            header,
+            expression.Initializer.Expressions.Select(EmitInitializerItem).ToList()
+        );
     }
 
     private string EmitInitializer(InitializerExpressionSyntax expression)
     {
-        var items = expression.Expressions.Select(Emit);
-        return $"{{ {string.Join(", ", items)} }}";
+        return BuildInitializerBody(expression.Expressions.Select(EmitInitializerItem).ToList());
+    }
+
+    private string EmitInitializerItem(ExpressionSyntax expression)
+    {
+        if (expression is AssignmentExpressionSyntax assignment)
+        {
+            return AppendValueWithContinuation(
+                $"{Emit(assignment.Left)} {assignment.OperatorToken.Text} ",
+                Emit(assignment.Right)
+            );
+        }
+
+        return Emit(expression);
     }
 
     private string EmitCollectionExpression(CollectionExpressionSyntax expression)
@@ -194,6 +218,28 @@ internal sealed class ProjectionExpressionEmitter
         }
 
         return $"new {normalizedTypeName} {{ {string.Join(", ", items)} }}";
+    }
+
+    private string EmitConditionalExpression(ConditionalExpressionSyntax expression)
+    {
+        var condition = Emit(expression.Condition);
+        var whenTrue = Emit(expression.WhenTrue);
+        var whenFalse = Emit(expression.WhenFalse);
+        if (!ContainsLineBreak(condition)
+            && !ContainsLineBreak(whenTrue)
+            && !ContainsLineBreak(whenFalse))
+        {
+            return $"{condition} ? {whenTrue} : {whenFalse}";
+        }
+
+        return string.Join(
+            "\n",
+            [
+                condition,
+                IndentAllLines(AppendValueWithContinuation("? ", whenTrue)),
+                IndentAllLines(AppendValueWithContinuation(": ", whenFalse)),
+            ]
+        );
     }
 
     private string EmitBinaryExpression(BinaryExpressionSyntax expression)
@@ -300,6 +346,11 @@ internal sealed class ProjectionExpressionEmitter
         };
     }
 
+    private string EmitLambda(string parameterList, CSharpSyntaxNode body)
+    {
+        return AppendValueInline($"{parameterList} => ", EmitLambdaBody(body));
+    }
+
     private string QualifyType(TypeSyntax type)
     {
         if (!BelongsToSemanticModel(type))
@@ -354,8 +405,29 @@ internal sealed class ProjectionExpressionEmitter
                 var castPrefix = !useEmptyFallback && canCast && !ShouldOmitConditionalCast(expression, expressionType)
                     ? $"({expressionTypeName})"
                     : string.Empty;
-                rewritten =
-                    $"{string.Join(" && ", checks.Select(check => $"{check} != null"))} ? {castPrefix}{access} : {fallback}";
+                var formattedAccess = castPrefix + access;
+                if (string.IsNullOrEmpty(castPrefix)
+                    && TryFormatFluentAccess(receiver, access, out var multilineAccess))
+                {
+                    formattedAccess = multilineAccess;
+                }
+
+                if (ContainsLineBreak(formattedAccess) || ContainsLineBreak(fallback))
+                {
+                    rewritten = string.Join(
+                        "\n",
+                        [
+                            string.Join(" && ", checks.Select(check => $"{check} != null")),
+                            IndentAllLines(AppendValueWithContinuation("? ", formattedAccess)),
+                            IndentAllLines(AppendValueWithContinuation(": ", fallback)),
+                        ]
+                    );
+                }
+                else
+                {
+                    rewritten =
+                        $"{string.Join(" && ", checks.Select(check => $"{check} != null"))} ? {formattedAccess} : {fallback}";
+                }
                 return true;
             }
             case MemberAccessExpressionSyntax memberAccess when ContainsConditionalAccess(memberAccess.Expression):
@@ -412,6 +484,82 @@ internal sealed class ProjectionExpressionEmitter
     private static bool ContainsConditionalAccess(ExpressionSyntax expression)
     {
         return expression.DescendantNodesAndSelf().OfType<ConditionalAccessExpressionSyntax>().Any();
+    }
+
+    private bool TryEmitFluentChain(ExpressionSyntax expression, out string rewritten)
+    {
+        rewritten = string.Empty;
+        if (!TryDecomposeFluentChain(expression, out var root, out var segments, out var hasInvocation)
+            || !hasInvocation
+            || segments.Count == 0)
+        {
+            return false;
+        }
+
+        if (segments.Count == 1 && segments.All(segment => !ContainsLineBreak(segment)))
+        {
+            return false;
+        }
+
+        var lines = new List<string> { Emit(root) };
+        lines.AddRange(segments.Select(segment => IndentAllLines(segment)));
+        rewritten = string.Join("\n", lines);
+        return true;
+    }
+
+    private bool TryDecomposeFluentChain(
+        ExpressionSyntax expression,
+        out ExpressionSyntax root,
+        out List<string> segments,
+        out bool hasInvocation
+    )
+    {
+        switch (expression)
+        {
+            case InvocationExpressionSyntax invocation when invocation.Expression is MemberAccessExpressionSyntax memberAccess:
+                TryDecomposeFluentChain(memberAccess.Expression, out root, out segments, out hasInvocation);
+                segments.Add(GetFluentInvocationSegment(invocation, memberAccess));
+                hasInvocation = true;
+                return true;
+            case MemberAccessExpressionSyntax memberAccess
+                when memberAccess.Expression is InvocationExpressionSyntax
+                    or MemberAccessExpressionSyntax
+                    or ElementAccessExpressionSyntax:
+                TryDecomposeFluentChain(memberAccess.Expression, out root, out segments, out hasInvocation);
+                segments.Add($".{EmitSimpleName(memberAccess.Name)}");
+                return true;
+            case ElementAccessExpressionSyntax elementAccess
+                when elementAccess.Expression is InvocationExpressionSyntax
+                    or MemberAccessExpressionSyntax
+                    or ElementAccessExpressionSyntax:
+                TryDecomposeFluentChain(elementAccess.Expression, out root, out segments, out hasInvocation);
+                segments.Add(EmitBracketArguments(elementAccess.ArgumentList));
+                return true;
+            default:
+                root = expression;
+                segments = new List<string>();
+                hasInvocation = false;
+                return true;
+        }
+    }
+
+    private string GetFluentInvocationSegment(
+        InvocationExpressionSyntax invocation,
+        MemberAccessExpressionSyntax memberAccess
+    )
+    {
+        if (memberAccess.Name.Identifier.ValueText == "SelectExpr")
+        {
+            var selector = invocation.ArgumentList.Arguments
+                .Select(argument => argument.Expression)
+                .OfType<LambdaExpressionSyntax>()
+                .FirstOrDefault();
+            return selector is null
+                ? $".Select{EmitArgumentList(invocation.ArgumentList)}"
+                : $".Select({Emit(selector)})";
+        }
+
+        return $".{EmitSimpleName(memberAccess.Name)}{EmitArgumentList(invocation.ArgumentList)}";
     }
 
     private bool TryEmitCaptureReplacement(ExpressionSyntax expression, out string rewritten)
@@ -742,6 +890,203 @@ internal sealed class ProjectionExpressionEmitter
                 var name = GetInvocationName(invocation.Expression);
                 return name is "Select" or "SelectMany" or "ToList" or "ToArray";
             });
+    }
+
+    private static bool TryFormatFluentAccess(string receiver, string access, out string formatted)
+    {
+        formatted = access;
+        if (!access.StartsWith(receiver, System.StringComparison.Ordinal))
+        {
+            return false;
+        }
+
+        var remainder = access[receiver.Length..];
+        if (string.IsNullOrEmpty(remainder) || remainder[0] is not ('.' or '['))
+        {
+            return false;
+        }
+
+        var segments = SplitTopLevelSegments(remainder);
+        if (segments.Count == 0 || !segments.Any(segment => segment.Contains('(')))
+        {
+            return false;
+        }
+
+        formatted = string.Join(
+            "\n",
+            new[] { receiver }.Concat(segments)
+        );
+        return true;
+    }
+
+    private static List<string> SplitTopLevelSegments(string value)
+    {
+        var segments = new List<string>();
+        var start = 0;
+        var parentheses = 0;
+        var braces = 0;
+        var brackets = 0;
+        var angles = 0;
+
+        for (var index = 0; index < value.Length; index++)
+        {
+            var character = value[index];
+            switch (character)
+            {
+                case '(':
+                    parentheses++;
+                    break;
+                case ')':
+                    parentheses--;
+                    break;
+                case '{':
+                    braces++;
+                    break;
+                case '}':
+                    braces--;
+                    break;
+                case '[':
+                    brackets++;
+                    break;
+                case ']':
+                    brackets--;
+                    break;
+                case '<':
+                    angles++;
+                    break;
+                case '>':
+                    if (angles > 0)
+                    {
+                        angles--;
+                    }
+                    break;
+                case '.'
+                    when index != 0
+                        && parentheses == 0
+                        && braces == 0
+                        && brackets == 0
+                        && angles == 0:
+                    segments.Add(value[start..index]);
+                    start = index;
+                    break;
+            }
+        }
+
+        if (start < value.Length)
+        {
+            segments.Add(value[start..]);
+        }
+
+        return segments;
+    }
+
+    private static string BuildInitializerExpression(string header, IReadOnlyList<string> items)
+    {
+        if (!ShouldExpandInitializer(items))
+        {
+            return items.Count == 0
+                ? $"{header} {{ }}"
+                : $"{header} {{ {string.Join(", ", items)} }}";
+        }
+
+        var builder = new IndentedStringBuilder();
+        builder.AppendLine($"{header} {{");
+        using (builder.Indent())
+        {
+            foreach (var item in items)
+            {
+                AppendMultilineItem(builder, item, ",");
+            }
+        }
+
+        builder.Append("}");
+        return builder.ToString();
+    }
+
+    private static string BuildInitializerBody(IReadOnlyList<string> items)
+    {
+        if (!ShouldExpandInitializer(items))
+        {
+            return items.Count == 0
+                ? "{ }"
+                : $"{{ {string.Join(", ", items)} }}";
+        }
+
+        var builder = new IndentedStringBuilder();
+        builder.AppendLine("{");
+        using (builder.Indent())
+        {
+            foreach (var item in items)
+            {
+                AppendMultilineItem(builder, item, ",");
+            }
+        }
+
+        builder.Append("}");
+        return builder.ToString();
+    }
+
+    private static bool ShouldExpandInitializer(IReadOnlyList<string> items)
+    {
+        return items.Count > 1 || items.Any(ContainsLineBreak);
+    }
+
+    private static void AppendMultilineItem(IndentedStringBuilder builder, string value, string suffix)
+    {
+        var lines = SplitLines(value);
+        for (var index = 0; index < lines.Length; index++)
+        {
+            var line = index == lines.Length - 1 ? lines[index] + suffix : lines[index];
+            builder.AppendLine(line);
+        }
+    }
+
+    private static string AppendValueWithContinuation(string prefix, string value)
+    {
+        var lines = SplitLines(value);
+        if (lines.Length == 0)
+        {
+            return prefix;
+        }
+
+        if (lines.Length == 1)
+        {
+            return prefix + lines[0];
+        }
+
+        var formattedLines = new List<string> { prefix + lines[0] };
+        formattedLines.AddRange(lines.Skip(1).Select(IndentAllLines));
+        return string.Join("\n", formattedLines);
+    }
+
+    private static string AppendValueInline(string prefix, string value)
+    {
+        var lines = SplitLines(value);
+        if (lines.Length == 0)
+        {
+            return prefix;
+        }
+
+        lines[0] = prefix + lines[0];
+        return string.Join("\n", lines);
+    }
+
+    private static string IndentAllLines(string value, int indentLevel = 1)
+    {
+        var prefix = new string(' ', indentLevel * 4);
+        return string.Join("\n", SplitLines(value).Select(line => prefix + line));
+    }
+
+    private static bool ContainsLineBreak(string value)
+    {
+        return value.IndexOf('\n') >= 0 || value.IndexOf('\r') >= 0;
+    }
+
+    private static string[] SplitLines(string value)
+    {
+        return value.Replace("\r\n", "\n")
+            .Replace('\r', '\n')
+            .Split('\n');
     }
 
     private static string GetAnonymousMemberName(AnonymousObjectMemberDeclaratorSyntax initializer)

@@ -144,7 +144,8 @@ internal static class SourceWriters
                 var lambda = WriteProjectionLambda(request.RootProjection, request, semanticModel, request.Captures);
                 if (request.CanUsePrebuiltExpression && request.ReceiverKind == ReceiverKind.IQueryable)
                 {
-                    builder.AppendLine(
+                    AppendMultilineLine(
+                        builder,
                         $"private static readonly global::System.Linq.Expressions.Expression<global::System.Func<{request.SourceTypeName}, {request.ResultTypeName}>> {expressionFieldName} = {lambda};"
                     );
                     builder.AppendLine();
@@ -201,7 +202,7 @@ internal static class SourceWriters
                     var selectArgument = request.CanUsePrebuiltExpression && request.ReceiverKind == ReceiverKind.IQueryable
                         ? expressionFieldName
                         : lambda;
-                    builder.AppendLine($"var converted = matchedQuery.Select({selectArgument});");
+                    AppendMultilineLine(builder, $"var converted = matchedQuery.Select({selectArgument});");
                     builder.AppendLine(
                         $"return converted as object as {receiverType}<TResult> ?? throw new global::System.InvalidOperationException(\"Linqraft generated projection returned an unexpected result type.\");"
                     );
@@ -238,7 +239,8 @@ internal static class SourceWriters
             var expressionFieldName = $"s_expression_{request.MethodName}";
             if (request.CanUsePrebuiltExpression && request.ReceiverKind == ReceiverKind.IQueryable)
             {
-                builder.AppendLine(
+                AppendMultilineLine(
+                    builder,
                     $"private static readonly global::System.Linq.Expressions.Expression<global::System.Func<{request.SourceTypeName}, {request.ResultTypeName}>> {expressionFieldName} = {lambda};"
                 );
                 builder.AppendLine();
@@ -256,7 +258,7 @@ internal static class SourceWriters
                 }
                 else
                 {
-                    builder.AppendLine($"return source.Select({lambda});");
+                    AppendMultilineLine(builder, $"return source.Select({lambda});");
                 }
             }
 
@@ -279,7 +281,10 @@ internal static class SourceWriters
         IReadOnlyList<CaptureEntryModel> captures
     )
     {
-        return $"{request.SelectorParameterName} => {WriteProjectionBody(projection, request.Pattern, request.ResultTypeName, semanticModel, captures)}";
+        return AppendValueInline(
+            $"{request.SelectorParameterName} => ",
+            WriteProjectionBody(projection, request.Pattern, request.ResultTypeName, semanticModel, captures)
+        );
     }
 
     private static string WriteProjectionLambda(
@@ -288,7 +293,16 @@ internal static class SourceWriters
         SemanticModel semanticModel
     )
     {
-        return $"{request.SelectorParameterName} => {WriteProjectionBody(projection, ProjectionPattern.ExplicitDto, request.ResultTypeName, semanticModel, request.Captures)}";
+        return AppendValueInline(
+            $"{request.SelectorParameterName} => ",
+            WriteProjectionBody(
+                projection,
+                ProjectionPattern.ExplicitDto,
+                request.ResultTypeName,
+                semanticModel,
+                request.Captures
+            )
+        );
     }
 
     private static string WriteProjectionBody(
@@ -314,7 +328,10 @@ internal static class SourceWriters
                         member.ReplacementTypes,
                         captures
                     );
-                    return $"{ToParameterName(member.Name)}: {emitter.Emit(member.Expression)}";
+                    return AppendValueWithContinuation(
+                        $"{ToParameterName(member.Name)}: ",
+                        emitter.Emit(member.Expression)
+                    );
                 }
             )
             .ToList();
@@ -331,13 +348,16 @@ internal static class SourceWriters
                         member.ReplacementTypes,
                         captures
                     );
-                    return $"{member.Name} = {emitter.Emit(member.Expression)}";
+                    return AppendValueWithContinuation(
+                        $"{member.Name} = ",
+                        emitter.Emit(member.Expression)
+                    );
                 }
             )
             .ToList();
 
         return kind == "anonymous"
-            ? $"new {{ {string.Join(", ", assignments)} }}"
+            ? BuildInitializerExpression("new", assignments)
             : WriteNamedProjection(targetType!, constructorArguments, assignments);
     }
 
@@ -363,7 +383,7 @@ internal static class SourceWriters
 
     private static string FinalizeSource(IndentedStringBuilder builder)
     {
-        return GeneratedSourceFormatter.FormatCompilationUnit(builder.ToString());
+        return GeneratedSourceFormatter.FormatGeneratedSource(builder.ToString());
     }
 
     private static string GetReceiverTypeName(ReceiverKind receiverKind)
@@ -481,7 +501,101 @@ internal static class SourceWriters
             return $"new {targetType}{constructorSuffix}";
         }
 
-        return $"new {targetType}{constructorSuffix} {{ {string.Join(", ", assignments)} }}";
+        return BuildInitializerExpression($"new {targetType}{constructorSuffix}", assignments);
+    }
+
+    private static string BuildInitializerExpression(string header, IReadOnlyList<string> items)
+    {
+        if (!ShouldExpandInitializer(items))
+        {
+            return items.Count == 0
+                ? $"{header} {{ }}"
+                : $"{header} {{ {string.Join(", ", items)} }}";
+        }
+
+        var builder = new IndentedStringBuilder();
+        builder.AppendLine($"{header} {{");
+        using (builder.Indent())
+        {
+            foreach (var item in items)
+            {
+                AppendMultilineItem(builder, item, ",");
+            }
+        }
+
+        builder.Append("}");
+        return builder.ToString();
+    }
+
+    private static void AppendMultilineLine(IndentedStringBuilder builder, string value)
+    {
+        foreach (var line in SplitLines(value))
+        {
+            builder.AppendLine(line);
+        }
+    }
+
+    private static bool ShouldExpandInitializer(IReadOnlyList<string> items)
+    {
+        return items.Count > 1 || items.Any(ContainsLineBreak);
+    }
+
+    private static void AppendMultilineItem(IndentedStringBuilder builder, string value, string suffix)
+    {
+        var lines = SplitLines(value);
+        for (var index = 0; index < lines.Length; index++)
+        {
+            var line = index == lines.Length - 1 ? lines[index] + suffix : lines[index];
+            builder.AppendLine(line);
+        }
+    }
+
+    private static string AppendValueWithContinuation(string prefix, string value)
+    {
+        var lines = SplitLines(value);
+        if (lines.Length == 0)
+        {
+            return prefix;
+        }
+
+        if (lines.Length == 1)
+        {
+            return prefix + lines[0];
+        }
+
+        var formattedLines = new List<string> { prefix + lines[0] };
+        formattedLines.AddRange(lines.Skip(1).Select(IndentAllLines));
+        return string.Join("\n", formattedLines);
+    }
+
+    private static string AppendValueInline(string prefix, string value)
+    {
+        var lines = SplitLines(value);
+        if (lines.Length == 0)
+        {
+            return prefix;
+        }
+
+        lines[0] = prefix + lines[0];
+        return string.Join("\n", lines);
+    }
+
+    private static string IndentAllLines(string value, int indentLevel = 1)
+    {
+        var prefix = new string(' ', indentLevel * 4);
+        return string.Join("\n", SplitLines(value).Select(line => prefix + line));
+    }
+
+    private static bool ContainsLineBreak(string value)
+    {
+        return value.IndexOf('\n') >= 0 || value.IndexOf('\r') >= 0;
+    }
+
+    private static string[] SplitLines(string value)
+    {
+        return value.Replace("\r\n", "\n")
+            .Replace('\r', '\n')
+            .Split('\n');
     }
 
     private static string ToParameterName(string propertyName)

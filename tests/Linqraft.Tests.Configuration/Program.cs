@@ -84,6 +84,38 @@ public sealed class GlobalPropertyConfigurationTests
             .ShouldBeTrue();
     }
 
+    [Fact]
+    public void Generated_projection_source_formats_nested_linq_over_multiple_lines()
+    {
+        var generatedRoot = Path.Combine(GetRepositoryRoot(), "tests", "Linqraft.Tests.Configuration", ".generated");
+        var projectionFile = Directory
+            .GetFiles(generatedRoot, "SelectExpr_*.g.cs", SearchOption.AllDirectories)
+            .OrderByDescending(path => File.GetLastWriteTimeUtc(path))
+            .First();
+        var projectionSource = File.ReadAllText(projectionFile);
+        var lines = projectionSource
+            .Replace("\r\n", "\n", StringComparison.Ordinal)
+            .Split('\n');
+
+        var itemsLineIndex = Array.FindIndex(
+            lines,
+            line => line.Contains("Items = order.Items != null", StringComparison.Ordinal)
+        );
+
+        itemsLineIndex.ShouldBeGreaterThanOrEqualTo(0);
+        lines[itemsLineIndex + 1].Trim().ShouldBe("? order.Items");
+        lines[itemsLineIndex + 2].Trim().ShouldStartWith(".Select(item => new global::GlobalGenerated.ItemsDto_");
+        lines[itemsLineIndex + 3].Trim().ShouldBe("ProductName = item.ProductName,");
+        lines[itemsLineIndex + 4].Trim().ShouldBe("Quantity = item.Quantity,");
+        lines[itemsLineIndex + 5].Trim().ShouldBe("})");
+        lines[itemsLineIndex + 6].Trim().ShouldBe(".ToList()");
+        lines[itemsLineIndex + 7].Trim().ShouldBe(": null,");
+        projectionSource.Contains(
+            "Items = order.Items != null ? order.Items.Select(",
+            StringComparison.Ordinal
+        ).ShouldBeFalse();
+    }
+
     private static string GetRepositoryRoot()
     {
         var directory = new DirectoryInfo(AppContext.BaseDirectory);
