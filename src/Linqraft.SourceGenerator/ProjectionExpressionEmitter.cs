@@ -132,12 +132,15 @@ internal sealed class ProjectionExpressionEmitter
                 {
                     if (replacementType is null && initializer.NameEquals is null)
                     {
-                        return Emit(initializer.Expression);
+                        return EmitNestedExpression(initializer.Expression);
                     }
 
                     var memberName = initializer.NameEquals?.Name.Identifier.ValueText
                         ?? GetAnonymousMemberName(initializer);
-                    return AppendValueWithContinuation($"{memberName} = ", Emit(initializer.Expression));
+                    return AppendValueWithContinuation(
+                        $"{memberName} = ",
+                        EmitNestedExpression(initializer.Expression)
+                    );
                 }
             )
             .ToList();
@@ -174,11 +177,11 @@ internal sealed class ProjectionExpressionEmitter
         {
             return AppendValueWithContinuation(
                 $"{Emit(assignment.Left)} {assignment.OperatorToken.Text} ",
-                Emit(assignment.Right)
+                EmitNestedExpression(assignment.Right)
             );
         }
 
-        return Emit(expression);
+        return EmitNestedExpression(expression);
     }
 
     private string EmitCollectionExpression(CollectionExpressionSyntax expression)
@@ -351,6 +354,37 @@ internal sealed class ProjectionExpressionEmitter
         return AppendValueInline($"{parameterList} => ", EmitLambdaBody(body));
     }
 
+    private string EmitNestedExpression(ExpressionSyntax expression)
+    {
+        if (!BelongsToSemanticModel(expression))
+        {
+            return Emit(expression);
+        }
+
+        var expressionType = GetExpressionType(expression);
+        if (!ShouldUseCollectionFallback(expression, expressionType))
+        {
+            return Emit(expression);
+        }
+
+        var rootTypeName = _replacementTypes.TryGetValue(expression, out var replacementType)
+            ? replacementType
+            : expressionType is not null
+                && expressionType is not IErrorTypeSymbol
+                && !ContainsAnonymousType(expressionType)
+                ? expressionType.ToFullyQualifiedTypeName()
+                : _rootTypeName;
+        var nestedEmitter = new ProjectionExpressionEmitter(
+            _semanticModel,
+            expression,
+            rootTypeName,
+            ShouldUseCollectionFallback(expression, expressionType),
+            _replacementTypes,
+            _captureEntries
+        );
+        return nestedEmitter.Emit(expression);
+    }
+
     private string QualifyType(TypeSyntax type)
     {
         if (!BelongsToSemanticModel(type))
@@ -397,9 +431,20 @@ internal sealed class ProjectionExpressionEmitter
                 var access = BindConditionalReceiver(receiver, conditionalAccess.WhenNotNull, checks) + tail;
                 var expressionType = GetExpressionType(expression);
                 var expressionTypeName = GetExpressionTypeName(expression, expressionType, out var canCast);
-                var useEmptyFallback = ReferenceEquals(rootConditionalExpression, _rootExpression) && _useEmptyCollectionFallback;
+                var rootExpressionType = ReferenceEquals(rootConditionalExpression, expression)
+                    ? expressionType
+                    : GetExpressionType(rootConditionalExpression);
+                var rootExpressionTypeName = ReferenceEquals(rootConditionalExpression, expression)
+                    ? expressionTypeName
+                    : GetExpressionTypeName(rootConditionalExpression, rootExpressionType, out _);
+                var useEmptyFallback =
+                    ReferenceEquals(rootConditionalExpression, _rootExpression)
+                    && (
+                        _useEmptyCollectionFallback
+                        || ShouldUseCollectionFallback(rootConditionalExpression, rootExpressionType)
+                    );
                 var fallback = useEmptyFallback
-                    ? CreateEmptyCollectionFallback(expressionTypeName)
+                    ? CreateEmptyCollectionFallback(rootExpressionTypeName)
                     : "null";
 
                 var castPrefix = !useEmptyFallback && canCast && !ShouldOmitConditionalCast(expression, expressionType)
@@ -890,6 +935,26 @@ internal sealed class ProjectionExpressionEmitter
                 var name = GetInvocationName(invocation.Expression);
                 return name is "Select" or "SelectMany" or "ToList" or "ToArray";
             });
+    }
+
+    private static bool ShouldUseCollectionFallback(ExpressionSyntax expression, ITypeSymbol? type)
+    {
+        if (type is null || type.SpecialType == SpecialType.System_String)
+        {
+            return false;
+        }
+
+        if (ContainsAnonymousType(type))
+        {
+            return false;
+        }
+
+        if (!ContainsProjectionLikeInvocation(expression))
+        {
+            return false;
+        }
+
+        return type is IArrayTypeSymbol || SymbolNameHelper.IsEnumerable(type);
     }
 
     private static bool TryFormatFluentAccess(string receiver, string access, out string formatted)

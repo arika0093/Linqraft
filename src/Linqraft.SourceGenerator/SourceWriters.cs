@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using Linqraft.Core.Configuration;
@@ -336,6 +337,7 @@ internal static class SourceWriters
         var targetType = pattern == ProjectionPattern.Anonymous ? null : resultTypeName;
         var constructorArguments = projection.Members
             .Where(member => member.IsSuppressed)
+            .OrderBy(member => member.Name, StringComparer.Ordinal)
             .Select(
                 member =>
                 {
@@ -347,10 +349,7 @@ internal static class SourceWriters
                         member.ReplacementTypes,
                         captures
                     );
-                    return AppendValueWithContinuation(
-                        $"{ToParameterName(member.Name)}: ",
-                        emitter.Emit(member.Expression)
-                    );
+                    return emitter.Emit(member.Expression);
                 }
             )
             .ToList();
