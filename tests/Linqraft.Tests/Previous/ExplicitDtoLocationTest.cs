@@ -49,7 +49,7 @@ public class ExplicitDtoLocationTest
             "Linqraft.SourceGenerator",
             "Linqraft.SourceGenerator.LinqraftSourceGenerator"
         );
-        var supportFile = Path.Combine(generatorDir, "Linqraft.Support.g.cs");
+        var supportFile = Path.Combine(generatorDir, "Linqraft.Declarations.g.cs");
         var expressionFiles = Directory.GetFiles(generatorDir, "SelectExpr_*.g.cs", SearchOption.AllDirectories);
 
         File.ReadAllText(supportFile).ShouldNotContain("SelectExprRuntimeHelper");

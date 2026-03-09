@@ -85,6 +85,15 @@ public sealed class GlobalPropertyConfigurationTests
     }
 
     [Fact]
+    public void Generated_support_file_uses_declarations_name()
+    {
+        var generatedRoot = Path.Combine(GetRepositoryRoot(), "tests", "Linqraft.Tests.Configuration", ".generated");
+
+        Directory.GetFiles(generatedRoot, "Linqraft.Declarations.g.cs", SearchOption.AllDirectories)
+            .ShouldNotBeEmpty();
+    }
+
+    [Fact]
     public void Generated_projection_source_formats_nested_linq_over_multiple_lines()
     {
         var generatedRoot = Path.Combine(GetRepositoryRoot(), "tests", "Linqraft.Tests.Configuration", ".generated");

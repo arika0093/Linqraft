@@ -15,7 +15,7 @@ public sealed class LinqraftSourceGenerator : IIncrementalGenerator
     public void Initialize(IncrementalGeneratorInitializationContext context)
     {
         context.RegisterPostInitializationOutput(
-            static output => output.AddSource("Linqraft.Support.g.cs", SupportSourceEmitter.CreateSupportSource())
+            static output => output.AddSource("Linqraft.Declarations.g.cs", SupportSourceEmitter.CreateSupportSource())
         );
 
         var selectExprInvocations = context.SyntaxProvider.CreateSyntaxProvider(
