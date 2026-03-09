@@ -288,6 +288,26 @@ Items = source.OrderItems.Select(oi => new global::MyApp.LinqraftGenerated_ABCD1
 })
 ```
 
+## 5.4 Use `$$"""..."""` for multi-line strings
+
+When emitting multi-line string literals, the rewrite SHOULD use C# 11's raw string literal feature with interpolation (`$$"""..."""`) to preserve readability and reduce the need for manual newline and indentation management.
+
+```csharp
+// DO NOT
+var sb = new IndentedStringBuilder();
+sb.AppendLine("line A");
+sb.AppendLine($"line {someValue}");
+sb.AppendLine("line C { /* some action */ }");
+
+// DO
+var sb = new IndentedStringBuilder();
+sb.AppendLine($$"""
+    line A
+    line {{someValue}}
+    line C { /* some action */ }
+    """);
+```
+
 ### Practical clarification
 
 This rule applies to **type references**, not to syntax positions where C# does not allow `global::`:
