@@ -137,7 +137,7 @@ public sealed class GeneratorSmokeTests
         var compilationErrors = GetCompilationErrors(source);
 
         compilationErrors.ShouldBeEmpty();
-        generated.ShouldContain("LinqraftCaptureHelper.GetRequired<int>(capture, \"threshold\")");
+        generated.ShouldContain("LinqraftCaptureHelper.GetRequired<global::System.Int32>(capture, \"threshold\")");
         generated.ShouldContain("public partial class EntityDto");
     }
 
@@ -845,7 +845,7 @@ public sealed class GeneratorSmokeTests
         diagnostics.ShouldBeEmpty();
         compilationErrors.ShouldBeEmpty();
         generated.ShouldContain("public partial class SampleClassDto");
-        generated.ShouldContain("s.Child2 != null ? (int?)s.Child2.Id : null");
+        generated.ShouldContain("s.Child2 != null ? (global::System.Nullable<global::System.Int32>)s.Child2.Id : null");
     }
 
     // TODO: The public nested-SelectExpr docs require empty partial DTO declarations,

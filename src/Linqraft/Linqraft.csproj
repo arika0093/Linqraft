@@ -15,12 +15,6 @@
       PackagePath="analyzers/dotnet/cs"
       Visible="false"
     />
-    <None
-      Include="..\Linqraft.Core\$(OutputPath)\Linqraft.Core.dll"
-      Pack="true"
-      PackagePath="analyzers/dotnet/cs"
-      Visible="false"
-    />
     <!-- Include Analyzer DLLs -->
     <None
       Include="..\Linqraft.Analyzer\$(OutputPath)\Linqraft.Analyzer.dll"
@@ -34,7 +28,6 @@
       Include="..\Linqraft.SourceGenerator\Linqraft.SourceGenerator.csproj"
       PrivateAssets="all"
     />
-    <ProjectReference Include="..\Linqraft.Core\Linqraft.Core.csproj" PrivateAssets="all" />
     <ProjectReference Include="..\Linqraft.Analyzer\Linqraft.Analyzer.csproj" PrivateAssets="all" />
   </ItemGroup>
 </Project>

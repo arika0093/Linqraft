@@ -1,0 +1,9 @@
+<Project>
+  <ItemGroup>
+    <Compile
+      Include="$(MSBuildThisFileDirectory)**/*.cs"
+      Exclude="$(MSBuildThisFileDirectory)InternalsVisibleTo.cs;$(MSBuildThisFileDirectory)bin/**/*.cs;$(MSBuildThisFileDirectory)obj/**/*.cs"
+      Link="Linqraft.Core/%(RecursiveDir)%(Filename)%(Extension)"
+    />
+  </ItemGroup>
+</Project>

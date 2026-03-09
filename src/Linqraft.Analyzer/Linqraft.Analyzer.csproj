@@ -32,7 +32,5 @@
       <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
     </PackageReference>
   </ItemGroup>
-  <ItemGroup>
-    <ProjectReference Include="..\Linqraft.Core\Linqraft.Core.csproj" />
-  </ItemGroup>
+  <Import Project="..\Linqraft.Core\Linqraft.Core.SourceShared.props" />
 </Project>

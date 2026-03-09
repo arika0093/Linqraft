@@ -757,18 +757,7 @@ public sealed class LinqraftCompositeCodeFixProvider : CodeFixProvider
         string dtoName
     )
     {
-        var genericName = SyntaxFactory.GenericName(
-            SyntaxFactory.Identifier("SelectExpr"),
-            SyntaxFactory.TypeArgumentList(
-                SyntaxFactory.SeparatedList<TypeSyntax>(
-                    new[]
-                    {
-                        SyntaxFactory.ParseTypeName(sourceType),
-                        SyntaxFactory.ParseTypeName(dtoName),
-                    }
-                )
-            )
-        );
+        var genericName = (SimpleNameSyntax)SyntaxFactory.ParseName($"SelectExpr<{sourceType}, {dtoName}>");
 
         return invocation.WithExpression(
             invocation.Expression is MemberAccessExpressionSyntax memberAccess

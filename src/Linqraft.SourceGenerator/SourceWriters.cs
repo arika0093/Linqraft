@@ -30,6 +30,7 @@ internal static class SourceWriters
         WriteDocumentation(builder, dto.Documentation, configuration.CommentOutput);
 
         var declarationKeyword = dto.IsRecord ? "record" : "class";
+        var suppressedProperties = dto.Properties.Where(property => property.IsSuppressed).ToList();
         builder.AppendLines(
             $$"""
             {{dto.AccessibilityKeyword}} partial {{declarationKeyword}} {{dto.Name}}
@@ -38,6 +39,24 @@ internal static class SourceWriters
         );
         using (builder.Indent())
         {
+            if (suppressedProperties.Count != 0)
+            {
+                builder.AppendLine(
+                    $"{dto.AccessibilityKeyword} {dto.Name}({string.Join(", ", suppressedProperties.Select(property => $"{property.TypeName} {ToParameterName(property.Name)}"))})"
+                );
+                builder.AppendLine("{");
+                using (builder.Indent())
+                {
+                    foreach (var property in suppressedProperties)
+                    {
+                        builder.AppendLine($"{property.Name} = {ToParameterName(property.Name)};");
+                    }
+                }
+
+                builder.AppendLine("}");
+                builder.AppendLine();
+            }
+
             foreach (var property in dto.Properties.Where(property => !property.IsSuppressed))
             {
                 WriteDocumentation(builder, property.Documentation, configuration.CommentOutput);
@@ -249,7 +268,25 @@ internal static class SourceWriters
     {
         var kind = pattern == ProjectionPattern.Anonymous ? "anonymous" : "named";
         var targetType = pattern == ProjectionPattern.Anonymous ? null : resultTypeName;
-        var assignments = projection.Members.Select(
+        var constructorArguments = projection.Members
+            .Where(member => member.IsSuppressed)
+            .Select(
+                member =>
+                {
+                    var emitter = new ProjectionExpressionEmitter(
+                        semanticModel,
+                        member.Expression,
+                        member.TypeName,
+                        member.UseEmptyCollectionFallback,
+                        member.ReplacementTypes
+                    );
+                    return emitter.Emit(member.Expression);
+                }
+            )
+            .ToList();
+        var assignments = projection.Members
+            .Where(member => !member.IsSuppressed)
+            .Select(
             member =>
             {
                 var emitter = new ProjectionExpressionEmitter(
@@ -261,11 +298,11 @@ internal static class SourceWriters
                 );
                 return $"{member.Name} = {emitter.Emit(member.Expression)}";
             }
-        );
+        ).ToList();
 
         return kind == "anonymous"
             ? $"new {{ {string.Join(", ", assignments)} }}"
-            : $"new {targetType} {{ {string.Join(", ", assignments)} }}";
+            : WriteNamedProjection(targetType!, constructorArguments, assignments);
     }
 
     private static IndentedStringBuilder CreateFileBuilder()
@@ -385,5 +422,29 @@ internal static class SourceWriters
     private static string EscapeStringLiteral(string value)
     {
         return value.Replace("\\", "\\\\").Replace("\"", "\\\"");
+    }
+
+    private static string WriteNamedProjection(
+        string targetType,
+        IReadOnlyList<string> constructorArguments,
+        IReadOnlyList<string> assignments
+    )
+    {
+        var constructorSuffix = constructorArguments.Count == 0
+            ? "()"
+            : $"({string.Join(", ", constructorArguments)})";
+        if (assignments.Count == 0)
+        {
+            return $"new {targetType}{constructorSuffix}";
+        }
+
+        return $"new {targetType}{constructorSuffix} {{ {string.Join(", ", assignments)} }}";
+    }
+
+    private static string ToParameterName(string propertyName)
+    {
+        return string.IsNullOrEmpty(propertyName)
+            ? "value"
+            : char.ToLowerInvariant(propertyName[0]) + propertyName[1..];
     }
 }

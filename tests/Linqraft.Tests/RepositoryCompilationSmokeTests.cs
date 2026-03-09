@@ -17,6 +17,16 @@ public sealed class RepositoryCompilationSmokeTests
     public void Source_projects_compile_in_memory()
     {
         var repositoryRoot = GetRepositoryRoot();
+        var parseOptions = CreateParseOptions();
+        var coreSourceTrees = LoadProjectSyntaxTrees(
+            Path.Combine(repositoryRoot, "src", "Linqraft.Core"),
+            parseOptions,
+            excludedFileNames: ["InternalsVisibleTo.cs"]
+        );
+        var sourceGeneratorSourceTrees = LoadProjectSyntaxTrees(
+            Path.Combine(repositoryRoot, "src", "Linqraft.SourceGenerator"),
+            parseOptions
+        );
 
         var coreCompilation = CreateCompilation(
             "Linqraft.Core",
@@ -24,22 +34,20 @@ public sealed class RepositoryCompilationSmokeTests
             additionalSyntaxTrees: null
         );
         GetErrors(coreCompilation).ShouldBeEmpty();
-        var coreReference = EmitReference(coreCompilation);
+        _ = EmitReference(coreCompilation);
 
         var sourceGeneratorCompilation = CreateCompilation(
             "Linqraft.SourceGenerator",
             Path.Combine(repositoryRoot, "src", "Linqraft.SourceGenerator"),
-            additionalSyntaxTrees: null,
-            additionalReferences: new[] { coreReference }
+            additionalSyntaxTrees: coreSourceTrees
         );
         GetErrors(sourceGeneratorCompilation).ShouldBeEmpty();
-        var sourceGeneratorReference = EmitReference(sourceGeneratorCompilation);
+        _ = EmitReference(sourceGeneratorCompilation);
 
         var analyzerCompilation = CreateCompilation(
             "Linqraft.Analyzer",
             Path.Combine(repositoryRoot, "src", "Linqraft.Analyzer"),
-            additionalSyntaxTrees: null,
-            additionalReferences: new[] { coreReference }
+            additionalSyntaxTrees: coreSourceTrees
         );
         GetErrors(analyzerCompilation).ShouldBeEmpty();
         var analyzerReference = EmitReference(analyzerCompilation);
@@ -47,8 +55,10 @@ public sealed class RepositoryCompilationSmokeTests
         var testsCompilation = CreateCompilation(
             "Linqraft.Tests.Source",
             Path.Combine(repositoryRoot, "tests", "Linqraft.Tests"),
-            new[] { CreateTestGlobalUsingsTree() },
-            additionalReferences: new[] { sourceGeneratorReference, coreReference }
+            sourceGeneratorSourceTrees
+                .Concat(coreSourceTrees)
+                .Concat(new[] { CreateTestGlobalUsingsTree() })
+                .ToArray()
         );
         GetErrors(testsCompilation).ShouldBeEmpty();
 
@@ -56,7 +66,7 @@ public sealed class RepositoryCompilationSmokeTests
             "Linqraft.Analyzer.Tests.Source",
             Path.Combine(repositoryRoot, "tests", "Linqraft.Analyzer.Tests"),
             new[] { CreateTestGlobalUsingsTree() },
-            additionalReferences: new[] { analyzerReference, coreReference }
+            additionalReferences: new[] { analyzerReference }
         );
         GetErrors(analyzerTestsCompilation).ShouldBeEmpty();
     }
@@ -132,12 +142,7 @@ public sealed class RepositoryCompilationSmokeTests
     )
     {
         var parseOptions = CreateParseOptions();
-        var syntaxTrees = Directory
-            .EnumerateFiles(projectDirectory, "*.cs", SearchOption.AllDirectories)
-            .Where(path => !path.Contains($"{Path.DirectorySeparatorChar}bin{Path.DirectorySeparatorChar}", StringComparison.OrdinalIgnoreCase))
-            .Where(path => !path.Contains($"{Path.DirectorySeparatorChar}obj{Path.DirectorySeparatorChar}", StringComparison.OrdinalIgnoreCase))
-            .Select(path => CSharpSyntaxTree.ParseText(File.ReadAllText(path), parseOptions, path))
-            .ToList();
+        var syntaxTrees = LoadProjectSyntaxTrees(projectDirectory, parseOptions).ToList();
         if (additionalSyntaxTrees is not null)
         {
             syntaxTrees.AddRange(additionalSyntaxTrees);
@@ -195,6 +200,7 @@ public sealed class RepositoryCompilationSmokeTests
         using var stream = new MemoryStream();
         var emitResult = compilation.Emit(stream);
         emitResult.Diagnostics
+            .Where(diagnostic => diagnostic.Id != "RSEXPERIMENTAL002")
             .Where(diagnostic => diagnostic.Severity == DiagnosticSeverity.Error)
             .ToImmutableArray()
             .ShouldBeEmpty();
@@ -258,6 +264,24 @@ public sealed class RepositoryCompilationSmokeTests
             })
             .Select(assembly => MetadataReference.CreateFromFile(assembly.Location))
             .Distinct(MetadataReferencePathComparer.Instance);
+    }
+
+    private static IReadOnlyList<SyntaxTree> LoadProjectSyntaxTrees(
+        string projectDirectory,
+        CSharpParseOptions parseOptions,
+        IReadOnlyCollection<string>? excludedFileNames = null
+    )
+    {
+        var excluded = excludedFileNames is null
+            ? new HashSet<string>(StringComparer.OrdinalIgnoreCase)
+            : new HashSet<string>(excludedFileNames, StringComparer.OrdinalIgnoreCase);
+        return Directory
+            .EnumerateFiles(projectDirectory, "*.cs", SearchOption.AllDirectories)
+            .Where(path => !path.Contains($"{Path.DirectorySeparatorChar}bin{Path.DirectorySeparatorChar}", StringComparison.OrdinalIgnoreCase))
+            .Where(path => !path.Contains($"{Path.DirectorySeparatorChar}obj{Path.DirectorySeparatorChar}", StringComparison.OrdinalIgnoreCase))
+            .Where(path => !excluded.Contains(Path.GetFileName(path)))
+            .Select(path => CSharpSyntaxTree.ParseText(File.ReadAllText(path), parseOptions, path))
+            .ToList();
     }
 
     private static SyntaxTree CreateGlobalUsingsTree(string source)

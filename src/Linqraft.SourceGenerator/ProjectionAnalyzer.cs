@@ -416,6 +416,7 @@ internal sealed class ProjectionAnalyzer
                     Name = member.Name,
                     Expression = member.Expression,
                     TypeName = useEmptyCollectionFallback ? RemoveNullableAnnotation(typeName) : typeName,
+                    IsSuppressed = existingPropertyNames?.Contains(member.Name) == true,
                     UseEmptyCollectionFallback = useEmptyCollectionFallback,
                     Documentation = documentation,
                     ReplacementTypes = memberReplacements,
@@ -447,7 +448,7 @@ internal sealed class ProjectionAnalyzer
                     Name = member.Name,
                     TypeName = member.TypeName,
                     Documentation = member.Documentation,
-                    IsSuppressed = existingPropertyNames?.Contains(member.Name) == true,
+                    IsSuppressed = member.IsSuppressed,
                 }
         ).ToList();
 
@@ -994,7 +995,10 @@ internal sealed class ProjectionAnalyzer
         }
 
         var type = semanticModel.GetTypeInfo(expression, _cancellationToken).Type;
-        return SymbolNameHelper.IsEnumerable(type);
+        type ??= semanticModel.GetTypeInfo(expression, _cancellationToken).ConvertedType;
+        return type is not null
+            && type.SpecialType != SpecialType.System_String
+            && SymbolNameHelper.IsEnumerable(type);
     }
 
     private static string BuildCollectionTypeName(ITypeSymbol? collectionType, string elementTypeName)
@@ -1123,6 +1127,7 @@ internal sealed class ProjectionAnalyzer
         return expression switch
         {
             MemberAccessExpressionSyntax memberAccess => memberAccess.Name,
+            MemberBindingExpressionSyntax memberBinding => memberBinding.Name,
             IdentifierNameSyntax identifier => identifier,
             GenericNameSyntax genericName => genericName,
             _ => null,

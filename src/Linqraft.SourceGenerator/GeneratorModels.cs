@@ -36,6 +36,8 @@ internal sealed record ProjectionMemberModel
 
     public required string TypeName { get; init; }
 
+    public required bool IsSuppressed { get; init; }
+
     public required bool UseEmptyCollectionFallback { get; init; }
 
     public required DocumentationInfo? Documentation { get; init; }

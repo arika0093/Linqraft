@@ -288,13 +288,16 @@ internal sealed class ProjectionExpressionEmitter
                 var receiver = Emit(conditionalAccess.Expression);
                 checks.Add(receiver);
                 var access = BindConditionalReceiver(receiver, conditionalAccess.WhenNotNull, checks) + tail;
-                var expressionTypeName = GetExpressionTypeName(expression, out var canCast);
+                var expressionType = GetExpressionType(expression);
+                var expressionTypeName = GetExpressionTypeName(expression, expressionType, out var canCast);
                 var useEmptyFallback = ReferenceEquals(expression, _rootExpression) && _useEmptyCollectionFallback;
                 var fallback = useEmptyFallback
                     ? CreateEmptyCollectionFallback(expressionTypeName)
                     : "null";
 
-                var castPrefix = !useEmptyFallback && canCast ? $"({expressionTypeName})" : string.Empty;
+                var castPrefix = !useEmptyFallback && canCast && !ShouldOmitConditionalCast(expression, expressionType)
+                    ? $"({expressionTypeName})"
+                    : string.Empty;
                 rewritten =
                     $"{string.Join(" && ", checks.Select(check => $"{check} != null"))} ? {castPrefix}{access} : {fallback}";
                 return true;
@@ -331,9 +334,14 @@ internal sealed class ProjectionExpressionEmitter
         {
             case MemberBindingExpressionSyntax memberBinding:
                 return $"{receiver}.{EmitSimpleName(memberBinding.Name)}";
+            case MemberAccessExpressionSyntax memberAccess:
+                return $"{BindConditionalReceiver(receiver, memberAccess.Expression, checks)}.{EmitSimpleName(memberAccess.Name)}";
             case InvocationExpressionSyntax invocation
                 when invocation.Expression is MemberBindingExpressionSyntax memberBinding:
                 return $"{receiver}.{EmitSimpleName(memberBinding.Name)}{EmitArgumentList(invocation.ArgumentList)}";
+            case InvocationExpressionSyntax invocation
+                when invocation.Expression is MemberAccessExpressionSyntax memberAccess:
+                return $"{BindConditionalReceiver(receiver, memberAccess.Expression, checks)}.{EmitSimpleName(memberAccess.Name)}{EmitArgumentList(invocation.ArgumentList)}";
             case ElementBindingExpressionSyntax elementBinding:
                 return $"{receiver}{EmitBracketArguments(elementBinding.ArgumentList)}";
             case ConditionalAccessExpressionSyntax conditionalAccess:
@@ -354,24 +362,28 @@ internal sealed class ProjectionExpressionEmitter
 
     private static string CreateEmptyCollectionFallback(string typeName)
     {
-        if (typeName.EndsWith("[]", System.StringComparison.Ordinal))
+        var normalizedTypeName = typeName.EndsWith("?", System.StringComparison.Ordinal)
+            ? typeName[..^1]
+            : typeName;
+
+        if (normalizedTypeName.EndsWith("[]", System.StringComparison.Ordinal))
         {
-            var elementType = typeName[..^2];
+            var elementType = normalizedTypeName[..^2];
             return $"global::System.Array.Empty<{elementType}>()";
         }
 
-        if (typeName.StartsWith("global::System.Collections.Generic.List<", System.StringComparison.Ordinal))
+        if (normalizedTypeName.StartsWith("global::System.Collections.Generic.List<", System.StringComparison.Ordinal))
         {
-            return $"new {typeName}()";
+            return $"new {normalizedTypeName}()";
         }
 
-        if (TryGetSingleGenericArgument(typeName, out var genericArgument))
+        if (TryGetSingleGenericArgument(normalizedTypeName, out var genericArgument))
         {
             return $"global::System.Linq.Enumerable.Empty<{genericArgument}>()";
         }
 
         // TODO: The public docs do not define a fallback constructor strategy for custom collection types.
-        return $"new {typeName}()";
+        return $"new {normalizedTypeName}()";
     }
 
     private static bool TryGetSingleGenericArgument(string typeName, out string argument)
@@ -410,6 +422,17 @@ internal sealed class ProjectionExpressionEmitter
         return node.SyntaxTree == _semanticModel.SyntaxTree;
     }
 
+    private ITypeSymbol? GetExpressionType(ExpressionSyntax expression)
+    {
+        if (!BelongsToSemanticModel(expression))
+        {
+            return null;
+        }
+
+        var typeInfo = _semanticModel.GetTypeInfo(expression);
+        return typeInfo.Type ?? typeInfo.ConvertedType;
+    }
+
     private ITypeSymbol? ResolveFallbackType(TypeSyntax type)
     {
         var symbol = _semanticModel.GetSymbolInfo(type).Symbol as ITypeSymbol;
@@ -436,7 +459,7 @@ internal sealed class ProjectionExpressionEmitter
         };
     }
 
-    private string GetExpressionTypeName(ExpressionSyntax expression, out bool canCast)
+    private string GetExpressionTypeName(ExpressionSyntax expression, ITypeSymbol? expressionType, out bool canCast)
     {
         canCast = true;
         if (!BelongsToSemanticModel(expression))
@@ -450,8 +473,7 @@ internal sealed class ProjectionExpressionEmitter
             return "object";
         }
 
-        var type = _semanticModel.GetTypeInfo(expression).ConvertedType
-            ?? _semanticModel.GetTypeInfo(expression).Type;
+        var type = expressionType;
         if (type is null)
         {
             canCast = false;
@@ -465,6 +487,37 @@ internal sealed class ProjectionExpressionEmitter
         }
 
         return type.ToFullyQualifiedTypeName();
+    }
+
+    private bool ShouldOmitConditionalCast(ExpressionSyntax expression, ITypeSymbol? type)
+    {
+        if (type is null)
+        {
+            return false;
+        }
+
+        if (type.SpecialType == SpecialType.System_String)
+        {
+            return false;
+        }
+
+        if (!ContainsProjectionLikeInvocation(expression))
+        {
+            return false;
+        }
+
+        return type is IArrayTypeSymbol || SymbolNameHelper.IsEnumerable(type);
+    }
+
+    private static bool ContainsProjectionLikeInvocation(ExpressionSyntax expression)
+    {
+        return expression.DescendantNodesAndSelf()
+            .OfType<InvocationExpressionSyntax>()
+            .Any(invocation =>
+            {
+                var name = GetInvocationName(invocation.Expression);
+                return name is "Select" or "SelectMany" or "ToList" or "ToArray";
+            });
     }
 
     private static string GetAnonymousMemberName(AnonymousObjectMemberDeclaratorSyntax initializer)
@@ -482,6 +535,7 @@ internal sealed class ProjectionExpressionEmitter
         return expression switch
         {
             MemberAccessExpressionSyntax memberAccess => memberAccess.Name.Identifier.ValueText,
+            MemberBindingExpressionSyntax memberBinding => memberBinding.Name.Identifier.ValueText,
             IdentifierNameSyntax identifier => identifier.Identifier.ValueText,
             GenericNameSyntax genericName => genericName.Identifier.ValueText,
             _ => string.Empty,
