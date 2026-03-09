@@ -22,12 +22,9 @@ A compatible clone MUST continue to provide analyzer behavior in three categorie
 
 | ID | Severity | Default | Required trigger | Required code-fix behavior |
 | --- | --- | --- | --- | --- |
-| `LQRF001` | Hidden | Enabled | Anonymous object creation appears in a context where a DTO would be more appropriate, excluding empty anonymous types and anonymous shapes already inside typed `SelectExpr` flows | Offer conversion to DTO in the current file or a new file; generate nested DTOs as needed; infer a DTO name from context |
 | `LQRF002` | Info | Enabled | ASP.NET Core `[ApiController]` action uses `SelectExpr<T, TDto>` but returns untyped `IActionResult`/`ActionResult` without `ProducesResponseType` | Suggest adding `ProducesResponseType(typeof(TDto))` or equivalent response metadata |
-| `LQRF003` | Info | Enabled | `void`/non-generic `Task` method contains an unassigned anonymous `Select` on EF Core `DbSet<T>` | Convert to async API response method returning `Task<List<TDto>>`, add `async/await`, replace `Select` with typed `SelectExpr`, append `ToListAsync`, and add required usings |
-| `LQRF004` | Info | Enabled | `void` method contains an unassigned anonymous `Select` on `IQueryable<T>` | Convert to synchronous API response method returning `List<TDto>`, replace `Select` with typed `SelectExpr`, append `ToList`, and add required usings |
 | `LQRS001` | Hidden | Enabled | `SelectExpr` is called without explicit type arguments and returns an anonymous shape | Suggest `SelectExpr<TSource, TDto>` and generate/infer the DTO type name |
-| `LQRS002` | Info | Enabled | `IQueryable.Select` returns an anonymous object | Suggest anonymous or explicit-DTO `SelectExpr`; automatically simplify supported ternary-null patterns during conversion |
+| `LQRS002` | Hidden | Enabled | `IQueryable.Select` returns an anonymous object | Suggest anonymous or explicit-DTO `SelectExpr`; automatically simplify supported ternary-null patterns during conversion |
 | `LQRS003` | Info | Enabled | `IQueryable.Select` returns a named object creation | Offer three fixes: explicit DTO conversion with ternary simplification, explicit DTO conversion without simplification, or predefined DTO `SelectExpr` conversion that keeps the named object |
 | `LQRS004` | Info | Enabled | A ternary inside `SelectExpr` returns `null` on one side and an object creation on the other with a null-check condition | Suggest null-conditional style simplification; keep it informational because result nullability shape may change |
 | `LQRS005` | Warning | Enabled | `capture:` includes names not used in the selector body | Remove unused capture names or remove the entire `capture:` argument if all captures are unused |
@@ -38,15 +35,7 @@ A compatible clone MUST continue to provide analyzer behavior in three categorie
 
 ## 4. Required behavioral details
 
-## 4.1 `LQRF001` anonymous-to-DTO conversion
-
-The clone MUST preserve these documented behaviors:
-
-- two code-fix destinations: current file and new file
-- nested anonymous shapes generate nested DTOs
-- name inference uses local context such as variable or method names and falls back to generated names when necessary
-
-## 4.2 `LQRS001` untyped-to-typed `SelectExpr`
+## 4.1 `LQRS001` untyped-to-typed `SelectExpr`
 
 The hidden suggestion exists to encourage promotion from local anonymous projections to reusable DTOs.
 A compatible clone MUST preserve:
@@ -54,16 +43,16 @@ A compatible clone MUST preserve:
 - detection of anonymous-result `SelectExpr` calls with no explicit generic arguments
 - a code fix that inserts the explicit source type and a generated DTO name
 
-## 4.3 `LQRS002` anonymous `Select` to `SelectExpr`
+## 4.2 `LQRS002` anonymous `Select` to `SelectExpr`
 
-The clone MUST preserve both suggested target styles:
+The hidden suggestion MUST preserve both offered target styles:
 
 - anonymous `SelectExpr`
 - explicit DTO `SelectExpr<TSource, TDto>`
 
 It MUST also preserve the documented automatic ternary simplification applied by this fix family.
 
-## 4.4 `LQRS003` named `Select` to `SelectExpr`
+## 4.3 `LQRS003` named `Select` to `SelectExpr`
 
 The clone MUST preserve the three documented fix variants:
 
@@ -73,7 +62,7 @@ The clone MUST preserve the three documented fix variants:
 
 This distinction matters because the docs explicitly acknowledge different nullability-shape outcomes.
 
-## 4.5 `LQRS004` ternary simplification
+## 4.4 `LQRS004` ternary simplification
 
 The analyzer is informational because the replacement can change semantics from:
 
@@ -85,7 +74,7 @@ to:
 
 A compatible clone MUST preserve that diagnostic as a suggestion rather than a silent rewrite.
 
-## 4.6 `LQRS005` unnecessary capture removal
+## 4.5 `LQRS005` unnecessary capture removal
 
 This warning is not merely cosmetic.
 The clone MUST detect unused entries in anonymous `capture:` objects and offer fixes that:
@@ -93,7 +82,7 @@ The clone MUST detect unused entries in anonymous `capture:` objects and offer f
 - remove only the unused entries when some captures remain needed
 - remove the entire capture argument when none are needed
 
-## 4.7 `LQRE001` capture enforcement
+## 4.6 `LQRE001` capture enforcement
 
 The clone MUST preserve the documented notion of what counts as capture-requiring:
 
@@ -107,7 +96,7 @@ The code fix MUST be able to:
 - insert a new capture object when absent
 - create local aliases for expressions that cannot be captured directly as anonymous-object shorthand
 
-## 4.8 `LQRE002` anonymous `GroupBy` key rejection
+## 4.7 `LQRE002` anonymous `GroupBy` key rejection
 
 This error exists because anonymous keys cannot be referenced in generated code as the input type for the grouped sequence.
 The clone MUST preserve both:
@@ -115,7 +104,7 @@ The clone MUST preserve both:
 - detection through intermediate LINQ steps, not only direct `.GroupBy(...).SelectExpr(...)`
 - generation of a named key type as the fix
 
-## 4.9 `LQRW001` and `LQRW002` unstable generated-type warnings
+## 4.8 `LQRW001` and `LQRW002` unstable generated-type warnings
 
 These warnings are central to the documented stability model:
 

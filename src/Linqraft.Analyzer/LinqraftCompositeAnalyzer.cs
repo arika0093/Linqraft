@@ -21,10 +21,6 @@ public sealed class LinqraftCompositeAnalyzer : DiagnosticAnalyzer
 
         context.RegisterSyntaxNodeAction(AnalyzeInvocation, SyntaxKind.InvocationExpression);
         context.RegisterSyntaxNodeAction(
-            AnalyzeAnonymousObject,
-            SyntaxKind.AnonymousObjectCreationExpression
-        );
-        context.RegisterSyntaxNodeAction(
             AnalyzeConditionalExpression,
             SyntaxKind.ConditionalExpression
         );
@@ -170,32 +166,6 @@ public sealed class LinqraftCompositeAnalyzer : DiagnosticAnalyzer
         }
     }
 
-    private static void AnalyzeAnonymousObject(SyntaxNodeAnalysisContext context)
-    {
-        var anonymousObject = (AnonymousObjectCreationExpressionSyntax)context.Node;
-        if (anonymousObject.Initializers.Count == 0)
-        {
-            return;
-        }
-
-        if (
-            anonymousObject
-                .Ancestors()
-                .OfType<InvocationExpressionSyntax>()
-                .Any(AnalyzerHelpers.IsSelectExprInvocation)
-        )
-        {
-            return;
-        }
-
-        context.ReportDiagnostic(
-            Diagnostic.Create(
-                DiagnosticDescriptors.AnonymousTypeToDto,
-                anonymousObject.GetLocation()
-            )
-        );
-    }
-
     private static void AnalyzeConditionalExpression(SyntaxNodeAnalysisContext context)
     {
         var conditionalExpression = (ConditionalExpressionSyntax)context.Node;
@@ -308,8 +278,6 @@ public sealed class LinqraftCompositeAnalyzer : DiagnosticAnalyzer
         }
 
         AnalyzeApiControllerMethod(context, method, methodSymbol);
-        AnalyzeAsyncApiResponseMethod(context, method, methodSymbol);
-        AnalyzeSyncApiResponseMethod(context, method, methodSymbol);
     }
 
     private static void AnalyzeApiControllerMethod(
@@ -374,106 +342,6 @@ public sealed class LinqraftCompositeAnalyzer : DiagnosticAnalyzer
                 dtoName
             )
         );
-    }
-
-    private static void AnalyzeAsyncApiResponseMethod(
-        SyntaxNodeAnalysisContext context,
-        MethodDeclarationSyntax method,
-        IMethodSymbol methodSymbol
-    )
-    {
-        var returnType = methodSymbol.ReturnType;
-        if (
-            returnType.SpecialType != SpecialType.System_Void
-            && !(
-                returnType is INamedTypeSymbol namedType
-                && namedType.Name == "Task"
-                && namedType.TypeArguments.Length == 0
-            )
-        )
-        {
-            return;
-        }
-
-        var expressionStatement = method
-            .DescendantNodes()
-            .OfType<ExpressionStatementSyntax>()
-            .Select(statement => statement.Expression)
-            .OfType<InvocationExpressionSyntax>()
-            .FirstOrDefault(invocation =>
-                AnalyzerHelpers.IsQueryableSelectInvocation(
-                    invocation,
-                    context.SemanticModel,
-                    context.CancellationToken
-                )
-                && AnalyzerHelpers.GetSelectorLambda(invocation) is { } lambda
-                && AnalyzerHelpers.IsAnonymousProjection(lambda)
-                && AnalyzerHelpers.IsDbSet(
-                    context
-                        .SemanticModel.GetTypeInfo(
-                            ((MemberAccessExpressionSyntax)invocation.Expression).Expression,
-                            context.CancellationToken
-                        )
-                        .Type
-                )
-            );
-
-        if (expressionStatement is not null)
-        {
-            context.ReportDiagnostic(
-                Diagnostic.Create(
-                    DiagnosticDescriptors.AsyncApiResponseMethod,
-                    method.Identifier.GetLocation(),
-                    method.Identifier.ValueText
-                )
-            );
-        }
-    }
-
-    private static void AnalyzeSyncApiResponseMethod(
-        SyntaxNodeAnalysisContext context,
-        MethodDeclarationSyntax method,
-        IMethodSymbol methodSymbol
-    )
-    {
-        if (methodSymbol.ReturnsVoid is false)
-        {
-            return;
-        }
-
-        var expressionStatement = method
-            .DescendantNodes()
-            .OfType<ExpressionStatementSyntax>()
-            .Select(statement => statement.Expression)
-            .OfType<InvocationExpressionSyntax>()
-            .FirstOrDefault(invocation =>
-                AnalyzerHelpers.IsQueryableSelectInvocation(
-                    invocation,
-                    context.SemanticModel,
-                    context.CancellationToken
-                )
-                && AnalyzerHelpers.GetSelectorLambda(invocation) is { } lambda
-                && AnalyzerHelpers.IsAnonymousProjection(lambda)
-                && !AnalyzerHelpers.IsDbSet(
-                    context
-                        .SemanticModel.GetTypeInfo(
-                            ((MemberAccessExpressionSyntax)invocation.Expression).Expression,
-                            context.CancellationToken
-                        )
-                        .Type
-                )
-            );
-
-        if (expressionStatement is not null)
-        {
-            context.ReportDiagnostic(
-                Diagnostic.Create(
-                    DiagnosticDescriptors.SyncApiResponseMethod,
-                    method.Identifier.GetLocation(),
-                    method.Identifier.ValueText
-                )
-            );
-        }
     }
 
     private static bool FlowsFromAnonymousGroupBy(InvocationExpressionSyntax selectExpr)

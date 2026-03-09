@@ -1,11 +1,11 @@
 # LQRS002 - SelectToSelectExprAnonymousAnalyzer
 
-**Severity:** Info  
+**Severity:** Hidden  
 **Category:** Design  
 **Default:** Enabled
 
 ## Description
-Detects `System.Linq` `Select` calls performed on `IQueryable<T>` whose selector returns an anonymous object. These calls can be converted to `SelectExpr` (Linqraft) to gain the library's projection behavior and better type handling for query translation.
+Detects `System.Linq` `Select` calls performed on `IQueryable<T>` whose selector returns an anonymous object. These calls can be converted to `SelectExpr` (Linqraft) to gain the library's projection behavior and better type handling for query translation. The suggestion remains hidden because the offered conversion is useful but intentionally optional.
 
 ## When It Triggers
 - The invocation is a `Select(...)` method from `System.Linq` (symbol name `Select`).

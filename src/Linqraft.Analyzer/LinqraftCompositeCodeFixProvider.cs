@@ -10,7 +10,6 @@ using Microsoft.CodeAnalysis.CodeActions;
 using Microsoft.CodeAnalysis.CodeFixes;
 using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
-using Microsoft.CodeAnalysis.Text;
 
 namespace Linqraft.Analyzer;
 
@@ -22,10 +21,7 @@ public sealed class LinqraftCompositeCodeFixProvider : CodeFixProvider
 {
     public override ImmutableArray<string> FixableDiagnosticIds =>
         ImmutableArray.Create(
-            "LQRF001",
             "LQRF002",
-            "LQRF003",
-            "LQRF004",
             "LQRS001",
             "LQRS002",
             "LQRS003",
@@ -73,17 +69,8 @@ public sealed class LinqraftCompositeCodeFixProvider : CodeFixProvider
                 case "LQRE002":
                     RegisterGroupByKeyFix(context, node);
                     break;
-                case "LQRF001":
-                    RegisterAnonymousToDtoFixes(context, node);
-                    break;
                 case "LQRF002":
                     RegisterProducesResponseTypeFix(context, node);
-                    break;
-                case "LQRF003":
-                    RegisterApiResponseMethodFix(context, node, asyncVersion: true);
-                    break;
-                case "LQRF004":
-                    RegisterApiResponseMethodFix(context, node, asyncVersion: false);
                     break;
             }
         }
@@ -313,43 +300,6 @@ public sealed class LinqraftCompositeCodeFixProvider : CodeFixProvider
         );
     }
 
-    private static void RegisterAnonymousToDtoFixes(CodeFixContext context, SyntaxNode node)
-    {
-        var anonymousObject = node.FirstAncestorOrSelf<AnonymousObjectCreationExpressionSyntax>();
-        if (anonymousObject is null)
-        {
-            return;
-        }
-
-        context.RegisterCodeFix(
-            CodeAction.Create(
-                "Convert anonymous type to DTO (current file)",
-                cancellationToken =>
-                    ConvertAnonymousToDtoInCurrentDocumentAsync(
-                        context.Document,
-                        anonymousObject,
-                        cancellationToken
-                    ),
-                "LQRF001.Current"
-            ),
-            context.Diagnostics
-        );
-
-        context.RegisterCodeFix(
-            CodeAction.Create(
-                "Convert anonymous type to DTO (new file)",
-                cancellationToken =>
-                    ConvertAnonymousToDtoInNewDocumentAsync(
-                        context.Document,
-                        anonymousObject,
-                        cancellationToken
-                    ),
-                "LQRF001.New"
-            ),
-            context.Diagnostics
-        );
-    }
-
     private static void RegisterProducesResponseTypeFix(CodeFixContext context, SyntaxNode node)
     {
         var method = node.FirstAncestorOrSelf<MethodDeclarationSyntax>();
@@ -364,38 +314,6 @@ public sealed class LinqraftCompositeCodeFixProvider : CodeFixProvider
                 cancellationToken =>
                     AddProducesResponseTypeAsync(context.Document, method, cancellationToken),
                 "LQRF002"
-            ),
-            context.Diagnostics
-        );
-    }
-
-    private static void RegisterApiResponseMethodFix(
-        CodeFixContext context,
-        SyntaxNode node,
-        bool asyncVersion
-    )
-    {
-        var method = node.FirstAncestorOrSelf<MethodDeclarationSyntax>();
-        if (method is null)
-        {
-            return;
-        }
-
-        var title = asyncVersion
-            ? "Convert to async API response method"
-            : "Convert to synchronous API response method";
-
-        context.RegisterCodeFix(
-            CodeAction.Create(
-                title,
-                cancellationToken =>
-                    ConvertApiResponseMethodAsync(
-                        context.Document,
-                        method,
-                        asyncVersion,
-                        cancellationToken
-                    ),
-                asyncVersion ? "LQRF003" : "LQRF004"
             ),
             context.Diagnostics
         );
@@ -709,57 +627,6 @@ public sealed class LinqraftCompositeCodeFixProvider : CodeFixProvider
         return document.WithSyntaxRoot(updatedRoot);
     }
 
-    private static async Task<Document> ConvertAnonymousToDtoInCurrentDocumentAsync(
-        Document document,
-        AnonymousObjectCreationExpressionSyntax anonymousObject,
-        CancellationToken cancellationToken
-    )
-    {
-        var root = await document.GetSyntaxRootAsync(cancellationToken).ConfigureAwait(false);
-        if (root is null)
-        {
-            return document;
-        }
-
-        var dtoName = AnalyzerHelpers.GenerateDtoName(anonymousObject);
-        var replacement = CreateObjectCreationFromAnonymous(anonymousObject, dtoName);
-        var updatedRoot = root.ReplaceNode(anonymousObject, replacement);
-        updatedRoot = AppendTypeDeclaration(
-            updatedRoot,
-            CreateDtoClassText(dtoName, anonymousObject)
-        );
-        return document.WithSyntaxRoot(updatedRoot);
-    }
-
-    private static async Task<Solution> ConvertAnonymousToDtoInNewDocumentAsync(
-        Document document,
-        AnonymousObjectCreationExpressionSyntax anonymousObject,
-        CancellationToken cancellationToken
-    )
-    {
-        var root = await document.GetSyntaxRootAsync(cancellationToken).ConfigureAwait(false);
-        if (root is null)
-        {
-            return document.Project.Solution;
-        }
-
-        var dtoName = AnalyzerHelpers.GenerateDtoName(anonymousObject);
-        var replacement = CreateObjectCreationFromAnonymous(anonymousObject, dtoName);
-        var updatedRoot = root.ReplaceNode(anonymousObject, replacement);
-        var classText = CreateDtoClassText(dtoName, anonymousObject);
-        var updatedSolution = document.Project.Solution.WithDocumentSyntaxRoot(
-            document.Id,
-            updatedRoot
-        );
-        var newDocumentName = $"{dtoName}.cs";
-        updatedSolution = updatedSolution.AddDocument(
-            DocumentId.CreateNewId(document.Project.Id),
-            newDocumentName,
-            SourceText.From(classText)
-        );
-        return updatedSolution;
-    }
-
     private static async Task<Document> AddProducesResponseTypeAsync(
         Document document,
         MethodDeclarationSyntax method,
@@ -806,95 +673,6 @@ public sealed class LinqraftCompositeCodeFixProvider : CodeFixProvider
 
         var updatedMethod = method.AddAttributeLists(attribute);
         return document.WithSyntaxRoot(root.ReplaceNode(method, updatedMethod));
-    }
-
-    private static async Task<Document> ConvertApiResponseMethodAsync(
-        Document document,
-        MethodDeclarationSyntax method,
-        bool asyncVersion,
-        CancellationToken cancellationToken
-    )
-    {
-        var root = await document.GetSyntaxRootAsync(cancellationToken).ConfigureAwait(false);
-        var semanticModel = await document
-            .GetSemanticModelAsync(cancellationToken)
-            .ConfigureAwait(false);
-        if (root is null || semanticModel is null || method.Body is null)
-        {
-            return document;
-        }
-
-        var expressionStatement = method
-            .Body.Statements.OfType<ExpressionStatementSyntax>()
-            .FirstOrDefault(statement =>
-                statement.Expression is InvocationExpressionSyntax invocation
-                && AnalyzerHelpers.IsQueryableSelectInvocation(
-                    invocation,
-                    semanticModel,
-                    cancellationToken
-                )
-            );
-        if (expressionStatement?.Expression is not InvocationExpressionSyntax statement)
-        {
-            return document;
-        }
-
-        var dtoName = AnalyzerHelpers.GenerateDtoName(statement);
-        var selectExpr = AddTypeArguments(
-            RenameInvocation(statement, "SelectExpr"),
-            GetSelectSourceTypeName(statement, semanticModel, cancellationToken),
-            dtoName
-        );
-        var chainText = selectExpr.ToString() + (asyncVersion ? ".ToListAsync()" : ".ToList()");
-        var newStatement = asyncVersion
-            ? (StatementSyntax)SyntaxFactory.ParseStatement($"return await {chainText};")
-            : SyntaxFactory.ParseStatement($"return {chainText};");
-
-        var newBody = method.Body.WithStatements(
-            SyntaxFactory.List(
-                method.Body.Statements.Select(statementSyntax =>
-                    statementSyntax == expressionStatement ? newStatement : statementSyntax
-                )
-            )
-        );
-        var returnTypeText = asyncVersion ? $"Task<List<{dtoName}>>" : $"List<{dtoName}>";
-
-        var updatedMethod = method
-            .WithIdentifier(
-                SyntaxFactory.Identifier(
-                    asyncVersion
-                    && !method.Identifier.ValueText.EndsWith("Async", StringComparison.Ordinal)
-                        ? method.Identifier.ValueText + "Async"
-                        : method.Identifier.ValueText
-                )
-            )
-            .WithReturnType(SyntaxFactory.ParseTypeName(returnTypeText))
-            .WithBody(newBody)
-            .WithExpressionBody(null)
-            .WithSemicolonToken(default);
-
-        if (
-            asyncVersion
-            && !updatedMethod.Modifiers.Any(modifier => modifier.IsKind(SyntaxKind.AsyncKeyword))
-        )
-        {
-            updatedMethod = updatedMethod.WithModifiers(
-                updatedMethod.Modifiers.Add(SyntaxFactory.Token(SyntaxKind.AsyncKeyword))
-            );
-        }
-
-        var updatedRoot = root.ReplaceNode(method, updatedMethod);
-        updatedRoot = EnsureUsings(updatedRoot, "System.Collections.Generic", "System.Linq");
-        if (asyncVersion)
-        {
-            updatedRoot = EnsureUsings(
-                updatedRoot,
-                "System.Threading.Tasks",
-                "Microsoft.EntityFrameworkCore"
-            );
-        }
-
-        return document.WithSyntaxRoot(updatedRoot);
     }
 
     private static InvocationExpressionSyntax RenameInvocation(

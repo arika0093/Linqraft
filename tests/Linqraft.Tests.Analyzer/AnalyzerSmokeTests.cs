@@ -75,7 +75,9 @@ public sealed class AnalyzerSmokeTests
             """;
 
         var diagnostics = await GetDiagnosticsAsync(source);
-        diagnostics.Select(diagnostic => diagnostic.Id).ShouldContain("LQRS002");
+        var diagnostic = diagnostics.Single(current => current.Id == "LQRS002");
+
+        diagnostic.Severity.ShouldBe(DiagnosticSeverity.Hidden);
     }
 
     [Test]
@@ -301,23 +303,6 @@ public sealed class AnalyzerSmokeTests
     }
 
     [Test]
-    public async Task Anonymous_object_reports_LQRF001()
-    {
-        const string source = """
-            public class Builder
-            {
-                public object Create()
-                {
-                    return new { Id = 1 };
-                }
-            }
-            """;
-
-        var diagnostics = await GetDiagnosticsAsync(source);
-        diagnostics.Select(diagnostic => diagnostic.Id).ShouldContain("LQRF001");
-    }
-
-    [Test]
     public async Task Api_controller_without_response_metadata_reports_LQRF002()
     {
         const string source = """
@@ -363,75 +348,6 @@ public sealed class AnalyzerSmokeTests
 
         var diagnostics = await GetDiagnosticsAsync(source);
         diagnostics.Select(diagnostic => diagnostic.Id).ShouldContain("LQRF002");
-    }
-
-    [Test]
-    public async Task Void_dbset_select_reports_LQRF003()
-    {
-        const string source = """
-            using System;
-            using System.Collections;
-            using System.Collections.Generic;
-            using System.Linq;
-            using System.Linq.Expressions;
-
-            namespace Microsoft.EntityFrameworkCore
-            {
-                public class DbSet<T> : IQueryable<T>
-                {
-                    public Type ElementType => throw null!;
-                    public Expression Expression => throw null!;
-                    public IQueryProvider Provider => throw null!;
-                    public IEnumerator<T> GetEnumerator() => throw null!;
-                    IEnumerator IEnumerable.GetEnumerator() => GetEnumerator();
-                }
-            }
-
-            public class Entity
-            {
-                public int Id { get; set; }
-            }
-
-            public sealed class Context
-            {
-                public Microsoft.EntityFrameworkCore.DbSet<Entity> Entities { get; } = null!;
-            }
-
-            public class ApiService
-            {
-                public void Execute(Context db)
-                {
-                    db.Entities.Select(entity => new { entity.Id });
-                }
-            }
-            """;
-
-        var diagnostics = await GetDiagnosticsAsync(source);
-        diagnostics.Select(diagnostic => diagnostic.Id).ShouldContain("LQRF003");
-    }
-
-    [Test]
-    public async Task Void_queryable_select_reports_LQRF004()
-    {
-        const string source = """
-            using System.Linq;
-
-            public class Entity
-            {
-                public int Id { get; set; }
-            }
-
-            public class ApiService
-            {
-                public void Execute(IQueryable<Entity> source)
-                {
-                    source.Select(entity => new { entity.Id });
-                }
-            }
-            """;
-
-        var diagnostics = await GetDiagnosticsAsync(source);
-        diagnostics.Select(diagnostic => diagnostic.Id).ShouldContain("LQRF004");
     }
 
     private static async Task<ImmutableArray<Diagnostic>> GetDiagnosticsAsync(string source)

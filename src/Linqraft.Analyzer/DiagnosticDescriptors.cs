@@ -5,37 +5,10 @@ namespace Linqraft.Analyzer;
 
 internal static class DiagnosticDescriptors
 {
-    public static readonly DiagnosticDescriptor AnonymousTypeToDto = new(
-        "LQRF001",
-        "Anonymous object can be converted to DTO",
-        "Anonymous object can be converted to a DTO class",
-        "Design",
-        DiagnosticSeverity.Hidden,
-        isEnabledByDefault: true
-    );
-
     public static readonly DiagnosticDescriptor ApiControllerProducesResponseType = new(
         "LQRF002",
         "Action can declare ProducesResponseType",
         "Action '{0}' can declare ProducesResponseType(typeof({1}))",
-        "Design",
-        DiagnosticSeverity.Info,
-        isEnabledByDefault: true
-    );
-
-    public static readonly DiagnosticDescriptor AsyncApiResponseMethod = new(
-        "LQRF003",
-        "Method can be converted to API response method",
-        "Method '{0}' can be converted to an async API response method",
-        "Design",
-        DiagnosticSeverity.Info,
-        isEnabledByDefault: true
-    );
-
-    public static readonly DiagnosticDescriptor SyncApiResponseMethod = new(
-        "LQRF004",
-        "Method can be converted to synchronous API response method",
-        "Method '{0}' can be converted to a synchronous API response method",
         "Design",
         DiagnosticSeverity.Info,
         isEnabledByDefault: true
@@ -55,7 +28,7 @@ internal static class DiagnosticDescriptors
         "IQueryable.Select can be converted to SelectExpr",
         "IQueryable.Select can be converted to SelectExpr",
         "Design",
-        DiagnosticSeverity.Info,
+        DiagnosticSeverity.Hidden,
         isEnabledByDefault: true
     );
 
@@ -124,10 +97,7 @@ internal static class DiagnosticDescriptors
 
     public static ImmutableArray<DiagnosticDescriptor> All { get; } =
         ImmutableArray.Create(
-            AnonymousTypeToDto,
             ApiControllerProducesResponseType,
-            AsyncApiResponseMethod,
-            SyncApiResponseMethod,
             SelectExprToTyped,
             SelectToSelectExprAnonymous,
             SelectToSelectExprNamed,

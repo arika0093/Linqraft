@@ -84,4 +84,3 @@ public partial class EntitiesGroupKey
 ```
 
 ## Related
-- [LQRF001](./LQRF001.md) - Convert anonymous types to DTO classes (general case)
