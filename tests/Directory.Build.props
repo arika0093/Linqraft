@@ -7,6 +7,7 @@
     <IsPackable>false</IsPackable>
     <SuppressTfmSupportBuildWarnings>true</SuppressTfmSupportBuildWarnings>
     <InterceptorsNamespaces>$(InterceptorsNamespaces);Linqraft</InterceptorsNamespaces>
+    <InterceptorsPreviewNamespaces>$(InterceptorsPreviewNamespaces);Linqraft</InterceptorsPreviewNamespaces>
     <SuppressTfmSupportBuildErrors>true</SuppressTfmSupportBuildErrors>
   </PropertyGroup>
   <ItemGroup>
