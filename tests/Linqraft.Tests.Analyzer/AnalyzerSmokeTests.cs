@@ -9,7 +9,7 @@ using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.Diagnostics;
 
-namespace Linqraft.Analyzer.Tests;
+namespace Linqraft.Tests.Analyzer;
 
 public sealed class AnalyzerSmokeTests
 {

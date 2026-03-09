@@ -13,7 +13,7 @@ using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.Diagnostics;
 using Microsoft.CodeAnalysis.Text;
 
-namespace Linqraft.Analyzer.Tests;
+namespace Linqraft.Tests.Analyzer;
 
 public sealed class AnalyzerCodeFixSmokeTests
 {
