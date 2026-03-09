@@ -14,7 +14,7 @@ on:
 
 jobs:
   native-aot-test:
-    runs-on: windows-latest
+    runs-on: ubuntu-latest
     steps:
       - name: Checkout repository
         uses: actions/checkout@v6
@@ -37,4 +37,4 @@ jobs:
         run: dotnet publish tests\Linqraft.Tests\Linqraft.Tests.csproj -c Release -o publish -f net8.0 -r win-x64 -p:TFMS=net8.0 -p:EnableNativeAotTest=true --self-contained true
 
       - name: Run NativeAOT tests
-        run: .\publish\Linqraft.Tests.exe
+        run: .\publish\Linqraft.Tests
