@@ -55,6 +55,48 @@ public sealed class AnalyzerSmokeTests
     }
 
     [Test]
+    public async Task Matching_capture_does_not_report_capture_diagnostics()
+    {
+        const string source = """
+            using System;
+            using System.Linq;
+
+            namespace System.Linq
+            {
+                public static class SelectExprExtensions
+                {
+                    public static IQueryable<TResult> SelectExpr<TIn, TResult>(this IQueryable<TIn> query, Func<TIn, object> selector, object capture)
+                        where TIn : class => throw null!;
+                }
+            }
+
+            public class Entity
+            {
+                public int Id { get; set; }
+                public int Value { get; set; }
+            }
+
+            public class EntityDto { }
+
+            public class QueryHolder
+            {
+                public IQueryable<EntityDto> Project(IQueryable<Entity> source, int threshold)
+                {
+                    return source.SelectExpr<Entity, EntityDto>(entity => new
+                    {
+                        entity.Id,
+                        IsLarge = entity.Value > threshold,
+                    }, capture: new { threshold });
+                }
+            }
+            """;
+
+        var diagnostics = await GetDiagnosticsAsync(source);
+        diagnostics.Select(diagnostic => diagnostic.Id).ShouldNotContain("LQRE001");
+        diagnostics.Select(diagnostic => diagnostic.Id).ShouldNotContain("LQRS005");
+    }
+
+    [Test]
     public async Task Queryable_select_anonymous_reports_LQRS002()
     {
         const string source = """
@@ -78,6 +120,31 @@ public sealed class AnalyzerSmokeTests
         var diagnostic = diagnostics.Single(current => current.Id == "LQRS002");
 
         diagnostic.Severity.ShouldBe(DiagnosticSeverity.Hidden);
+    }
+
+    [Test]
+    public async Task Enumerable_select_anonymous_does_not_report_LQRS002()
+    {
+        const string source = """
+            using System.Collections.Generic;
+            using System.Linq;
+
+            public class Entity
+            {
+                public int Id { get; set; }
+            }
+
+            public class QueryHolder
+            {
+                public IEnumerable<object> Project(IEnumerable<Entity> source)
+                {
+                    return source.Select(entity => new { entity.Id });
+                }
+            }
+            """;
+
+        var diagnostics = await GetDiagnosticsAsync(source);
+        diagnostics.Select(diagnostic => diagnostic.Id).ShouldNotContain("LQRS002");
     }
 
     [Test]
@@ -303,6 +370,32 @@ public sealed class AnalyzerSmokeTests
     }
 
     [Test]
+    public async Task Anonymous_groupby_key_without_selectexpr_does_not_report_LQRE002()
+    {
+        const string source = """
+            using System.Linq;
+
+            public class Entity
+            {
+                public int Id { get; set; }
+            }
+
+            public class QueryHolder
+            {
+                public object Project(IQueryable<Entity> source)
+                {
+                    return source
+                        .GroupBy(entity => new { entity.Id })
+                        .Select(group => group.Key);
+                }
+            }
+            """;
+
+        var diagnostics = await GetDiagnosticsAsync(source);
+        diagnostics.Select(diagnostic => diagnostic.Id).ShouldNotContain("LQRE002");
+    }
+
+    [Test]
     public async Task Api_controller_without_response_metadata_reports_LQRF002()
     {
         const string source = """
@@ -348,6 +441,59 @@ public sealed class AnalyzerSmokeTests
 
         var diagnostics = await GetDiagnosticsAsync(source);
         diagnostics.Select(diagnostic => diagnostic.Id).ShouldContain("LQRF002");
+    }
+
+    [Test]
+    public async Task Api_controller_with_response_metadata_does_not_report_LQRF002()
+    {
+        const string source = """
+            using System;
+            using System.Linq;
+
+            namespace Microsoft.AspNetCore.Mvc
+            {
+                public sealed class ApiControllerAttribute : Attribute { }
+                public sealed class ProducesResponseTypeAttribute : Attribute
+                {
+                    public ProducesResponseTypeAttribute(Type type) { }
+                }
+                public interface IActionResult { }
+                public abstract class ControllerBase { }
+            }
+
+            namespace System.Linq
+            {
+                public static class SelectExprExtensions
+                {
+                    public static IQueryable<TResult> SelectExpr<TIn, TResult>(this IQueryable<TIn> query, Func<TIn, object> selector)
+                        where TIn : class => throw null!;
+                }
+            }
+
+            public class Entity
+            {
+                public int Id { get; set; }
+            }
+
+            public class EntityDto { }
+
+            [Microsoft.AspNetCore.Mvc.ApiController]
+            public sealed class EntityController : Microsoft.AspNetCore.Mvc.ControllerBase
+            {
+                [Microsoft.AspNetCore.Mvc.ProducesResponseType(typeof(EntityDto))]
+                public Microsoft.AspNetCore.Mvc.IActionResult Get(IQueryable<Entity> source)
+                {
+                    var _ = source.SelectExpr<Entity, EntityDto>(entity => new
+                    {
+                        entity.Id,
+                    });
+                    return default!;
+                }
+            }
+            """;
+
+        var diagnostics = await GetDiagnosticsAsync(source);
+        diagnostics.Select(diagnostic => diagnostic.Id).ShouldNotContain("LQRF002");
     }
 
     private static async Task<ImmutableArray<Diagnostic>> GetDiagnosticsAsync(string source)
