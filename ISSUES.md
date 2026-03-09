@@ -1,32 +1,47 @@
-* DON'T USE `SelectExprRuntimeHelper`
-  * 全てのロジックはインターセプトされた中身にinlineで書かれるべきである(see README.md / Overview section)
-  * SelectExprRuntimeHelperに移譲するやり方はIQueryableに対応しておらず、Linqraftの目的に反する
-  * SelectExprRuntimeHelperは削除する.
-
-* インターセプトされるロジックの中身を綺麗にフォーマットする. 1行で書くのではなく、適切にインデントして書くべき.
-  * DON'T: `query.Select(x => new FooBar { y = x.y.Select(y => new { ... }) })`
-  * DO:
+* インデントが壊れてる。.generatedファイルを全て見て、インデントが壊れてる箇所を全て修正してください
 ```csharp
-query.Select(x => new FooBar {
-    y = x.y
-        // LINQクエリは1つインデントして書く
-        .Select(y => new {
-            // 中身もさらにインデントして、きれいに出力する
-        }),
-    z = x.z,
-})
+// SelectExpr_5149BB84729D0008
+[global::System.Runtime.CompilerServices.InterceptsLocationAttribute(1, "LRNIE4/zY5C1YPJdENHuTMAkAABFeHBsaWNpdER0b0NvbXByZWhlbnNpdmVUZXN0LmNz")]
+public static global::System.Linq.IQueryable<TResult> SelectExpr_5149BB84729D0008<TIn, TResult>(this global::System.Linq.IQueryable<TIn> query, global::System.Func<TIn, object> selector) where TIn : class
+{
+    // 不要な空行
+
+    var converted = ((global::System.Linq.IQueryable<global::Linqraft.Tests.ExplicitDtoComprehensiveTest.EntityWithNullableChild>)(object)query).Select(e => new global::Linqraft.Tests.TwoLevelNullConditionalDto() {
+    // 略
+    });
+}
+
+// SelectExpr_9180A98084AC6E14
+        public static global::System.Linq.IQueryable<TResult> SelectExpr_9180A98084AC6E14<TIn, TResult>(this global::System.Linq.IQueryable<TIn> query, global::System.Func<TIn, TResult> selector, [global::System.Diagnostics.CodeAnalysis.DynamicallyAccessedMembers(global::System.Diagnostics.CodeAnalysis.DynamicallyAccessedMemberTypes.PublicProperties)] object capture) where TIn : class
+        {
+
+            var captureType = capture.GetType();
+            var __linqraft_capture_0_valProperty = captureType.GetProperty("val", global::System.Reflection.BindingFlags.Instance | global::System.Reflection.BindingFlags.Public);
+            if (__linqraft_capture_0_valProperty is null)
+            {
+                throw new global::System.InvalidOperationException("Captured value 'val' was not found.");
+            }
+        var __linqraft_capture_0_valValue = __linqraft_capture_0_valProperty.GetValue(capture);
+        var __linqraft_capture_0_val = __linqraft_capture_0_valValue is null ? default! : (global::System.Int32)__linqraft_capture_0_valValue;
+        var __linqraft_capture_1_multiplierProperty = captureType.GetProperty("multiplier", global::System.Reflection.BindingFlags.Instance | global::System.Reflection.BindingFlags.Public);
+        if (__linqraft_capture_1_multiplierProperty is null)
+        {
+            throw new global::System.InvalidOperationException("Captured value 'multiplier' was not found.");
+        }
+    var __linqraft_capture_1_multiplierValue = __linqraft_capture_1_multiplierProperty.GetValue(capture);
+    var __linqraft_capture_1_multiplier = __linqraft_capture_1_multiplierValue is null ? default! : (global::System.Int32)__linqraft_capture_1_multiplierValue;
+
+    var converted = ((global::System.Linq.IQueryable<global::Linqraft.Tests.TestItem>)(object)query).Select(x => new global::Linqraft.Tests.PredefinedDto2() {
+        Id = x.Id,
+        NewValue = x.Value + __linqraft_capture_0_val,
+        DoubledValue = x.Value * __linqraft_capture_1_multiplier,
+    });
+return (global::System.Linq.IQueryable<TResult>)(object)converted;
+}
+}
+}
 ```
 
-* LinqraftSG001/LinqraftSG002のアナライザー自体を削除
-* Linqraft.Support.g.cs → Linqraft.Declarations.g.csにリネーム
-* LinqraftCaptureHelperを削除, inlineで書く
-
-
-* テストをXUnitからTUnitに変更
-  * NativeAOTでビルド→テストを追加(GH Actions)
-  * SourceGeneratorのキャッシュが効いていること+単純なSmokeテストするLinqraft.Tests.SGプロジェクトを追加
-  
-* EFCore(SQLite)を使用したテスト Linqraft.Tests.EFCoreプロジェクトを追加
-  * 単純なケースからはじめ、大規模なテストケース(各種LINQクエリ、大規模なデータセット、TPH等に対するOfTypeのテストなど)を追加していく
-* Linqraft.Tests内のPreviousテストを整理して、Linqraft.Testルートに移動
-  * 重複したテスト項目を整理
+* analyzer側のテストケース+codefixテストをより充実させてください
+* EFCoreのテストをより充実させる。またファイルを適宜分割すること。
+* examples配下が実行できることを確認する。
