@@ -282,6 +282,45 @@ public sealed class GlobalPropertyConfigurationTests
             .ShouldBeTrue();
     }
 
+    [Test]
+    public void Generated_projection_source_omits_runtime_query_guards()
+    {
+        var result = Orders
+            .AsQueryable()
+            .SelectExpr<Order, ConfiguredOrderDto>(order => new
+            {
+                order.Id,
+                CustomerName = order.Customer == null ? "missing" : order.Customer.Name,
+                Items = order
+                    .Items?.Select(item => new { item.ProductName, item.Quantity })
+                    .ToList(),
+            })
+            .ToList();
+
+        result.Count.ShouldBe(2);
+
+        var projectionSource = GetGeneratedProjectionSourceContaining(
+            "ConfiguredOrderDto",
+            "CustomerName = order.Customer == null ? \"missing\" : order.Customer.Name"
+        );
+        projectionSource.Contains("ThrowIfNull(", StringComparison.Ordinal).ShouldBeFalse();
+        projectionSource.Contains("var matchedQuery =", StringComparison.Ordinal).ShouldBeFalse();
+        projectionSource.Contains("matchedQuery is null", StringComparison.Ordinal).ShouldBeFalse();
+        projectionSource.Contains("unexpected result type", StringComparison.Ordinal).ShouldBeFalse();
+        projectionSource
+            .Contains(
+                "var converted = ((global::System.Linq.IQueryable<global::Order>)(object)query).Select(",
+                StringComparison.Ordinal
+            )
+            .ShouldBeTrue();
+        projectionSource
+            .Contains(
+                "return (global::System.Linq.IQueryable<TResult>)(object)converted;",
+                StringComparison.Ordinal
+            )
+            .ShouldBeTrue();
+    }
+
     private static string GetGeneratedProjectionSourceContaining(
         string requiredContent,
         string requiredTypeMarker

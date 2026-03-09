@@ -180,30 +180,6 @@ internal static class SourceWriters
                 using (builder.Indent())
                 {
                     var matchedQueryType = $"{receiverType}<{request.SourceTypeName}>";
-                    builder.AppendLine("global::System.ArgumentNullException.ThrowIfNull(query);");
-                    builder.AppendLine(
-                        "global::System.ArgumentNullException.ThrowIfNull(selector);"
-                    );
-                    if (request.Captures.Count != 0)
-                    {
-                        builder.AppendLine(
-                            "global::System.ArgumentNullException.ThrowIfNull(capture);"
-                        );
-                    }
-
-                    builder.AppendLine(
-                        $"var matchedQuery = query as object as {matchedQueryType};"
-                    );
-                    builder.AppendLine("if (matchedQuery is null)");
-                    builder.AppendLine("{");
-                    using (builder.Indent())
-                    {
-                        builder.AppendLine(
-                            $"throw new global::System.InvalidOperationException(\"Linqraft generated projection expected a source assignable to '{EscapeStringLiteral(request.SourceTypeName)}'.\");"
-                        );
-                    }
-
-                    builder.AppendLine("}");
 
                     if (request.Captures.Count != 0)
                     {
@@ -241,10 +217,10 @@ internal static class SourceWriters
                             : lambda;
                     AppendMultilineLine(
                         builder,
-                        $"var converted = matchedQuery.Select({selectArgument});"
+                        $"var converted = (({matchedQueryType})(object)query).Select({selectArgument});"
                     );
                     builder.AppendLine(
-                        $"return converted as object as {receiverType}<TResult> ?? throw new global::System.InvalidOperationException(\"Linqraft generated projection returned an unexpected result type.\");"
+                        $"return ({receiverType}<TResult>)(object)converted;"
                     );
                 }
 
