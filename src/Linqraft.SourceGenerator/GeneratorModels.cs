@@ -170,26 +170,3 @@ internal sealed record MappingRequest
 
     public required ProjectionObjectModel RootProjection { get; init; }
 }
-
-internal static class GeneratorDiagnostics
-{
-    public static readonly DiagnosticDescriptor InvalidSelectExpr =
-        new(
-            id: "LinqraftSG001",
-            title: "Unsupported SelectExpr shape",
-            messageFormat: "{0}",
-            category: "Linqraft",
-            defaultSeverity: DiagnosticSeverity.Hidden,
-            isEnabledByDefault: false
-        );
-
-    public static readonly DiagnosticDescriptor ConflictingDtoShape =
-        new(
-            id: "LinqraftSG002",
-            title: "Conflicting DTO shape",
-            messageFormat: "Generated DTO '{0}' was requested with incompatible shapes: {1}",
-            category: "Linqraft",
-            defaultSeverity: DiagnosticSeverity.Hidden,
-            isEnabledByDefault: false
-        );
-}
