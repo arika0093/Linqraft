@@ -308,6 +308,11 @@ sb.AppendLine($$"""
     """);
 ```
 
+## 5.5 Do not use Reflection
+
+Reflection APIs such as `GetConstructor` or `GetProperty` MUST NOT be used anywhere in the generated code. All type information should be fully resolved at compile time and directly embedded in the generated code.
+This means that any necessary type information must be collected during the SourceGenerator phase and directly included in the emitted code, rather than relying on runtime reflection to access type metadata.
+
 ### Practical clarification
 
 This rule applies to **type references**, not to syntax positions where C# does not allow `global::`:
