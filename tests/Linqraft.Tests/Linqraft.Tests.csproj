@@ -1,7 +1,12 @@
-﻿<Project Sdk="Microsoft.NET.Sdk">
+<Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
     <EmitCompilerGeneratedFiles>true</EmitCompilerGeneratedFiles>
     <CompilerGeneratedFilesOutputPath>.generated</CompilerGeneratedFilesOutputPath>
     <EnforceCodeStyleInBuild>true</EnforceCodeStyleInBuild>
+  </PropertyGroup>
+
+  <PropertyGroup Condition="'$(EnableNativeAotTest)' == 'true' and '$(TargetFramework)' != ''">
+    <PublishAot>true</PublishAot>
+    <LinqraftUsePrebuildExpression>false</LinqraftUsePrebuildExpression>
   </PropertyGroup>
 </Project>

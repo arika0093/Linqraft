@@ -1,4 +1,5 @@
 using System.Linq;
+using System.Runtime.CompilerServices;
 
 namespace Linqraft.Tests;
 
@@ -7,6 +8,7 @@ public sealed class HashingHelperTests
     [Test]
     public void ComputeHash_returns_deterministic_uppercase_hex_with_requested_length()
     {
+        SkipIfNativeAot();
         var shortHash = InvokeComputeHash("Linqraft.Hash.Sample", 8);
         var longHash = InvokeComputeHash("Linqraft.Hash.Sample", 16);
 
@@ -21,6 +23,7 @@ public sealed class HashingHelperTests
     [Test]
     public void ComputeHash_changes_when_input_changes()
     {
+        SkipIfNativeAot();
         var left = InvokeComputeHash("Linqraft.Hash.Left", 16);
         var right = InvokeComputeHash("Linqraft.Hash.Right", 16);
 
@@ -42,6 +45,14 @@ public sealed class HashingHelperTests
         computeHash.ShouldNotBeNull();
 
         return computeHash.Invoke(null, [value, length]).ShouldBeOfType<string>();
+    }
+
+    private static void SkipIfNativeAot()
+    {
+        if (!RuntimeFeature.IsDynamicCodeSupported)
+        {
+            global::TUnit.Core.Skip.Test("Reflection-only hash verification is skipped under NativeAOT.");
+        }
     }
 
     private static bool IsUpperHexCharacter(char character)

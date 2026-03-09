@@ -1,0 +1,40 @@
+name: NativeAOT Test
+
+on:
+  workflow_dispatch:
+  push:
+    branches-ignore:
+      - release/*
+      - release-pr/*
+    paths:
+      - '**.csproj'
+      - '**.cs'
+      - '**./Directories.Build.props'
+      - '.github/workflows/test-aot.yaml'
+
+jobs:
+  native-aot-test:
+    runs-on: windows-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v5
+        with:
+          dotnet-version: |
+            10.0.x
+            8.0.x
+          cache: true
+          cache-dependency-path: '**/packages.lock.json'
+
+      - name: Restore dependencies
+        run: dotnet restore --locked-mode -p:TFMS=net8.0
+
+      - name: Publish NativeAOT tests
+        run: dotnet publish tests\Linqraft.Tests\Linqraft.Tests.csproj -c Release -o publish -f net8.0 -r win-x64 -p:TFMS=net8.0 -p:EnableNativeAotTest=true --self-contained true
+
+      - name: Run NativeAOT tests
+        run: .\publish\Linqraft.Tests.exe

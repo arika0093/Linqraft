@@ -3,6 +3,7 @@ using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
 using System.Linq.Expressions;
+using System.Runtime.CompilerServices;
 
 namespace Linqraft.Tests;
 
@@ -131,6 +132,7 @@ public sealed class GeneratedProjectionRuntimeTests
     [Test]
     public void Captured_value_projection_runs()
     {
+        SkipIfNativeAotCapture();
         const decimal threshold = 50m;
 
         var result = Invoices
@@ -149,6 +151,7 @@ public sealed class GeneratedProjectionRuntimeTests
     [Test]
     public void IQueryable_projection_preserves_query_provider()
     {
+        SkipIfNativeAotCapture();
         const decimal threshold = 50m;
         var source = TrackingQueryable.Create<ProjectionInvoice>();
 
@@ -179,6 +182,16 @@ public sealed class GeneratedProjectionRuntimeTests
         typeof(ProjectionDeclaredOrderDto)
             .GetProperty(nameof(ProjectionDeclaredOrderDto.Id))!
             .SetMethod!.IsPrivate.ShouldBeTrue();
+    }
+
+    private static void SkipIfNativeAotCapture()
+    {
+        if (!RuntimeFeature.IsDynamicCodeSupported)
+        {
+            global::TUnit.Core.Skip.Test(
+                "Anonymous-object capture reflection is currently not NativeAOT-safe."
+            );
+        }
     }
 }
 
