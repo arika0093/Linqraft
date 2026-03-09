@@ -140,12 +140,11 @@ internal static class SourceWriters
             builder.AppendLine("{");
             using (builder.Indent())
             {
-                var lambda = WriteProjectionLambda(request.RootProjection, request, semanticModel);
                 var expressionFieldName = $"s_expression_{request.MethodName}";
                 if (request.CanUsePrebuiltExpression && request.ReceiverKind == ReceiverKind.IQueryable)
                 {
                     builder.AppendLine(
-                        $"private static readonly global::System.Linq.Expressions.Expression<global::System.Func<{request.SourceTypeName}, {request.ResultTypeName}>> {expressionFieldName} = {lambda};"
+                        $"private static readonly global::System.Linq.Expressions.Expression<global::System.Func<{request.SourceTypeName}, {request.ResultTypeName}>> {expressionFieldName} = static _ => default!;"
                     );
                     builder.AppendLine();
                 }
@@ -153,8 +152,8 @@ internal static class SourceWriters
                 var receiverType = GetReceiverTypeName(request.ReceiverKind);
                 var selectorResultType = request.UseObjectSelectorSignature ? "object" : "TResult";
                 var signature = request.Captures.Count == 0
-                    ? $"public static {receiverType}<TResult> {request.MethodName}<TIn, TResult>(this {receiverType}<TIn> query, global::System.Func<TIn, {selectorResultType}> selector)"
-                    : $"public static {receiverType}<TResult> {request.MethodName}<TIn, TResult>(this {receiverType}<TIn> query, global::System.Func<TIn, {selectorResultType}> selector, object capture)";
+                    ? $"public static {receiverType}<TResult> {request.MethodName}<TIn, TResult>(this {receiverType}<TIn> query, global::System.Func<TIn, {selectorResultType}> selector) where TIn : class"
+                    : $"public static {receiverType}<TResult> {request.MethodName}<TIn, TResult>(this {receiverType}<TIn> query, global::System.Func<TIn, {selectorResultType}> selector, object capture) where TIn : class";
                 if (request.InterceptableLocation is not null)
                 {
                     builder.AppendLine(
@@ -166,27 +165,11 @@ internal static class SourceWriters
                 builder.AppendLine("{");
                 using (builder.Indent())
                 {
+                    var helperMethod = request.ReceiverKind == ReceiverKind.IQueryable
+                        ? "ExecuteQueryable"
+                        : "ExecuteEnumerable";
                     builder.AppendLine(
-                        $"var matchedQuery = query as {receiverType}<{request.SourceTypeName}> ?? throw new global::System.InvalidOperationException(\"Linqraft intercepted a SelectExpr call with an unexpected source type.\");"
-                    );
-                    foreach (var capture in request.Captures)
-                    {
-                        builder.AppendLine(
-                            $"var {capture.LocalName} = global::Linqraft.LinqraftCaptureHelper.GetRequired<{capture.TypeName}>(capture, \"{EscapeStringLiteral(capture.PropertyName)}\");"
-                        );
-                    }
-
-                    if (request.CanUsePrebuiltExpression && request.ReceiverKind == ReceiverKind.IQueryable)
-                    {
-                        builder.AppendLine($"var converted = matchedQuery.Select({expressionFieldName});");
-                    }
-                    else
-                    {
-                        builder.AppendLine($"var converted = matchedQuery.Select({lambda});");
-                    }
-
-                    builder.AppendLine(
-                        $"return converted as {receiverType}<TResult> ?? throw new global::System.InvalidOperationException(\"Linqraft intercepted a SelectExpr call with an unexpected result type.\");"
+                        $"return global::Linqraft.SelectExprRuntimeHelper.{helperMethod}<TIn, TResult>(query, selector);"
                     );
                 }
 

@@ -548,6 +548,8 @@ internal sealed class ProjectionAnalyzer
 
         if (TryGetCollectionProjection(expression, semanticModel, out var collectionProjection))
         {
+            string projectedTypeName;
+
             if (collectionProjection.IsNestedExplicitDto)
             {
                 var nestedResultType = ResolveNamedType(collectionProjection.NestedResultTypeSyntax!, semanticModel, defaultNamespace);
@@ -576,10 +578,26 @@ internal sealed class ProjectionAnalyzer
                         );
                         nestedDto = nestedBuildResult.DtoModel!;
                         RegisterDto(nestedDto);
-                        return BuildCollectionTypeName(collectionProjection.ExpressionType, nestedDto.FullyQualifiedName);
+                        projectedTypeName = nestedDto.FullyQualifiedName;
+                        return BuildProjectedResultType(
+                            expression,
+                            collectionProjection.ExpressionType,
+                            collectionProjection.LambdaBody,
+                            projectedTypeName,
+                            collectionProjection.ProjectionMethodName,
+                            semanticModel
+                        );
                     }
 
-                    return BuildCollectionTypeName(collectionProjection.ExpressionType, nestedResultType);
+                    projectedTypeName = nestedResultType;
+                    return BuildProjectedResultType(
+                        expression,
+                        collectionProjection.ExpressionType,
+                        collectionProjection.LambdaBody,
+                        projectedTypeName,
+                        collectionProjection.ProjectionMethodName,
+                        semanticModel
+                    );
                 }
             }
 
@@ -599,7 +617,15 @@ internal sealed class ProjectionAnalyzer
                 );
                 nestedDto = nestedBuildResult.DtoModel!;
                 RegisterDto(nestedDto);
-                return BuildCollectionTypeName(collectionProjection.ExpressionType, nestedDto.FullyQualifiedName);
+                projectedTypeName = nestedDto.FullyQualifiedName;
+                return BuildProjectedResultType(
+                    expression,
+                    collectionProjection.ExpressionType,
+                    collectionProjection.LambdaBody,
+                    projectedTypeName,
+                    collectionProjection.ProjectionMethodName,
+                    semanticModel
+                );
             }
 
             if (collectionProjection.LambdaBody is ObjectCreationExpressionSyntax namedBody)
@@ -618,18 +644,36 @@ internal sealed class ProjectionAnalyzer
                 }
 
                 var elementType = semanticModel.GetTypeInfo(namedBody.Type, _cancellationToken).Type;
-                return BuildCollectionTypeName(
-                    collectionProjection.ExpressionType,
+                projectedTypeName =
                     ResolveNamedType(namedBody.Type, semanticModel, defaultNamespace)
-                        ?? elementType?.ToFullyQualifiedTypeName()
-                        ?? namedBody.Type.ToString()
+                    ?? elementType?.ToFullyQualifiedTypeName()
+                    ?? namedBody.Type.ToString();
+                return BuildProjectedResultType(
+                    expression,
+                    collectionProjection.ExpressionType,
+                    collectionProjection.LambdaBody,
+                    projectedTypeName,
+                    collectionProjection.ProjectionMethodName,
+                    semanticModel
                 );
             }
 
-            var lambdaBodyType = semanticModel.GetTypeInfo(collectionProjection.LambdaBody, _cancellationToken).Type;
-            return BuildCollectionTypeName(
+            projectedTypeName = AnalyzeMemberType(
+                collectionProjection.LambdaBody,
+                memberName,
+                semanticModel,
+                replacementTypes,
+                namedContext,
+                defaultNamespace,
+                ownerHintName
+            );
+            return BuildProjectedResultType(
+                expression,
                 collectionProjection.ExpressionType,
-                lambdaBodyType?.ToFullyQualifiedTypeName() ?? "object"
+                collectionProjection.LambdaBody,
+                projectedTypeName,
+                collectionProjection.ProjectionMethodName,
+                semanticModel
             );
         }
 
@@ -798,7 +842,7 @@ internal sealed class ProjectionAnalyzer
             return existingTypeName;
         }
 
-        return "global::System.Object";
+        return existingTypeName;
     }
 
     private IReadOnlyList<(string Name, ExpressionSyntax Expression)> GetProjectionMembers(ExpressionSyntax expression)
@@ -864,7 +908,9 @@ internal sealed class ProjectionAnalyzer
         {
             Invocation = invocation,
             LambdaBody = body,
-            ExpressionType = semanticModel.GetTypeInfo(expression, _cancellationToken).Type,
+            ExpressionType = semanticModel.GetTypeInfo(expression, _cancellationToken).Type
+                ?? semanticModel.GetTypeInfo(expression, _cancellationToken).ConvertedType,
+            ProjectionMethodName = GetInvocationName(invocation.Expression),
             IsNestedExplicitDto = IsSelectExprInvocation(invocation) && genericArgs.Count >= 2 && body is AnonymousObjectCreationExpressionSyntax,
             NestedResultTypeSyntax = genericArgs.Count >= 2 ? genericArgs[1] : null,
             SourceTypeSyntax = genericArgs.Count >= 1 ? genericArgs[0] : null,
@@ -1086,6 +1132,115 @@ internal sealed class ProjectionAnalyzer
         }
 
         return $"global::System.Collections.Generic.IEnumerable<{elementTypeName}>";
+    }
+
+    private string BuildProjectedResultType(
+        ExpressionSyntax expression,
+        ITypeSymbol? expressionType,
+        ExpressionSyntax lambdaBody,
+        string projectedTypeName,
+        string projectionMethodName,
+        SemanticModel semanticModel
+    )
+    {
+        var effectiveTypeName = projectionMethodName == "SelectMany"
+            ? UnwrapProjectedTypeName(
+                projectedTypeName,
+                semanticModel.GetTypeInfo(lambdaBody, _cancellationToken).Type
+                    ?? semanticModel.GetTypeInfo(lambdaBody, _cancellationToken).ConvertedType
+            )
+            : projectedTypeName;
+
+        if (IsCollectionLikeResultExpression(expression) || IsCollectionLikeType(expressionType))
+        {
+            return BuildCollectionTypeName(expressionType, effectiveTypeName);
+        }
+
+        return ApplyExpressionNullability(effectiveTypeName, expressionType);
+    }
+
+    private static string ApplyExpressionNullability(string typeName, ITypeSymbol? expressionType)
+    {
+        return expressionType?.NullableAnnotation == NullableAnnotation.Annotated && !typeName.EndsWith("?", StringComparison.Ordinal)
+            ? $"{typeName}?"
+            : typeName;
+    }
+
+    private static bool IsCollectionLikeType(ITypeSymbol? type)
+    {
+        return type is IArrayTypeSymbol || SymbolNameHelper.IsEnumerable(type);
+    }
+
+    private static bool IsCollectionLikeResultExpression(ExpressionSyntax expression)
+    {
+        return expression switch
+        {
+            InvocationExpressionSyntax invocation => GetInvocationName(invocation.Expression) switch
+            {
+                "First" or "FirstOrDefault" or "Single" or "SingleOrDefault" or "Last" or "LastOrDefault" or "ElementAt" or "ElementAtOrDefault" => false,
+                _ => true,
+            },
+            ConditionalExpressionSyntax conditionalExpression =>
+                IsCollectionLikeResultExpression(conditionalExpression.WhenTrue)
+                && IsCollectionLikeResultExpression(conditionalExpression.WhenFalse),
+            BinaryExpressionSyntax binaryExpression when binaryExpression.IsKind(SyntaxKind.CoalesceExpression) =>
+                IsCollectionLikeResultExpression(binaryExpression.Left)
+                || IsCollectionLikeResultExpression(binaryExpression.Right),
+            _ => false,
+        };
+    }
+
+    private static string UnwrapProjectedTypeName(string projectedTypeName, ITypeSymbol? lambdaBodyType)
+    {
+        if (lambdaBodyType is IArrayTypeSymbol arrayType)
+        {
+            return arrayType.ElementType.IsAnonymousType && TryGetSingleGenericArgument(projectedTypeName, out var parsedArrayElement)
+                ? parsedArrayElement
+                : arrayType.ElementType.ToFullyQualifiedTypeName();
+        }
+
+        if (lambdaBodyType is INamedTypeSymbol namedType && namedType.IsGenericType && namedType.TypeArguments.Length == 1)
+        {
+            var elementType = namedType.TypeArguments[0];
+            return elementType.IsAnonymousType && TryGetSingleGenericArgument(projectedTypeName, out var parsedElement)
+                ? parsedElement
+                : elementType.ToFullyQualifiedTypeName();
+        }
+
+        return TryGetSingleGenericArgument(projectedTypeName, out var parsedGenericArgument)
+            ? parsedGenericArgument
+            : projectedTypeName;
+    }
+
+    private static bool TryGetSingleGenericArgument(string typeName, out string genericArgument)
+    {
+        genericArgument = string.Empty;
+        var start = typeName.IndexOf('<');
+        var end = typeName.LastIndexOf('>');
+        if (start < 0 || end <= start)
+        {
+            return false;
+        }
+
+        var candidate = typeName[(start + 1)..end];
+        var depth = 0;
+        foreach (var character in candidate)
+        {
+            switch (character)
+            {
+                case '<':
+                    depth++;
+                    break;
+                case '>':
+                    depth--;
+                    break;
+                case ',' when depth == 0:
+                    return false;
+            }
+        }
+
+        genericArgument = candidate;
+        return true;
     }
 
     private static string RemoveNullableAnnotation(string typeName)
@@ -1316,6 +1471,8 @@ internal sealed class ProjectionAnalyzer
         public required ExpressionSyntax LambdaBody { get; init; }
 
         public required ITypeSymbol? ExpressionType { get; init; }
+
+        public required string ProjectionMethodName { get; init; }
 
         public required bool IsNestedExplicitDto { get; init; }
 
