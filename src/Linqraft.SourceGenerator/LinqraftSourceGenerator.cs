@@ -1,3 +1,6 @@
+using System;
+using System.Collections.Generic;
+using System.Linq;
 using Linqraft.Core.Configuration;
 using Linqraft.Core.Utilities;
 using Microsoft.CodeAnalysis;
@@ -58,29 +61,52 @@ public sealed class LinqraftSourceGenerator : IIncrementalGenerator
                 analyzer.AnalyzeMappingClasses(mappingClassDeclarations);
                 analyzer.AnalyzeMappingMethods(mappingMethodDeclarations);
 
-                foreach (var dto in analyzer.GeneratedDtos)
-                {
-                    output.AddSource(
-                        $"{SymbolNameHelper.SanitizeHintName(dto.Key)}.g.cs",
-                        SourceWriters.WriteDtoSource(dto, configuration)
+                var dtosByOwner = analyzer.GeneratedDtos
+                    .GroupBy(dto => dto.OwnerHintName, StringComparer.Ordinal)
+                    .ToDictionary(
+                        group => group.Key,
+                        group => (IReadOnlyCollection<GeneratedDtoModel>)group.ToList(),
+                        StringComparer.Ordinal
                     );
-                }
+                var emittedOwners = new HashSet<string>(StringComparer.Ordinal);
 
                 foreach (var request in analyzer.ProjectionRequests)
                 {
                     var semanticModel = compilation.GetSemanticModel(request.Invocation.SyntaxTree);
+                    emittedOwners.Add(request.HintName);
+                    dtosByOwner.TryGetValue(request.HintName, out var ownedDtos);
                     output.AddSource(
                         $"{request.HintName}.g.cs",
-                        SourceWriters.WriteInterceptorSource(request, semanticModel, configuration)
+                        SourceWriters.WriteProjectionUnit(
+                            request,
+                            ownedDtos ?? Array.Empty<GeneratedDtoModel>(),
+                            semanticModel,
+                            configuration
+                        )
                     );
                 }
 
                 foreach (var mapping in analyzer.MappingRequests)
                 {
                     var semanticModel = compilation.GetSemanticModel(mapping.SourceNode.SyntaxTree);
+                    emittedOwners.Add(mapping.HintName);
+                    dtosByOwner.TryGetValue(mapping.HintName, out var ownedDtos);
                     output.AddSource(
                         $"{mapping.HintName}.g.cs",
-                        SourceWriters.WriteMappingSource(mapping, semanticModel, configuration)
+                        SourceWriters.WriteMappingUnit(
+                            mapping,
+                            ownedDtos ?? Array.Empty<GeneratedDtoModel>(),
+                            semanticModel,
+                            configuration
+                        )
+                    );
+                }
+
+                foreach (var dto in analyzer.GeneratedDtos.Where(dto => !emittedOwners.Contains(dto.OwnerHintName)))
+                {
+                    output.AddSource(
+                        $"{SymbolNameHelper.SanitizeHintName(dto.Key)}.g.cs",
+                        SourceWriters.WriteDtoUnit(dto, configuration)
                     );
                 }
             }

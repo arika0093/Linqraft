@@ -96,6 +96,8 @@ internal sealed record GeneratedDtoModel
 
     public required DocumentationInfo? Documentation { get; init; }
 
+    public required string OwnerHintName { get; init; }
+
     public required string ShapeSignature { get; set; }
 
     public required IReadOnlyList<ContainingTypeInfo> ContainingTypes { get; init; }
@@ -146,6 +148,8 @@ internal sealed record MappingRequest
 
     public required string AccessibilityKeyword { get; init; }
 
+    public required string MethodAccessibilityKeyword { get; init; }
+
     public required string MethodName { get; init; }
 
     public required ReceiverKind ReceiverKind { get; init; }
@@ -171,17 +175,17 @@ internal static class GeneratorDiagnostics
             title: "Unsupported SelectExpr shape",
             messageFormat: "{0}",
             category: "Linqraft",
-            defaultSeverity: DiagnosticSeverity.Warning,
-            isEnabledByDefault: true
+            defaultSeverity: DiagnosticSeverity.Hidden,
+            isEnabledByDefault: false
         );
 
     public static readonly DiagnosticDescriptor ConflictingDtoShape =
         new(
             id: "LinqraftSG002",
             title: "Conflicting DTO shape",
-            messageFormat: "Generated DTO '{0}' was requested with incompatible shapes. {1}",
+            messageFormat: "Generated DTO '{0}' was requested with incompatible shapes: {1}",
             category: "Linqraft",
-            defaultSeverity: DiagnosticSeverity.Warning,
-            isEnabledByDefault: true
+            defaultSeverity: DiagnosticSeverity.Hidden,
+            isEnabledByDefault: false
         );
 }

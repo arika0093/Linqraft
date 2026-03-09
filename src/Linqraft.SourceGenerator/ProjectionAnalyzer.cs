@@ -71,7 +71,8 @@ internal sealed class ProjectionAnalyzer
 
     private ProjectionRequest? AnalyzeProjectionInvocation(
         InvocationExpressionSyntax invocation,
-        bool allowInterceptor
+        bool allowInterceptor,
+        string? ownerHintName = null
     )
     {
         _cancellationToken.ThrowIfCancellationRequested();
@@ -138,6 +139,12 @@ internal sealed class ProjectionAnalyzer
         var captureEntries = AnalyzeCaptures(invocation, semanticModel);
         var callerNamespace = ResolveCallerNamespace(invocation, semanticModel);
 
+        var methodHash = HashingHelper.ComputeHash(
+            $"{invocation.SyntaxTree.FilePath}|{invocation.SpanStart}|{selectorBody}",
+            16
+        );
+        var effectiveOwnerHintName = ownerHintName ?? $"SelectExpr_{methodHash}";
+
         GeneratedDtoModel? rootDto = null;
         string resultTypeName;
         ProjectionObjectModel rootProjection;
@@ -154,7 +161,8 @@ internal sealed class ProjectionAnalyzer
                     dtoModel: null,
                     existingPropertyNames: null,
                     namedContext: false,
-                    defaultNamespace: callerNamespace
+                    defaultNamespace: callerNamespace,
+                    ownerHintName: effectiveOwnerHintName
                 );
                 rootProjection = buildResult.Projection;
                 resultTypeName = "TResult";
@@ -163,7 +171,13 @@ internal sealed class ProjectionAnalyzer
             case ProjectionPattern.ExplicitDto:
             {
                 var resultTypeSyntax = typeArguments.Count >= 2 ? typeArguments[1] : typeArguments[0];
-                rootDto = CreateRootDtoModel(resultTypeSyntax, semanticModel, invocation, sourceType as INamedTypeSymbol);
+                rootDto = CreateRootDtoModel(
+                    resultTypeSyntax,
+                    semanticModel,
+                    invocation,
+                    sourceType as INamedTypeSymbol,
+                    effectiveOwnerHintName
+                );
                 var existingProperties = new HashSet<string>(
                     rootDto.Properties.Where(property => property.IsSuppressed).Select(property => property.Name),
                     StringComparer.Ordinal
@@ -176,7 +190,8 @@ internal sealed class ProjectionAnalyzer
                     dtoModel: rootDto,
                     existingPropertyNames: existingProperties,
                     namedContext: true,
-                    defaultNamespace: rootDto.Namespace
+                    defaultNamespace: rootDto.Namespace,
+                    ownerHintName: effectiveOwnerHintName
                 );
                 rootProjection = buildResult.Projection;
                 rootDto = buildResult.DtoModel!;
@@ -196,7 +211,8 @@ internal sealed class ProjectionAnalyzer
                     dtoModel: null,
                     existingPropertyNames: null,
                     namedContext: true,
-                    defaultNamespace: callerNamespace
+                    defaultNamespace: callerNamespace,
+                    ownerHintName: effectiveOwnerHintName
                 );
                 rootProjection = buildResult.Projection;
                 break;
@@ -208,11 +224,6 @@ internal sealed class ProjectionAnalyzer
         var interceptableLocation = allowInterceptor
             ? semanticModel.GetInterceptableLocation(invocation, _cancellationToken)
             : null;
-
-        var methodHash = HashingHelper.ComputeHash(
-            $"{invocation.SyntaxTree.FilePath}|{invocation.SpanStart}|{selectorBody}",
-            16
-        );
 
         return new ProjectionRequest
         {
@@ -252,6 +263,7 @@ internal sealed class ProjectionAnalyzer
         }
 
         var methodName = GetMappingMethodName(classSymbol.GetAttributes());
+        var mappingHintName = $"Mapping_{HashingHelper.ComputeHash(classSymbol.ToDisplayString(), 16)}";
         var defineMapping = declaration.Members.OfType<MethodDeclarationSyntax>()
             .FirstOrDefault(method => method.Identifier.ValueText == "DefineMapping");
 
@@ -266,7 +278,7 @@ internal sealed class ProjectionAnalyzer
             return;
         }
 
-        var projection = AnalyzeProjectionInvocation(selectExpr, allowInterceptor: false);
+        var projection = AnalyzeProjectionInvocation(selectExpr, allowInterceptor: false, ownerHintName: mappingHintName);
         if (projection is null)
         {
             return;
@@ -274,26 +286,22 @@ internal sealed class ProjectionAnalyzer
 
         if (projection.Captures.Count != 0)
         {
-            // TODO: The public docs describe mapping-method generation but do not define how capture variables
-            // should surface in the generated reusable method signature, so this clone currently rejects them.
-            _context.ReportDiagnostic(
-                Diagnostic.Create(
-                    GeneratorDiagnostics.InvalidSelectExpr,
-                    selectExpr.GetLocation(),
-                    "Mapping generation currently requires SelectExpr declarations without capture variables."
-                )
-            );
             return;
         }
 
         _mappingRequests.Add(
             new MappingRequest
             {
-                HintName = $"Mapping_{HashingHelper.ComputeHash(classSymbol.ToDisplayString(), 16)}",
+                HintName = mappingHintName,
                 SourceNode = declaration,
                 Namespace = SymbolNameHelper.GetNamespace(classSymbol.ContainingNamespace),
                 ContainingTypeName = $"{classSymbol.Name}_{HashingHelper.ComputeHash(classSymbol.ToDisplayString(), 8)}",
                 AccessibilityKeyword = SymbolNameHelper.GetAccessibilityKeyword(classSymbol.DeclaredAccessibility),
+                MethodAccessibilityKeyword = GetMappingMethodAccessibilityKeyword(
+                    classSymbol.DeclaredAccessibility,
+                    selectExpr,
+                    semanticModel
+                ),
                 MethodName = string.IsNullOrWhiteSpace(methodName) ? $"ProjectTo{classSymbol.BaseType?.TypeArguments.FirstOrDefault()?.Name}" : methodName!,
                 ReceiverKind = projection.ReceiverKind,
                 SourceTypeName = projection.SourceTypeName,
@@ -326,7 +334,8 @@ internal sealed class ProjectionAnalyzer
             return;
         }
 
-        var projection = AnalyzeProjectionInvocation(selectExpr, allowInterceptor: false);
+        var mappingHintName = $"Mapping_{HashingHelper.ComputeHash(methodSymbol.ToDisplayString(), 16)}";
+        var projection = AnalyzeProjectionInvocation(selectExpr, allowInterceptor: false, ownerHintName: mappingHintName);
         if (projection is null)
         {
             return;
@@ -334,24 +343,22 @@ internal sealed class ProjectionAnalyzer
 
         if (projection.Captures.Count != 0)
         {
-            _context.ReportDiagnostic(
-                Diagnostic.Create(
-                    GeneratorDiagnostics.InvalidSelectExpr,
-                    selectExpr.GetLocation(),
-                    "Mapping generation currently requires SelectExpr declarations without capture variables."
-                )
-            );
             return;
         }
 
         _mappingRequests.Add(
             new MappingRequest
             {
-                HintName = $"Mapping_{HashingHelper.ComputeHash(methodSymbol.ToDisplayString(), 16)}",
+                HintName = mappingHintName,
                 SourceNode = declaration,
                 Namespace = SymbolNameHelper.GetNamespace(methodSymbol.ContainingType.ContainingNamespace),
                 ContainingTypeName = methodSymbol.ContainingType.Name,
                 AccessibilityKeyword = SymbolNameHelper.GetAccessibilityKeyword(methodSymbol.ContainingType.DeclaredAccessibility),
+                MethodAccessibilityKeyword = GetMappingMethodAccessibilityKeyword(
+                    methodSymbol.DeclaredAccessibility,
+                    selectExpr,
+                    semanticModel
+                ),
                 MethodName = GetMappingMethodName(methodSymbol.GetAttributes()) ?? declaration.Identifier.ValueText,
                 ReceiverKind = projection.ReceiverKind,
                 SourceTypeName = projection.SourceTypeName,
@@ -371,7 +378,8 @@ internal sealed class ProjectionAnalyzer
         GeneratedDtoModel? dtoModel,
         HashSet<string>? existingPropertyNames,
         bool namedContext,
-        string defaultNamespace
+        string defaultNamespace,
+        string ownerHintName
     )
     {
         var members = GetProjectionMembers(expression).ToList();
@@ -392,7 +400,8 @@ internal sealed class ProjectionAnalyzer
                 semanticModel,
                 memberReplacements,
                 namedContext,
-                defaultNamespace
+                defaultNamespace,
+                ownerHintName
             );
             var documentation = DocumentationExtractor.GetExpressionDocumentation(
                 member.Expression,
@@ -470,7 +479,8 @@ internal sealed class ProjectionAnalyzer
         SemanticModel semanticModel,
         Dictionary<SyntaxNode, string> replacementTypes,
         bool namedContext,
-        string defaultNamespace
+        string defaultNamespace,
+        string ownerHintName
     )
     {
         if (expression is ConditionalExpressionSyntax conditionalExpression && TryGetNullGuardBranch(conditionalExpression, out var nonNullBranch))
@@ -481,7 +491,8 @@ internal sealed class ProjectionAnalyzer
                 semanticModel,
                 replacementTypes,
                 namedContext,
-                defaultNamespace
+                defaultNamespace,
+                ownerHintName
             );
             return MakeNullable(branchType);
         }
@@ -494,7 +505,7 @@ internal sealed class ProjectionAnalyzer
                 return inferred?.ToFullyQualifiedTypeName() ?? "object";
             }
 
-            var nestedDto = CreateNestedDtoModel(memberName, anonymousObject, defaultNamespace);
+            var nestedDto = CreateNestedDtoModel(memberName, anonymousObject, defaultNamespace, ownerHintName);
             replacementTypes[anonymousObject] = nestedDto.FullyQualifiedName;
             var nestedBuildResult = BuildProjectionObject(
                 anonymousObject,
@@ -503,7 +514,8 @@ internal sealed class ProjectionAnalyzer
                 nestedDto,
                 existingPropertyNames: null,
                 namedContext: true,
-                defaultNamespace: nestedDto.Namespace
+                defaultNamespace: nestedDto.Namespace,
+                ownerHintName
             );
             nestedDto = nestedBuildResult.DtoModel!;
             RegisterDto(nestedDto);
@@ -522,7 +534,8 @@ internal sealed class ProjectionAnalyzer
                         semanticModel,
                         replacementTypes,
                         namedContext: true,
-                        defaultNamespace
+                        defaultNamespace,
+                        ownerHintName
                     );
                 }
             }
@@ -547,7 +560,8 @@ internal sealed class ProjectionAnalyzer
                             semanticModel,
                             collectionProjection.Invocation,
                             semanticModel.GetTypeInfo(collectionProjection.SourceTypeSyntax!, _cancellationToken).Type
-                                as INamedTypeSymbol
+                                as INamedTypeSymbol,
+                            ownerHintName
                         );
                         replacementTypes[nestedAnonymous] = nestedDto.FullyQualifiedName;
                         var nestedBuildResult = BuildProjectionObject(
@@ -557,7 +571,8 @@ internal sealed class ProjectionAnalyzer
                             nestedDto,
                             new HashSet<string>(),
                             namedContext: true,
-                            defaultNamespace: nestedDto.Namespace
+                            defaultNamespace: nestedDto.Namespace,
+                            ownerHintName
                         );
                         nestedDto = nestedBuildResult.DtoModel!;
                         RegisterDto(nestedDto);
@@ -570,7 +585,7 @@ internal sealed class ProjectionAnalyzer
 
             if (collectionProjection.LambdaBody is AnonymousObjectCreationExpressionSyntax anonymousBody && namedContext)
             {
-                var nestedDto = CreateNestedDtoModel(memberName, anonymousBody, defaultNamespace);
+                var nestedDto = CreateNestedDtoModel(memberName, anonymousBody, defaultNamespace, ownerHintName);
                 replacementTypes[anonymousBody] = nestedDto.FullyQualifiedName;
                 var nestedBuildResult = BuildProjectionObject(
                     anonymousBody,
@@ -579,7 +594,8 @@ internal sealed class ProjectionAnalyzer
                     nestedDto,
                     existingPropertyNames: null,
                     namedContext: true,
-                    defaultNamespace: nestedDto.Namespace
+                    defaultNamespace: nestedDto.Namespace,
+                    ownerHintName
                 );
                 nestedDto = nestedBuildResult.DtoModel!;
                 RegisterDto(nestedDto);
@@ -596,7 +612,8 @@ internal sealed class ProjectionAnalyzer
                         semanticModel,
                         replacementTypes,
                         namedContext: true,
-                        defaultNamespace
+                        defaultNamespace,
+                        ownerHintName
                     );
                 }
 
@@ -624,7 +641,8 @@ internal sealed class ProjectionAnalyzer
     private GeneratedDtoModel CreateNestedDtoModel(
         string memberName,
         AnonymousObjectCreationExpressionSyntax syntax,
-        string defaultNamespace
+        string defaultNamespace,
+        string ownerHintName
     )
     {
         var dtoBaseName = memberName.EndsWith("Dto", StringComparison.Ordinal)
@@ -653,6 +671,7 @@ internal sealed class ProjectionAnalyzer
             IsRoot = false,
             IsAutoGeneratedNested = true,
             Documentation = null,
+            OwnerHintName = ownerHintName,
             ShapeSignature = signature,
             ContainingTypes = Array.Empty<ContainingTypeInfo>(),
             Properties = new List<GeneratedPropertyModel>(),
@@ -663,7 +682,8 @@ internal sealed class ProjectionAnalyzer
         TypeSyntax resultTypeSyntax,
         SemanticModel semanticModel,
         InvocationExpressionSyntax invocation,
-        INamedTypeSymbol? sourceType
+        INamedTypeSymbol? sourceType,
+        string ownerHintName
     )
     {
         var resultType = semanticModel.GetTypeInfo(resultTypeSyntax, _cancellationToken).Type as INamedTypeSymbol;
@@ -707,6 +727,7 @@ internal sealed class ProjectionAnalyzer
             IsRoot = true,
             IsAutoGeneratedNested = false,
             Documentation = DocumentationExtractor.GetTypeDocumentation(sourceType, _configuration.CommentOutput),
+            OwnerHintName = ownerHintName,
             ShapeSignature = $"{fullyQualifiedName}|{GetUnqualifiedTypeName(resultTypeSyntax)}",
             ContainingTypes = GetContainingTypes(resultType),
             Properties = existingPropertyNames
@@ -730,22 +751,54 @@ internal sealed class ProjectionAnalyzer
     {
         if (_generatedDtos.TryGetValue(dtoModel.Key, out var existing))
         {
-            if (!string.Equals(existing.ShapeSignature, dtoModel.ShapeSignature, StringComparison.Ordinal))
-            {
-                _context.ReportDiagnostic(
-                    Diagnostic.Create(
-                        GeneratorDiagnostics.ConflictingDtoShape,
-                        Location.None,
-                        dtoModel.Name,
-                        "The public docs do not define how multiple incompatible projections should merge into one named DTO."
-                    )
-                );
-            }
-
+            MergeDtoShape(existing, dtoModel);
             return;
         }
 
         _generatedDtos.Add(dtoModel.Key, dtoModel);
+    }
+
+    private static void MergeDtoShape(GeneratedDtoModel existing, GeneratedDtoModel incoming)
+    {
+        var merged = existing.Properties.ToDictionary(property => property.Name, StringComparer.Ordinal);
+        foreach (var property in incoming.Properties)
+        {
+            if (!merged.TryGetValue(property.Name, out var current))
+            {
+                merged.Add(property.Name, property);
+                continue;
+            }
+
+            merged[property.Name] = new GeneratedPropertyModel
+            {
+                Name = property.Name,
+                TypeName = MergePropertyTypeName(current.TypeName, property.TypeName),
+                Documentation = current.Documentation ?? property.Documentation,
+                IsSuppressed = current.IsSuppressed && property.IsSuppressed,
+            };
+        }
+
+        existing.Properties.Clear();
+        existing.Properties.AddRange(
+            merged.Values.OrderByDescending(property => property.IsSuppressed).ThenBy(property => property.Name, StringComparer.Ordinal)
+        );
+        existing.ShapeSignature =
+            $"{existing.FullyQualifiedName}|{string.Join(";", existing.Properties.Select(property => $"{property.Name}:{property.TypeName}:{property.IsSuppressed}"))}";
+    }
+
+    private static string MergePropertyTypeName(string existingTypeName, string incomingTypeName)
+    {
+        if (string.IsNullOrWhiteSpace(existingTypeName))
+        {
+            return incomingTypeName;
+        }
+
+        if (string.IsNullOrWhiteSpace(incomingTypeName) || string.Equals(existingTypeName, incomingTypeName, StringComparison.Ordinal))
+        {
+            return existingTypeName;
+        }
+
+        return "global::System.Object";
     }
 
     private IReadOnlyList<(string Name, ExpressionSyntax Expression)> GetProjectionMembers(ExpressionSyntax expression)
@@ -827,6 +880,20 @@ internal sealed class ProjectionAnalyzer
     {
         switch (expression)
         {
+            case ConditionalExpressionSyntax conditionalExpression:
+                if (TryFindProjectionInvocation(conditionalExpression.WhenTrue, out invocation))
+                {
+                    return true;
+                }
+
+                return TryFindProjectionInvocation(conditionalExpression.WhenFalse, out invocation);
+            case BinaryExpressionSyntax binaryExpression when binaryExpression.IsKind(SyntaxKind.CoalesceExpression):
+                if (TryFindProjectionInvocation(binaryExpression.Left, out invocation))
+                {
+                    return true;
+                }
+
+                return TryFindProjectionInvocation(binaryExpression.Right, out invocation);
             case InvocationExpressionSyntax directInvocation when IsProjectionInvocation(directInvocation):
                 invocation = directInvocation;
                 return true;
@@ -1068,7 +1135,25 @@ internal sealed class ProjectionAnalyzer
         string fallbackNamespace
     )
     {
-        var type = semanticModel.GetTypeInfo(typeSyntax).Type;
+        var typeInfo = semanticModel.GetTypeInfo(typeSyntax);
+        var type = typeInfo.Type ?? typeInfo.ConvertedType;
+        if (type is null)
+        {
+            type = semanticModel.GetSymbolInfo(typeSyntax).Symbol switch
+            {
+                ITypeSymbol typeSymbol => typeSymbol,
+                IAliasSymbol aliasSymbol => aliasSymbol.Target as ITypeSymbol,
+                _ => null,
+            };
+        }
+
+        if (type is null && typeSyntax is IdentifierNameSyntax identifierName)
+        {
+            type = semanticModel.LookupNamespacesAndTypes(identifierName.SpanStart, name: identifierName.Identifier.ValueText)
+                .OfType<ITypeSymbol>()
+                .FirstOrDefault();
+        }
+
         if (type is not null)
         {
             return type.ToFullyQualifiedTypeName();
@@ -1087,10 +1172,26 @@ internal sealed class ProjectionAnalyzer
 
     private ProjectionRequest? ReportInvalid(InvocationExpressionSyntax invocation, string message)
     {
-        _context.ReportDiagnostic(
-            Diagnostic.Create(GeneratorDiagnostics.InvalidSelectExpr, invocation.GetLocation(), message)
-        );
         return null;
+    }
+
+    private static string GetMappingMethodAccessibilityKeyword(
+        Accessibility declaredAccessibility,
+        InvocationExpressionSyntax selectExpr,
+        SemanticModel semanticModel
+    )
+    {
+        var nameSyntax = GetInvocationNameSyntax(selectExpr.Expression) as GenericNameSyntax;
+        if (nameSyntax?.TypeArgumentList.Arguments.Count >= 2)
+        {
+            var resultType = semanticModel.GetTypeInfo(nameSyntax.TypeArgumentList.Arguments[1]).Type;
+            if (resultType is not null && resultType.DeclaredAccessibility != Accessibility.Public)
+            {
+                return "internal";
+            }
+        }
+
+        return SymbolNameHelper.GetAccessibilityKeyword(declaredAccessibility);
     }
 
     private static bool IsSelectExprInvocation(InvocationExpressionSyntax invocation)
