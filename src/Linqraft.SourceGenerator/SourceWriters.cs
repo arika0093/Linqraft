@@ -141,10 +141,11 @@ internal static class SourceWriters
             using (builder.Indent())
             {
                 var expressionFieldName = $"s_expression_{request.MethodName}";
+                var lambda = WriteProjectionLambda(request.RootProjection, request, semanticModel, request.Captures);
                 if (request.CanUsePrebuiltExpression && request.ReceiverKind == ReceiverKind.IQueryable)
                 {
                     builder.AppendLine(
-                        $"private static readonly global::System.Linq.Expressions.Expression<global::System.Func<{request.SourceTypeName}, {request.ResultTypeName}>> {expressionFieldName} = static _ => default!;"
+                        $"private static readonly global::System.Linq.Expressions.Expression<global::System.Func<{request.SourceTypeName}, {request.ResultTypeName}>> {expressionFieldName} = {lambda};"
                     );
                     builder.AppendLine();
                 }
@@ -165,11 +166,44 @@ internal static class SourceWriters
                 builder.AppendLine("{");
                 using (builder.Indent())
                 {
-                    var helperMethod = request.ReceiverKind == ReceiverKind.IQueryable
-                        ? "ExecuteQueryable"
-                        : "ExecuteEnumerable";
+                    var matchedQueryType = $"{receiverType}<{request.SourceTypeName}>";
+                    builder.AppendLine("global::System.ArgumentNullException.ThrowIfNull(query);");
+                    builder.AppendLine("global::System.ArgumentNullException.ThrowIfNull(selector);");
+                    if (request.Captures.Count != 0)
+                    {
+                        builder.AppendLine("global::System.ArgumentNullException.ThrowIfNull(capture);");
+                    }
+
+                    builder.AppendLine($"var matchedQuery = query as object as {matchedQueryType};");
+                    builder.AppendLine("if (matchedQuery is null)");
+                    builder.AppendLine("{");
+                    using (builder.Indent())
+                    {
+                        builder.AppendLine(
+                            $"throw new global::System.InvalidOperationException(\"Linqraft generated projection expected a source assignable to '{EscapeStringLiteral(request.SourceTypeName)}'.\");"
+                        );
+                    }
+
+                    builder.AppendLine("}");
+
+                    if (request.Captures.Count != 0)
+                    {
+                        builder.AppendLine();
+                        foreach (var capture in request.Captures)
+                        {
+                            builder.AppendLine(
+                                $"var {capture.LocalName} = global::Linqraft.LinqraftCaptureHelper.GetRequired<{capture.TypeName}>(capture, \"{EscapeStringLiteral(capture.PropertyName)}\");"
+                            );
+                        }
+                    }
+
+                    builder.AppendLine();
+                    var selectArgument = request.CanUsePrebuiltExpression && request.ReceiverKind == ReceiverKind.IQueryable
+                        ? expressionFieldName
+                        : lambda;
+                    builder.AppendLine($"var converted = matchedQuery.Select({selectArgument});");
                     builder.AppendLine(
-                        $"return global::Linqraft.SelectExprRuntimeHelper.{helperMethod}<TIn, TResult>(query, selector);"
+                        $"return converted as object as {receiverType}<TResult> ?? throw new global::System.InvalidOperationException(\"Linqraft generated projection returned an unexpected result type.\");"
                     );
                 }
 
@@ -241,10 +275,11 @@ internal static class SourceWriters
     private static string WriteProjectionLambda(
         ProjectionObjectModel projection,
         ProjectionRequest request,
-        SemanticModel semanticModel
+        SemanticModel semanticModel,
+        IReadOnlyList<CaptureEntryModel> captures
     )
     {
-        return $"{request.SelectorParameterName} => {WriteProjectionBody(projection, request.Pattern, request.ResultTypeName, semanticModel)}";
+        return $"{request.SelectorParameterName} => {WriteProjectionBody(projection, request.Pattern, request.ResultTypeName, semanticModel, captures)}";
     }
 
     private static string WriteProjectionLambda(
@@ -253,14 +288,15 @@ internal static class SourceWriters
         SemanticModel semanticModel
     )
     {
-        return $"{request.SelectorParameterName} => {WriteProjectionBody(projection, ProjectionPattern.ExplicitDto, request.ResultTypeName, semanticModel)}";
+        return $"{request.SelectorParameterName} => {WriteProjectionBody(projection, ProjectionPattern.ExplicitDto, request.ResultTypeName, semanticModel, request.Captures)}";
     }
 
     private static string WriteProjectionBody(
         ProjectionObjectModel projection,
         ProjectionPattern pattern,
         string resultTypeName,
-        SemanticModel semanticModel
+        SemanticModel semanticModel,
+        IReadOnlyList<CaptureEntryModel> captures
     )
     {
         var kind = pattern == ProjectionPattern.Anonymous ? "anonymous" : "named";
@@ -275,9 +311,10 @@ internal static class SourceWriters
                         member.Expression,
                         member.TypeName,
                         member.UseEmptyCollectionFallback,
-                        member.ReplacementTypes
+                        member.ReplacementTypes,
+                        captures
                     );
-                    return emitter.Emit(member.Expression);
+                    return $"{ToParameterName(member.Name)}: {emitter.Emit(member.Expression)}";
                 }
             )
             .ToList();
@@ -291,7 +328,8 @@ internal static class SourceWriters
                         member.Expression,
                         member.TypeName,
                         member.UseEmptyCollectionFallback,
-                        member.ReplacementTypes
+                        member.ReplacementTypes,
+                        captures
                     );
                     return $"{member.Name} = {emitter.Emit(member.Expression)}";
                 }

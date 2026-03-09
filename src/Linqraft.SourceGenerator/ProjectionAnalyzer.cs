@@ -518,6 +518,10 @@ internal sealed class ProjectionAnalyzer
                 ownerHintName
             );
             nestedDto = nestedBuildResult.DtoModel!;
+            foreach (var pair in nestedBuildResult.Projection.ReplacementTypes)
+            {
+                replacementTypes[pair.Key] = pair.Value;
+            }
             RegisterDto(nestedDto);
             return nestedDto.FullyQualifiedName;
         }
@@ -577,6 +581,10 @@ internal sealed class ProjectionAnalyzer
                             ownerHintName
                         );
                         nestedDto = nestedBuildResult.DtoModel!;
+                        foreach (var pair in nestedBuildResult.Projection.ReplacementTypes)
+                        {
+                            replacementTypes[pair.Key] = pair.Value;
+                        }
                         RegisterDto(nestedDto);
                         projectedTypeName = nestedDto.FullyQualifiedName;
                         return BuildProjectedResultType(
@@ -616,6 +624,10 @@ internal sealed class ProjectionAnalyzer
                     ownerHintName
                 );
                 nestedDto = nestedBuildResult.DtoModel!;
+                foreach (var pair in nestedBuildResult.Projection.ReplacementTypes)
+                {
+                    replacementTypes[pair.Key] = pair.Value;
+                }
                 RegisterDto(nestedDto);
                 projectedTypeName = nestedDto.FullyQualifiedName;
                 return BuildProjectedResultType(
@@ -1067,24 +1079,62 @@ internal sealed class ProjectionAnalyzer
 
         return anonymousCapture.Initializers
             .Select(
-                initializer =>
+                (initializer, index) =>
                 {
                     var propertyName = GetAnonymousMemberName(initializer);
-                    var localName = initializer.Expression switch
-                    {
-                        IdentifierNameSyntax identifier => identifier.Identifier.ValueText,
-                        _ => propertyName,
-                    };
                     var type = semanticModel.GetTypeInfo(initializer.Expression, _cancellationToken).Type;
                     return new CaptureEntryModel
                     {
                         PropertyName = propertyName,
-                        LocalName = localName,
+                        LocalName = CreateCaptureLocalName(propertyName, index),
                         TypeName = type?.ToFullyQualifiedTypeName() ?? "object",
+                        ExpressionText = NormalizeExpressionText(initializer.Expression),
+                        RootSymbol = GetCaptureRootSymbol(initializer.Expression, semanticModel),
                     };
                 }
             )
             .ToArray();
+    }
+
+    private static string CreateCaptureLocalName(string propertyName, int index)
+    {
+        var sanitized = SymbolNameHelper.SanitizeHintName(propertyName);
+        if (string.IsNullOrWhiteSpace(sanitized))
+        {
+            sanitized = "value";
+        }
+
+        if (!char.IsLetter(sanitized[0]) && sanitized[0] != '_')
+        {
+            sanitized = "_" + sanitized;
+        }
+
+        return $"__linqraft_capture_{index}_{sanitized}";
+    }
+
+    private static string NormalizeExpressionText(ExpressionSyntax expression)
+    {
+        return expression.WithoutTrivia().ToString();
+    }
+
+    private ISymbol? GetCaptureRootSymbol(ExpressionSyntax expression, SemanticModel semanticModel)
+    {
+        var rootExpression = GetCaptureRootExpression(expression);
+        return semanticModel.GetSymbolInfo(rootExpression, _cancellationToken).Symbol;
+    }
+
+    private static ExpressionSyntax GetCaptureRootExpression(ExpressionSyntax expression)
+    {
+        return expression switch
+        {
+            MemberAccessExpressionSyntax memberAccess => GetCaptureRootExpression(memberAccess.Expression),
+            ConditionalAccessExpressionSyntax conditionalAccess => GetCaptureRootExpression(conditionalAccess.Expression),
+            ElementAccessExpressionSyntax elementAccess => GetCaptureRootExpression(elementAccess.Expression),
+            InvocationExpressionSyntax invocation when invocation.Expression is MemberAccessExpressionSyntax memberAccess
+                => GetCaptureRootExpression(memberAccess.Expression),
+            InvocationExpressionSyntax invocation => invocation,
+            _ => expression,
+        };
     }
 
     private bool QualifiesForCollectionNullabilityRemoval(
@@ -1446,10 +1496,55 @@ internal sealed class ProjectionAnalyzer
 
     private static string NormalizeWhitespace(SyntaxNode node)
     {
+        var canonicalized = node switch
+        {
+            AnonymousObjectCreationExpressionSyntax anonymousObject => NormalizeAnonymousObject(anonymousObject),
+            ObjectCreationExpressionSyntax objectCreation when objectCreation.Initializer is not null => NormalizeObjectCreation(objectCreation),
+            InitializerExpressionSyntax initializer => NormalizeInitializer(initializer),
+            AssignmentExpressionSyntax assignment => $"{NormalizeWhitespace(assignment.Left)} = {NormalizeWhitespace(assignment.Right)}",
+            CollectionExpressionSyntax collectionExpression => NormalizeCollectionExpression(collectionExpression),
+            ExpressionElementSyntax expressionElement => NormalizeWhitespace(expressionElement.Expression),
+            SpreadElementSyntax spreadElement => $"..{NormalizeWhitespace(spreadElement.Expression)}",
+            _ => node.WithoutTrivia().NormalizeWhitespace().ToFullString(),
+        };
+
         return string.Join(
             " ",
-            node.NormalizeWhitespace().ToFullString().Split((char[]?)null, StringSplitOptions.RemoveEmptyEntries)
+            canonicalized.Split((char[]?)null, StringSplitOptions.RemoveEmptyEntries)
         );
+    }
+
+    private static string NormalizeAnonymousObject(AnonymousObjectCreationExpressionSyntax anonymousObject)
+    {
+        var initializers = anonymousObject.Initializers.Select(
+            initializer => $"{GetAnonymousMemberName(initializer)} = {NormalizeWhitespace(initializer.Expression)}"
+        );
+        return $"new {{ {string.Join(", ", initializers)} }}";
+    }
+
+    private static string NormalizeObjectCreation(ObjectCreationExpressionSyntax objectCreation)
+    {
+        var arguments = objectCreation.ArgumentList is null ? string.Empty : NormalizeWhitespace(objectCreation.ArgumentList);
+        return $"new {NormalizeWhitespace(objectCreation.Type)}{arguments} {NormalizeInitializer(objectCreation.Initializer!)}";
+    }
+
+    private static string NormalizeInitializer(InitializerExpressionSyntax initializer)
+    {
+        var items = initializer.Expressions.Select(NormalizeWhitespace);
+        return $"{{ {string.Join(", ", items)} }}";
+    }
+
+    private static string NormalizeCollectionExpression(CollectionExpressionSyntax collectionExpression)
+    {
+        var elements = collectionExpression.Elements.Select(
+            element => element switch
+            {
+                ExpressionElementSyntax expressionElement => NormalizeWhitespace(expressionElement.Expression),
+                SpreadElementSyntax spreadElement => $"..{NormalizeWhitespace(spreadElement.Expression)}",
+                _ => NormalizeWhitespace(element),
+            }
+        );
+        return $"[ {string.Join(", ", elements)} ]";
     }
 
     private static string GetUnqualifiedTypeName(TypeSyntax typeSyntax)

@@ -52,13 +52,15 @@ internal sealed class ProjectionExpressionEmitter
     private readonly string _rootTypeName;
     private readonly bool _useEmptyCollectionFallback;
     private readonly IReadOnlyDictionary<SyntaxNode, string> _replacementTypes;
+    private readonly IReadOnlyList<CaptureEntryModel> _captureEntries;
 
     public ProjectionExpressionEmitter(
         SemanticModel semanticModel,
         ExpressionSyntax rootExpression,
         string rootTypeName,
         bool useEmptyCollectionFallback,
-        IReadOnlyDictionary<SyntaxNode, string>? replacementTypes = null
+        IReadOnlyDictionary<SyntaxNode, string>? replacementTypes = null,
+        IReadOnlyList<CaptureEntryModel>? captureEntries = null
     )
     {
         _semanticModel = semanticModel;
@@ -66,10 +68,16 @@ internal sealed class ProjectionExpressionEmitter
         _rootTypeName = rootTypeName;
         _useEmptyCollectionFallback = useEmptyCollectionFallback;
         _replacementTypes = replacementTypes ?? new Dictionary<SyntaxNode, string>();
+        _captureEntries = captureEntries ?? global::System.Array.Empty<CaptureEntryModel>();
     }
 
     public string Emit(ExpressionSyntax expression)
     {
+        if (TryEmitCaptureReplacement(expression, out var captureReplacement))
+        {
+            return captureReplacement;
+        }
+
         if (TryEmitConditionalChain(expression, out var conditionalText))
         {
             return conditionalText;
@@ -79,11 +87,12 @@ internal sealed class ProjectionExpressionEmitter
         {
             AnonymousObjectCreationExpressionSyntax anonymousObject => EmitAnonymousObject(anonymousObject),
             ObjectCreationExpressionSyntax objectCreation => EmitObjectCreation(objectCreation),
+            CollectionExpressionSyntax collectionExpression => EmitCollectionExpression(collectionExpression),
             InvocationExpressionSyntax invocation => EmitInvocation(invocation),
             MemberAccessExpressionSyntax memberAccess => $"{Emit(memberAccess.Expression)}.{EmitSimpleName(memberAccess.Name)}",
             ElementAccessExpressionSyntax elementAccess => $"{Emit(elementAccess.Expression)}{EmitBracketArguments(elementAccess.ArgumentList)}",
             ConditionalExpressionSyntax conditionalExpression => $"{Emit(conditionalExpression.Condition)} ? {Emit(conditionalExpression.WhenTrue)} : {Emit(conditionalExpression.WhenFalse)}",
-            BinaryExpressionSyntax binaryExpression => $"{Emit(binaryExpression.Left)} {binaryExpression.OperatorToken.Text} {Emit(binaryExpression.Right)}",
+            BinaryExpressionSyntax binaryExpression => EmitBinaryExpression(binaryExpression),
             PrefixUnaryExpressionSyntax prefixUnary => $"{prefixUnary.OperatorToken.Text}{Emit(prefixUnary.Operand)}",
             PostfixUnaryExpressionSyntax postfixUnary => $"{Emit(postfixUnary.Operand)}{postfixUnary.OperatorToken.Text}",
             ParenthesizedExpressionSyntax parenthesized => $"({Emit(parenthesized.Expression)})",
@@ -146,6 +155,62 @@ internal sealed class ProjectionExpressionEmitter
     {
         var items = expression.Expressions.Select(Emit);
         return $"{{ {string.Join(", ", items)} }}";
+    }
+
+    private string EmitCollectionExpression(CollectionExpressionSyntax expression)
+    {
+        var targetTypeName = ResolveCollectionTargetTypeName(expression);
+        if (expression.Elements.Count == 0)
+        {
+            return CreateEmptyCollectionFallback(targetTypeName);
+        }
+
+        var items = expression.Elements.Select(
+            element => element switch
+            {
+                ExpressionElementSyntax expressionElement => Emit(expressionElement.Expression),
+                SpreadElementSyntax spreadElement => Emit(spreadElement.Expression),
+                _ => element.ToString(),
+            }
+        );
+
+        var normalizedTypeName = targetTypeName.EndsWith("?", System.StringComparison.Ordinal)
+            ? targetTypeName[..^1]
+            : targetTypeName;
+
+        if (normalizedTypeName.EndsWith("[]", System.StringComparison.Ordinal))
+        {
+            return $"new {normalizedTypeName} {{ {string.Join(", ", items)} }}";
+        }
+
+        if (normalizedTypeName.StartsWith("global::System.Collections.Generic.List<", System.StringComparison.Ordinal))
+        {
+            return $"new {normalizedTypeName} {{ {string.Join(", ", items)} }}";
+        }
+
+        if (TryGetSingleGenericArgument(normalizedTypeName, out var genericArgument))
+        {
+            return $"new {genericArgument}[] {{ {string.Join(", ", items)} }}";
+        }
+
+        return $"new {normalizedTypeName} {{ {string.Join(", ", items)} }}";
+    }
+
+    private string EmitBinaryExpression(BinaryExpressionSyntax expression)
+    {
+        return $"{EmitBinaryOperand(expression.Left)} {expression.OperatorToken.Text} {EmitBinaryOperand(expression.Right)}";
+    }
+
+    private string EmitBinaryOperand(ExpressionSyntax expression)
+    {
+        var emitted = Emit(expression);
+        return NeedsParenthesesInBinary(expression) ? $"({emitted})" : emitted;
+    }
+
+    private static bool NeedsParenthesesInBinary(ExpressionSyntax expression)
+    {
+        return expression is not ParenthesizedExpressionSyntax
+            && (expression is ConditionalExpressionSyntax || ContainsConditionalAccess(expression));
     }
 
     private string EmitInvocation(InvocationExpressionSyntax expression)
@@ -260,7 +325,7 @@ internal sealed class ProjectionExpressionEmitter
             return false;
         }
 
-        if (!TryBuildConditional(expression, string.Empty, out var conditional))
+        if (!TryBuildConditional(expression, string.Empty, expression, out var conditional))
         {
             return false;
         }
@@ -269,7 +334,7 @@ internal sealed class ProjectionExpressionEmitter
         return true;
     }
 
-    private bool TryBuildConditional(ExpressionSyntax expression, string tail, out string rewritten)
+    private bool TryBuildConditional(ExpressionSyntax expression, string tail, ExpressionSyntax rootConditionalExpression, out string rewritten)
     {
         switch (expression)
         {
@@ -281,7 +346,7 @@ internal sealed class ProjectionExpressionEmitter
                 var access = BindConditionalReceiver(receiver, conditionalAccess.WhenNotNull, checks) + tail;
                 var expressionType = GetExpressionType(expression);
                 var expressionTypeName = GetExpressionTypeName(expression, expressionType, out var canCast);
-                var useEmptyFallback = ReferenceEquals(expression, _rootExpression) && _useEmptyCollectionFallback;
+                var useEmptyFallback = ReferenceEquals(rootConditionalExpression, _rootExpression) && _useEmptyCollectionFallback;
                 var fallback = useEmptyFallback
                     ? CreateEmptyCollectionFallback(expressionTypeName)
                     : "null";
@@ -297,6 +362,7 @@ internal sealed class ProjectionExpressionEmitter
                 return TryBuildConditional(
                     memberAccess.Expression,
                     "." + EmitSimpleName(memberAccess.Name) + tail,
+                    rootConditionalExpression,
                     out rewritten
                 );
             case InvocationExpressionSyntax invocation
@@ -305,14 +371,11 @@ internal sealed class ProjectionExpressionEmitter
                 return TryBuildConditional(
                     memberInvocation.Expression,
                     "." + EmitSimpleName(memberInvocation.Name) + EmitArgumentList(invocation.ArgumentList) + tail,
+                    rootConditionalExpression,
                     out rewritten
                 );
             case ElementAccessExpressionSyntax elementAccess when ContainsConditionalAccess(elementAccess.Expression):
-                return TryBuildConditional(
-                    elementAccess.Expression,
-                    EmitBracketArguments(elementAccess.ArgumentList) + tail,
-                    out rewritten
-                );
+                return TryBuildConditional(elementAccess.Expression, EmitBracketArguments(elementAccess.ArgumentList) + tail, rootConditionalExpression, out rewritten);
             default:
                 rewritten = string.Empty;
                 return false;
@@ -351,6 +414,36 @@ internal sealed class ProjectionExpressionEmitter
         return expression.DescendantNodesAndSelf().OfType<ConditionalAccessExpressionSyntax>().Any();
     }
 
+    private bool TryEmitCaptureReplacement(ExpressionSyntax expression, out string rewritten)
+    {
+        rewritten = string.Empty;
+        if (_captureEntries.Count == 0 || !BelongsToSemanticModel(expression))
+        {
+            return false;
+        }
+
+        var normalizedExpression = NormalizeExpressionText(expression);
+        var currentRootSymbol = GetRootSymbol(expression);
+
+        foreach (var captureEntry in _captureEntries)
+        {
+            if (!string.Equals(captureEntry.ExpressionText, normalizedExpression, System.StringComparison.Ordinal))
+            {
+                continue;
+            }
+
+            if (!SymbolEqualityComparer.Default.Equals(captureEntry.RootSymbol, currentRootSymbol))
+            {
+                continue;
+            }
+
+            rewritten = captureEntry.LocalName;
+            return true;
+        }
+
+        return false;
+    }
+
     private static string CreateEmptyCollectionFallback(string typeName)
     {
         var normalizedTypeName = typeName.EndsWith("?", System.StringComparison.Ordinal)
@@ -375,6 +468,101 @@ internal sealed class ProjectionExpressionEmitter
 
         // TODO: The public docs do not define a fallback constructor strategy for custom collection types.
         return $"new {normalizedTypeName}()";
+    }
+
+    private string ResolveCollectionTargetTypeName(CollectionExpressionSyntax expression)
+    {
+        var targetType = GetExpressionType(expression);
+        if (targetType is not null && targetType is not IErrorTypeSymbol && !ContainsAnonymousType(targetType))
+        {
+            return targetType.ToFullyQualifiedTypeName();
+        }
+
+        if (TryResolveCollectionTargetTypeNameFromContext(expression, out var contextualTypeName))
+        {
+            return contextualTypeName;
+        }
+
+        return _rootTypeName;
+    }
+
+    private bool TryResolveCollectionTargetTypeNameFromContext(SyntaxNode node, out string typeName)
+    {
+        switch (node.Parent)
+        {
+            case ParenthesizedExpressionSyntax parenthesized:
+                return TryResolveCollectionTargetTypeNameFromContext(parenthesized, out typeName);
+            case BinaryExpressionSyntax binaryExpression when binaryExpression.IsKind(SyntaxKind.CoalesceExpression):
+            {
+                var sibling = ReferenceEquals(binaryExpression.Left, node) ? binaryExpression.Right : binaryExpression.Left;
+                return TryGetContextualCollectionTypeName(sibling, out typeName);
+            }
+            case ConditionalExpressionSyntax conditionalExpression:
+            {
+                var sibling = ReferenceEquals(conditionalExpression.WhenTrue, node)
+                    ? conditionalExpression.WhenFalse
+                    : conditionalExpression.WhenTrue;
+                return TryGetContextualCollectionTypeName(sibling, out typeName);
+            }
+            case AssignmentExpressionSyntax assignment when ReferenceEquals(assignment.Right, node):
+                return TryResolveAssignedTypeName(assignment.Left, out typeName);
+            default:
+                typeName = string.Empty;
+                return false;
+        }
+    }
+
+    private bool TryGetContextualCollectionTypeName(ExpressionSyntax expression, out string typeName)
+    {
+        var expressionType = GetExpressionType(expression);
+        if (expressionType is not null && expressionType is not IErrorTypeSymbol && !ContainsAnonymousType(expressionType))
+        {
+            typeName = expressionType.ToFullyQualifiedTypeName();
+            return true;
+        }
+
+        if (expressionType is null || ContainsAnonymousType(expressionType))
+        {
+            typeName = _rootTypeName;
+            return true;
+        }
+
+        typeName = string.Empty;
+        return false;
+    }
+
+    private bool TryResolveAssignedTypeName(ExpressionSyntax expression, out string typeName)
+    {
+        if (!BelongsToSemanticModel(expression))
+        {
+            typeName = string.Empty;
+            return false;
+        }
+
+        var symbolType = _semanticModel.GetSymbolInfo(expression).Symbol switch
+        {
+            IFieldSymbol fieldSymbol => fieldSymbol.Type,
+            ILocalSymbol localSymbol => localSymbol.Type,
+            IParameterSymbol parameterSymbol => parameterSymbol.Type,
+            IPropertySymbol propertySymbol => propertySymbol.Type,
+            _ => null,
+        };
+
+        if (symbolType is not null && symbolType is not IErrorTypeSymbol)
+        {
+            typeName = symbolType.ToFullyQualifiedTypeName();
+            return true;
+        }
+
+        var expressionType = _semanticModel.GetTypeInfo(expression).Type ?? _semanticModel.GetTypeInfo(expression).ConvertedType;
+        if (expressionType is not null && expressionType is not IErrorTypeSymbol)
+        {
+            typeName = expressionType.ToFullyQualifiedTypeName();
+            return true;
+        }
+
+        typeName = string.Empty;
+        return false;
     }
 
     private static bool TryGetSingleGenericArgument(string typeName, out string argument)
@@ -411,6 +599,31 @@ internal sealed class ProjectionExpressionEmitter
     private bool BelongsToSemanticModel(SyntaxNode node)
     {
         return node.SyntaxTree == _semanticModel.SyntaxTree;
+    }
+
+    private static string NormalizeExpressionText(ExpressionSyntax expression)
+    {
+        return expression.WithoutTrivia().ToString();
+    }
+
+    private ISymbol? GetRootSymbol(ExpressionSyntax expression)
+    {
+        var rootExpression = GetRootExpression(expression);
+        return _semanticModel.GetSymbolInfo(rootExpression).Symbol;
+    }
+
+    private static ExpressionSyntax GetRootExpression(ExpressionSyntax expression)
+    {
+        return expression switch
+        {
+            MemberAccessExpressionSyntax memberAccess => GetRootExpression(memberAccess.Expression),
+            ConditionalAccessExpressionSyntax conditionalAccess => GetRootExpression(conditionalAccess.Expression),
+            ElementAccessExpressionSyntax elementAccess => GetRootExpression(elementAccess.Expression),
+            InvocationExpressionSyntax invocation when invocation.Expression is MemberAccessExpressionSyntax memberAccess
+                => GetRootExpression(memberAccess.Expression),
+            InvocationExpressionSyntax invocation => invocation,
+            _ => expression,
+        };
     }
 
     private ITypeSymbol? GetExpressionType(ExpressionSyntax expression)

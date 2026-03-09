@@ -18,5 +18,10 @@ query.Select(x => new FooBar {
 
 * LinqraftSG001/LinqraftSG002のアナライザー自体を削除
 * Linqraft.Support.g.cs → Linqraft.Declarations.g.csにリネーム
-* LinqraftCaptureHelperを削除(inlineで書く)
+* LinqraftCaptureHelperを削除
+
+## TODO
+* テストをXUnitからTUnitに変更
+  * NativeAOTでビルド→テストを追加(GH Actions)
+* SourceGeneratorのキャッシュが効いていること+単純なSmokeテストするLinqraft.Test.SGプロジェクトを追加
 * 

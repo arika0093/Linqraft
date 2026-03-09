@@ -1,5 +1,8 @@
+using System;
+using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
+using System.Linq.Expressions;
 
 namespace Linqraft.Tests;
 
@@ -138,6 +141,25 @@ public sealed class GeneratedProjectionRuntimeTests
     }
 
     [Fact]
+    public void IQueryable_projection_preserves_query_provider()
+    {
+        const decimal threshold = 50m;
+        var source = TrackingQueryable.Create<ProjectionInvoice>();
+
+        var result = source.SelectExpr<ProjectionInvoice, ProjectionDecisionDto>(
+            invoice => new
+            {
+                invoice.Id,
+                IsLarge = invoice.Total >= threshold,
+            },
+            new { threshold }
+        );
+
+        result.Provider.ShouldBe(source.Provider);
+        result.Expression.ToString().ShouldContain("Select");
+    }
+
+    [Fact]
     public void Predeclared_property_is_populated()
     {
         var result = Orders
@@ -201,4 +223,59 @@ public sealed class ProjectionInvoice
 public partial class ProjectionDeclaredOrderDto
 {
     public int Id { get; private set; }
+}
+
+internal static class TrackingQueryable
+{
+    public static TrackingQueryable<T> Create<T>()
+    {
+        var provider = new TrackingQueryProvider();
+        return new TrackingQueryable<T>(provider);
+    }
+}
+
+internal sealed class TrackingQueryable<T> : IQueryable<T>
+{
+    public TrackingQueryable(TrackingQueryProvider provider)
+        : this(provider, null)
+    {
+    }
+
+    public TrackingQueryable(TrackingQueryProvider provider, Expression? expression)
+    {
+        Provider = provider;
+        Expression = expression ?? Expression.Constant(this);
+    }
+
+    public Type ElementType => typeof(T);
+
+    public Expression Expression { get; }
+
+    public IQueryProvider Provider { get; }
+
+    public IEnumerator<T> GetEnumerator() => throw new NotSupportedException();
+
+    IEnumerator IEnumerable.GetEnumerator() => GetEnumerator();
+}
+
+internal sealed class TrackingQueryProvider : IQueryProvider
+{
+    public IQueryable CreateQuery(Expression expression)
+    {
+        var elementType = expression.Type.GetGenericArguments().Last();
+        return (IQueryable)Activator.CreateInstance(
+            typeof(TrackingQueryable<>).MakeGenericType(elementType),
+            this,
+            expression
+        )!;
+    }
+
+    public IQueryable<TElement> CreateQuery<TElement>(Expression expression)
+    {
+        return new TrackingQueryable<TElement>(this, expression);
+    }
+
+    public object? Execute(Expression expression) => throw new NotSupportedException();
+
+    public TResult Execute<TResult>(Expression expression) => throw new NotSupportedException();
 }

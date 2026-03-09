@@ -96,370 +96,6 @@ internal static class SupportSourceEmitter
                 }
 
                 {{CodeTemplateContents.EditorBrowsableNeverAttribute}}
-                internal static class SelectExprRuntimeHelper
-                {
-                    private static readonly global::System.Reflection.NullabilityInfoContext NullabilityContext = new();
-
-                    public static IQueryable<TResult> ExecuteQueryable<TIn, TResult>(IQueryable<TIn> query, global::System.Func<TIn, TResult> selector)
-                        where TIn : class
-                    {
-                        global::System.ArgumentNullException.ThrowIfNull(query);
-                        global::System.ArgumentNullException.ThrowIfNull(selector);
-                        return query.AsEnumerable().Select(selector).AsQueryable();
-                    }
-
-                    public static IQueryable<TResult> ExecuteQueryable<TIn, TResult>(IQueryable<TIn> query, global::System.Func<TIn, object> selector)
-                        where TIn : class
-                    {
-                        global::System.ArgumentNullException.ThrowIfNull(query);
-                        global::System.ArgumentNullException.ThrowIfNull(selector);
-                        return query.AsEnumerable().Select(item => ConvertResult<TResult>(selector(item))).AsQueryable();
-                    }
-
-                    public static IEnumerable<TResult> ExecuteEnumerable<TIn, TResult>(IEnumerable<TIn> query, global::System.Func<TIn, TResult> selector)
-                        where TIn : class
-                    {
-                        global::System.ArgumentNullException.ThrowIfNull(query);
-                        global::System.ArgumentNullException.ThrowIfNull(selector);
-                        return query.Select(selector);
-                    }
-
-                    public static IEnumerable<TResult> ExecuteEnumerable<TIn, TResult>(IEnumerable<TIn> query, global::System.Func<TIn, object> selector)
-                        where TIn : class
-                    {
-                        global::System.ArgumentNullException.ThrowIfNull(query);
-                        global::System.ArgumentNullException.ThrowIfNull(selector);
-                        return query.Select(item => ConvertResult<TResult>(selector(item)));
-                    }
-
-                    public static IQueryable<TResult> ExecuteUntypedQueryable<TResult>(global::System.Linq.IQueryable query, global::System.Delegate selector)
-                    {
-                        global::System.ArgumentNullException.ThrowIfNull(query);
-                        global::System.ArgumentNullException.ThrowIfNull(selector);
-                        return query.Cast<object?>().Select(item => ConvertResult<TResult>(selector.DynamicInvoke(item))).AsQueryable();
-                    }
-
-                    public static IEnumerable<TResult> ExecuteUntypedEnumerable<TResult>(IEnumerable query, global::System.Delegate selector)
-                    {
-                        global::System.ArgumentNullException.ThrowIfNull(query);
-                        global::System.ArgumentNullException.ThrowIfNull(selector);
-                        return query.Cast<object?>().Select(item => ConvertResult<TResult>(selector.DynamicInvoke(item)));
-                    }
-
-                    private static TResult ConvertResult<TResult>(object? value)
-                    {
-                        var converted = ConvertValue(typeof(TResult), value);
-                        return converted is null ? default! : (TResult)converted;
-                    }
-
-                    private static object? ConvertValue(
-                        global::System.Type targetType,
-                        object? value,
-                        PropertyInfo? propertyInfo = null,
-                        global::System.Reflection.ParameterInfo? parameterInfo = null
-                    )
-                    {
-                        var effectiveTargetType = global::System.Nullable.GetUnderlyingType(targetType) ?? targetType;
-                        if (value is null)
-                        {
-                            return ShouldCreateEmptyCollection(effectiveTargetType, propertyInfo, parameterInfo)
-                                ? CreateEmptyCollection(effectiveTargetType)
-                                : null;
-                        }
-
-                        if (effectiveTargetType == typeof(object) || effectiveTargetType.IsInstanceOfType(value))
-                        {
-                            return value;
-                        }
-
-                        if (TryConvertCollection(effectiveTargetType, value, out var collectionValue))
-                        {
-                            return collectionValue;
-                        }
-
-                        if (TryConvertSimpleValue(effectiveTargetType, value, out var simpleValue))
-                        {
-                            return simpleValue;
-                        }
-
-                        return ConvertObject(effectiveTargetType, value);
-                    }
-
-                    private static bool TryConvertCollection(global::System.Type targetType, object value, out object? converted)
-                    {
-                        converted = null;
-                        if (value is string || value is not IEnumerable source || !TryGetCollectionElementType(targetType, out var elementType))
-                        {
-                            return false;
-                        }
-
-                        var projectedValues = new List<object?>();
-                        foreach (var item in source)
-                        {
-                            projectedValues.Add(ConvertValue(elementType, item));
-                        }
-
-                        return TryCreateCollection(targetType, elementType, projectedValues, out converted);
-                    }
-
-                    private static bool TryConvertSimpleValue(global::System.Type targetType, object value, out object? converted)
-                    {
-                        converted = null;
-                        try
-                        {
-                            if (targetType.IsEnum)
-                            {
-                                converted = value is string enumName
-                                    ? global::System.Enum.Parse(targetType, enumName, ignoreCase: false)
-                                    : global::System.Enum.ToObject(targetType, value);
-                                return true;
-                            }
-
-                            if (value is global::System.IConvertible && typeof(global::System.IConvertible).IsAssignableFrom(targetType))
-                            {
-                                converted = global::System.Convert.ChangeType(value, targetType);
-                                return true;
-                            }
-                        }
-                        catch (global::System.InvalidCastException)
-                        {
-                            return false;
-                        }
-                        catch (global::System.FormatException)
-                        {
-                            return false;
-                        }
-                        catch (global::System.OverflowException)
-                        {
-                            return false;
-                        }
-                        catch (global::System.ArgumentException)
-                        {
-                            return false;
-                        }
-
-                        return false;
-                    }
-
-                    private static object ConvertObject(global::System.Type targetType, object value)
-                    {
-                        var sourceProperties = value.GetType()
-                            .GetProperties(BindingFlags.Instance | BindingFlags.Public)
-                            .ToDictionary(property => property.Name, global::System.StringComparer.OrdinalIgnoreCase);
-                        var instance = CreateObjectInstance(targetType, value, sourceProperties);
-                        foreach (var targetProperty in targetType.GetProperties(BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic))
-                        {
-                            if (targetProperty.SetMethod is null || !sourceProperties.TryGetValue(targetProperty.Name, out var sourceProperty))
-                            {
-                                continue;
-                            }
-
-                            var projectedValue = ConvertValue(
-                                targetProperty.PropertyType,
-                                sourceProperty.GetValue(value),
-                                propertyInfo: targetProperty
-                            );
-                            targetProperty.SetMethod.Invoke(instance, new[] { projectedValue });
-                        }
-
-                        return instance;
-                    }
-
-                    private static object CreateObjectInstance(
-                        global::System.Type targetType,
-                        object source,
-                        IReadOnlyDictionary<string, PropertyInfo> sourceProperties
-                    )
-                    {
-                        var constructors = targetType.GetConstructors(BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic)
-                            .OrderByDescending(constructor => constructor.GetParameters().Length)
-                            .ToArray();
-                        foreach (var constructor in constructors)
-                        {
-                            var parameters = constructor.GetParameters();
-                            if (parameters.Length == 0)
-                            {
-                                return constructor.Invoke(null);
-                            }
-
-                            var arguments = new object?[parameters.Length];
-                            var matched = true;
-                            for (var index = 0; index < parameters.Length; index++)
-                            {
-                                var parameter = parameters[index];
-                                if (parameter.Name is null || !sourceProperties.TryGetValue(parameter.Name, out var sourceProperty))
-                                {
-                                    matched = false;
-                                    break;
-                                }
-
-                                arguments[index] = ConvertValue(
-                                    parameter.ParameterType,
-                                    sourceProperty.GetValue(source),
-                                    parameterInfo: parameter
-                                );
-                            }
-
-                            if (matched)
-                            {
-                                return constructor.Invoke(arguments);
-                            }
-                        }
-
-                        throw new global::System.InvalidOperationException(
-                            $"Linqraft could not create an instance of '{targetType.FullName}'."
-                        );
-                    }
-
-                    private static bool ShouldCreateEmptyCollection(
-                        global::System.Type targetType,
-                        PropertyInfo? propertyInfo,
-                        global::System.Reflection.ParameterInfo? parameterInfo
-                    )
-                    {
-                        if (!TryGetCollectionElementType(targetType, out _))
-                        {
-                            return false;
-                        }
-
-                        if (propertyInfo is not null)
-                        {
-                            var nullability = NullabilityContext.Create(propertyInfo);
-                            return nullability.ReadState == global::System.Reflection.NullabilityState.NotNull
-                                || nullability.WriteState == global::System.Reflection.NullabilityState.NotNull;
-                        }
-
-                        if (parameterInfo is not null)
-                        {
-                            var nullability = NullabilityContext.Create(parameterInfo);
-                            return nullability.ReadState == global::System.Reflection.NullabilityState.NotNull;
-                        }
-
-                        return false;
-                    }
-
-                    private static object? CreateEmptyCollection(global::System.Type targetType)
-                    {
-                        if (!TryGetCollectionElementType(targetType, out var elementType))
-                        {
-                            return null;
-                        }
-
-                        return TryCreateCollection(targetType, elementType, global::System.Array.Empty<object?>(), out var created)
-                            ? created
-                            : null;
-                    }
-
-                    private static bool TryCreateCollection(
-                        global::System.Type targetType,
-                        global::System.Type elementType,
-                        IReadOnlyList<object?> projectedValues,
-                        out object? converted
-                    )
-                    {
-                        converted = null;
-                        if (targetType.IsArray)
-                        {
-                            var array = global::System.Array.CreateInstance(elementType, projectedValues.Count);
-                            for (var index = 0; index < projectedValues.Count; index++)
-                            {
-                                array.SetValue(projectedValues[index], index);
-                            }
-
-                            converted = array;
-                            return true;
-                        }
-
-                        var listType = typeof(List<>).MakeGenericType(elementType);
-                        var list = (IList)global::System.Activator.CreateInstance(listType)!;
-                        foreach (var item in projectedValues)
-                        {
-                            list.Add(item);
-                        }
-
-                        if (targetType.IsAssignableFrom(listType))
-                        {
-                            converted = list;
-                            return true;
-                        }
-
-                        var enumerableType = typeof(IEnumerable<>).MakeGenericType(elementType);
-                        var enumerableConstructor = targetType.GetConstructor(
-                            BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic,
-                            binder: null,
-                            types: new[] { enumerableType },
-                            modifiers: null
-                        );
-                        if (enumerableConstructor is not null)
-                        {
-                            converted = enumerableConstructor.Invoke(new object[] { list });
-                            return true;
-                        }
-
-                        if (!targetType.IsInterface && !targetType.IsAbstract)
-                        {
-                            var parameterlessConstructor = targetType.GetConstructor(
-                                BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic,
-                                binder: null,
-                                types: global::System.Type.EmptyTypes,
-                                modifiers: null
-                            );
-                            if (parameterlessConstructor is not null)
-                            {
-                                var instance = parameterlessConstructor.Invoke(null);
-                                var addMethod = targetType.GetMethod(
-                                    "Add",
-                                    BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic,
-                                    binder: null,
-                                    types: new[] { elementType },
-                                    modifiers: null
-                                );
-                                if (addMethod is not null)
-                                {
-                                    foreach (var item in projectedValues)
-                                    {
-                                        addMethod.Invoke(instance, new[] { item });
-                                    }
-
-                                    converted = instance;
-                                    return true;
-                                }
-                            }
-                        }
-
-                        return false;
-                    }
-
-                    private static bool TryGetCollectionElementType(global::System.Type targetType, out global::System.Type elementType)
-                    {
-                        if (targetType.IsArray)
-                        {
-                            elementType = targetType.GetElementType()!;
-                            return true;
-                        }
-
-                        if (targetType.IsGenericType && targetType.GetGenericArguments().Length == 1)
-                        {
-                            elementType = targetType.GetGenericArguments()[0];
-                            return typeof(IEnumerable<>).MakeGenericType(elementType).IsAssignableFrom(targetType)
-                                || targetType.GetMethod("Add", BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic, binder: null, types: new[] { elementType }, modifiers: null) is not null;
-                        }
-
-                        var enumerableInterface = targetType
-                            .GetInterfaces()
-                            .FirstOrDefault(candidate => candidate.IsGenericType && candidate.GetGenericTypeDefinition() == typeof(IEnumerable<>));
-                        if (enumerableInterface is not null)
-                        {
-                            elementType = enumerableInterface.GetGenericArguments()[0];
-                            return true;
-                        }
-
-                        elementType = typeof(object);
-                        return false;
-                    }
-                }
-
-                {{CodeTemplateContents.EditorBrowsableNeverAttribute}}
                 internal static class LinqraftCaptureHelper
                 {
                     private static readonly global::System.Collections.Concurrent.ConcurrentDictionary<string, PropertyInfo?> Cache = new();
@@ -497,65 +133,68 @@ internal static class SupportSourceEmitter
                 /// </summary>
                 public static class SelectExprExtensions
                 {
-                    /// <summary>
-                    /// Projects an <see cref="IQueryable{T}"/> source through Linqraft. When no generated interceptor is available, the selector runs as a client-side fallback.
-                    /// </summary>
-                    public static IQueryable<TResult> SelectExpr<TIn, TResult>(this IQueryable<TIn> query, global::System.Func<TIn, TResult> selector)
-                        where TIn : class => global::Linqraft.SelectExprRuntimeHelper.ExecuteQueryable(query, selector);
+                    private static TReturn ThrowInterceptionRequired<TReturn>()
+                        => throw new global::System.InvalidOperationException("Linqraft source generator should replace SelectExpr invocations before execution.");
 
                     /// <summary>
-                    /// Projects an <see cref="IQueryable{T}"/> source into a named DTO. When no generated interceptor is available, Linqraft maps the selector result at runtime.
+                    /// Projects an <see cref="IQueryable{T}"/> source through Linqraft. This placeholder must be intercepted by generated code before execution.
+                    /// </summary>
+                    public static IQueryable<TResult> SelectExpr<TIn, TResult>(this IQueryable<TIn> query, global::System.Func<TIn, TResult> selector)
+                        where TIn : class => ThrowInterceptionRequired<IQueryable<TResult>>();
+
+                    /// <summary>
+                    /// Projects an <see cref="IQueryable{T}"/> source into a named DTO. This placeholder must be intercepted by generated code before execution.
                     /// </summary>
                     public static IQueryable<TResult> SelectExpr<TIn, TResult>(this IQueryable<TIn> query, global::System.Func<TIn, object> selector)
-                        where TIn : class => global::Linqraft.SelectExprRuntimeHelper.ExecuteQueryable<TIn, TResult>(query, selector);
+                        where TIn : class => ThrowInterceptionRequired<IQueryable<TResult>>();
 
                     /// <summary>
                     /// Projects an <see cref="IQueryable{T}"/> source with captured values supplied separately for generator-friendly interception.
                     /// </summary>
                     public static IQueryable<TResult> SelectExpr<TIn, TResult>(this IQueryable<TIn> query, global::System.Func<TIn, TResult> selector, object capture)
-                        where TIn : class => global::Linqraft.SelectExprRuntimeHelper.ExecuteQueryable(query, selector);
+                        where TIn : class => ThrowInterceptionRequired<IQueryable<TResult>>();
 
                     /// <summary>
-                    /// Projects an <see cref="IQueryable{T}"/> source into a named DTO with an explicit capture object.
+                    /// Projects an <see cref="IQueryable{T}"/> source into a named DTO with an explicit capture object. This placeholder must be intercepted by generated code before execution.
                     /// </summary>
                     public static IQueryable<TResult> SelectExpr<TIn, TResult>(this IQueryable<TIn> query, global::System.Func<TIn, object> selector, object capture)
-                        where TIn : class => global::Linqraft.SelectExprRuntimeHelper.ExecuteQueryable<TIn, TResult>(query, selector);
+                        where TIn : class => ThrowInterceptionRequired<IQueryable<TResult>>();
 
                     /// <summary>
-                    /// Projects an <see cref="IEnumerable{T}"/> source through Linqraft. When no generated interceptor is available, the selector runs directly.
+                    /// Projects an <see cref="IEnumerable{T}"/> source through Linqraft. This placeholder must be intercepted by generated code before execution.
                     /// </summary>
                     public static IEnumerable<TResult> SelectExpr<TIn, TResult>(this IEnumerable<TIn> query, global::System.Func<TIn, TResult> selector)
-                        where TIn : class => global::Linqraft.SelectExprRuntimeHelper.ExecuteEnumerable(query, selector);
+                        where TIn : class => ThrowInterceptionRequired<IEnumerable<TResult>>();
 
                     /// <summary>
-                    /// Projects an <see cref="IEnumerable{T}"/> source into a named DTO. When no generated interceptor is available, Linqraft maps the selector result at runtime.
+                    /// Projects an <see cref="IEnumerable{T}"/> source into a named DTO. This placeholder must be intercepted by generated code before execution.
                     /// </summary>
                     public static IEnumerable<TResult> SelectExpr<TIn, TResult>(this IEnumerable<TIn> query, global::System.Func<TIn, object> selector)
-                        where TIn : class => global::Linqraft.SelectExprRuntimeHelper.ExecuteEnumerable<TIn, TResult>(query, selector);
+                        where TIn : class => ThrowInterceptionRequired<IEnumerable<TResult>>();
 
                     /// <summary>
                     /// Projects an <see cref="IEnumerable{T}"/> source with captured values supplied separately for generator-friendly interception.
                     /// </summary>
                     public static IEnumerable<TResult> SelectExpr<TIn, TResult>(this IEnumerable<TIn> query, global::System.Func<TIn, TResult> selector, object capture)
-                        where TIn : class => global::Linqraft.SelectExprRuntimeHelper.ExecuteEnumerable(query, selector);
+                        where TIn : class => ThrowInterceptionRequired<IEnumerable<TResult>>();
 
                     /// <summary>
-                    /// Projects an <see cref="IEnumerable{T}"/> source into a named DTO with an explicit capture object.
+                    /// Projects an <see cref="IEnumerable{T}"/> source into a named DTO with an explicit capture object. This placeholder must be intercepted by generated code before execution.
                     /// </summary>
                     public static IEnumerable<TResult> SelectExpr<TIn, TResult>(this IEnumerable<TIn> query, global::System.Func<TIn, object> selector, object capture)
-                        where TIn : class => global::Linqraft.SelectExprRuntimeHelper.ExecuteEnumerable<TIn, TResult>(query, selector);
+                        where TIn : class => ThrowInterceptionRequired<IEnumerable<TResult>>();
 
                     /// <summary>
-                    /// Projects a non-generic <see cref="IQueryable"/> source by invoking the supplied delegate for each element.
+                    /// Projects a non-generic <see cref="IQueryable"/> source by invoking the supplied delegate for each element. This placeholder must be intercepted by generated code before execution.
                     /// </summary>
                     public static IQueryable<TResult> SelectExpr<TResult>(this global::System.Linq.IQueryable query, global::System.Delegate selector)
-                        => global::Linqraft.SelectExprRuntimeHelper.ExecuteUntypedQueryable<TResult>(query, selector);
+                        => ThrowInterceptionRequired<IQueryable<TResult>>();
 
                     /// <summary>
-                    /// Projects a non-generic <see cref="IEnumerable"/> source by invoking the supplied delegate for each element.
+                    /// Projects a non-generic <see cref="IEnumerable"/> source by invoking the supplied delegate for each element. This placeholder must be intercepted by generated code before execution.
                     /// </summary>
                     public static IEnumerable<TResult> SelectExpr<TResult>(this IEnumerable query, global::System.Delegate selector)
-                        => global::Linqraft.SelectExprRuntimeHelper.ExecuteUntypedEnumerable<TResult>(query, selector);
+                        => ThrowInterceptionRequired<IEnumerable<TResult>>();
                 }
             }
             """;

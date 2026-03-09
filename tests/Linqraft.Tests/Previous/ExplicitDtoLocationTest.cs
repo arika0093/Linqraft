@@ -39,6 +39,33 @@ public class ExplicitDtoLocationTest
         }
     }
 
+    [Fact]
+    public void Generated_interceptors_inline_projection_logic()
+    {
+        var projectDir = GetProjectDirectory();
+        var generatorDir = Path.Combine(
+            projectDir,
+            ".generated",
+            "Linqraft.SourceGenerator",
+            "Linqraft.SourceGenerator.LinqraftSourceGenerator"
+        );
+        var supportFile = Path.Combine(generatorDir, "Linqraft.Support.g.cs");
+        var expressionFiles = Directory.GetFiles(generatorDir, "SelectExpr_*.g.cs", SearchOption.AllDirectories);
+
+        File.ReadAllText(supportFile).ShouldNotContain("SelectExprRuntimeHelper");
+
+        expressionFiles.Length.ShouldBeGreaterThan(0);
+        foreach (var expressionFile in expressionFiles)
+        {
+            File.ReadAllText(expressionFile).ShouldNotContain("SelectExprRuntimeHelper");
+        }
+
+        expressionFiles.Any(file =>
+                File.ReadAllText(file).Contains("matchedQuery.Select(", StringComparison.Ordinal)
+            )
+            .ShouldBeTrue();
+    }
+
     private static string GetProjectDirectory()
     {
         var baseDir = AppContext.BaseDirectory;

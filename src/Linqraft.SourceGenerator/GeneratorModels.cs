@@ -26,6 +26,10 @@ internal sealed record CaptureEntryModel
     public required string LocalName { get; init; }
 
     public required string TypeName { get; init; }
+
+    public required string ExpressionText { get; init; }
+
+    public required ISymbol? RootSymbol { get; init; }
 }
 
 internal sealed record ProjectionMemberModel
