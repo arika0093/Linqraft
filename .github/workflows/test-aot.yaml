@@ -27,11 +27,9 @@ jobs:
           dotnet-version: |
             10.0.x
             8.0.x
-          cache: true
-          cache-dependency-path: '**/packages.lock.json'
 
       - name: Restore dependencies
-        run: dotnet restore --locked-mode -p:TFMS=net8.0
+        run: dotnet restore -p:TFMS=net8.0
 
       - name: Publish NativeAOT tests
         run: dotnet publish tests\Linqraft.Tests\Linqraft.Tests.csproj -c Release -o publish -f net8.0 -r win-x64 -p:TFMS=net8.0 -p:EnableNativeAotTest=true --self-contained true
