@@ -352,7 +352,11 @@ public sealed class LinqraftCompositeCodeFixProvider : CodeFixProvider
                 return document;
             }
 
-            updatedInvocation = AddTypeArguments(updatedInvocation, semanticModel, AnalyzerHelpers.GenerateDtoName(invocation), cancellationToken);
+            updatedInvocation = AddTypeArguments(
+                updatedInvocation,
+                GetSelectSourceTypeName(invocation, semanticModel, cancellationToken),
+                AnalyzerHelpers.GenerateDtoName(invocation)
+            );
         }
 
         return document.WithSyntaxRoot(root.ReplaceNode(invocation, updatedInvocation));
@@ -408,7 +412,11 @@ public sealed class LinqraftCompositeCodeFixProvider : CodeFixProvider
         }
 
         var updatedInvocation = RenameInvocation(invocation, "SelectExpr");
-        updatedInvocation = AddTypeArguments(updatedInvocation, semanticModel, AnalyzerHelpers.GenerateDtoName(invocation), cancellationToken);
+        updatedInvocation = AddTypeArguments(
+            updatedInvocation,
+            GetSelectSourceTypeName(invocation, semanticModel, cancellationToken),
+            AnalyzerHelpers.GenerateDtoName(invocation)
+        );
 
         if (!keepNamedProjection && AnalyzerHelpers.GetLambdaExpressionBody(lambda) is ObjectCreationExpressionSyntax objectCreation)
         {
@@ -545,7 +553,8 @@ public sealed class LinqraftCompositeCodeFixProvider : CodeFixProvider
             return document;
         }
 
-        var groupByInvocation = selectExprInvocation.AncestorsAndSelf().OfType<InvocationExpressionSyntax>()
+        var groupByInvocation = selectExprInvocation.DescendantNodesAndSelf()
+            .OfType<InvocationExpressionSyntax>()
             .FirstOrDefault(invocation => AnalyzerHelpers.GetInvocationName(invocation.Expression) == "GroupBy");
         if (groupByInvocation is null)
         {
@@ -614,7 +623,7 @@ public sealed class LinqraftCompositeCodeFixProvider : CodeFixProvider
             DocumentId.CreateNewId(document.Project.Id),
             newDocumentName,
             SourceText.From(classText)
-        ).Project.Solution;
+        );
         return updatedSolution;
     }
 
@@ -684,7 +693,11 @@ public sealed class LinqraftCompositeCodeFixProvider : CodeFixProvider
         }
 
         var dtoName = AnalyzerHelpers.GenerateDtoName(statement);
-        var selectExpr = AddTypeArguments(RenameInvocation(statement, "SelectExpr"), semanticModel, dtoName, cancellationToken);
+        var selectExpr = AddTypeArguments(
+            RenameInvocation(statement, "SelectExpr"),
+            GetSelectSourceTypeName(statement, semanticModel, cancellationToken),
+            dtoName
+        );
         var chainText = selectExpr.ToString() + (asyncVersion ? ".ToListAsync()" : ".ToList()");
         var newStatement = asyncVersion
             ? (StatementSyntax)SyntaxFactory.ParseStatement($"return await {chainText};")
@@ -740,12 +753,10 @@ public sealed class LinqraftCompositeCodeFixProvider : CodeFixProvider
 
     private static InvocationExpressionSyntax AddTypeArguments(
         InvocationExpressionSyntax invocation,
-        SemanticModel semanticModel,
-        string dtoName,
-        CancellationToken cancellationToken
+        string sourceType,
+        string dtoName
     )
     {
-        var sourceType = GetSelectSourceTypeName(invocation, semanticModel, cancellationToken);
         var genericName = SyntaxFactory.GenericName(
             SyntaxFactory.Identifier("SelectExpr"),
             SyntaxFactory.TypeArgumentList(
@@ -934,7 +945,9 @@ public sealed class LinqraftCompositeCodeFixProvider : CodeFixProvider
 
     private static string CreateDtoClassText(string dtoName, AnonymousObjectCreationExpressionSyntax anonymousObject)
     {
-        var members = anonymousObject.Initializers.Select(
+        var members = string.Join(
+            "\r\n",
+            anonymousObject.Initializers.Select(
             initializer =>
             {
                 var typeName = initializer.Expression is LiteralExpressionSyntax literalExpression && literalExpression.IsKind(SyntaxKind.StringLiteralExpression)
@@ -942,9 +955,15 @@ public sealed class LinqraftCompositeCodeFixProvider : CodeFixProvider
                     : "object";
                 return $"    public {typeName} {AnalyzerHelpers.GetAnonymousMemberName(initializer)} {{ get; set; }}";
             }
+        )
         );
 
-        return $"public partial class {dtoName}\r\n{{\r\n{string.Join("\r\n", members)}\r\n}}";
+        return $$"""
+            public partial class {{dtoName}}
+            {
+            {{members}}
+            }
+            """;
     }
 
     private static SyntaxNode AppendTypeDeclaration(SyntaxNode root, string declarationText)

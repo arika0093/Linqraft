@@ -60,18 +60,21 @@ internal sealed class ProjectionExpressionEmitter
     private readonly ExpressionSyntax _rootExpression;
     private readonly string _rootTypeName;
     private readonly bool _useEmptyCollectionFallback;
+    private readonly IReadOnlyDictionary<SyntaxNode, string> _replacementTypes;
 
     public ProjectionExpressionEmitter(
         SemanticModel semanticModel,
         ExpressionSyntax rootExpression,
         string rootTypeName,
-        bool useEmptyCollectionFallback
+        bool useEmptyCollectionFallback,
+        IReadOnlyDictionary<SyntaxNode, string>? replacementTypes = null
     )
     {
         _semanticModel = semanticModel;
         _rootExpression = rootExpression;
         _rootTypeName = rootTypeName;
         _useEmptyCollectionFallback = useEmptyCollectionFallback;
+        _replacementTypes = replacementTypes ?? new Dictionary<SyntaxNode, string>();
     }
 
     public string Emit(ExpressionSyntax expression)
@@ -114,20 +117,27 @@ internal sealed class ProjectionExpressionEmitter
 
     private string EmitAnonymousObject(AnonymousObjectCreationExpressionSyntax expression)
     {
+        var replacementType = _replacementTypes.TryGetValue(expression, out var resolvedType)
+            ? resolvedType
+            : null;
         var initializers = expression.Initializers
             .Select(
                 initializer =>
                 {
-                    if (initializer.NameEquals is null)
+                    if (replacementType is null && initializer.NameEquals is null)
                     {
                         return Emit(initializer.Expression);
                     }
 
-                    return $"{initializer.NameEquals.Name.Identifier.ValueText} = {Emit(initializer.Expression)}";
+                    var memberName = initializer.NameEquals?.Name.Identifier.ValueText
+                        ?? GetAnonymousMemberName(initializer);
+                    return $"{memberName} = {Emit(initializer.Expression)}";
                 }
             );
 
-        return $"new {{ {string.Join(", ", initializers)} }}";
+        return replacementType is null
+            ? $"new {{ {string.Join(", ", initializers)} }}"
+            : $"new {replacementType} {{ {string.Join(", ", initializers)} }}";
     }
 
     private string EmitObjectCreation(ObjectCreationExpressionSyntax expression)
@@ -149,7 +159,31 @@ internal sealed class ProjectionExpressionEmitter
 
     private string EmitInvocation(InvocationExpressionSyntax expression)
     {
+        if (GetInvocationName(expression.Expression) == "SelectExpr")
+        {
+            return EmitSelectExprInvocation(expression);
+        }
+
         return $"{Emit(expression.Expression)}{EmitArgumentList(expression.ArgumentList)}";
+    }
+
+    private string EmitSelectExprInvocation(InvocationExpressionSyntax expression)
+    {
+        var receiver = expression.Expression switch
+        {
+            MemberAccessExpressionSyntax memberAccess => Emit(memberAccess.Expression),
+            _ => Emit(expression.Expression),
+        };
+        var selector = expression.ArgumentList.Arguments
+            .Select(argument => argument.Expression)
+            .OfType<LambdaExpressionSyntax>()
+            .FirstOrDefault();
+        if (selector is null)
+        {
+            return $"{receiver}.Select{EmitArgumentList(expression.ArgumentList)}";
+        }
+
+        return $"{receiver}.Select({Emit(selector)})";
     }
 
     private string EmitArgumentList(ArgumentListSyntax argumentList)
@@ -217,7 +251,13 @@ internal sealed class ProjectionExpressionEmitter
             return type.ToString();
         }
 
-        var symbol = _semanticModel.GetTypeInfo(type).Type;
+        var typeInfo = _semanticModel.GetTypeInfo(type);
+        var symbol = typeInfo.Type ?? typeInfo.ConvertedType;
+        if (symbol is null || symbol is IErrorTypeSymbol)
+        {
+            symbol = ResolveFallbackType(type);
+        }
+
         return symbol is null ? type.ToString() : symbol.ToFullyQualifiedTypeName();
     }
 
@@ -248,11 +288,13 @@ internal sealed class ProjectionExpressionEmitter
                 var receiver = Emit(conditionalAccess.Expression);
                 checks.Add(receiver);
                 var access = BindConditionalReceiver(receiver, conditionalAccess.WhenNotNull, checks) + tail;
-                var fallback = ReferenceEquals(expression, _rootExpression) && _useEmptyCollectionFallback
-                    ? CreateEmptyCollectionFallback(_rootTypeName)
+                var expressionTypeName = GetExpressionTypeName(expression, out var canCast);
+                var useEmptyFallback = ReferenceEquals(expression, _rootExpression) && _useEmptyCollectionFallback;
+                var fallback = useEmptyFallback
+                    ? CreateEmptyCollectionFallback(expressionTypeName)
                     : "null";
 
-                var castPrefix = fallback == "null" ? $"({_rootTypeName})" : string.Empty;
+                var castPrefix = !useEmptyFallback && canCast ? $"({expressionTypeName})" : string.Empty;
                 rewritten =
                     $"{string.Join(" && ", checks.Select(check => $"{check} != null"))} ? {castPrefix}{access} : {fallback}";
                 return true;
@@ -366,5 +408,83 @@ internal sealed class ProjectionExpressionEmitter
     private bool BelongsToSemanticModel(SyntaxNode node)
     {
         return node.SyntaxTree == _semanticModel.SyntaxTree;
+    }
+
+    private ITypeSymbol? ResolveFallbackType(TypeSyntax type)
+    {
+        var symbol = _semanticModel.GetSymbolInfo(type).Symbol as ITypeSymbol;
+        if (symbol is not null && symbol is not IErrorTypeSymbol)
+        {
+            return symbol;
+        }
+
+        return type switch
+        {
+            IdentifierNameSyntax identifier => _semanticModel.LookupNamespacesAndTypes(type.SpanStart, name: identifier.Identifier.ValueText)
+                .OfType<ITypeSymbol>()
+                .FirstOrDefault(),
+            QualifiedNameSyntax qualifiedName => _semanticModel.LookupNamespacesAndTypes(type.SpanStart, name: qualifiedName.Right.Identifier.ValueText)
+                .OfType<ITypeSymbol>()
+                .FirstOrDefault(candidate => candidate.ToDisplayString().EndsWith(qualifiedName.ToString(), System.StringComparison.Ordinal)),
+            AliasQualifiedNameSyntax aliasQualifiedName => _semanticModel.LookupNamespacesAndTypes(type.SpanStart, name: aliasQualifiedName.Name.Identifier.ValueText)
+                .OfType<ITypeSymbol>()
+                .FirstOrDefault(),
+            GenericNameSyntax genericName => _semanticModel.LookupNamespacesAndTypes(type.SpanStart, name: genericName.Identifier.ValueText)
+                .OfType<INamedTypeSymbol>()
+                .FirstOrDefault(candidate => candidate.Arity == genericName.TypeArgumentList.Arguments.Count),
+            _ => null,
+        };
+    }
+
+    private string GetExpressionTypeName(ExpressionSyntax expression, out bool canCast)
+    {
+        canCast = true;
+        if (!BelongsToSemanticModel(expression))
+        {
+            if (ReferenceEquals(expression, _rootExpression))
+            {
+                return _rootTypeName;
+            }
+
+            canCast = false;
+            return "object";
+        }
+
+        var type = _semanticModel.GetTypeInfo(expression).ConvertedType
+            ?? _semanticModel.GetTypeInfo(expression).Type;
+        if (type is null)
+        {
+            canCast = false;
+            return ReferenceEquals(expression, _rootExpression) ? _rootTypeName : "object";
+        }
+
+        if (type.IsAnonymousType)
+        {
+            canCast = false;
+            return "object";
+        }
+
+        return type.ToFullyQualifiedTypeName();
+    }
+
+    private static string GetAnonymousMemberName(AnonymousObjectMemberDeclaratorSyntax initializer)
+    {
+        return initializer.Expression switch
+        {
+            IdentifierNameSyntax identifier => identifier.Identifier.ValueText,
+            MemberAccessExpressionSyntax memberAccess => memberAccess.Name.Identifier.ValueText,
+            _ => initializer.Expression.ToString(),
+        };
+    }
+
+    private static string GetInvocationName(ExpressionSyntax expression)
+    {
+        return expression switch
+        {
+            MemberAccessExpressionSyntax memberAccess => memberAccess.Name.Identifier.ValueText,
+            IdentifierNameSyntax identifier => identifier.Identifier.ValueText,
+            GenericNameSyntax genericName => genericName.Identifier.ValueText,
+            _ => string.Empty,
+        };
     }
 }

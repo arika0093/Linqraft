@@ -186,9 +186,9 @@ internal sealed class ProjectionAnalyzer
             }
             case ProjectionPattern.PredefinedDto:
             {
-                var predefinedType = semanticModel.GetTypeInfo(((ObjectCreationExpressionSyntax)selectorBody).Type, _cancellationToken).Type;
-                resultTypeName = predefinedType?.ToFullyQualifiedTypeName()
-                    ?? ((ObjectCreationExpressionSyntax)selectorBody).Type.ToString();
+                var predefinedTypeSyntax = ((ObjectCreationExpressionSyntax)selectorBody).Type;
+                resultTypeName = ResolveNamedType(predefinedTypeSyntax, semanticModel, callerNamespace)
+                    ?? predefinedTypeSyntax.ToString();
                 var buildResult = BuildProjectionObject(
                     selectorBody,
                     semanticModel,
@@ -527,11 +527,46 @@ internal sealed class ProjectionAnalyzer
             }
 
             var typeSymbol = semanticModel.GetTypeInfo(namedObject.Type, _cancellationToken).Type;
-            return typeSymbol?.ToFullyQualifiedTypeName() ?? namedObject.Type.ToString();
+            return ResolveNamedType(namedObject.Type, semanticModel, defaultNamespace)
+                ?? typeSymbol?.ToFullyQualifiedTypeName()
+                ?? namedObject.Type.ToString();
         }
 
         if (TryGetCollectionProjection(expression, semanticModel, out var collectionProjection))
         {
+            if (collectionProjection.IsNestedExplicitDto)
+            {
+                var nestedResultType = ResolveNamedType(collectionProjection.NestedResultTypeSyntax!, semanticModel, defaultNamespace);
+                if (nestedResultType is not null)
+                {
+                    if (collectionProjection.LambdaBody is AnonymousObjectCreationExpressionSyntax nestedAnonymous)
+                    {
+                        var nestedDto = CreateRootDtoModel(
+                            collectionProjection.NestedResultTypeSyntax!,
+                            semanticModel,
+                            collectionProjection.Invocation,
+                            semanticModel.GetTypeInfo(collectionProjection.SourceTypeSyntax!, _cancellationToken).Type
+                                as INamedTypeSymbol
+                        );
+                        replacementTypes[nestedAnonymous] = nestedDto.FullyQualifiedName;
+                        var nestedBuildResult = BuildProjectionObject(
+                            nestedAnonymous,
+                            semanticModel,
+                            nestedDto.FullyQualifiedName,
+                            nestedDto,
+                            new HashSet<string>(),
+                            namedContext: true,
+                            defaultNamespace: nestedDto.Namespace
+                        );
+                        nestedDto = nestedBuildResult.DtoModel!;
+                        RegisterDto(nestedDto);
+                        return BuildCollectionTypeName(collectionProjection.ExpressionType, nestedDto.FullyQualifiedName);
+                    }
+
+                    return BuildCollectionTypeName(collectionProjection.ExpressionType, nestedResultType);
+                }
+            }
+
             if (collectionProjection.LambdaBody is AnonymousObjectCreationExpressionSyntax anonymousBody && namedContext)
             {
                 var nestedDto = CreateNestedDtoModel(memberName, anonymousBody, defaultNamespace);
@@ -567,44 +602,10 @@ internal sealed class ProjectionAnalyzer
                 var elementType = semanticModel.GetTypeInfo(namedBody.Type, _cancellationToken).Type;
                 return BuildCollectionTypeName(
                     collectionProjection.ExpressionType,
-                    elementType?.ToFullyQualifiedTypeName() ?? namedBody.Type.ToString()
+                    ResolveNamedType(namedBody.Type, semanticModel, defaultNamespace)
+                        ?? elementType?.ToFullyQualifiedTypeName()
+                        ?? namedBody.Type.ToString()
                 );
-            }
-
-            if (collectionProjection.IsNestedExplicitDto)
-            {
-                var nestedResultType = ResolveNamedType(collectionProjection.NestedResultTypeSyntax!, semanticModel, defaultNamespace);
-                if (nestedResultType is not null)
-                {
-                    if (collectionProjection.LambdaBody is AnonymousObjectCreationExpressionSyntax nestedAnonymous)
-                    {
-                        // TODO: The public docs say nested SelectExpr should require empty partial declarations,
-                        // but the shipped examples do not always include them. This implementation prefers
-                        // generating the nested DTO in the current namespace when no declaration can be resolved.
-                        var nestedDto = CreateRootDtoModel(
-                            collectionProjection.NestedResultTypeSyntax!,
-                            semanticModel,
-                            collectionProjection.Invocation,
-                            semanticModel.GetTypeInfo(collectionProjection.SourceTypeSyntax!, _cancellationToken).Type
-                                as INamedTypeSymbol
-                        );
-                        replacementTypes[nestedAnonymous] = nestedDto.FullyQualifiedName;
-                        var nestedBuildResult = BuildProjectionObject(
-                            nestedAnonymous,
-                            semanticModel,
-                            nestedDto.FullyQualifiedName,
-                            nestedDto,
-                            new HashSet<string>(),
-                            namedContext: true,
-                            defaultNamespace: nestedDto.Namespace
-                        );
-                        nestedDto = nestedBuildResult.DtoModel!;
-                        RegisterDto(nestedDto);
-                        return BuildCollectionTypeName(collectionProjection.ExpressionType, nestedDto.FullyQualifiedName);
-                    }
-
-                    return BuildCollectionTypeName(collectionProjection.ExpressionType, nestedResultType);
-                }
             }
 
             var lambdaBodyType = semanticModel.GetTypeInfo(collectionProjection.LambdaBody, _cancellationToken).Type;
@@ -665,6 +666,10 @@ internal sealed class ProjectionAnalyzer
     )
     {
         var resultType = semanticModel.GetTypeInfo(resultTypeSyntax, _cancellationToken).Type as INamedTypeSymbol;
+        if (resultType is IErrorTypeSymbol)
+        {
+            resultType = null;
+        }
         var namespaceName = resultType is not null && !resultType.ContainingNamespace.IsGlobalNamespace
             ? SymbolNameHelper.GetNamespace(resultType.ContainingNamespace)
             : ResolveCallerNamespace(invocation, semanticModel);
@@ -835,8 +840,14 @@ internal sealed class ProjectionAnalyzer
                 invocation = whenNotNullInvocation;
                 return true;
             case ConditionalAccessExpressionSyntax conditionalAccess:
-                return conditionalAccess.WhenNotNull is ExpressionSyntax whenNotNull
-                    && TryFindProjectionInvocation(whenNotNull, out invocation);
+                if (conditionalAccess.WhenNotNull is ExpressionSyntax whenNotNull
+                    && TryFindProjectionInvocation(whenNotNull, out invocation))
+                {
+                    return true;
+                }
+
+                invocation = null!;
+                return false;
             default:
                 invocation = null!;
                 return false;

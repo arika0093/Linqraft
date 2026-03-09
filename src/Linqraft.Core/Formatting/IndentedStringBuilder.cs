@@ -1,4 +1,5 @@
 using System;
+using System.IO;
 using System.Text;
 
 namespace Linqraft.Core.Formatting;
@@ -45,6 +46,15 @@ internal sealed class IndentedStringBuilder
         }
 
         _builder.AppendLine(line);
+    }
+
+    public void AppendLines(string value)
+    {
+        using var reader = new StringReader(value);
+        while (reader.ReadLine() is { } line)
+        {
+            AppendLine(line);
+        }
     }
 
     public void Append(string value)

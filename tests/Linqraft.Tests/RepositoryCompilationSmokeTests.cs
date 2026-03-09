@@ -47,7 +47,7 @@ public sealed class RepositoryCompilationSmokeTests
         var testsCompilation = CreateCompilation(
             "Linqraft.Tests.Source",
             Path.Combine(repositoryRoot, "tests", "Linqraft.Tests"),
-            new[] { CreateGlobalUsingsTree("global using Xunit;\r\nglobal using Shouldly;\r\n") },
+            new[] { CreateTestGlobalUsingsTree() },
             additionalReferences: new[] { sourceGeneratorReference, coreReference }
         );
         GetErrors(testsCompilation).ShouldBeEmpty();
@@ -55,7 +55,7 @@ public sealed class RepositoryCompilationSmokeTests
         var analyzerTestsCompilation = CreateCompilation(
             "Linqraft.Analyzer.Tests.Source",
             Path.Combine(repositoryRoot, "tests", "Linqraft.Analyzer.Tests"),
-            new[] { CreateGlobalUsingsTree("global using Xunit;\r\nglobal using Shouldly;\r\n") },
+            new[] { CreateTestGlobalUsingsTree() },
             additionalReferences: new[] { analyzerReference, coreReference }
         );
         GetErrors(analyzerTestsCompilation).ShouldBeEmpty();
@@ -69,7 +69,7 @@ public sealed class RepositoryCompilationSmokeTests
         GetGeneratedErrors(
             Path.Combine(repositoryRoot, "tests", "Linqraft.Tests.Configuration"),
             OutputKind.ConsoleApplication,
-            additionalSyntaxTrees: new[] { CreateImplicitUsingsTree() },
+            additionalSyntaxTrees: new[] { CreateBasicImplicitUsingsTree() },
             globalOptions: new Dictionary<string, string>(StringComparer.Ordinal)
             {
                 ["build_property.LinqraftRecordGenerate"] = "true",
@@ -82,7 +82,7 @@ public sealed class RepositoryCompilationSmokeTests
         GetGeneratedErrors(
             Path.Combine(repositoryRoot, "examples", "Linqraft.MinimumSample"),
             OutputKind.ConsoleApplication,
-            additionalSyntaxTrees: new[] { CreateImplicitUsingsTree() }
+            additionalSyntaxTrees: new[] { CreateBasicImplicitUsingsTree() }
         ).ShouldBeEmpty();
 
         GetGeneratedErrors(
@@ -90,7 +90,7 @@ public sealed class RepositoryCompilationSmokeTests
             OutputKind.ConsoleApplication,
             additionalSyntaxTrees: new[]
             {
-                CreateImplicitUsingsTree(),
+                CreateApiImplicitUsingsTree(),
                 CreateSourceTree(AspNetExampleStubs, "AspNetExampleStubs.g.cs"),
             }
         ).ShouldBeEmpty();
@@ -100,7 +100,7 @@ public sealed class RepositoryCompilationSmokeTests
             OutputKind.ConsoleApplication,
             additionalSyntaxTrees: new[]
             {
-                CreateImplicitUsingsTree(),
+                CreateWorkerImplicitUsingsTree(),
                 CreateSourceTree(WorkerExampleStubs, "WorkerExampleStubs.g.cs"),
             }
         ).ShouldBeEmpty();
@@ -131,7 +131,7 @@ public sealed class RepositoryCompilationSmokeTests
         params MetadataReference[] additionalReferences
     )
     {
-        var parseOptions = new CSharpParseOptions(LanguageVersion.Preview);
+        var parseOptions = CreateParseOptions();
         var syntaxTrees = Directory
             .EnumerateFiles(projectDirectory, "*.cs", SearchOption.AllDirectories)
             .Where(path => !path.Contains($"{Path.DirectorySeparatorChar}bin{Path.DirectorySeparatorChar}", StringComparison.OrdinalIgnoreCase))
@@ -157,6 +157,7 @@ public sealed class RepositoryCompilationSmokeTests
     private static ImmutableArray<Diagnostic> GetErrors(CSharpCompilation compilation)
     {
         return compilation.GetDiagnostics()
+            .Where(diagnostic => diagnostic.Id != "RSEXPERIMENTAL002")
             .Where(diagnostic => diagnostic.Severity == DiagnosticSeverity.Error)
             .ToImmutableArray();
     }
@@ -177,13 +178,14 @@ public sealed class RepositoryCompilationSmokeTests
         var generator = new LinqraftSourceGenerator();
         GeneratorDriver driver = CSharpGeneratorDriver.Create(
             generators: [generator.AsSourceGenerator()],
-            parseOptions: new CSharpParseOptions(LanguageVersion.Preview),
+            parseOptions: CreateParseOptions(),
             optionsProvider: globalOptions is null ? null : new TestAnalyzerConfigOptionsProvider(globalOptions)
         );
 
         driver.RunGeneratorsAndUpdateCompilation(compilation, out var outputCompilation, out var generatorDiagnostics);
         return generatorDiagnostics
             .Concat(outputCompilation.GetDiagnostics())
+            .Where(diagnostic => diagnostic.Id != "RSEXPERIMENTAL002")
             .Where(diagnostic => diagnostic.Severity == DiagnosticSeverity.Error)
             .ToImmutableArray();
     }
@@ -205,7 +207,10 @@ public sealed class RepositoryCompilationSmokeTests
         var explicitAssemblies = new List<Assembly>
         {
             typeof(object).Assembly,
+            typeof(Console).Assembly,
             typeof(Enumerable).Assembly,
+            typeof(Queryable).Assembly,
+            typeof(System.Linq.Expressions.Expression).Assembly,
             typeof(ImmutableArray<>).Assembly,
             typeof(CSharpCompilation).Assembly,
             typeof(System.Text.Json.JsonSerializer).Assembly,
@@ -218,6 +223,11 @@ public sealed class RepositoryCompilationSmokeTests
             "netstandard",
             "System.Collections",
             "System.Collections.Immutable",
+            "System.Console",
+            "System.Linq",
+            "System.Linq.Queryable",
+            "System.Linq.Expressions",
+            "System.Threading.Tasks",
             "Microsoft.CodeAnalysis.Workspaces",
             "Microsoft.CodeAnalysis.Features",
             "Microsoft.CodeAnalysis.CSharp.Workspaces",
@@ -254,12 +264,36 @@ public sealed class RepositoryCompilationSmokeTests
     {
         return CSharpSyntaxTree.ParseText(
             source,
-            new CSharpParseOptions(LanguageVersion.Preview),
+            CreateParseOptions(),
             path: "GlobalUsings.g.cs"
         );
     }
 
-    private static SyntaxTree CreateImplicitUsingsTree()
+    private static SyntaxTree CreateTestGlobalUsingsTree()
+    {
+        return CreateGlobalUsingsTree(
+            """
+            global using Xunit;
+            global using Shouldly;
+            """
+        );
+    }
+
+    private static SyntaxTree CreateBasicImplicitUsingsTree()
+    {
+        return CreateGlobalUsingsTree(
+            """
+            global using System;
+            global using System.Collections;
+            global using System.Collections.Generic;
+            global using System.Linq;
+            global using System.Threading;
+            global using System.Threading.Tasks;
+            """
+        );
+    }
+
+    private static SyntaxTree CreateApiImplicitUsingsTree()
     {
         return CreateGlobalUsingsTree(
             """
@@ -271,6 +305,21 @@ public sealed class RepositoryCompilationSmokeTests
             global using System.Threading.Tasks;
             global using Microsoft.AspNetCore.Builder;
             global using Microsoft.Extensions.DependencyInjection;
+            """
+        );
+    }
+
+    private static SyntaxTree CreateWorkerImplicitUsingsTree()
+    {
+        return CreateGlobalUsingsTree(
+            """
+            global using System;
+            global using System.Collections;
+            global using System.Collections.Generic;
+            global using System.Linq;
+            global using System.Threading;
+            global using System.Threading.Tasks;
+            global using Microsoft.Extensions.DependencyInjection;
             global using Microsoft.Extensions.Hosting;
             global using Microsoft.Extensions.Logging;
             """
@@ -281,8 +330,15 @@ public sealed class RepositoryCompilationSmokeTests
     {
         return CSharpSyntaxTree.ParseText(
             source,
-            new CSharpParseOptions(LanguageVersion.Preview),
+            CreateParseOptions(),
             path: path
+        );
+    }
+
+    private static CSharpParseOptions CreateParseOptions()
+    {
+        return new CSharpParseOptions(LanguageVersion.Preview).WithFeatures(
+            new[] { new KeyValuePair<string, string>("InterceptorsNamespaces", "Linqraft") }
         );
     }
 

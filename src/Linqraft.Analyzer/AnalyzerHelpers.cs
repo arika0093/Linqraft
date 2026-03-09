@@ -135,15 +135,17 @@ internal static class AnalyzerHelpers
         CancellationToken cancellationToken
     )
     {
-        var lambdaParameters = new HashSet<ISymbol>(
-            lambda switch
-            {
-                SimpleLambdaExpressionSyntax simple => new[] { semanticModel.GetDeclaredSymbol(simple.Parameter, cancellationToken) }.OfType<ISymbol>(),
-                ParenthesizedLambdaExpressionSyntax parenthesized => parenthesized.ParameterList.Parameters
-                    .Select(parameter => semanticModel.GetDeclaredSymbol(parameter, cancellationToken))
-                    .OfType<ISymbol>(),
-                _ => Array.Empty<ISymbol>()
-            },
+        var locallyDeclaredSymbols = new HashSet<ISymbol>(
+            lambda.DescendantNodesAndSelf()
+                .OfType<ParameterSyntax>()
+                .Select(parameter => semanticModel.GetDeclaredSymbol(parameter, cancellationToken))
+                .OfType<ISymbol>()
+                .Concat(
+                    lambda.DescendantNodes()
+                        .OfType<VariableDeclaratorSyntax>()
+                        .Select(variable => semanticModel.GetDeclaredSymbol(variable, cancellationToken))
+                        .OfType<ISymbol>()
+                ),
             SymbolEqualityComparer.Default
         );
 
@@ -154,13 +156,28 @@ internal static class AnalyzerHelpers
                 continue;
             }
 
+            if (identifier.Parent is MemberBindingExpressionSyntax memberBinding && memberBinding.Name == identifier)
+            {
+                continue;
+            }
+
+            if (identifier.Parent is NameEqualsSyntax
+                || identifier.Parent is NameColonSyntax
+                || identifier.Parent is AnonymousObjectMemberDeclaratorSyntax { NameEquals: not null }
+                || identifier.Parent is AssignmentExpressionSyntax assignment && assignment.Left == identifier
+                || identifier.Parent is VariableDeclaratorSyntax
+                || identifier.Parent is ParameterSyntax)
+            {
+                continue;
+            }
+
             var symbol = semanticModel.GetSymbolInfo(identifier, cancellationToken).Symbol;
             if (symbol is null)
             {
                 continue;
             }
 
-            if (lambdaParameters.Contains(symbol))
+            if (locallyDeclaredSymbols.Contains(symbol))
             {
                 continue;
             }
@@ -189,13 +206,9 @@ internal static class AnalyzerHelpers
                 continue;
             }
 
-            if (memberAccess.Expression is IdentifierNameSyntax receiverIdentifier)
+            if (IsLocalAccess(memberAccess.Expression, semanticModel, cancellationToken, locallyDeclaredSymbols))
             {
-                var receiverSymbol = semanticModel.GetSymbolInfo(receiverIdentifier, cancellationToken).Symbol;
-                if (receiverSymbol is not null && lambdaParameters.Contains(receiverSymbol))
-                {
-                    continue;
-                }
+                continue;
             }
 
             yield return symbol;
@@ -266,5 +279,32 @@ internal static class AnalyzerHelpers
         }
 
         return char.ToUpperInvariant(value[0]) + value[1..];
+    }
+
+    private static bool IsLocalAccess(
+        ExpressionSyntax expression,
+        SemanticModel semanticModel,
+        CancellationToken cancellationToken,
+        ISet<ISymbol> locallyDeclaredSymbols
+    )
+    {
+        switch (expression)
+        {
+            case IdentifierNameSyntax identifier:
+            {
+                var symbol = semanticModel.GetSymbolInfo(identifier, cancellationToken).Symbol;
+                return symbol is not null && locallyDeclaredSymbols.Contains(symbol);
+            }
+            case MemberAccessExpressionSyntax memberAccess:
+                return IsLocalAccess(memberAccess.Expression, semanticModel, cancellationToken, locallyDeclaredSymbols);
+            case ConditionalAccessExpressionSyntax conditionalAccess:
+                return IsLocalAccess(conditionalAccess.Expression, semanticModel, cancellationToken, locallyDeclaredSymbols);
+            case ElementAccessExpressionSyntax elementAccess:
+                return IsLocalAccess(elementAccess.Expression, semanticModel, cancellationToken, locallyDeclaredSymbols);
+            case InvocationExpressionSyntax invocation when invocation.Expression is MemberAccessExpressionSyntax memberAccess:
+                return IsLocalAccess(memberAccess.Expression, semanticModel, cancellationToken, locallyDeclaredSymbols);
+            default:
+                return false;
+        }
     }
 }

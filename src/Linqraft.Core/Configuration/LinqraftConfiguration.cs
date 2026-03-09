@@ -1,4 +1,4 @@
-using Microsoft.CodeAnalysis;
+using Microsoft.CodeAnalysis.Diagnostics;
 
 namespace Linqraft.Core.Configuration;
 

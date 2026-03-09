@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.Linq;
+using System.Reflection;
 using System.Threading.Tasks;
 using Linqraft.Analyzer;
 using Microsoft.CodeAnalysis;
@@ -451,10 +452,48 @@ public sealed class AnalyzerSmokeTests
 
     private static IEnumerable<MetadataReference> GetMetadataReferences()
     {
+        var explicitAssemblies = new List<Assembly>
+        {
+            typeof(object).Assembly,
+            typeof(Enumerable).Assembly,
+            typeof(Queryable).Assembly,
+            typeof(System.Linq.Expressions.Expression).Assembly,
+            typeof(List<>).Assembly,
+            typeof(Task).Assembly,
+        };
+
+        foreach (var assemblyName in new[]
+        {
+            "System.Runtime",
+            "netstandard",
+            "System.Collections",
+            "System.Linq",
+            "System.Linq.Queryable",
+            "System.Linq.Expressions",
+            "System.Threading.Tasks",
+        })
+        {
+            try
+            {
+                explicitAssemblies.Add(Assembly.Load(assemblyName));
+            }
+            catch
+            {
+                // Best-effort load for compilation metadata.
+            }
+        }
+
         return AppDomain.CurrentDomain
             .GetAssemblies()
+            .Concat(explicitAssemblies)
             .Where(assembly => !assembly.IsDynamic && !string.IsNullOrWhiteSpace(assembly.Location))
+            .Where(assembly =>
+            {
+                var name = assembly.GetName().Name ?? string.Empty;
+                return !name.StartsWith("Linqraft", StringComparison.Ordinal);
+            })
             .Select(assembly => MetadataReference.CreateFromFile(assembly.Location))
-            .Distinct();
+            .GroupBy(reference => reference.Display, StringComparer.OrdinalIgnoreCase)
+            .Select(group => group.First());
     }
 }

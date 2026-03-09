@@ -3,9 +3,12 @@ using System.CodeDom.Compiler;
 using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.Linq;
+using System.Reflection;
+using System.Threading.Tasks;
 using Linqraft.SourceGenerator;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
+using Microsoft.CodeAnalysis.Diagnostics;
 
 namespace Linqraft.Tests;
 
@@ -441,100 +444,101 @@ public sealed class GeneratorSmokeTests
                 }
             }
 
-            namespace Demo;
-
-            public class Order
+            namespace Demo
             {
-                public int Id { get; set; }
-                public Customer? Customer { get; set; }
-                public List<OrderItem> OrderItems { get; set; } = [];
-            }
-
-            public class Customer
-            {
-                public string Name { get; set; } = "";
-                public Address? Address { get; set; }
-            }
-
-            public class Address
-            {
-                public Country? Country { get; set; }
-                public City? City { get; set; }
-            }
-
-            public class Country
-            {
-                public string Name { get; set; } = "";
-            }
-
-            public class City
-            {
-                public string Name { get; set; } = "";
-            }
-
-            public class OrderItem
-            {
-                public Product? Product { get; set; }
-                public int Quantity { get; set; }
-            }
-
-            public class Product
-            {
-                public string Name { get; set; } = "";
-            }
-
-            public static class SampleData
-            {
-                public static List<Order> GetOrdersFromOtherSource() => [];
-            }
-
-            [Microsoft.AspNetCore.Mvc.Route("api/controller/")]
-            [Microsoft.AspNetCore.Mvc.ApiController]
-            public partial class OrderController : Microsoft.AspNetCore.Mvc.ControllerBase
-            {
-                [Microsoft.AspNetCore.Mvc.HttpGet]
-                [Microsoft.AspNetCore.Mvc.Route("get-orders/explicit")]
-                public Microsoft.AspNetCore.Mvc.ActionResult<List<OrderDto>> GetOrdersAsync()
+                public class Order
                 {
-                    return SampleData
-                        .GetOrdersFromOtherSource()
-                        .AsQueryable()
-                        .SelectExpr<Order, OrderDto>(s => new
-                        {
-                            Id = s.Id,
-                            CustomerName = s.Customer?.Name,
-                            CustomerCountry = s.Customer?.Address?.Country?.Name,
-                            CustomerCity = s.Customer?.Address?.City?.Name,
-                            Items = s.OrderItems.Select(oi => new
-                            {
-                                ProductName = oi.Product?.Name,
-                                Quantity = oi.Quantity,
-                            }),
-                        })
-                        .ToList();
+                    public int Id { get; set; }
+                    public Customer? Customer { get; set; }
+                    public List<OrderItem> OrderItems { get; set; } = [];
                 }
 
-                [Microsoft.AspNetCore.Mvc.HttpGet]
-                [Microsoft.AspNetCore.Mvc.Route("get-orders/anonymous")]
-                public Microsoft.AspNetCore.Mvc.IActionResult GetOrdersAnonymousAsync()
+                public class Customer
                 {
-                    var results = SampleData
-                        .GetOrdersFromOtherSource()
-                        .AsQueryable()
-                        .SelectExpr(s => new
-                        {
-                            Id = s.Id,
-                            CustomerName = s.Customer?.Name,
-                            CustomerCountry = s.Customer?.Address?.Country?.Name,
-                            CustomerCity = s.Customer?.Address?.City?.Name,
-                            Items = s.OrderItems.Select(oi => new
+                    public string Name { get; set; } = "";
+                    public Address? Address { get; set; }
+                }
+
+                public class Address
+                {
+                    public Country? Country { get; set; }
+                    public City? City { get; set; }
+                }
+
+                public class Country
+                {
+                    public string Name { get; set; } = "";
+                }
+
+                public class City
+                {
+                    public string Name { get; set; } = "";
+                }
+
+                public class OrderItem
+                {
+                    public Product? Product { get; set; }
+                    public int Quantity { get; set; }
+                }
+
+                public class Product
+                {
+                    public string Name { get; set; } = "";
+                }
+
+                public static class SampleData
+                {
+                    public static List<Order> GetOrdersFromOtherSource() => [];
+                }
+
+                [Microsoft.AspNetCore.Mvc.Route("api/controller/")]
+                [Microsoft.AspNetCore.Mvc.ApiController]
+                public partial class OrderController : Microsoft.AspNetCore.Mvc.ControllerBase
+                {
+                    [Microsoft.AspNetCore.Mvc.HttpGet]
+                    [Microsoft.AspNetCore.Mvc.Route("get-orders/explicit")]
+                    public Microsoft.AspNetCore.Mvc.ActionResult<List<OrderDto>> GetOrdersAsync()
+                    {
+                        return SampleData
+                            .GetOrdersFromOtherSource()
+                            .AsQueryable()
+                            .SelectExpr<Order, OrderDto>(s => new
                             {
-                                ProductName = oi.Product?.Name,
-                                Quantity = oi.Quantity,
-                            }),
-                        })
-                        .ToList();
-                    return Ok(results);
+                                Id = s.Id,
+                                CustomerName = s.Customer?.Name,
+                                CustomerCountry = s.Customer?.Address?.Country?.Name,
+                                CustomerCity = s.Customer?.Address?.City?.Name,
+                                Items = s.OrderItems.Select(oi => new
+                                {
+                                    ProductName = oi.Product?.Name,
+                                    Quantity = oi.Quantity,
+                                }),
+                            })
+                            .ToList();
+                    }
+
+                    [Microsoft.AspNetCore.Mvc.HttpGet]
+                    [Microsoft.AspNetCore.Mvc.Route("get-orders/anonymous")]
+                    public Microsoft.AspNetCore.Mvc.IActionResult GetOrdersAnonymousAsync()
+                    {
+                        var results = SampleData
+                            .GetOrdersFromOtherSource()
+                            .AsQueryable()
+                            .SelectExpr(s => new
+                            {
+                                Id = s.Id,
+                                CustomerName = s.Customer?.Name,
+                                CustomerCountry = s.Customer?.Address?.Country?.Name,
+                                CustomerCity = s.Customer?.Address?.City?.Name,
+                                Items = s.OrderItems.Select(oi => new
+                                {
+                                    ProductName = oi.Product?.Name,
+                                    Quantity = oi.Quantity,
+                                }),
+                            })
+                            .ToList();
+                        return Ok(results);
+                    }
                 }
             }
             """;
@@ -596,119 +600,120 @@ public sealed class GeneratorSmokeTests
                 }
             }
 
-            namespace Demo;
-
-            public class Order
+            namespace Demo
             {
-                public int Id { get; set; }
-                public Customer? Customer { get; set; }
-                public List<OrderItem> OrderItems { get; set; } = [];
-            }
-
-            public class Customer
-            {
-                public string Name { get; set; } = "";
-                public Address? Address { get; set; }
-            }
-
-            public class Address
-            {
-                public Country? Country { get; set; }
-                public City? City { get; set; }
-            }
-
-            public class Country
-            {
-                public string Name { get; set; } = "";
-            }
-
-            public class City
-            {
-                public string Name { get; set; } = "";
-            }
-
-            public class OrderItem
-            {
-                public Product? Product { get; set; }
-                public int Quantity { get; set; }
-            }
-
-            public class Product
-            {
-                public string Name { get; set; } = "";
-            }
-
-            public static class SampleData
-            {
-                public static List<Order> GetOrdersFromOtherSource() => [];
-            }
-
-            public static class AppHost
-            {
-                public static void Build(string[] args)
+                public class Order
                 {
-                    var builder = Microsoft.AspNetCore.Builder.WebApplication.CreateBuilder(args);
-                    builder.Services.AddOpenApi();
-                    builder.Services.AddControllers();
+                    public int Id { get; set; }
+                    public Customer? Customer { get; set; }
+                    public List<OrderItem> OrderItems { get; set; } = [];
+                }
 
-                    var app = builder.Build();
+                public class Customer
+                {
+                    public string Name { get; set; } = "";
+                    public Address? Address { get; set; }
+                }
 
-                    app.MapOpenApi();
-                    app.UseSwaggerUI(options =>
+                public class Address
+                {
+                    public Country? Country { get; set; }
+                    public City? City { get; set; }
+                }
+
+                public class Country
+                {
+                    public string Name { get; set; } = "";
+                }
+
+                public class City
+                {
+                    public string Name { get; set; } = "";
+                }
+
+                public class OrderItem
+                {
+                    public Product? Product { get; set; }
+                    public int Quantity { get; set; }
+                }
+
+                public class Product
+                {
+                    public string Name { get; set; } = "";
+                }
+
+                public static class SampleData
+                {
+                    public static List<Order> GetOrdersFromOtherSource() => [];
+                }
+
+                public static class AppHost
+                {
+                    public static void Build(string[] args)
                     {
-                        options.SwaggerEndpoint("/openapi/v1.json", "v1");
-                        options.RoutePrefix = "";
-                    });
+                        var builder = Microsoft.AspNetCore.Builder.WebApplication.CreateBuilder(args);
+                        builder.Services.AddOpenApi();
+                        builder.Services.AddControllers();
 
-                    app.MapGet(
-                        "/api/minimal/get-orders/explicit",
-                        () =>
+                        var app = builder.Build();
+
+                        app.MapOpenApi();
+                        app.UseSwaggerUI(options =>
                         {
-                            return SampleData
-                                .GetOrdersFromOtherSource()
-                                .AsQueryable()
-                                .SelectExpr<Order, OrderDtoMinimal>(s => new
-                                {
-                                    Id = s.Id,
-                                    CustomerName = s.Customer?.Name,
-                                    CustomerCountry = s.Customer?.Address?.Country?.Name,
-                                    CustomerCity = s.Customer?.Address?.City?.Name,
-                                    Items = s.OrderItems.Select(oi => new
-                                    {
-                                        ProductName = oi.Product?.Name,
-                                        Quantity = oi.Quantity,
-                                    }),
-                                })
-                                .ToList();
-                        }
-                    );
+                            options.SwaggerEndpoint("/openapi/v1.json", "v1");
+                            options.RoutePrefix = "";
+                        });
 
-                    app.MapGet(
-                        "/api/minimal/get-orders/anonymous",
-                        () =>
-                        {
-                            return SampleData
-                                .GetOrdersFromOtherSource()
-                                .AsQueryable()
-                                .SelectExpr(s => new
-                                {
-                                    Id = s.Id,
-                                    CustomerName = s.Customer?.Name,
-                                    CustomerCountry = s.Customer?.Address?.Country?.Name,
-                                    CustomerCity = s.Customer?.Address?.City?.Name,
-                                    Items = s.OrderItems.Select(oi => new
+                        app.MapGet(
+                            "/api/minimal/get-orders/explicit",
+                            () =>
+                            {
+                                return SampleData
+                                    .GetOrdersFromOtherSource()
+                                    .AsQueryable()
+                                    .SelectExpr<Order, OrderDtoMinimal>(s => new
                                     {
-                                        ProductName = oi.Product?.Name,
-                                        Quantity = oi.Quantity,
-                                    }),
-                                })
-                                .ToList();
-                        }
-                    );
+                                        Id = s.Id,
+                                        CustomerName = s.Customer?.Name,
+                                        CustomerCountry = s.Customer?.Address?.Country?.Name,
+                                        CustomerCity = s.Customer?.Address?.City?.Name,
+                                        Items = s.OrderItems.Select(oi => new
+                                        {
+                                            ProductName = oi.Product?.Name,
+                                            Quantity = oi.Quantity,
+                                        }),
+                                    })
+                                    .ToList();
+                            }
+                        );
 
-                    app.UseHttpsRedirection();
-                    app.MapControllers();
-                    app.Run();
+                        app.MapGet(
+                            "/api/minimal/get-orders/anonymous",
+                            () =>
+                            {
+                                return SampleData
+                                    .GetOrdersFromOtherSource()
+                                    .AsQueryable()
+                                    .SelectExpr(s => new
+                                    {
+                                        Id = s.Id,
+                                        CustomerName = s.Customer?.Name,
+                                        CustomerCountry = s.Customer?.Address?.Country?.Name,
+                                        CustomerCity = s.Customer?.Address?.City?.Name,
+                                        Items = s.OrderItems.Select(oi => new
+                                        {
+                                            ProductName = oi.Product?.Name,
+                                            Quantity = oi.Quantity,
+                                        }),
+                                    })
+                                    .ToList();
+                            }
+                        );
+
+                        app.UseHttpsRedirection();
+                        app.MapControllers();
+                        app.Run();
+                    }
                 }
             }
             """;
@@ -754,80 +759,81 @@ public sealed class GeneratorSmokeTests
                 }
             }
 
-            namespace Demo;
-
-            public sealed class SampleDbContext
+            namespace Demo
             {
-                public Microsoft.EntityFrameworkCore.DbSet<SampleClass> SampleClasses { get; } = null!;
-            }
-
-            public class SampleClass
-            {
-                public int Id { get; set; }
-                public string Foo { get; set; } = string.Empty;
-                public string Bar { get; set; } = string.Empty;
-                public List<SampleChildClass> Childs { get; set; } = [];
-                public SampleChildClass2? Child2 { get; set; }
-                public SampleChildClass3 Child3 { get; set; } = null!;
-            }
-
-            public class SampleChildClass
-            {
-                public int Id { get; set; }
-                public string Baz { get; set; } = string.Empty;
-                public SampleChildChildClass? Child { get; set; }
-            }
-
-            public class SampleChildChildClass
-            {
-                public int Id { get; set; }
-                public string Qux { get; set; } = string.Empty;
-            }
-
-            public class SampleChildClass2
-            {
-                public int Id { get; set; }
-                public string Quux { get; set; } = string.Empty;
-            }
-
-            public class SampleChildClass3
-            {
-                public int Id { get; set; }
-                public string Corge { get; set; } = string.Empty;
-                public SampleChildChildClass2? Child { get; set; }
-            }
-
-            public class SampleChildChildClass2
-            {
-                public int Id { get; set; }
-                public string Grault { get; set; } = string.Empty;
-            }
-
-            public sealed class QueryHolder
-            {
-                public async Task<SampleClassDto?> ProjectAsync(SampleDbContext dbContext, CancellationToken cancellationToken)
+                public sealed class SampleDbContext
                 {
-                    return await dbContext.SampleClasses
-                        .SelectExpr<SampleClass, SampleClassDto>(s => new
-                        {
-                            s.Id,
-                            s.Foo,
-                            s.Bar,
-                            Childs = s.Childs.Select(c => new
+                    public Microsoft.EntityFrameworkCore.DbSet<SampleClass> SampleClasses { get; } = null!;
+                }
+
+                public class SampleClass
+                {
+                    public int Id { get; set; }
+                    public string Foo { get; set; } = string.Empty;
+                    public string Bar { get; set; } = string.Empty;
+                    public List<SampleChildClass> Childs { get; set; } = [];
+                    public SampleChildClass2? Child2 { get; set; }
+                    public SampleChildClass3 Child3 { get; set; } = null!;
+                }
+
+                public class SampleChildClass
+                {
+                    public int Id { get; set; }
+                    public string Baz { get; set; } = string.Empty;
+                    public SampleChildChildClass? Child { get; set; }
+                }
+
+                public class SampleChildChildClass
+                {
+                    public int Id { get; set; }
+                    public string Qux { get; set; } = string.Empty;
+                }
+
+                public class SampleChildClass2
+                {
+                    public int Id { get; set; }
+                    public string Quux { get; set; } = string.Empty;
+                }
+
+                public class SampleChildClass3
+                {
+                    public int Id { get; set; }
+                    public string Corge { get; set; } = string.Empty;
+                    public SampleChildChildClass2? Child { get; set; }
+                }
+
+                public class SampleChildChildClass2
+                {
+                    public int Id { get; set; }
+                    public string Grault { get; set; } = string.Empty;
+                }
+
+                public sealed class QueryHolder
+                {
+                    public async Task<SampleClassDto?> ProjectAsync(SampleDbContext dbContext, CancellationToken cancellationToken)
+                    {
+                        return await dbContext.SampleClasses
+                            .SelectExpr<SampleClass, SampleClassDto>(s => new
                             {
-                                c.Id,
-                                c.Baz,
-                                ChildId = c.Child?.Id,
-                                ChildQux = c.Child?.Qux,
-                            }),
-                            Child2Id = s.Child2?.Id,
-                            Child2Quux = s.Child2?.Quux,
-                            Child3Id = s.Child3.Id,
-                            Child3Corge = s.Child3.Corge,
-                            Child3ChildId = s.Child3?.Child?.Id,
-                            Child3ChildGrault = s.Child3?.Child?.Grault,
-                        })
-                        .FirstOrDefaultAsync(cancellationToken);
+                                s.Id,
+                                s.Foo,
+                                s.Bar,
+                                Childs = s.Childs.Select(c => new
+                                {
+                                    c.Id,
+                                    c.Baz,
+                                    ChildId = c.Child?.Id,
+                                    ChildQux = c.Child?.Qux,
+                                }),
+                                Child2Id = s.Child2?.Id,
+                                Child2Quux = s.Child2?.Quux,
+                                Child3Id = s.Child3.Id,
+                                Child3Corge = s.Child3.Corge,
+                                Child3ChildId = s.Child3?.Child?.Id,
+                                Child3ChildGrault = s.Child3?.Child?.Grault,
+                            })
+                            .FirstOrDefaultAsync(cancellationToken);
+                    }
                 }
             }
             """;
@@ -1296,11 +1302,12 @@ public sealed class GeneratorSmokeTests
         IReadOnlyDictionary<string, string>? globalOptions = null
     )
     {
-        var parseOptions = new CSharpParseOptions(LanguageVersion.Preview);
+        var parseOptions = CreateParseOptions();
         var syntaxTree = CSharpSyntaxTree.ParseText(source, parseOptions, path: "Test0.cs");
+        var implicitUsingsTree = CreateImplicitUsingsTree(source);
         var compilation = CSharpCompilation.Create(
             assemblyName: "GeneratorTests",
-            syntaxTrees: [syntaxTree],
+            syntaxTrees: [syntaxTree, implicitUsingsTree],
             references: GetMetadataReferences(),
             options: new CSharpCompilationOptions(OutputKind.DynamicallyLinkedLibrary, nullableContextOptions: NullableContextOptions.Enable)
         );
@@ -1324,11 +1331,12 @@ public sealed class GeneratorSmokeTests
         IReadOnlyDictionary<string, string>? globalOptions = null
     )
     {
-        var parseOptions = new CSharpParseOptions(LanguageVersion.Preview);
+        var parseOptions = CreateParseOptions();
         var syntaxTree = CSharpSyntaxTree.ParseText(source, parseOptions, path: "Test0.cs");
+        var implicitUsingsTree = CreateImplicitUsingsTree(source);
         var compilation = CSharpCompilation.Create(
             assemblyName: "GeneratorTests",
-            syntaxTrees: [syntaxTree],
+            syntaxTrees: [syntaxTree, implicitUsingsTree],
             references: GetMetadataReferences(),
             options: new CSharpCompilationOptions(OutputKind.DynamicallyLinkedLibrary, nullableContextOptions: NullableContextOptions.Enable)
         );
@@ -1346,20 +1354,104 @@ public sealed class GeneratorSmokeTests
 
     private static IEnumerable<MetadataReference> GetMetadataReferences()
     {
+        var explicitAssemblies = new List<Assembly>
+        {
+            typeof(object).Assembly,
+            typeof(Console).Assembly,
+            typeof(Enumerable).Assembly,
+            typeof(Queryable).Assembly,
+            typeof(System.Linq.Expressions.Expression).Assembly,
+            typeof(List<>).Assembly,
+            typeof(Task).Assembly,
+            typeof(GeneratedCodeAttribute).Assembly,
+        };
+
+        foreach (var assemblyName in new[]
+        {
+            "System.Runtime",
+            "netstandard",
+            "System.Collections",
+            "System.Console",
+            "System.Linq",
+            "System.Linq.Queryable",
+            "System.Linq.Expressions",
+            "System.Threading.Tasks",
+        })
+        {
+            try
+            {
+                explicitAssemblies.Add(Assembly.Load(assemblyName));
+            }
+            catch
+            {
+                // Best-effort load for compilation metadata.
+            }
+        }
+
         return AppDomain.CurrentDomain
             .GetAssemblies()
+            .Concat(explicitAssemblies)
             .Where(assembly => !assembly.IsDynamic && !string.IsNullOrWhiteSpace(assembly.Location))
+            .Where(assembly =>
+            {
+                var name = assembly.GetName().Name ?? string.Empty;
+                return !name.StartsWith("Linqraft", StringComparison.Ordinal);
+            })
             .Select(assembly => MetadataReference.CreateFromFile(assembly.Location))
-            .Concat(
-                new[]
-                {
-                    MetadataReference.CreateFromFile(typeof(object).Assembly.Location),
-                    MetadataReference.CreateFromFile(typeof(Enumerable).Assembly.Location),
-                    MetadataReference.CreateFromFile(typeof(List<>).Assembly.Location),
-                    MetadataReference.CreateFromFile(typeof(GeneratedCodeAttribute).Assembly.Location),
-                }
-            )
-            .Distinct();
+            .GroupBy(reference => reference.Display, StringComparer.OrdinalIgnoreCase)
+            .Select(group => group.First());
+    }
+
+    private static SyntaxTree CreateImplicitUsingsTree(string source)
+    {
+        var usings = new List<string>
+        {
+            "global using System;",
+            "global using System.Collections;",
+            "global using System.Collections.Generic;",
+            "global using System.Linq;",
+            "global using System.Threading;",
+            "global using System.Threading.Tasks;",
+        };
+
+        if (source.Contains("namespace Microsoft.Extensions.DependencyInjection", StringComparison.Ordinal)
+            || source.Contains(".AddOpenApi(", StringComparison.Ordinal)
+            || source.Contains(".AddControllers(", StringComparison.Ordinal)
+            || source.Contains(".AddHostedService<", StringComparison.Ordinal))
+        {
+            usings.Add("global using Microsoft.Extensions.DependencyInjection;");
+        }
+
+        if (source.Contains("namespace Microsoft.AspNetCore.Builder", StringComparison.Ordinal)
+            || source.Contains("WebApplication", StringComparison.Ordinal))
+        {
+            usings.Add("global using Microsoft.AspNetCore.Builder;");
+        }
+
+        if (source.Contains("namespace Microsoft.Extensions.Hosting", StringComparison.Ordinal)
+            || source.Contains("Host.CreateApplicationBuilder", StringComparison.Ordinal))
+        {
+            usings.Add("global using Microsoft.Extensions.Hosting;");
+        }
+
+        if (source.Contains("namespace Microsoft.Extensions.Logging", StringComparison.Ordinal)
+            || source.Contains("ILogger<", StringComparison.Ordinal))
+        {
+            usings.Add("global using Microsoft.Extensions.Logging;");
+        }
+
+        return CSharpSyntaxTree.ParseText(
+            string.Join(Environment.NewLine, usings),
+            CreateParseOptions(),
+            path: "GlobalUsings.g.cs"
+        );
+    }
+
+    private static CSharpParseOptions CreateParseOptions()
+    {
+        return new CSharpParseOptions(LanguageVersion.Preview).WithFeatures(
+            new[] { new KeyValuePair<string, string>("InterceptorsNamespaces", "Linqraft") }
+        );
     }
 
     private sealed class TestAnalyzerConfigOptionsProvider : AnalyzerConfigOptionsProvider
