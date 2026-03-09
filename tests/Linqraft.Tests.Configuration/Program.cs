@@ -43,6 +43,12 @@ public sealed class GlobalPropertyConfigurationTests
         },
     ];
 
+    private static readonly List<CaptureFormattingItem> CaptureFormattingItems =
+    [
+        new() { Id = 1, Value = 3 },
+        new() { Id = 2, Value = 5 },
+    ];
+
     [Test]
     public void Project_wide_properties_are_applied_to_generated_types()
     {
@@ -201,6 +207,14 @@ public sealed class GlobalPropertyConfigurationTests
         lines[itemsLineIndex + 5].Trim().ShouldBe("})");
         lines[itemsLineIndex + 6].Trim().ShouldBe(".ToList()");
         lines[itemsLineIndex + 7].Trim().ShouldBe(": null,");
+        CountLeadingSpaces(lines[itemsLineIndex]).ShouldBe(12);
+        CountLeadingSpaces(lines[itemsLineIndex + 1]).ShouldBe(16);
+        CountLeadingSpaces(lines[itemsLineIndex + 2]).ShouldBe(20);
+        CountLeadingSpaces(lines[itemsLineIndex + 3]).ShouldBe(24);
+        CountLeadingSpaces(lines[itemsLineIndex + 4]).ShouldBe(24);
+        CountLeadingSpaces(lines[itemsLineIndex + 5]).ShouldBe(20);
+        CountLeadingSpaces(lines[itemsLineIndex + 6]).ShouldBe(20);
+        CountLeadingSpaces(lines[itemsLineIndex + 7]).ShouldBe(16);
         projectionSource
             .Contains("Items = order.Items != null ? order.Items.Select(", StringComparison.Ordinal)
             .ShouldBeFalse();
@@ -250,6 +264,12 @@ public sealed class GlobalPropertyConfigurationTests
             .Trim()
             .ShouldBe("GrandChild2Values = child.GrandChilds.Select(grandChild => grandChild.Value),");
         lines[childLineIndex + 5].Trim().ShouldBe("})");
+        CountLeadingSpaces(lines[childLineIndex]).ShouldBe(12);
+        CountLeadingSpaces(lines[childLineIndex + 1]).ShouldBe(16);
+        CountLeadingSpaces(lines[childLineIndex + 2]).ShouldBe(20);
+        CountLeadingSpaces(lines[childLineIndex + 3]).ShouldBe(20);
+        CountLeadingSpaces(lines[childLineIndex + 4]).ShouldBe(20);
+        CountLeadingSpaces(lines[childLineIndex + 5]).ShouldBe(16);
         projectionSource.Contains("new {", StringComparison.Ordinal).ShouldBeFalse();
     }
 
@@ -319,6 +339,112 @@ public sealed class GlobalPropertyConfigurationTests
                 StringComparison.Ordinal
             )
             .ShouldBeTrue();
+
+        var lines = projectionSource.Replace("\r\n", "\n", StringComparison.Ordinal).Split('\n');
+        var interceptAttributeIndex = Array.FindIndex(
+            lines,
+            line =>
+                line.Contains(
+                    "[global::System.Runtime.CompilerServices.InterceptsLocationAttribute",
+                    StringComparison.Ordinal
+                )
+        );
+        var openBraceIndex = interceptAttributeIndex + 2;
+
+        CountLeadingSpaces(lines[interceptAttributeIndex]).ShouldBe(8);
+        CountLeadingSpaces(lines[interceptAttributeIndex + 1]).ShouldBe(8);
+        lines[openBraceIndex].Trim().ShouldBe("{");
+        lines[openBraceIndex + 1]
+            .Trim()
+            .ShouldStartWith(
+                "var converted = ((global::System.Linq.IQueryable<global::Order>)(object)query).Select("
+            );
+        CountLeadingSpaces(lines[openBraceIndex + 1]).ShouldBe(12);
+    }
+
+    [Test]
+    public void Generated_projection_source_indents_capture_extraction_without_extra_blank_lines()
+    {
+        var val = 2;
+        var multiplier = 4;
+        var result = CaptureFormattingItems
+            .AsQueryable()
+            .SelectExpr<CaptureFormattingItem, ConfiguredCaptureFormattingDto>(item => new
+            {
+                item.Id,
+                NewValue = item.Value + val,
+                DoubledValue = item.Value * multiplier,
+            }, new { val, multiplier })
+            .ToList();
+
+        result.Count.ShouldBe(2);
+        result[0].NewValue.ShouldBe(5);
+        result[0].DoubledValue.ShouldBe(12);
+        result[1].NewValue.ShouldBe(7);
+        result[1].DoubledValue.ShouldBe(20);
+
+        var projectionSource = GetGeneratedProjectionSourceContaining(
+            "ConfiguredCaptureFormattingDto",
+            "DoubledValue = item.Value * __linqraft_capture_1_multiplier"
+        );
+        var lines = projectionSource.Replace("\r\n", "\n", StringComparison.Ordinal).Split('\n');
+        var captureTypeIndex = Array.FindIndex(
+            lines,
+            line => line.Contains("var captureType = capture.GetType();", StringComparison.Ordinal)
+        );
+        var firstValueIndex = Array.FindIndex(
+            lines,
+            line =>
+                line.Contains(
+                    "var __linqraft_capture_0_valValue = __linqraft_capture_0_valProperty.GetValue(capture);",
+                    StringComparison.Ordinal
+                )
+        );
+        var secondPropertyIndex = Array.FindIndex(
+            lines,
+            line =>
+                line.Contains(
+                    "var __linqraft_capture_1_multiplierProperty = captureType.GetProperty(\"multiplier\"",
+                    StringComparison.Ordinal
+                )
+        );
+        var convertedIndex = Array.FindIndex(
+            lines,
+            line =>
+                line.Contains(
+                    "var converted = ((global::System.Linq.IQueryable<global::CaptureFormattingItem>)(object)query).Select(",
+                    StringComparison.Ordinal
+                )
+        );
+        var returnIndex = Array.FindIndex(
+            lines,
+            line =>
+                line.Contains(
+                    "return (global::System.Linq.IQueryable<TResult>)(object)converted;",
+                    StringComparison.Ordinal
+                )
+        );
+
+        captureTypeIndex.ShouldBeGreaterThanOrEqualTo(0);
+        lines[captureTypeIndex - 1].Trim().ShouldBe("{");
+        CountLeadingSpaces(lines[captureTypeIndex]).ShouldBe(12);
+        CountLeadingSpaces(lines[captureTypeIndex + 1]).ShouldBe(12);
+        CountLeadingSpaces(lines[captureTypeIndex + 2]).ShouldBe(12);
+        CountLeadingSpaces(lines[captureTypeIndex + 3]).ShouldBe(12);
+        CountLeadingSpaces(lines[captureTypeIndex + 4]).ShouldBe(16);
+        CountLeadingSpaces(lines[captureTypeIndex + 5]).ShouldBe(12);
+        lines[firstValueIndex - 1].Trim().ShouldBe("}");
+        CountLeadingSpaces(lines[firstValueIndex]).ShouldBe(12);
+        CountLeadingSpaces(lines[firstValueIndex + 1]).ShouldBe(12);
+        CountLeadingSpaces(lines[secondPropertyIndex]).ShouldBe(12);
+        lines[secondPropertyIndex - 1]
+            .Trim()
+            .ShouldStartWith("var __linqraft_capture_0_val =");
+        lines[convertedIndex - 1]
+            .Trim()
+            .ShouldStartWith("var __linqraft_capture_1_multiplier =");
+        CountLeadingSpaces(lines[convertedIndex]).ShouldBe(12);
+        CountLeadingSpaces(lines[returnIndex]).ShouldBe(12);
     }
 
     private static string GetGeneratedProjectionSourceContaining(
@@ -359,6 +485,11 @@ public sealed class GlobalPropertyConfigurationTests
 
         throw new DirectoryNotFoundException("Could not find the repository root for Linqraft.");
     }
+
+    private static int CountLeadingSpaces(string value)
+    {
+        return value.TakeWhile(character => character == ' ').Count();
+    }
 }
 
 public sealed class Order
@@ -396,6 +527,13 @@ public sealed class FormattingChild2
 public sealed class FormattingGrandChild2
 {
     public string Notes { get; set; } = string.Empty;
+
+    public int Value { get; set; }
+}
+
+public sealed class CaptureFormattingItem
+{
+    public int Id { get; set; }
 
     public int Value { get; set; }
 }

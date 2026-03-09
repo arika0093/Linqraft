@@ -61,15 +61,19 @@ internal static class SourceWriters
         LinqraftConfiguration configuration
     )
     {
-        foreach (
-            var dto in ownedDtos
-                .OrderByDescending(model => model.IsRoot)
-                .ThenBy(model => model.Namespace, System.StringComparer.Ordinal)
-                .ThenBy(model => model.FullyQualifiedName, System.StringComparer.Ordinal)
-        )
+        var orderedDtos = ownedDtos
+            .OrderByDescending(model => model.IsRoot)
+            .ThenBy(model => model.Namespace, System.StringComparer.Ordinal)
+            .ThenBy(model => model.FullyQualifiedName, System.StringComparer.Ordinal)
+            .ToList();
+
+        for (var index = 0; index < orderedDtos.Count; index++)
         {
-            WriteDtoDeclaration(builder, dto, configuration);
-            builder.AppendLine();
+            WriteDtoDeclaration(builder, orderedDtos[index], configuration);
+            if (index < orderedDtos.Count - 1)
+            {
+                builder.AppendLine();
+            }
         }
     }
 
@@ -183,7 +187,6 @@ internal static class SourceWriters
 
                     if (request.Captures.Count != 0)
                     {
-                        builder.AppendLine();
                         builder.AppendLine("var captureType = capture.GetType();");
                         foreach (var capture in request.Captures)
                         {
@@ -209,7 +212,6 @@ internal static class SourceWriters
                         }
                     }
 
-                    builder.AppendLine();
                     var selectArgument =
                         request.CanUsePrebuiltExpression
                         && request.ReceiverKind == ReceiverKind.IQueryable

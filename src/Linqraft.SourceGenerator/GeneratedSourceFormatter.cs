@@ -26,16 +26,24 @@ internal static class GeneratedSourceFormatter
         var lastNonEmptyIndent = 0;
         var lastTrimmed = string.Empty;
         var lastQuestionIndent = -1;
+        var previousWasBlank = false;
 
         foreach (var rawLine in lines)
         {
             var trimmed = rawLine.Trim();
             if (trimmed.Length == 0)
             {
+                if (previousWasBlank)
+                {
+                    continue;
+                }
+
                 builder.Append('\n');
+                previousWasBlank = true;
                 continue;
             }
 
+            previousWasBlank = false;
             var leadingCloseCount = CountLeadingClosingBraces(trimmed);
             var baseIndent = System.Math.Max(0, scopeIndent - leadingCloseCount);
             var effectiveIndent = baseIndent;
@@ -63,12 +71,14 @@ internal static class GeneratedSourceFormatter
 
             lastTrimmed = trimmed;
             lastNonEmptyIndent = effectiveIndent;
-            scopeIndent = System.Math.Max(
-                0,
-                effectiveIndent
-                    + CountOpenBraces(trimmed)
-                    - CountCloseBraces(trimmed)
-            );
+            var openCount = CountOpenBraces(trimmed);
+            var trailingCloseCount = CountCloseBraces(trimmed) - leadingCloseCount;
+            scopeIndent =
+                trimmed[0] is '.' or '?' or ':'
+                && openCount == 0
+                && trailingCloseCount == 0
+                    ? System.Math.Max(0, effectiveIndent - 1)
+                    : System.Math.Max(0, effectiveIndent + openCount - trailingCloseCount);
         }
 
         return builder.ToString();
