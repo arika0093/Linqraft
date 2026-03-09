@@ -65,10 +65,9 @@ internal static class GeneratedSourceFormatter
             lastNonEmptyIndent = effectiveIndent;
             scopeIndent = System.Math.Max(
                 0,
-                baseIndent
+                effectiveIndent
                     + CountOpenBraces(trimmed)
                     - CountCloseBraces(trimmed)
-                    + leadingCloseCount
             );
         }
 

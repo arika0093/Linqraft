@@ -148,11 +148,6 @@ internal sealed class ProjectionExpressionEmitter
         var initializers = expression
             .Initializers.Select(initializer =>
             {
-                if (replacementType is null && initializer.NameEquals is null)
-                {
-                    return EmitNestedExpression(initializer.Expression);
-                }
-
                 var memberName =
                     initializer.NameEquals?.Name.Identifier.ValueText
                     ?? GetAnonymousMemberName(initializer);
@@ -274,6 +269,14 @@ internal sealed class ProjectionExpressionEmitter
 
     private string EmitBinaryExpression(BinaryExpressionSyntax expression)
     {
+        if (
+            expression.IsKind(SyntaxKind.CoalesceExpression)
+            && TryEmitCollectionFallbackCoalesce(expression, out var rewritten)
+        )
+        {
+            return rewritten;
+        }
+
         return $"{EmitBinaryOperand(expression.Left)} {expression.OperatorToken.Text} {EmitBinaryOperand(expression.Right)}";
     }
 
@@ -287,6 +290,36 @@ internal sealed class ProjectionExpressionEmitter
     {
         return expression is not ParenthesizedExpressionSyntax
             && (expression is ConditionalExpressionSyntax || ContainsConditionalAccess(expression));
+    }
+
+    private bool TryEmitCollectionFallbackCoalesce(
+        BinaryExpressionSyntax expression,
+        out string rewritten
+    )
+    {
+        rewritten = string.Empty;
+        if (!IsEmptyCollectionExpression(expression.Right))
+        {
+            return false;
+        }
+
+        if (!ContainsConditionalAccess(expression.Left))
+        {
+            return false;
+        }
+
+        var expressionType = GetExpressionType(expression);
+        var rootTypeName = GetExpressionTypeName(expression, expressionType, out _);
+        var nestedEmitter = new ProjectionExpressionEmitter(
+            _semanticModel,
+            expression.Left,
+            rootTypeName,
+            useEmptyCollectionFallback: true,
+            _replacementTypes,
+            _captureEntries
+        );
+        rewritten = nestedEmitter.Emit(expression.Left);
+        return true;
     }
 
     private string EmitInvocation(InvocationExpressionSyntax expression)
@@ -1075,6 +1108,17 @@ internal sealed class ProjectionExpressionEmitter
                 var name = GetInvocationName(invocation.Expression);
                 return name is "Select" or "SelectMany" or "ToList" or "ToArray";
             });
+    }
+
+    private static bool IsEmptyCollectionExpression(ExpressionSyntax expression)
+    {
+        return expression switch
+        {
+            CollectionExpressionSyntax collectionExpression => collectionExpression.Elements.Count == 0,
+            InvocationExpressionSyntax invocation => GetInvocationName(invocation.Expression) == "Empty"
+                && invocation.ArgumentList.Arguments.Count == 0,
+            _ => false,
+        };
     }
 
     private static bool ShouldUseCollectionFallback(ExpressionSyntax expression, ITypeSymbol? type)

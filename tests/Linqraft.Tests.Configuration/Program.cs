@@ -23,6 +23,26 @@ public sealed class GlobalPropertyConfigurationTests
         },
     ];
 
+    private static readonly List<FormattingRoot> FormattingRoots =
+    [
+        new()
+        {
+            Id = 1,
+            Child2 =
+            [
+                new()
+                {
+                    Summary = "First",
+                    GrandChilds =
+                    [
+                        new() { Notes = "Alpha", Value = 1 },
+                        new() { Notes = "Beta", Value = 2 },
+                    ],
+                },
+            ],
+        },
+    ];
+
     [Test]
     public void Project_wide_properties_are_applied_to_generated_types()
     {
@@ -160,20 +180,10 @@ public sealed class GlobalPropertyConfigurationTests
     [Test]
     public void Generated_projection_source_formats_nested_linq_over_multiple_lines()
     {
-        var generatedRoot = Path.Combine(
-            GetRepositoryRoot(),
-            "tests",
-            "Linqraft.Tests.Configuration",
-            ".generated"
+        var projectionSource = GetGeneratedProjectionSourceContaining(
+            "Items = order.Items",
+            "ConfiguredOrderDto"
         );
-        var projectionFile = Directory
-            .GetFiles(generatedRoot, "SelectExpr_*.g.cs", SearchOption.AllDirectories)
-            .Where(path =>
-                File.ReadAllText(path).Contains("Items = order.Items", StringComparison.Ordinal)
-            )
-            .OrderByDescending(path => File.GetLastWriteTimeUtc(path))
-            .First();
-        var projectionSource = File.ReadAllText(projectionFile);
         var lines = projectionSource.Replace("\r\n", "\n", StringComparison.Ordinal).Split('\n');
 
         var itemsLineIndex = Array.FindIndex(
@@ -194,6 +204,102 @@ public sealed class GlobalPropertyConfigurationTests
         projectionSource
             .Contains("Items = order.Items != null ? order.Items.Select(", StringComparison.Ordinal)
             .ShouldBeFalse();
+    }
+
+    [Test]
+    public void Generated_projection_source_indents_nested_object_initializers()
+    {
+        var result = FormattingRoots
+            .AsQueryable()
+            .SelectExpr<FormattingRoot, ConfiguredNestedFormattingDto>(root => new
+            {
+                root.Id,
+                Child2Summaries = root
+                    .Child2.Select(child => new
+                    {
+                        child.Summary,
+                        GrandChild2Notes = child.GrandChilds.Select(grandChild => grandChild.Notes),
+                        GrandChild2Values = child.GrandChilds.Select(grandChild => grandChild.Value),
+                    })
+                    .ToList(),
+            })
+            .ToList();
+
+        result.Count.ShouldBe(1);
+        result[0].Child2Summaries.Count.ShouldBe(1);
+
+        var projectionSource = GetGeneratedProjectionSourceContaining(
+            "ConfiguredNestedFormattingDto",
+            "Child2Summaries = root.Child2"
+        );
+        var lines = projectionSource.Replace("\r\n", "\n", StringComparison.Ordinal).Split('\n');
+        var childLineIndex = Array.FindIndex(
+            lines,
+            line => line.Contains("Child2Summaries = root.Child2", StringComparison.Ordinal)
+        );
+
+        childLineIndex.ShouldBeGreaterThanOrEqualTo(0);
+        lines[childLineIndex + 1]
+            .Trim()
+            .ShouldStartWith(".Select(child => new global::GlobalGenerated.Child2SummariesDto_");
+        lines[childLineIndex + 2].Trim().ShouldBe("Summary = child.Summary,");
+        lines[childLineIndex + 3]
+            .Trim()
+            .ShouldBe("GrandChild2Notes = child.GrandChilds.Select(grandChild => grandChild.Notes),");
+        lines[childLineIndex + 4]
+            .Trim()
+            .ShouldBe("GrandChild2Values = child.GrandChilds.Select(grandChild => grandChild.Value),");
+        lines[childLineIndex + 5].Trim().ShouldBe("})");
+        projectionSource.Contains("new {", StringComparison.Ordinal).ShouldBeFalse();
+    }
+
+    [Test]
+    public void Generated_projection_source_simplifies_null_coalescing_collection_fallbacks()
+    {
+        var result = Orders
+            .AsQueryable()
+            .SelectExpr<Order, ConfiguredOrderWithFallbackDto>(order => new
+            {
+                order.Id,
+                Items = order.Items?.Select(item => new { item.ProductName, item.Quantity }) ?? [],
+            })
+            .ToList();
+
+        result.Count.ShouldBe(2);
+        result[0].Items.Count().ShouldBe(1);
+        result[1].Items.ShouldBeEmpty();
+
+        var projectionSource = GetGeneratedProjectionSourceContaining(
+            "ConfiguredOrderWithFallbackDto",
+            "Items = order.Items != null"
+        );
+        projectionSource.Contains(": null) ??", StringComparison.Ordinal).ShouldBeFalse();
+        projectionSource
+            .Contains(
+                ": global::System.Linq.Enumerable.Empty<global::GlobalGenerated.ItemsDto_",
+                StringComparison.Ordinal
+            )
+            .ShouldBeTrue();
+    }
+
+    private static string GetGeneratedProjectionSourceContaining(
+        string requiredContent,
+        string requiredTypeMarker
+    )
+    {
+        return Directory
+            .GetFiles(GetGeneratedRoot(), "SelectExpr_*.g.cs", SearchOption.AllDirectories)
+            .OrderByDescending(path => File.GetLastWriteTimeUtc(path))
+            .Select(File.ReadAllText)
+            .First(source =>
+                source.Contains(requiredContent, StringComparison.Ordinal)
+                && source.Contains(requiredTypeMarker, StringComparison.Ordinal)
+            );
+    }
+
+    private static string GetGeneratedRoot()
+    {
+        return Path.Combine(GetRepositoryRoot(), "tests", "Linqraft.Tests.Configuration", ".generated");
     }
 
     private static string GetRepositoryRoot()
@@ -232,4 +338,25 @@ public sealed class OrderItem
 {
     public string ProductName { get; set; } = string.Empty;
     public int Quantity { get; set; }
+}
+
+public sealed class FormattingRoot
+{
+    public int Id { get; set; }
+
+    public List<FormattingChild2> Child2 { get; set; } = [];
+}
+
+public sealed class FormattingChild2
+{
+    public string Summary { get; set; } = string.Empty;
+
+    public List<FormattingGrandChild2> GrandChilds { get; set; } = [];
+}
+
+public sealed class FormattingGrandChild2
+{
+    public string Notes { get; set; } = string.Empty;
+
+    public int Value { get; set; }
 }
