@@ -52,7 +52,7 @@ internal sealed class ProjectionExpressionEmitter
     private readonly string _rootTypeName;
     private readonly bool _useEmptyCollectionFallback;
     private readonly IReadOnlyDictionary<SyntaxNode, string> _replacementTypes;
-    private readonly IReadOnlyList<CaptureEntryModel> _captureEntries;
+    private readonly IReadOnlyList<CaptureEntry> _captureEntries;
 
     public ProjectionExpressionEmitter(
         SemanticModel semanticModel,
@@ -60,7 +60,7 @@ internal sealed class ProjectionExpressionEmitter
         string rootTypeName,
         bool useEmptyCollectionFallback,
         IReadOnlyDictionary<SyntaxNode, string>? replacementTypes = null,
-        IReadOnlyList<CaptureEntryModel>? captureEntries = null
+        IReadOnlyList<CaptureEntry>? captureEntries = null
     )
     {
         _semanticModel = semanticModel;
@@ -68,7 +68,7 @@ internal sealed class ProjectionExpressionEmitter
         _rootTypeName = rootTypeName;
         _useEmptyCollectionFallback = useEmptyCollectionFallback;
         _replacementTypes = replacementTypes ?? new Dictionary<SyntaxNode, string>();
-        _captureEntries = captureEntries ?? global::System.Array.Empty<CaptureEntryModel>();
+        _captureEntries = captureEntries ?? global::System.Array.Empty<CaptureEntry>();
     }
 
     public string Emit(ExpressionSyntax expression)
@@ -1351,4 +1351,18 @@ internal sealed class ProjectionExpressionEmitter
             _ => string.Empty,
         };
     }
+
+    internal sealed record CaptureEntry
+    {
+        public required string PropertyName { get; init; }
+
+        public required string LocalName { get; init; }
+
+        public required string TypeName { get; init; }
+
+        public required string ExpressionText { get; init; }
+
+        public required ISymbol? RootSymbol { get; init; }
+    }
+
 }

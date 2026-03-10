@@ -1,10 +1,8 @@
 using System;
-using System.Collections.Generic;
 using System.Linq;
 using Linqraft.Core.Configuration;
 using Linqraft.Core.Utilities;
 using Microsoft.CodeAnalysis;
-using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
 
 namespace Linqraft.SourceGenerator;
@@ -21,108 +19,136 @@ public sealed class LinqraftSourceGenerator : IIncrementalGenerator
             )
         );
 
-        var selectExprInvocations = context.SyntaxProvider.CreateSyntaxProvider(
-            static (node, _) =>
-                node is InvocationExpressionSyntax invocation
-                && IsPotentialSelectExprInvocation(invocation),
-            static (syntaxContext, _) => (InvocationExpressionSyntax)syntaxContext.Node
-        );
-
-        var mappingClasses = context.SyntaxProvider.ForAttributeWithMetadataName(
-            "Linqraft.LinqraftMappingGenerateAttribute",
-            static (node, _) => node is ClassDeclarationSyntax,
-            static (context, _) => (ClassDeclarationSyntax)context.TargetNode
-        );
-
-        var mappingMethods = context.SyntaxProvider.ForAttributeWithMetadataName(
-            "Linqraft.LinqraftMappingGenerateAttribute",
-            static (node, _) => node is MethodDeclarationSyntax,
-            static (context, _) => (MethodDeclarationSyntax)context.TargetNode
-        );
-
         var configuration = context.AnalyzerConfigOptionsProvider.Select(
             static (provider, _) => LinqraftConfiguration.Parse(provider.GlobalOptions)
         );
 
-        var pipeline = context
-            .CompilationProvider.Combine(configuration)
-            .Combine(selectExprInvocations.Collect())
-            .Combine(mappingClasses.Collect())
-            .Combine(mappingMethods.Collect());
+        var selectExprTemplates = context
+            .SyntaxProvider.CreateSyntaxProvider(
+                static (node, _) =>
+                    node is InvocationExpressionSyntax invocation
+                    && IsPotentialSelectExprInvocation(invocation),
+                static (syntaxContext, cancellationToken) =>
+                    ProjectionTemplateBuilder.AnalyzeSelectInvocation(
+                        syntaxContext,
+                        cancellationToken
+                    )
+            )
+            .Where(static template => template is not null)
+            .Select(static (template, _) => template!);
+
+        var mappingClassTemplates = context
+            .SyntaxProvider.ForAttributeWithMetadataName(
+                "Linqraft.LinqraftMappingGenerateAttribute",
+                static (node, _) => node is ClassDeclarationSyntax,
+                static (attributeContext, cancellationToken) =>
+                    ProjectionTemplateBuilder.AnalyzeMappingClass(
+                        attributeContext,
+                        cancellationToken
+                    )
+            )
+            .Where(static template => template is not null)
+            .Select(static (template, _) => template!);
+
+        var mappingMethodTemplates = context
+            .SyntaxProvider.ForAttributeWithMetadataName(
+                "Linqraft.LinqraftMappingGenerateAttribute",
+                static (node, _) => node is MethodDeclarationSyntax,
+                static (attributeContext, cancellationToken) =>
+                    ProjectionTemplateBuilder.AnalyzeMappingMethod(
+                        attributeContext,
+                        cancellationToken
+                    )
+            )
+            .Where(static template => template is not null)
+            .Select(static (template, _) => template!);
+
+        var projectionModels = selectExprTemplates.Combine(configuration).Select(
+            static (data, _) => ProjectionModelFinalizer.FinalizeProjection(data.Left, data.Right)
+        );
+        var mappingClassModels = mappingClassTemplates.Combine(configuration).Select(
+            static (data, _) => ProjectionModelFinalizer.FinalizeMapping(data.Left, data.Right)
+        );
+        var mappingMethodModels = mappingMethodTemplates.Combine(configuration).Select(
+            static (data, _) => ProjectionModelFinalizer.FinalizeMapping(data.Left, data.Right)
+        );
+
+        var projectionSources = projectionModels.Select(
+            static (model, _) => new GeneratedSourceFileModel
+            {
+                HintName = $"{model.Request.HintName}.g.cs",
+                SourceText = SourceWriters.WriteProjectionUnit(model.Request),
+            }
+        );
+        var mappingClassSources = mappingClassModels.Select(
+            static (model, _) => new GeneratedSourceFileModel
+            {
+                HintName = $"{model.Request.HintName}.g.cs",
+                SourceText = SourceWriters.WriteMappingUnit(model.Request),
+            }
+        );
+        var mappingMethodSources = mappingMethodModels.Select(
+            static (model, _) => new GeneratedSourceFileModel
+            {
+                HintName = $"{model.Request.HintName}.g.cs",
+                SourceText = SourceWriters.WriteMappingUnit(model.Request),
+            }
+        );
 
         context.RegisterSourceOutput(
-            pipeline,
-            static (output, data) =>
+            projectionSources,
+            static (output, source) => output.AddSource(source.HintName, source.SourceText)
+        );
+        context.RegisterSourceOutput(
+            mappingClassSources,
+            static (output, source) => output.AddSource(source.HintName, source.SourceText)
+        );
+        context.RegisterSourceOutput(
+            mappingMethodSources,
+            static (output, source) => output.AddSource(source.HintName, source.SourceText)
+        );
+
+        var dtoSources = projectionModels
+            .SelectMany(static (model, _) => model.GeneratedDtos)
+            .Collect()
+            .Combine(mappingClassModels.SelectMany(static (model, _) => model.GeneratedDtos).Collect())
+            .Combine(mappingMethodModels.SelectMany(static (model, _) => model.GeneratedDtos).Collect())
+            .Combine(configuration)
+            .Select(static (data, _) => BuildDtoSources(data));
+
+        context.RegisterSourceOutput(
+            dtoSources,
+            static (output, sourceSet) =>
             {
-                var (
-                    (((compilation, configuration), selectExprs), mappingClassDeclarations),
-                    mappingMethodDeclarations
-                ) = data;
-                var analyzer = new ProjectionAnalyzer(
-                    compilation,
-                    configuration,
-                    output,
-                    output.CancellationToken
-                );
-
-                analyzer.AnalyzeSelectInvocations(selectExprs);
-                analyzer.AnalyzeMappingClasses(mappingClassDeclarations);
-                analyzer.AnalyzeMappingMethods(mappingMethodDeclarations);
-
-                var dtosByOwner = analyzer
-                    .GeneratedDtos.GroupBy(dto => dto.OwnerHintName, StringComparer.Ordinal)
-                    .ToDictionary(
-                        group => group.Key,
-                        group => (IReadOnlyCollection<GeneratedDtoModel>)group.ToList(),
-                        StringComparer.Ordinal
-                    );
-                var emittedOwners = new HashSet<string>(StringComparer.Ordinal);
-
-                foreach (var request in analyzer.ProjectionRequests)
+                foreach (var source in sourceSet.Sources)
                 {
-                    var semanticModel = compilation.GetSemanticModel(request.Invocation.SyntaxTree);
-                    emittedOwners.Add(request.HintName);
-                    dtosByOwner.TryGetValue(request.HintName, out var ownedDtos);
-                    output.AddSource(
-                        $"{request.HintName}.g.cs",
-                        SourceWriters.WriteProjectionUnit(
-                            request,
-                            ownedDtos ?? Array.Empty<GeneratedDtoModel>(),
-                            semanticModel,
-                            configuration
-                        )
-                    );
-                }
-
-                foreach (var mapping in analyzer.MappingRequests)
-                {
-                    var semanticModel = compilation.GetSemanticModel(mapping.SourceNode.SyntaxTree);
-                    emittedOwners.Add(mapping.HintName);
-                    dtosByOwner.TryGetValue(mapping.HintName, out var ownedDtos);
-                    output.AddSource(
-                        $"{mapping.HintName}.g.cs",
-                        SourceWriters.WriteMappingUnit(
-                            mapping,
-                            ownedDtos ?? Array.Empty<GeneratedDtoModel>(),
-                            semanticModel,
-                            configuration
-                        )
-                    );
-                }
-
-                foreach (
-                    var dto in analyzer.GeneratedDtos.Where(dto =>
-                        !emittedOwners.Contains(dto.OwnerHintName)
-                    )
-                )
-                {
-                    output.AddSource(
-                        $"{SymbolNameHelper.SanitizeHintName(dto.Key)}.g.cs",
-                        SourceWriters.WriteDtoUnit(dto, configuration)
-                    );
+                    output.AddSource(source.HintName, source.SourceText);
                 }
             }
         );
+    }
+
+    private static GeneratedSourceSetModel BuildDtoSources(
+        (((System.Collections.Immutable.ImmutableArray<GeneratedDtoModel> projectionDtos,
+            System.Collections.Immutable.ImmutableArray<GeneratedDtoModel> mappingClassDtos),
+            System.Collections.Immutable.ImmutableArray<GeneratedDtoModel> mappingMethodDtos),
+            LinqraftConfiguration configuration) data
+    )
+    {
+        var (((projectionDtos, mappingClassDtos), mappingMethodDtos), configuration) = data;
+        var mergedDtos = ProjectionModelFinalizer.MergeDtos(
+            projectionDtos.Concat(mappingClassDtos).Concat(mappingMethodDtos)
+        );
+        return new GeneratedSourceSetModel
+        {
+            Sources = mergedDtos
+                .Select(dto => new GeneratedSourceFileModel
+                {
+                    HintName = $"{SymbolNameHelper.SanitizeHintName(dto.Key)}.g.cs",
+                    SourceText = SourceWriters.WriteDtoUnit(dto, configuration),
+                })
+                .ToArray(),
+        };
     }
 
     private static bool IsPotentialSelectExprInvocation(InvocationExpressionSyntax invocation)

@@ -5,46 +5,21 @@ using Linqraft.Core.Configuration;
 using Linqraft.Core.Formatting;
 using Linqraft.Core.Generation;
 using Linqraft.Core.Utilities;
-using Microsoft.CodeAnalysis;
-using Microsoft.CodeAnalysis.CSharp.Syntax;
-
 namespace Linqraft.SourceGenerator;
 
 internal static class SourceWriters
 {
-    public static string WriteProjectionUnit(
-        ProjectionRequest request,
-        IReadOnlyCollection<GeneratedDtoModel> ownedDtos,
-        SemanticModel semanticModel,
-        LinqraftConfiguration configuration
-    )
+    public static string WriteProjectionUnit(ProjectionRequest request)
     {
         var builder = CreateFileBuilder();
-        WriteOwnedDtos(builder, ownedDtos, configuration);
-        if (ownedDtos.Count != 0)
-        {
-            builder.AppendLine();
-        }
-
-        WriteInterceptorDeclaration(builder, request, semanticModel);
+        WriteInterceptorDeclaration(builder, request);
         return FinalizeSource(builder);
     }
 
-    public static string WriteMappingUnit(
-        MappingRequest request,
-        IReadOnlyCollection<GeneratedDtoModel> ownedDtos,
-        SemanticModel semanticModel,
-        LinqraftConfiguration configuration
-    )
+    public static string WriteMappingUnit(MappingRequest request)
     {
         var builder = CreateFileBuilder();
-        WriteOwnedDtos(builder, ownedDtos, configuration);
-        if (ownedDtos.Count != 0)
-        {
-            builder.AppendLine();
-        }
-
-        WriteMappingDeclaration(builder, request, semanticModel);
+        WriteMappingDeclaration(builder, request);
         return FinalizeSource(builder);
     }
 
@@ -53,28 +28,6 @@ internal static class SourceWriters
         var builder = CreateFileBuilder();
         WriteDtoDeclaration(builder, dto, configuration);
         return FinalizeSource(builder);
-    }
-
-    private static void WriteOwnedDtos(
-        IndentedStringBuilder builder,
-        IReadOnlyCollection<GeneratedDtoModel> ownedDtos,
-        LinqraftConfiguration configuration
-    )
-    {
-        var orderedDtos = ownedDtos
-            .OrderByDescending(model => model.IsRoot)
-            .ThenBy(model => model.Namespace, System.StringComparer.Ordinal)
-            .ThenBy(model => model.FullyQualifiedName, System.StringComparer.Ordinal)
-            .ToList();
-
-        for (var index = 0; index < orderedDtos.Count; index++)
-        {
-            WriteDtoDeclaration(builder, orderedDtos[index], configuration);
-            if (index < orderedDtos.Count - 1)
-            {
-                builder.AppendLine();
-            }
-        }
     }
 
     private static void WriteDtoDeclaration(
@@ -133,8 +86,7 @@ internal static class SourceWriters
 
     private static void WriteInterceptorDeclaration(
         IndentedStringBuilder builder,
-        ProjectionRequest request,
-        SemanticModel semanticModel
+        ProjectionRequest request
     )
     {
         builder.AppendLine("namespace Linqraft");
@@ -146,11 +98,9 @@ internal static class SourceWriters
             using (builder.Indent())
             {
                 var expressionFieldName = $"s_expression_{request.MethodName}";
-                var lambda = WriteProjectionLambda(
-                    request.RootProjection,
-                    request,
-                    semanticModel,
-                    request.Captures
+                var lambda = ProjectionBodyEmitter.AppendValueInline(
+                    $"{request.SelectorParameterName} => ",
+                    request.ProjectionBodyText
                 );
                 if (
                     request.CanUsePrebuiltExpression
@@ -169,13 +119,16 @@ internal static class SourceWriters
                 var captureParameter =
                     "[global::System.Diagnostics.CodeAnalysis.DynamicallyAccessedMembers(global::System.Diagnostics.CodeAnalysis.DynamicallyAccessedMemberTypes.PublicProperties)] object capture";
                 var signature =
-                    request.Captures.Count == 0
+                    request.Captures.Length == 0
                         ? $"public static {receiverType}<TResult> {request.MethodName}<TIn, TResult>(this {receiverType}<TIn> query, global::System.Func<TIn, {selectorResultType}> selector) where TIn : class"
                         : $"public static {receiverType}<TResult> {request.MethodName}<TIn, TResult>(this {receiverType}<TIn> query, global::System.Func<TIn, {selectorResultType}> selector, {captureParameter}) where TIn : class";
-                if (request.InterceptableLocation is not null)
+                if (
+                    request.InterceptableLocationVersion is { } interceptableLocationVersion
+                    && request.InterceptableLocationData is { } interceptableLocationData
+                )
                 {
                     builder.AppendLine(
-                        $"[global::System.Runtime.CompilerServices.InterceptsLocationAttribute({request.InterceptableLocation.Version}, \"{EscapeStringLiteral(request.InterceptableLocation.Data)}\")]"
+                        $"[global::System.Runtime.CompilerServices.InterceptsLocationAttribute({interceptableLocationVersion}, \"{EscapeStringLiteral(interceptableLocationData)}\")]"
                     );
                 }
 
@@ -185,7 +138,7 @@ internal static class SourceWriters
                 {
                     var matchedQueryType = $"{receiverType}<{request.SourceTypeName}>";
 
-                    if (request.Captures.Count != 0)
+                    if (request.Captures.Length != 0)
                     {
                         builder.AppendLine("var captureType = capture.GetType();");
                         foreach (var capture in request.Captures)
@@ -237,8 +190,7 @@ internal static class SourceWriters
 
     private static void WriteMappingDeclaration(
         IndentedStringBuilder builder,
-        MappingRequest request,
-        SemanticModel semanticModel
+        MappingRequest request
     )
     {
         if (!string.IsNullOrWhiteSpace(request.Namespace))
@@ -255,7 +207,10 @@ internal static class SourceWriters
         using (builder.Indent())
         {
             var receiverType = GetReceiverTypeName(request.ReceiverKind);
-            var lambda = WriteProjectionLambda(request.RootProjection, request, semanticModel);
+            var lambda = ProjectionBodyEmitter.AppendValueInline(
+                $"{request.SelectorParameterName} => ",
+                request.ProjectionBodyText
+            );
             var expressionFieldName = $"s_expression_{request.MethodName}";
             if (request.CanUsePrebuiltExpression && request.ReceiverKind == ReceiverKind.IQueryable)
             {
@@ -295,93 +250,6 @@ internal static class SourceWriters
             builder.DecreaseIndent();
             builder.AppendLine("}");
         }
-    }
-
-    private static string WriteProjectionLambda(
-        ProjectionObjectModel projection,
-        ProjectionRequest request,
-        SemanticModel semanticModel,
-        IReadOnlyList<CaptureEntryModel> captures
-    )
-    {
-        return AppendValueInline(
-            $"{request.SelectorParameterName} => ",
-            WriteProjectionBody(
-                projection,
-                request.Pattern,
-                request.ResultTypeName,
-                semanticModel,
-                captures
-            )
-        );
-    }
-
-    private static string WriteProjectionLambda(
-        ProjectionObjectModel projection,
-        MappingRequest request,
-        SemanticModel semanticModel
-    )
-    {
-        return AppendValueInline(
-            $"{request.SelectorParameterName} => ",
-            WriteProjectionBody(
-                projection,
-                ProjectionPattern.ExplicitDto,
-                request.ResultTypeName,
-                semanticModel,
-                request.Captures
-            )
-        );
-    }
-
-    private static string WriteProjectionBody(
-        ProjectionObjectModel projection,
-        ProjectionPattern pattern,
-        string resultTypeName,
-        SemanticModel semanticModel,
-        IReadOnlyList<CaptureEntryModel> captures
-    )
-    {
-        var kind = pattern == ProjectionPattern.Anonymous ? "anonymous" : "named";
-        var targetType = pattern == ProjectionPattern.Anonymous ? null : resultTypeName;
-        var constructorArguments = projection
-            .Members.Where(member => member.IsSuppressed)
-            .OrderBy(member => member.Name, StringComparer.Ordinal)
-            .Select(member =>
-            {
-                var emitter = new ProjectionExpressionEmitter(
-                    semanticModel,
-                    member.Expression,
-                    member.TypeName,
-                    member.UseEmptyCollectionFallback,
-                    member.ReplacementTypes,
-                    captures
-                );
-                return emitter.Emit(member.Expression);
-            })
-            .ToList();
-        var assignments = projection
-            .Members.Where(member => !member.IsSuppressed)
-            .Select(member =>
-            {
-                var emitter = new ProjectionExpressionEmitter(
-                    semanticModel,
-                    member.Expression,
-                    member.TypeName,
-                    member.UseEmptyCollectionFallback,
-                    member.ReplacementTypes,
-                    captures
-                );
-                return AppendValueWithContinuation(
-                    $"{member.Name} = ",
-                    emitter.Emit(member.Expression)
-                );
-            })
-            .ToList();
-
-        return kind == "anonymous"
-            ? BuildInitializerExpression("new", assignments)
-            : WriteNamedProjection(targetType!, constructorArguments, assignments);
     }
 
     private static IndentedStringBuilder CreateFileBuilder()
@@ -469,7 +337,7 @@ internal static class SourceWriters
     private static void WriteNamespaceAndContainingTypesStart(
         IndentedStringBuilder builder,
         string namespaceName,
-        IReadOnlyList<ContainingTypeInfo> containingTypes
+        Linqraft.Core.Collections.EquatableArray<ContainingTypeInfo> containingTypes
     )
     {
         if (!string.IsNullOrWhiteSpace(namespaceName))
@@ -492,10 +360,10 @@ internal static class SourceWriters
     private static void WriteNamespaceAndContainingTypesEnd(
         IndentedStringBuilder builder,
         string namespaceName,
-        IReadOnlyList<ContainingTypeInfo> containingTypes
+        Linqraft.Core.Collections.EquatableArray<ContainingTypeInfo> containingTypes
     )
     {
-        for (var index = containingTypes.Count - 1; index >= 0; index--)
+        for (var index = containingTypes.Length - 1; index >= 0; index--)
         {
             builder.DecreaseIndent();
             builder.AppendLine("}");
@@ -513,111 +381,12 @@ internal static class SourceWriters
         return value.Replace("\\", "\\\\").Replace("\"", "\\\"");
     }
 
-    private static string WriteNamedProjection(
-        string targetType,
-        IReadOnlyList<string> constructorArguments,
-        IReadOnlyList<string> assignments
-    )
-    {
-        var constructorSuffix =
-            constructorArguments.Count == 0 ? "()" : $"({string.Join(", ", constructorArguments)})";
-        if (assignments.Count == 0)
-        {
-            return $"new {targetType}{constructorSuffix}";
-        }
-
-        return BuildInitializerExpression($"new {targetType}{constructorSuffix}", assignments);
-    }
-
-    private static string BuildInitializerExpression(string header, IReadOnlyList<string> items)
-    {
-        if (!ShouldExpandInitializer(items))
-        {
-            return items.Count == 0
-                ? $"{header} {{ }}"
-                : $"{header} {{ {string.Join(", ", items)} }}";
-        }
-
-        var builder = new IndentedStringBuilder();
-        builder.AppendLine($"{header} {{");
-        using (builder.Indent())
-        {
-            foreach (var item in items)
-            {
-                AppendMultilineItem(builder, item, ",");
-            }
-        }
-
-        builder.Append("}");
-        return builder.ToString();
-    }
-
     private static void AppendMultilineLine(IndentedStringBuilder builder, string value)
     {
         foreach (var line in SplitLines(value))
         {
             builder.AppendLine(line);
         }
-    }
-
-    private static bool ShouldExpandInitializer(IReadOnlyList<string> items)
-    {
-        return items.Count > 1 || items.Any(ContainsLineBreak);
-    }
-
-    private static void AppendMultilineItem(
-        IndentedStringBuilder builder,
-        string value,
-        string suffix
-    )
-    {
-        var lines = SplitLines(value);
-        for (var index = 0; index < lines.Length; index++)
-        {
-            var line = index == lines.Length - 1 ? lines[index] + suffix : lines[index];
-            builder.AppendLine(line);
-        }
-    }
-
-    private static string AppendValueWithContinuation(string prefix, string value)
-    {
-        var lines = SplitLines(value);
-        if (lines.Length == 0)
-        {
-            return prefix;
-        }
-
-        if (lines.Length == 1)
-        {
-            return prefix + lines[0];
-        }
-
-        var formattedLines = new List<string> { prefix + lines[0] };
-        formattedLines.AddRange(lines.Skip(1).Select(IndentAllLines));
-        return string.Join("\n", formattedLines);
-    }
-
-    private static string AppendValueInline(string prefix, string value)
-    {
-        var lines = SplitLines(value);
-        if (lines.Length == 0)
-        {
-            return prefix;
-        }
-
-        lines[0] = prefix + lines[0];
-        return string.Join("\n", lines);
-    }
-
-    private static string IndentAllLines(string value, int indentLevel = 1)
-    {
-        var prefix = new string(' ', indentLevel * 4);
-        return string.Join("\n", SplitLines(value).Select(line => prefix + line));
-    }
-
-    private static bool ContainsLineBreak(string value)
-    {
-        return value.IndexOf('\n') >= 0 || value.IndexOf('\r') >= 0;
     }
 
     private static string[] SplitLines(string value)
