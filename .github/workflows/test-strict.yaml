@@ -13,14 +13,8 @@ jobs:
         os: [ubuntu-latest, macos-latest, windows-latest]
     runs-on: ${{ matrix.os }}
     steps:
-      - name: Set Target Frameworks (Unix)
+      - name: Set Target Frameworks
         run: echo 'TFMS=net10.0;net8.0' >> $GITHUB_ENV
-        if: matrix.os != 'windows-latest'
-      
-      - name: Set Target Frameworks (Windows, including .NET Framework)
-        shell: pwsh
-        run: echo 'TFMS=net10.0;net8.0;net48' >> $env:GITHUB_ENV
-        if: matrix.os == 'windows-latest'
 
       - name: Checkout repository
         uses: actions/checkout@v6
@@ -33,14 +27,81 @@ jobs:
           dotnet-version: |
             10.0.x
             8.0.x
-          cache: true
-          cache-dependency-path: '**/packages.lock.json'
 
       - name: Restore dependencies
-        run: dotnet restore --locked-mode
+        run: dotnet restore
 
       - name: Build
         run: dotnet build --no-restore
 
       - name: Run tests
         run: dotnet test --solution Linqraft.slnx --no-build --verbosity normal
+
+  native-aot-test:
+    strategy:
+      matrix:
+        include:
+          - os: ubuntu-latest
+            rid: linux-x64
+            tfm: net10.0
+          - os: ubuntu-latest
+            rid: linux-x64
+            tfm: net8.0
+          - os: windows-latest
+            rid: win-x64
+            tfm: net10.0
+          - os: macos-latest
+            rid: osx-arm64
+            tfm: net10.0
+
+    runs-on: ${{ matrix.os }}
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v5
+        with:
+          dotnet-version: |
+            10.0.x
+            8.0.x
+
+      - name: Restore dependencies
+        run: dotnet restore
+
+      - name: Publish NativeAOT tests
+        run: dotnet publish tests/Linqraft.Tests/Linqraft.Tests.csproj -c Release -o publish -f ${{ matrix.tfm }} -r ${{ matrix.rid }} -p:EnableNativeAotTest=true --self-contained true
+
+      - name: Run NativeAOT tests
+        run: ./publish/Linqraft.Tests
+
+  execute-examples:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v5
+        with:
+          dotnet-version: 10.0.x
+
+      - name: Restore dependencies
+        run: dotnet restore
+
+      - name: Build
+        run: dotnet build --no-restore
+
+      - name: Execute examples
+        shell: bash
+        run: |
+          for example in examples/*; do
+            if [ -d "$example" ]; then
+              echo "Running example in $example"
+              dotnet run --project "$example" --no-build
+            fi
+          done
