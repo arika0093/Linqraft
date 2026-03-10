@@ -25,14 +25,16 @@ jobs:
         uses: actions/setup-dotnet@v5
         with:
           dotnet-version: |
-            10.0.x
             8.0.x
 
+      - name: Set Target Frameworks .NET 
+        run: echo 'TFMS=net8.0' >> $GITHUB_ENV
+
       - name: Restore dependencies
-        run: dotnet restore -p:TFMS=net8.0
+        run: dotnet restore
 
       - name: Publish NativeAOT tests
-        run: dotnet publish tests\Linqraft.Tests\Linqraft.Tests.csproj -c Release -o publish -f net8.0 -r win-x64 -p:TFMS=net8.0 -p:EnableNativeAotTest=true --self-contained true
+        run: dotnet publish tests\Linqraft.Tests\Linqraft.Tests.csproj -c Release -o publish -f net8.0 -r win-x64 -p:EnableNativeAotTest=true --self-contained true
 
       - name: Run NativeAOT tests
         run: .\publish\Linqraft.Tests

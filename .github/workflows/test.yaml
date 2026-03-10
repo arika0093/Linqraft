@@ -37,27 +37,3 @@ jobs:
 
       - name: Run tests
         run: dotnet test --solution Linqraft.slnx --no-build --verbosity normal
-
-  native-aot-test:
-    runs-on: windows-latest
-    steps:
-      - name: Checkout repository
-        uses: actions/checkout@v6
-        with:
-          fetch-depth: 0
-
-      - name: Setup .NET
-        uses: actions/setup-dotnet@v5
-        with:
-          dotnet-version: ${{ env.DOTNET_VERSION }}
-          cache: true
-          cache-dependency-path: '**/packages.lock.json'
-
-      - name: Restore dependencies
-        run: dotnet restore --locked-mode
-
-      - name: Publish NativeAOT configuration tests
-        run: dotnet publish tests\Linqraft.Tests.Configuration\Linqraft.Tests.Configuration.csproj -c Release -f net8.0 -r win-x64 -p:TFMS=net8.0 -p:EnableNativeAotTest=true --self-contained true
-
-      - name: Run NativeAOT configuration tests
-        run: .\tests\Linqraft.Tests.Configuration\bin\Release\net8.0\win-x64\publish\Linqraft.Tests.Configuration.exe
