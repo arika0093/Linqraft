@@ -5,12 +5,15 @@ on:
   push:
     branches-ignore:
       - release/*
-      - release-pr/*
     paths:
       - '**.csproj'
       - '**.cs'
       - '**./Directories.Build.props'
       - '.github/workflows/test-aot.yaml'
+
+env:
+  DOTNET_VERSION: '10.0.x'
+  DOTNET_MONIKOR: 'net10.0'
 
 jobs:
   native-aot-test:
@@ -24,17 +27,13 @@ jobs:
       - name: Setup .NET
         uses: actions/setup-dotnet@v5
         with:
-          dotnet-version: |
-            8.0.x
-
-      - name: Set Target Frameworks .NET 
-        run: echo 'TFMS=net8.0' >> $GITHUB_ENV
+          dotnet-version: ${{ env.DOTNET_VERSION }}
 
       - name: Restore dependencies
         run: dotnet restore
 
       - name: Publish NativeAOT tests
-        run: dotnet publish tests\Linqraft.Tests\Linqraft.Tests.csproj -c Release -o publish -f net8.0 -r win-x64 -p:EnableNativeAotTest=true --self-contained true
+        run: dotnet publish tests\Linqraft.Tests\Linqraft.Tests.csproj -c Release -o publish -f ${{ env.DOTNET_MONIKOR }} -r win-x64 -p:EnableNativeAotTest=true --self-contained true
 
       - name: Run NativeAOT tests
         run: .\publish\Linqraft.Tests
