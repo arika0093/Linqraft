@@ -1,4 +1,4 @@
-name: NativeAOT Test
+name: .NET Build and Test (NativeAOT)
 
 on:
   workflow_dispatch:
