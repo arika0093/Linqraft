@@ -9,6 +9,7 @@ using Linqraft.Core.Utilities;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
+using Microsoft.CodeAnalysis.Text;
 
 namespace Linqraft.SourceGenerator;
 
@@ -410,19 +411,19 @@ internal static class ProjectionTemplateBuilder
         )
         {
             var members = GetProjectionMembers(expression).ToList();
-            var replacementTypes = new Dictionary<SyntaxNode, string>();
+            var replacementTypes = new Dictionary<TextSpan, string>();
             if (
                 replacementTypeToken is not null
                 && expression is AnonymousObjectCreationExpressionSyntax anonymousRoot
             )
             {
-                replacementTypes[anonymousRoot] = replacementTypeToken;
+                replacementTypes[anonymousRoot.Span] = replacementTypeToken;
             }
 
             var projectedMembers = new List<ProjectionMemberTemplateModel>(members.Count);
             foreach (var member in members)
             {
-                var memberReplacements = new Dictionary<SyntaxNode, string>();
+                var memberReplacements = new Dictionary<TextSpan, string>();
                 var typeTemplate = AnalyzeMemberType(
                     member.Expression,
                     member.Name,
@@ -454,14 +455,14 @@ internal static class ProjectionTemplateBuilder
                     member.Expression,
                     typeTemplate,
                     useEmptyCollectionFallback: false,
-                    memberReplacements
+                    replacementTypes
                 );
                 var fallbackValueTemplate = canUseCollectionFallback
                     ? CreateValueTemplate(
                         member.Expression,
                         fallbackTypeTemplate,
                         useEmptyCollectionFallback: true,
-                        memberReplacements
+                        replacementTypes
                     )
                     : valueTemplate;
 
@@ -482,7 +483,12 @@ internal static class ProjectionTemplateBuilder
             var projection = new ProjectionTemplateModel { Members = projectedMembers.ToArray() };
             if (dtoTemplate is null)
             {
-                return new ProjectionBuildResult { Projection = projection, DtoTemplate = null };
+                return new ProjectionBuildResult
+                {
+                    Projection = projection,
+                    DtoTemplate = null,
+                    ReplacementTypes = replacementTypes,
+                };
             }
 
             var properties = projectedMembers
@@ -505,6 +511,7 @@ internal static class ProjectionTemplateBuilder
                     ShapeSignature =
                         $"{dtoTemplate.TemplateId}|{string.Join(";", properties.Select(property => $"{property.Name}:{property.TypeTemplate}:{property.FallbackTypeTemplate}:{property.IsSuppressed}"))}",
                 },
+                ReplacementTypes = replacementTypes,
             };
         }
 
@@ -530,7 +537,7 @@ internal static class ProjectionTemplateBuilder
         private string AnalyzeMemberType(
             ExpressionSyntax expression,
             string memberName,
-            Dictionary<SyntaxNode, string> replacementTypes,
+            Dictionary<TextSpan, string> replacementTypes,
             bool namedContext,
             string defaultNamespace,
             bool useGlobalNamespaceFallback,
@@ -570,7 +577,7 @@ internal static class ProjectionTemplateBuilder
                     useGlobalNamespaceFallback,
                     ownerHintName
                 );
-                replacementTypes[anonymousObject] = nestedDto.PlaceholderToken;
+                replacementTypes[anonymousObject.Span] = nestedDto.PlaceholderToken;
                 var nestedBuildResult = BuildProjectionTemplate(
                     anonymousObject,
                     nestedDto.PlaceholderToken,
@@ -581,6 +588,7 @@ internal static class ProjectionTemplateBuilder
                     useGlobalNamespaceFallback: nestedDto.UseGlobalNamespaceFallback,
                     ownerHintName: ownerHintName
                 );
+                MergeReplacementTypes(replacementTypes, nestedBuildResult.ReplacementTypes);
                 RegisterDto(nestedBuildResult.DtoTemplate!);
                 return nestedDto.PlaceholderToken;
             }
@@ -639,7 +647,7 @@ internal static class ProjectionTemplateBuilder
                             ownerHintName,
                             _cancellationToken
                         );
-                            replacementTypes[nestedAnonymous] = nestedDto.PlaceholderToken;
+                            replacementTypes[nestedAnonymous.Span] = nestedDto.PlaceholderToken;
                             var nestedBuildResult = BuildProjectionTemplate(
                                 nestedAnonymous,
                                 nestedDto.PlaceholderToken,
@@ -649,6 +657,10 @@ internal static class ProjectionTemplateBuilder
                                 defaultNamespace: nestedDto.PreferredNamespace,
                                 useGlobalNamespaceFallback: nestedDto.UseGlobalNamespaceFallback,
                                 ownerHintName: ownerHintName
+                            );
+                            MergeReplacementTypes(
+                                replacementTypes,
+                                nestedBuildResult.ReplacementTypes
                             );
                             RegisterDto(nestedBuildResult.DtoTemplate!);
                             projectedTypeTemplate = nestedDto.PlaceholderToken;
@@ -685,7 +697,7 @@ internal static class ProjectionTemplateBuilder
                         useGlobalNamespaceFallback,
                         ownerHintName
                     );
-                    replacementTypes[anonymousBody] = nestedDto.PlaceholderToken;
+                    replacementTypes[anonymousBody.Span] = nestedDto.PlaceholderToken;
                     var nestedBuildResult = BuildProjectionTemplate(
                         anonymousBody,
                         nestedDto.PlaceholderToken,
@@ -696,6 +708,7 @@ internal static class ProjectionTemplateBuilder
                         useGlobalNamespaceFallback: nestedDto.UseGlobalNamespaceFallback,
                         ownerHintName: ownerHintName
                     );
+                    MergeReplacementTypes(replacementTypes, nestedBuildResult.ReplacementTypes);
                     RegisterDto(nestedBuildResult.DtoTemplate!);
                     projectedTypeTemplate = nestedDto.PlaceholderToken;
                     return BuildProjectedResultType(
@@ -766,7 +779,7 @@ internal static class ProjectionTemplateBuilder
             ExpressionSyntax expression,
             string rootTypeName,
             bool useEmptyCollectionFallback,
-            IReadOnlyDictionary<SyntaxNode, string> replacementTypes
+            IReadOnlyDictionary<TextSpan, string> replacementTypes
         )
         {
             var emitter = new ProjectionExpressionEmitter(
@@ -778,6 +791,17 @@ internal static class ProjectionTemplateBuilder
                 _captureEntries
             );
             return emitter.Emit(expression);
+        }
+
+        private static void MergeReplacementTypes(
+            IDictionary<TextSpan, string> target,
+            IReadOnlyDictionary<TextSpan, string> source
+        )
+        {
+            foreach (var replacement in source)
+            {
+                target[replacement.Key] = replacement.Value;
+            }
         }
 
         private GeneratedDtoTemplateModel CreateNestedDtoTemplate(
@@ -1698,5 +1722,7 @@ internal static class ProjectionTemplateBuilder
         public required ProjectionTemplateModel Projection { get; init; }
 
         public required GeneratedDtoTemplateModel? DtoTemplate { get; init; }
+
+        public required IReadOnlyDictionary<TextSpan, string> ReplacementTypes { get; init; }
     }
 }

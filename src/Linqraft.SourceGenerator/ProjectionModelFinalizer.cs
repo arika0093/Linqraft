@@ -13,10 +13,10 @@ internal static class ProjectionModelFinalizer
         LinqraftConfiguration configuration
     )
     {
-        var finalizedDtos = FinalizeDtos(template.GeneratedDtos, configuration);
-        var replacements = finalizedDtos.ToDictionary(
-            pair => pair.PlaceholderToken,
-            pair => pair.Dto.FullyQualifiedName,
+        var dtoReplacements = BuildDtoReplacements(template.GeneratedDtos, configuration);
+        var replacements = dtoReplacements.ToDictionary(
+            replacement => replacement.PlaceholderToken,
+            replacement => replacement.Dto.FullyQualifiedName,
             StringComparer.Ordinal
         );
         var requestTemplate = template.Request;
@@ -51,7 +51,7 @@ internal static class ProjectionModelFinalizer
                     replacements
                 ),
             },
-            GeneratedDtos = finalizedDtos.Select(pair => pair.Dto).ToArray(),
+            GeneratedDtos = dtoReplacements.Select(replacement => replacement.Dto).ToArray(),
         };
     }
 
@@ -60,10 +60,10 @@ internal static class ProjectionModelFinalizer
         LinqraftConfiguration configuration
     )
     {
-        var finalizedDtos = FinalizeDtos(template.GeneratedDtos, configuration);
-        var replacements = finalizedDtos.ToDictionary(
-            pair => pair.PlaceholderToken,
-            pair => pair.Dto.FullyQualifiedName,
+        var dtoReplacements = BuildDtoReplacements(template.GeneratedDtos, configuration);
+        var replacements = dtoReplacements.ToDictionary(
+            replacement => replacement.PlaceholderToken,
+            replacement => replacement.Dto.FullyQualifiedName,
             StringComparer.Ordinal
         );
         var requestTemplate = template.Request;
@@ -97,32 +97,51 @@ internal static class ProjectionModelFinalizer
                     replacements
                 ),
             },
-            GeneratedDtos = finalizedDtos.Select(pair => pair.Dto).ToArray(),
+            GeneratedDtos = dtoReplacements.Select(replacement => replacement.Dto).ToArray(),
         };
     }
 
-    public static EquatableArray<GeneratedDtoModel> MergeDtos(IEnumerable<GeneratedDtoModel> dtoModels)
+    public static EquatableArray<GeneratedDtoEmissionModel> MergeDtosForEmission(
+        IEnumerable<GeneratedDtoModel> dtoModels
+    )
     {
-        var merged = new Dictionary<string, GeneratedDtoModel>(StringComparer.Ordinal);
+        var mergedDtos = new Dictionary<string, GeneratedDtoModel>(StringComparer.Ordinal);
+        var ownerHintNamesByDtoKey = new Dictionary<string, HashSet<string>>(StringComparer.Ordinal);
         foreach (var dto in dtoModels)
         {
-            if (merged.TryGetValue(dto.Key, out var existing))
+            if (mergedDtos.TryGetValue(dto.Key, out var existing))
             {
-                merged[dto.Key] = MergeDtoShape(existing, dto);
-                continue;
+                mergedDtos[dto.Key] = MergeDtoShape(existing, dto);
+            }
+            else
+            {
+                mergedDtos.Add(dto.Key, dto);
             }
 
-            merged.Add(dto.Key, dto);
+            if (!ownerHintNamesByDtoKey.TryGetValue(dto.Key, out var ownerHintNames))
+            {
+                ownerHintNames = new HashSet<string>(StringComparer.Ordinal);
+                ownerHintNamesByDtoKey.Add(dto.Key, ownerHintNames);
+            }
+
+            ownerHintNames.Add(dto.OwnerHintName);
         }
 
-        return merged
+        return mergedDtos
             .Values.OrderByDescending(dto => dto.IsRoot)
             .ThenBy(dto => dto.Namespace, StringComparer.Ordinal)
             .ThenBy(dto => dto.FullyQualifiedName, StringComparer.Ordinal)
+            .Select(dto => new GeneratedDtoEmissionModel
+            {
+                Dto = dto,
+                OwnerHintNames = ownerHintNamesByDtoKey[dto.Key]
+                    .OrderBy(ownerHintName => ownerHintName, StringComparer.Ordinal)
+                    .ToArray(),
+            })
             .ToArray();
     }
 
-    private static IReadOnlyList<FinalizedDtoModel> FinalizeDtos(
+    private static IReadOnlyList<GeneratedDtoReplacementModel> BuildDtoReplacements(
         EquatableArray<GeneratedDtoTemplateModel> templates,
         LinqraftConfiguration configuration
     )
@@ -131,7 +150,7 @@ internal static class ProjectionModelFinalizer
             .OrderByDescending(template => template.IsRoot)
             .ThenBy(template => template.TemplateId, StringComparer.Ordinal)
             .Select(template =>
-                new FinalizedDtoModel
+                new GeneratedDtoReplacementModel
                 {
                     PlaceholderToken = template.PlaceholderToken,
                     Dto = FinalizeDto(template, templates, configuration),
@@ -292,7 +311,7 @@ internal static class ProjectionModelFinalizer
         return existingTypeName;
     }
 
-    private sealed record FinalizedDtoModel
+    private sealed record GeneratedDtoReplacementModel
     {
         public required string PlaceholderToken { get; init; }
 

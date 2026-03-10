@@ -23,11 +23,49 @@ internal static class SourceWriters
         return FinalizeSource(builder);
     }
 
+    public static string WriteOwnedUnit(
+        OwnedGeneratedSourceModel source,
+        IReadOnlyList<GeneratedDtoModel> dtos,
+        LinqraftConfiguration configuration
+    )
+    {
+        var builder = CreateFileBuilder();
+        switch (source)
+        {
+            case ProjectionOwnedGeneratedSourceModel projection:
+                WriteInterceptorDeclaration(builder, projection.Request);
+                break;
+            case MappingOwnedGeneratedSourceModel mapping:
+                WriteMappingDeclaration(builder, mapping.Request);
+                break;
+            default:
+                throw new InvalidOperationException(
+                    $"Unsupported generated source type '{source.GetType().Name}'."
+                );
+        }
+
+        WriteDtoDeclarations(builder, dtos, configuration);
+        return FinalizeSource(builder);
+    }
+
     public static string WriteDtoUnit(GeneratedDtoModel dto, LinqraftConfiguration configuration)
     {
         var builder = CreateFileBuilder();
         WriteDtoDeclaration(builder, dto, configuration);
         return FinalizeSource(builder);
+    }
+
+    private static void WriteDtoDeclarations(
+        IndentedStringBuilder builder,
+        IReadOnlyList<GeneratedDtoModel> dtos,
+        LinqraftConfiguration configuration
+    )
+    {
+        foreach (var dto in dtos)
+        {
+            builder.AppendLine();
+            WriteDtoDeclaration(builder, dto, configuration);
+        }
     }
 
     private static void WriteDtoDeclaration(

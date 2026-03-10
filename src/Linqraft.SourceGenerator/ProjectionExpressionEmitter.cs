@@ -5,14 +5,15 @@ using Linqraft.Core.Utilities;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
+using Microsoft.CodeAnalysis.Text;
 
 namespace Linqraft.SourceGenerator;
 
 internal sealed class AnonymousReplacementRewriter : CSharpSyntaxRewriter
 {
-    private readonly Dictionary<SyntaxNode, string> _replacementTypes;
+    private readonly IReadOnlyDictionary<TextSpan, string> _replacementTypes;
 
-    public AnonymousReplacementRewriter(Dictionary<SyntaxNode, string> replacementTypes)
+    public AnonymousReplacementRewriter(IReadOnlyDictionary<TextSpan, string> replacementTypes)
     {
         _replacementTypes = replacementTypes;
     }
@@ -21,7 +22,7 @@ internal sealed class AnonymousReplacementRewriter : CSharpSyntaxRewriter
         AnonymousObjectCreationExpressionSyntax node
     )
     {
-        if (!_replacementTypes.TryGetValue(node, out var targetType))
+        if (!_replacementTypes.TryGetValue(node.Span, out var targetType))
         {
             return base.VisitAnonymousObjectCreationExpression(node);
         }
@@ -51,7 +52,7 @@ internal sealed class ProjectionExpressionEmitter
     private readonly ExpressionSyntax _rootExpression;
     private readonly string _rootTypeName;
     private readonly bool _useEmptyCollectionFallback;
-    private readonly IReadOnlyDictionary<SyntaxNode, string> _replacementTypes;
+    private readonly IReadOnlyDictionary<TextSpan, string> _replacementTypes;
     private readonly IReadOnlyList<CaptureEntry> _captureEntries;
 
     public ProjectionExpressionEmitter(
@@ -59,7 +60,7 @@ internal sealed class ProjectionExpressionEmitter
         ExpressionSyntax rootExpression,
         string rootTypeName,
         bool useEmptyCollectionFallback,
-        IReadOnlyDictionary<SyntaxNode, string>? replacementTypes = null,
+        IReadOnlyDictionary<TextSpan, string>? replacementTypes = null,
         IReadOnlyList<CaptureEntry>? captureEntries = null
     )
     {
@@ -67,7 +68,7 @@ internal sealed class ProjectionExpressionEmitter
         _rootExpression = rootExpression;
         _rootTypeName = rootTypeName;
         _useEmptyCollectionFallback = useEmptyCollectionFallback;
-        _replacementTypes = replacementTypes ?? new Dictionary<SyntaxNode, string>();
+        _replacementTypes = replacementTypes ?? new Dictionary<TextSpan, string>();
         _captureEntries = captureEntries ?? global::System.Array.Empty<CaptureEntry>();
     }
 
@@ -142,7 +143,7 @@ internal sealed class ProjectionExpressionEmitter
 
     private string EmitAnonymousObject(AnonymousObjectCreationExpressionSyntax expression)
     {
-        var replacementType = _replacementTypes.TryGetValue(expression, out var resolvedType)
+        var replacementType = _replacementTypes.TryGetValue(expression.Span, out var resolvedType)
             ? resolvedType
             : null;
         var initializers = expression
@@ -428,7 +429,8 @@ internal sealed class ProjectionExpressionEmitter
         }
 
         var rootTypeName =
-            _replacementTypes.TryGetValue(expression, out var replacementType) ? replacementType
+            _replacementTypes.TryGetValue(expression.Span, out var replacementType)
+                ? replacementType
             : expressionType is not null
             && expressionType is not IErrorTypeSymbol
             && !ContainsAnonymousType(expressionType)

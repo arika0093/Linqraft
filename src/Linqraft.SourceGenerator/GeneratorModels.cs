@@ -220,6 +220,13 @@ internal sealed record GeneratedDtoModel
     public required EquatableArray<GeneratedPropertyModel> Properties { get; init; }
 }
 
+internal sealed record GeneratedDtoEmissionModel
+{
+    public required GeneratedDtoModel Dto { get; init; }
+
+    public required EquatableArray<string> OwnerHintNames { get; init; }
+}
+
 internal sealed record ProjectionRequest
 {
     public required string HintName { get; init; }

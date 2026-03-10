@@ -36,19 +36,27 @@ public sealed class SourceGeneratorSmokeTests
         generatedSources
             .Keys.Any(path => path.EndsWith("Linqraft.Declarations.g.cs", StringComparison.Ordinal))
             .ShouldBeTrue();
-        generatedSources
-            .Keys.Count(path => path.Contains("SelectExpr_", StringComparison.Ordinal))
-            .ShouldBe(2);
-        generatedSources
-            .Values.Any(source =>
-                source.Contains("partial class SmokeOrderSummaryDto", StringComparison.Ordinal)
+        var projectionSources = generatedSources
+            .Where(pair => pair.Key.Contains("SelectExpr_", StringComparison.Ordinal))
+            .ToArray();
+        projectionSources.Length.ShouldBe(2);
+        projectionSources
+            .Any(source =>
+                source.Value.Contains("partial class SmokeOrderSummaryDto", StringComparison.Ordinal)
+            )
+            .ShouldBeTrue();
+        projectionSources
+            .Any(source =>
+                source.Value.Contains("partial class SmokeOrderTotalsDto", StringComparison.Ordinal)
             )
             .ShouldBeTrue();
         generatedSources
-            .Values.Any(source =>
-                source.Contains("partial class SmokeOrderTotalsDto", StringComparison.Ordinal)
+            .Where(pair => !pair.Key.Contains("SelectExpr_", StringComparison.Ordinal))
+            .Any(pair =>
+                pair.Value.Contains("partial class SmokeOrderSummaryDto", StringComparison.Ordinal)
+                || pair.Value.Contains("partial class SmokeOrderTotalsDto", StringComparison.Ordinal)
             )
-            .ShouldBeTrue();
+            .ShouldBeFalse();
     }
 
     [Test]

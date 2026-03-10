@@ -1,5 +1,8 @@
 using System;
+using System.Collections.Generic;
+using System.Collections.Immutable;
 using System.Linq;
+using Linqraft.Core.Collections;
 using Linqraft.Core.Configuration;
 using Linqraft.Core.Utilities;
 using Microsoft.CodeAnalysis;
@@ -74,81 +77,168 @@ public sealed class LinqraftSourceGenerator : IIncrementalGenerator
         );
 
         var projectionSources = projectionModels.Select(
-            static (model, _) => new GeneratedSourceFileModel
+            static (model, _) => (OwnedGeneratedSourceModel)new ProjectionOwnedGeneratedSourceModel
             {
                 HintName = $"{model.Request.HintName}.g.cs",
-                SourceText = SourceWriters.WriteProjectionUnit(model.Request),
+                OwnerHintName = model.Request.HintName,
+                Request = model.Request,
+                GeneratedDtos = model.GeneratedDtos,
             }
         );
         var mappingClassSources = mappingClassModels.Select(
-            static (model, _) => new GeneratedSourceFileModel
+            static (model, _) => (OwnedGeneratedSourceModel)new MappingOwnedGeneratedSourceModel
             {
                 HintName = $"{model.Request.HintName}.g.cs",
-                SourceText = SourceWriters.WriteMappingUnit(model.Request),
+                OwnerHintName = model.Request.HintName,
+                Request = model.Request,
+                GeneratedDtos = model.GeneratedDtos,
             }
         );
         var mappingMethodSources = mappingMethodModels.Select(
-            static (model, _) => new GeneratedSourceFileModel
+            static (model, _) => (OwnedGeneratedSourceModel)new MappingOwnedGeneratedSourceModel
             {
                 HintName = $"{model.Request.HintName}.g.cs",
-                SourceText = SourceWriters.WriteMappingUnit(model.Request),
+                OwnerHintName = model.Request.HintName,
+                Request = model.Request,
+                GeneratedDtos = model.GeneratedDtos,
             }
         );
 
-        context.RegisterSourceOutput(
-            projectionSources,
-            static (output, source) => output.AddSource(source.HintName, source.SourceText)
+        var ownedSources = MergeCollectedValues(
+            projectionSources.Collect(),
+            mappingClassSources.Collect(),
+            mappingMethodSources.Collect()
         );
-        context.RegisterSourceOutput(
-            mappingClassSources,
-            static (output, source) => output.AddSource(source.HintName, source.SourceText)
-        );
-        context.RegisterSourceOutput(
-            mappingMethodSources,
-            static (output, source) => output.AddSource(source.HintName, source.SourceText)
-        );
-
-        var dtoSources = projectionModels
-            .SelectMany(static (model, _) => model.GeneratedDtos)
-            .Collect()
-            .Combine(mappingClassModels.SelectMany(static (model, _) => model.GeneratedDtos).Collect())
-            .Combine(mappingMethodModels.SelectMany(static (model, _) => model.GeneratedDtos).Collect())
+        var generatedSources = ownedSources
             .Combine(configuration)
-            .Select(static (data, _) => BuildDtoSources(data));
+            .Select(
+                static (data, _) => new GeneratedSourceBuildContextModel
+                {
+                    OwnedSources = data.Left,
+                    Configuration = data.Right,
+                }
+            )
+            .Select(static (context, _) => BuildGeneratedSources(context));
 
         context.RegisterSourceOutput(
-            dtoSources,
-            static (output, sourceSet) =>
-            {
-                foreach (var source in sourceSet.Sources)
-                {
-                    output.AddSource(source.HintName, source.SourceText);
-                }
-            }
+            generatedSources,
+            static (output, sourceSet) => AddGeneratedSources(output, sourceSet)
         );
     }
 
-    private static GeneratedSourceSetModel BuildDtoSources(
-        (((System.Collections.Immutable.ImmutableArray<GeneratedDtoModel> projectionDtos,
-            System.Collections.Immutable.ImmutableArray<GeneratedDtoModel> mappingClassDtos),
-            System.Collections.Immutable.ImmutableArray<GeneratedDtoModel> mappingMethodDtos),
-            LinqraftConfiguration configuration) data
+    private static GeneratedSourceSetModel BuildGeneratedSources(
+        GeneratedSourceBuildContextModel context
     )
     {
-        var (((projectionDtos, mappingClassDtos), mappingMethodDtos), configuration) = data;
-        var mergedDtos = ProjectionModelFinalizer.MergeDtos(
-            projectionDtos.Concat(mappingClassDtos).Concat(mappingMethodDtos)
+        var mergedDtos = ProjectionModelFinalizer.MergeDtosForEmission(
+            context.OwnedSources.SelectMany(static source => source.GeneratedDtos)
         );
+        var ownedSourceHints = new HashSet<string>(
+            context.OwnedSources.Select(static source => source.OwnerHintName),
+            StringComparer.Ordinal
+        );
+        var collocatedDtosByOwnerHint = mergedDtos
+            .Where(dto =>
+                dto.OwnerHintNames.Length == 1
+                && ownedSourceHints.Contains(dto.OwnerHintNames[0])
+            )
+            .GroupBy(dto => dto.OwnerHintNames[0], StringComparer.Ordinal)
+            .ToDictionary(
+                group => group.Key,
+                group => group.Select(dto => dto.Dto).ToArray(),
+                StringComparer.Ordinal
+            );
+        var generatedSources = new List<GeneratedSourceFileModel>();
+
+        foreach (
+            var ownedSource in context.OwnedSources.OrderBy(
+                static source => source.HintName,
+                StringComparer.Ordinal
+            )
+        )
+        {
+            collocatedDtosByOwnerHint.TryGetValue(ownedSource.OwnerHintName, out var collocatedDtos);
+            generatedSources.Add(
+                new GeneratedSourceFileModel
+                {
+                    HintName = ownedSource.HintName,
+                    SourceText = SourceWriters.WriteOwnedUnit(
+                        ownedSource,
+                        collocatedDtos ?? Array.Empty<GeneratedDtoModel>(),
+                        context.Configuration
+                    ),
+                }
+            );
+        }
+
+        foreach (var dto in mergedDtos.Where(dto => ShouldEmitStandaloneDto(dto, ownedSourceHints)))
+        {
+            generatedSources.Add(
+                new GeneratedSourceFileModel
+                {
+                    HintName = $"{SymbolNameHelper.SanitizeHintName(dto.Dto.Key)}.g.cs",
+                    SourceText = SourceWriters.WriteDtoUnit(dto.Dto, context.Configuration),
+                }
+            );
+        }
+
         return new GeneratedSourceSetModel
         {
-            Sources = mergedDtos
-                .Select(dto => new GeneratedSourceFileModel
-                {
-                    HintName = $"{SymbolNameHelper.SanitizeHintName(dto.Key)}.g.cs",
-                    SourceText = SourceWriters.WriteDtoUnit(dto, configuration),
-                })
+            Sources = generatedSources
+                .OrderBy(static source => source.HintName, StringComparer.Ordinal)
                 .ToArray(),
         };
+    }
+
+    private static bool ShouldEmitStandaloneDto(
+        GeneratedDtoEmissionModel dto,
+        ISet<string> ownedSourceHints
+    )
+    {
+        return dto.OwnerHintNames.Length != 1 || !ownedSourceHints.Contains(dto.OwnerHintNames[0]);
+    }
+
+    private static void AddGeneratedSources(
+        SourceProductionContext output,
+        GeneratedSourceSetModel sourceSet
+    )
+    {
+        foreach (var source in sourceSet.Sources)
+        {
+            output.AddSource(source.HintName, source.SourceText);
+        }
+    }
+
+    private static IncrementalValueProvider<EquatableArray<T>> MergeCollectedValues<T>(
+        IncrementalValueProvider<ImmutableArray<T>> first,
+        IncrementalValueProvider<ImmutableArray<T>> second
+    )
+        where T : IEquatable<T>
+    {
+        return first.Combine(second).Select(
+            static (pair, _) => new EquatableArray<T>(pair.Left.Concat(pair.Right))
+        );
+    }
+
+    private static IncrementalValueProvider<EquatableArray<T>> MergeCollectedValues<T>(
+        IncrementalValueProvider<EquatableArray<T>> first,
+        IncrementalValueProvider<ImmutableArray<T>> second
+    )
+        where T : IEquatable<T>
+    {
+        return first.Combine(second).Select(
+            static (pair, _) => new EquatableArray<T>(pair.Left.Concat(pair.Right))
+        );
+    }
+
+    private static IncrementalValueProvider<EquatableArray<T>> MergeCollectedValues<T>(
+        IncrementalValueProvider<ImmutableArray<T>> first,
+        IncrementalValueProvider<ImmutableArray<T>> second,
+        IncrementalValueProvider<ImmutableArray<T>> third
+    )
+        where T : IEquatable<T>
+    {
+        return MergeCollectedValues(MergeCollectedValues(first, second), third);
     }
 
     private static bool IsPotentialSelectExprInvocation(InvocationExpressionSyntax invocation)
