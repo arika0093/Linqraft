@@ -271,6 +271,52 @@ public sealed class AnalyzerCodeFixSmokeTests
     }
 
     [Test]
+    public async Task Anonymous_select_code_fix_simplifies_null_check_ternary()
+    {
+        const string source = """
+            using System;
+            using System.Linq;
+
+            namespace System.Linq
+            {
+                public static class SelectExprExtensions
+                {
+                    public static IQueryable<TResult> SelectExpr<TIn, TResult>(this IQueryable<TIn> query, Func<TIn, TResult> selector)
+                        where TIn : class => throw null!;
+                }
+            }
+
+            public class Child
+            {
+                public int Id { get; set; }
+            }
+
+            public class Entity
+            {
+                public Child? Child { get; set; }
+            }
+
+            public class QueryHolder
+            {
+                public object Project(IQueryable<Entity> source)
+                {
+                    return source.Select(entity => new
+                    {
+                        ChildData = entity.Child != null ? new { entity.Child.Id } : null,
+                    });
+                }
+            }
+            """;
+
+        var result = await ApplyFixAsync(source, "LQRS002", "Convert to SelectExpr");
+        var fixedText = result.PrimaryDocumentText;
+        var compilationErrors = await GetCompilationErrorsAsync(result.ChangedSolution);
+
+        compilationErrors.ShouldBeEmpty();
+        fixedText.ShouldContain("ChildData = new { Id = entity.Child?.Id }");
+    }
+
+    [Test]
     public async Task Anonymous_select_explicit_dto_code_fix_uses_existing_dto_type()
     {
         const string source = """
@@ -311,6 +357,58 @@ public sealed class AnalyzerCodeFixSmokeTests
 
         compilationErrors.ShouldBeEmpty();
         fixedText.ShouldContain("source.SelectExpr<Entity, ProjectDto>(entity => new { entity.Id })");
+    }
+
+    [Test]
+    public async Task Anonymous_select_explicit_dto_code_fix_simplifies_null_check_ternary()
+    {
+        const string source = """
+            using System;
+            using System.Linq;
+
+            namespace System.Linq
+            {
+                public static class SelectExprExtensions
+                {
+                    public static IQueryable<TResult> SelectExpr<TIn, TResult>(this IQueryable<TIn> query, Func<TIn, object> selector)
+                        where TIn : class => throw null!;
+                }
+            }
+
+            public class Child
+            {
+                public int Id { get; set; }
+            }
+
+            public class Entity
+            {
+                public Child? Child { get; set; }
+            }
+
+            public class ProjectDto
+            {
+                public object? ChildData { get; set; }
+            }
+
+            public class QueryHolder
+            {
+                public IQueryable<ProjectDto> Project(IQueryable<Entity> source)
+                {
+                    return source.Select(entity => new
+                    {
+                        ChildData = entity.Child != null ? new { entity.Child.Id } : null,
+                    });
+                }
+            }
+            """;
+
+        var result = await ApplyFixAsync(source, "LQRS002", "SelectExpr<T, TDto>");
+        var fixedText = result.PrimaryDocumentText;
+        var compilationErrors = await GetCompilationErrorsAsync(result.ChangedSolution);
+
+        compilationErrors.ShouldBeEmpty();
+        fixedText.ShouldContain("source.SelectExpr<Entity, ProjectDto>(entity => new");
+        fixedText.ShouldContain("ChildData = new { Id = entity.Child?.Id }");
     }
 
     [Test]
@@ -369,6 +467,122 @@ public sealed class AnalyzerCodeFixSmokeTests
         fixedText.ShouldContain(
             "[global::Microsoft.AspNetCore.Mvc.ProducesResponseType(typeof(EntityDto))]"
         );
+    }
+
+    [Test]
+    public async Task Named_select_explicit_dto_code_fix_simplifies_null_check_ternary()
+    {
+        const string source = """
+            using System;
+            using System.Linq;
+
+            namespace System.Linq
+            {
+                public static class SelectExprExtensions
+                {
+                    public static IQueryable<TResult> SelectExpr<TIn, TResult>(this IQueryable<TIn> query, Func<TIn, object> selector)
+                        where TIn : class => throw null!;
+                }
+            }
+
+            public class Child
+            {
+                public string? Name { get; set; }
+            }
+
+            public class Entity
+            {
+                public Child? Child { get; set; }
+            }
+
+            public class ChildDto
+            {
+                public string? Name { get; set; }
+            }
+
+            public class ProjectDto
+            {
+                public object? ChildData { get; set; }
+            }
+
+            public class QueryHolder
+            {
+                public IQueryable<ProjectDto> Project(IQueryable<Entity> source)
+                {
+                    return source.Select(entity => new ProjectDto
+                    {
+                        ChildData = entity.Child != null ? new ChildDto { Name = entity.Child.Name } : null,
+                    });
+                }
+            }
+            """;
+
+        var result = await ApplyFixAsync(source, "LQRS003", "Convert to SelectExpr<T, TDto>");
+        var fixedText = result.PrimaryDocumentText;
+        var compilationErrors = await GetCompilationErrorsAsync(result.ChangedSolution);
+
+        compilationErrors.ShouldBeEmpty();
+        fixedText.ShouldContain("source.SelectExpr<Entity, ProjectDto>(entity => new");
+        fixedText.ShouldContain("ChildData = new { Name = entity.Child?.Name }");
+    }
+
+    [Test]
+    public async Task Named_select_explicit_dto_strict_code_fix_preserves_ternary_pattern()
+    {
+        const string source = """
+            using System;
+            using System.Linq;
+
+            namespace System.Linq
+            {
+                public static class SelectExprExtensions
+                {
+                    public static IQueryable<TResult> SelectExpr<TIn, TResult>(this IQueryable<TIn> query, Func<TIn, object> selector)
+                        where TIn : class => throw null!;
+                }
+            }
+
+            public class Child
+            {
+                public string? Name { get; set; }
+            }
+
+            public class Entity
+            {
+                public Child? Child { get; set; }
+            }
+
+            public class ChildDto
+            {
+                public string? Name { get; set; }
+            }
+
+            public class ProjectDto
+            {
+                public object? ChildData { get; set; }
+            }
+
+            public class QueryHolder
+            {
+                public IQueryable<ProjectDto> Project(IQueryable<Entity> source)
+                {
+                    return source.Select(entity => new ProjectDto
+                    {
+                        ChildData = entity.Child != null ? new ChildDto { Name = entity.Child.Name } : null,
+                    });
+                }
+            }
+            """;
+
+        var result = await ApplyFixAsync(source, "LQRS003", "(strict)");
+        var fixedText = result.PrimaryDocumentText;
+        var compilationErrors = await GetCompilationErrorsAsync(result.ChangedSolution);
+
+        compilationErrors.ShouldBeEmpty();
+        fixedText.ShouldContain("ChildData = entity.Child != null ? new");
+        fixedText.ShouldContain("Name = entity.Child.Name");
+        fixedText.ShouldNotContain("entity.Child?.Name");
+        fixedText.ShouldNotContain("new ChildDto");
     }
 
     [Test]

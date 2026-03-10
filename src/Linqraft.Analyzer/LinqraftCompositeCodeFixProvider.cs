@@ -366,6 +366,23 @@ public sealed class LinqraftCompositeCodeFixProvider : CodeFixProvider
             );
         }
 
+        var lambda = AnalyzerHelpers.GetSelectorLambda(updatedInvocation);
+        if (
+            lambda is not null
+            && AnalyzerHelpers.GetLambdaExpressionBody(lambda)
+                is AnonymousObjectCreationExpressionSyntax anonymousObject
+        )
+        {
+            updatedInvocation = updatedInvocation.ReplaceNode(
+                anonymousObject,
+                RewriteProjectionExpression(
+                    anonymousObject,
+                    simplifyTernary: true,
+                    convertNamedObjectsToAnonymous: false
+                )
+            );
+        }
+
         return document.WithSyntaxRoot(root.ReplaceNode(invocation, updatedInvocation));
     }
 
@@ -430,13 +447,19 @@ public sealed class LinqraftCompositeCodeFixProvider : CodeFixProvider
             AnalyzerHelpers.GenerateDtoName(invocation)
         );
 
+        var updatedLambda = AnalyzerHelpers.GetSelectorLambda(updatedInvocation);
         if (
             !keepNamedProjection
-            && AnalyzerHelpers.GetLambdaExpressionBody(lambda)
+            && updatedLambda is not null
+            && AnalyzerHelpers.GetLambdaExpressionBody(updatedLambda)
                 is ObjectCreationExpressionSyntax objectCreation
         )
         {
-            var converted = ConvertObjectCreationToAnonymous(objectCreation, simplifyTernary);
+            var converted = RewriteProjectionExpression(
+                objectCreation,
+                simplifyTernary,
+                convertNamedObjectsToAnonymous: true
+            );
             updatedInvocation = updatedInvocation.ReplaceNode(objectCreation, converted);
         }
 
@@ -766,30 +789,149 @@ public sealed class LinqraftCompositeCodeFixProvider : CodeFixProvider
                 .Select(assignment =>
                 {
                     var memberName = assignment.Left.ToString();
-                    var value = RewriteForAnonymous(assignment.Right, simplifyTernary);
+                    var value = RewriteProjectionExpression(
+                        assignment.Right,
+                        simplifyTernary,
+                        convertNamedObjectsToAnonymous: true
+                    );
                     return $"{memberName} = {value}";
                 }) ?? Enumerable.Empty<string>();
 
         return SyntaxFactory.ParseExpression($"new {{ {string.Join(", ", members)} }}");
     }
 
-    private static string RewriteForAnonymous(ExpressionSyntax expression, bool simplifyTernary)
+    private static ExpressionSyntax RewriteProjectionExpression(
+        ExpressionSyntax expression,
+        bool simplifyTernary,
+        bool convertNamedObjectsToAnonymous
+    )
     {
-        if (expression is ObjectCreationExpressionSyntax nestedObject)
-        {
-            return ConvertObjectCreationToAnonymous(nestedObject, simplifyTernary).ToString();
-        }
-
         if (simplifyTernary && expression is ConditionalExpressionSyntax conditionalExpression)
         {
             var simplified = TrySimplifyConditionalExpression(conditionalExpression);
             if (simplified is not null)
             {
-                return simplified.ToString();
+                return RewriteProjectionExpression(
+                    simplified,
+                    simplifyTernary,
+                    convertNamedObjectsToAnonymous
+                );
             }
         }
 
-        return expression.ToString();
+        return expression switch
+        {
+            AnonymousObjectCreationExpressionSyntax anonymousObject => RewriteAnonymousProjection(
+                anonymousObject,
+                simplifyTernary,
+                convertNamedObjectsToAnonymous
+            ),
+            ObjectCreationExpressionSyntax objectCreation when convertNamedObjectsToAnonymous =>
+                ConvertObjectCreationToAnonymous(objectCreation, simplifyTernary),
+            ObjectCreationExpressionSyntax objectCreation => RewriteNamedObjectProjection(
+                objectCreation,
+                simplifyTernary
+            ),
+            ConditionalExpressionSyntax nestedConditional => RewriteConditionalProjection(
+                nestedConditional,
+                simplifyTernary,
+                convertNamedObjectsToAnonymous
+            ),
+            _ => expression,
+        };
+    }
+
+    private static AnonymousObjectCreationExpressionSyntax RewriteAnonymousProjection(
+        AnonymousObjectCreationExpressionSyntax anonymousObject,
+        bool simplifyTernary,
+        bool convertNamedObjectsToAnonymous
+    )
+    {
+        var initializers = anonymousObject.Initializers;
+        var changed = false;
+
+        foreach (var initializer in anonymousObject.Initializers)
+        {
+            var rewrittenExpression = RewriteProjectionExpression(
+                initializer.Expression,
+                simplifyTernary,
+                convertNamedObjectsToAnonymous
+            );
+            if (ReferenceEquals(rewrittenExpression, initializer.Expression))
+            {
+                continue;
+            }
+
+            initializers = initializers.Replace(
+                initializer,
+                initializer.WithExpression(rewrittenExpression)
+            );
+            changed = true;
+        }
+
+        return changed ? anonymousObject.WithInitializers(initializers) : anonymousObject;
+    }
+
+    private static ObjectCreationExpressionSyntax RewriteNamedObjectProjection(
+        ObjectCreationExpressionSyntax objectCreation,
+        bool simplifyTernary
+    )
+    {
+        if (objectCreation.Initializer is null)
+        {
+            return objectCreation;
+        }
+
+        var expressions = objectCreation.Initializer.Expressions;
+        var changed = false;
+
+        foreach (
+            var assignment in objectCreation
+                .Initializer.Expressions.OfType<AssignmentExpressionSyntax>()
+        )
+        {
+            var rewrittenRight = RewriteProjectionExpression(
+                assignment.Right,
+                simplifyTernary,
+                convertNamedObjectsToAnonymous: false
+            );
+            if (ReferenceEquals(rewrittenRight, assignment.Right))
+            {
+                continue;
+            }
+
+            expressions = expressions.Replace(assignment, assignment.WithRight(rewrittenRight));
+            changed = true;
+        }
+
+        return changed
+            ? objectCreation.WithInitializer(objectCreation.Initializer.WithExpressions(expressions))
+            : objectCreation;
+    }
+
+    private static ConditionalExpressionSyntax RewriteConditionalProjection(
+        ConditionalExpressionSyntax conditionalExpression,
+        bool simplifyTernary,
+        bool convertNamedObjectsToAnonymous
+    )
+    {
+        var rewrittenWhenTrue = RewriteProjectionExpression(
+            conditionalExpression.WhenTrue,
+            simplifyTernary,
+            convertNamedObjectsToAnonymous
+        );
+        var rewrittenWhenFalse = RewriteProjectionExpression(
+            conditionalExpression.WhenFalse,
+            simplifyTernary,
+            convertNamedObjectsToAnonymous
+        );
+
+        return ReferenceEquals(rewrittenWhenTrue, conditionalExpression.WhenTrue)
+                && ReferenceEquals(rewrittenWhenFalse, conditionalExpression.WhenFalse)
+            ? conditionalExpression
+            : conditionalExpression
+                .WithWhenTrue(rewrittenWhenTrue)
+                .WithWhenFalse(rewrittenWhenFalse);
     }
 
     private static ExpressionSyntax? TrySimplifyConditionalExpression(
