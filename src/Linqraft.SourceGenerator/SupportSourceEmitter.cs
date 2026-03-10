@@ -162,6 +162,6 @@ internal static class SupportSourceEmitter
             }
             """;
 
-        return GeneratedSourceFormatter.FormatCompilationUnit(source);
+        return source;
     }
 }
