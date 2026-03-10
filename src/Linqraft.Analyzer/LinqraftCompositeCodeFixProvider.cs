@@ -10,6 +10,7 @@ using Microsoft.CodeAnalysis.CodeActions;
 using Microsoft.CodeAnalysis.CodeFixes;
 using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
+using Microsoft.CodeAnalysis.Formatting;
 
 namespace Linqraft.Analyzer;
 
@@ -349,8 +350,14 @@ public sealed class LinqraftCompositeCodeFixProvider : CodeFixProvider
         }
 
         var updatedInvocation = RenameInvocation(invocation, "SelectExpr");
+        var originalLambda = AnalyzerHelpers.GetSelectorLambda(invocation);
         if (explicitDto)
         {
+            if (originalLambda is null)
+            {
+                return document;
+            }
+
             var semanticModel = await document
                 .GetSemanticModelAsync(cancellationToken)
                 .ConfigureAwait(false);
@@ -362,7 +369,7 @@ public sealed class LinqraftCompositeCodeFixProvider : CodeFixProvider
             updatedInvocation = AddTypeArguments(
                 updatedInvocation,
                 GetSelectSourceTypeName(invocation, semanticModel, cancellationToken),
-                AnalyzerHelpers.GenerateDtoName(invocation)
+                GetSelectDtoTypeName(invocation, originalLambda, semanticModel, cancellationToken)
             );
         }
 
@@ -383,7 +390,7 @@ public sealed class LinqraftCompositeCodeFixProvider : CodeFixProvider
             );
         }
 
-        return document.WithSyntaxRoot(root.ReplaceNode(invocation, updatedInvocation));
+        return WithFormattedSyntaxRoot(document, root.ReplaceNode(invocation, updatedInvocation));
     }
 
     private static async Task<Document> ConvertSelectNamedAsync(
@@ -444,7 +451,7 @@ public sealed class LinqraftCompositeCodeFixProvider : CodeFixProvider
         updatedInvocation = AddTypeArguments(
             updatedInvocation,
             GetSelectSourceTypeName(invocation, semanticModel, cancellationToken),
-            AnalyzerHelpers.GenerateDtoName(invocation)
+            GetSelectDtoTypeName(invocation, lambda, semanticModel, cancellationToken)
         );
 
         var updatedLambda = AnalyzerHelpers.GetSelectorLambda(updatedInvocation);
@@ -463,7 +470,7 @@ public sealed class LinqraftCompositeCodeFixProvider : CodeFixProvider
             updatedInvocation = updatedInvocation.ReplaceNode(objectCreation, converted);
         }
 
-        return document.WithSyntaxRoot(root.ReplaceNode(invocation, updatedInvocation));
+        return WithFormattedSyntaxRoot(document, root.ReplaceNode(invocation, updatedInvocation));
     }
 
     private static async Task<Document> SimplifyTernaryAsync(
@@ -484,7 +491,10 @@ public sealed class LinqraftCompositeCodeFixProvider : CodeFixProvider
             return document;
         }
 
-        return document.WithSyntaxRoot(root.ReplaceNode(conditionalExpression, simplified));
+        return WithFormattedSyntaxRoot(
+            document,
+            root.ReplaceNode(conditionalExpression, simplified)
+        );
     }
 
     private static async Task<Document> RemoveCaptureAsync(
@@ -760,6 +770,42 @@ public sealed class LinqraftCompositeCodeFixProvider : CodeFixProvider
         return "TSource";
     }
 
+    private static string GetSelectDtoTypeName(
+        InvocationExpressionSyntax invocation,
+        LambdaExpressionSyntax lambda,
+        SemanticModel semanticModel,
+        CancellationToken cancellationToken
+    )
+    {
+        if (
+            AnalyzerHelpers.GetLambdaExpressionBody(lambda)
+            is ObjectCreationExpressionSyntax objectCreation
+        )
+        {
+            var typeSymbol = semanticModel.GetTypeInfo(objectCreation.Type, cancellationToken).Type;
+            if (typeSymbol is not null)
+            {
+                return typeSymbol.ToDisplayString(SymbolDisplayFormat.MinimallyQualifiedFormat);
+            }
+
+            return objectCreation.Type.ToString();
+        }
+
+        var method = invocation.Ancestors().OfType<MethodDeclarationSyntax>().FirstOrDefault();
+        var methodSymbol = method is null
+            ? null
+            : semanticModel.GetDeclaredSymbol(method, cancellationToken);
+        var returnType = methodSymbol?.ReturnType as INamedTypeSymbol;
+        if (returnType?.TypeArguments.Length == 1)
+        {
+            return returnType.TypeArguments[0].ToDisplayString(
+                SymbolDisplayFormat.MinimallyQualifiedFormat
+            );
+        }
+
+        return AnalyzerHelpers.GenerateDtoName(invocation);
+    }
+
     private static string? GetSequenceElementName(ITypeSymbol? sequenceType)
     {
         if (sequenceType is not INamedTypeSymbol namedType)
@@ -783,21 +829,19 @@ public sealed class LinqraftCompositeCodeFixProvider : CodeFixProvider
         bool simplifyTernary
     )
     {
-        var members =
-            objectCreation
-                .Initializer?.Expressions.OfType<AssignmentExpressionSyntax>()
-                .Select(assignment =>
-                {
-                    var memberName = assignment.Left.ToString();
-                    var value = RewriteProjectionExpression(
-                        assignment.Right,
-                        simplifyTernary,
-                        convertNamedObjectsToAnonymous: true
-                    );
-                    return $"{memberName} = {value}";
-                }) ?? Enumerable.Empty<string>();
+        if (objectCreation.ArgumentList is { Arguments.Count: > 0 } || objectCreation.Initializer is null)
+        {
+            return objectCreation;
+        }
 
-        return SyntaxFactory.ParseExpression($"new {{ {string.Join(", ", members)} }}");
+        var members = objectCreation
+            .Initializer.Expressions.OfType<AssignmentExpressionSyntax>()
+            .Select(assignment =>
+                AppendValueWithContinuation($"{assignment.Left} = ", assignment.Right.ToString())
+            )
+            .ToList();
+
+        return SyntaxFactory.ParseExpression(BuildInitializerExpression("new", members));
     }
 
     private static ExpressionSyntax RewriteProjectionExpression(
@@ -806,230 +850,385 @@ public sealed class LinqraftCompositeCodeFixProvider : CodeFixProvider
         bool convertNamedObjectsToAnonymous
     )
     {
-        if (simplifyTernary && expression is ConditionalExpressionSyntax conditionalExpression)
-        {
-            var simplified = TrySimplifyConditionalExpression(conditionalExpression);
-            if (simplified is not null)
-            {
-                return RewriteProjectionExpression(
-                    simplified,
-                    simplifyTernary,
-                    convertNamedObjectsToAnonymous
-                );
-            }
-        }
-
-        return expression switch
-        {
-            AnonymousObjectCreationExpressionSyntax anonymousObject => RewriteAnonymousProjection(
-                anonymousObject,
-                simplifyTernary,
-                convertNamedObjectsToAnonymous
-            ),
-            ObjectCreationExpressionSyntax objectCreation when convertNamedObjectsToAnonymous =>
-                ConvertObjectCreationToAnonymous(objectCreation, simplifyTernary),
-            ObjectCreationExpressionSyntax objectCreation => RewriteNamedObjectProjection(
-                objectCreation,
-                simplifyTernary
-            ),
-            ConditionalExpressionSyntax nestedConditional => RewriteConditionalProjection(
-                nestedConditional,
-                simplifyTernary,
-                convertNamedObjectsToAnonymous
-            ),
-            _ => expression,
-        };
-    }
-
-    private static AnonymousObjectCreationExpressionSyntax RewriteAnonymousProjection(
-        AnonymousObjectCreationExpressionSyntax anonymousObject,
-        bool simplifyTernary,
-        bool convertNamedObjectsToAnonymous
-    )
-    {
-        var initializers = anonymousObject.Initializers;
-        var changed = false;
-
-        foreach (var initializer in anonymousObject.Initializers)
-        {
-            var rewrittenExpression = RewriteProjectionExpression(
-                initializer.Expression,
-                simplifyTernary,
-                convertNamedObjectsToAnonymous
-            );
-            if (ReferenceEquals(rewrittenExpression, initializer.Expression))
-            {
-                continue;
-            }
-
-            initializers = initializers.Replace(
-                initializer,
-                initializer.WithExpression(rewrittenExpression)
-            );
-            changed = true;
-        }
-
-        return changed ? anonymousObject.WithInitializers(initializers) : anonymousObject;
-    }
-
-    private static ObjectCreationExpressionSyntax RewriteNamedObjectProjection(
-        ObjectCreationExpressionSyntax objectCreation,
-        bool simplifyTernary
-    )
-    {
-        if (objectCreation.Initializer is null)
-        {
-            return objectCreation;
-        }
-
-        var expressions = objectCreation.Initializer.Expressions;
-        var changed = false;
-
-        foreach (
-            var assignment in objectCreation
-                .Initializer.Expressions.OfType<AssignmentExpressionSyntax>()
-        )
-        {
-            var rewrittenRight = RewriteProjectionExpression(
-                assignment.Right,
-                simplifyTernary,
-                convertNamedObjectsToAnonymous: false
-            );
-            if (ReferenceEquals(rewrittenRight, assignment.Right))
-            {
-                continue;
-            }
-
-            expressions = expressions.Replace(assignment, assignment.WithRight(rewrittenRight));
-            changed = true;
-        }
-
-        return changed
-            ? objectCreation.WithInitializer(objectCreation.Initializer.WithExpressions(expressions))
-            : objectCreation;
-    }
-
-    private static ConditionalExpressionSyntax RewriteConditionalProjection(
-        ConditionalExpressionSyntax conditionalExpression,
-        bool simplifyTernary,
-        bool convertNamedObjectsToAnonymous
-    )
-    {
-        var rewrittenWhenTrue = RewriteProjectionExpression(
-            conditionalExpression.WhenTrue,
+        var rewriter = new ProjectionExpressionRewriter(
             simplifyTernary,
             convertNamedObjectsToAnonymous
         );
-        var rewrittenWhenFalse = RewriteProjectionExpression(
-            conditionalExpression.WhenFalse,
-            simplifyTernary,
-            convertNamedObjectsToAnonymous
-        );
-
-        return ReferenceEquals(rewrittenWhenTrue, conditionalExpression.WhenTrue)
-                && ReferenceEquals(rewrittenWhenFalse, conditionalExpression.WhenFalse)
-            ? conditionalExpression
-            : conditionalExpression
-                .WithWhenTrue(rewrittenWhenTrue)
-                .WithWhenFalse(rewrittenWhenFalse);
+        return (ExpressionSyntax)(rewriter.Visit(expression) ?? expression);
     }
 
     private static ExpressionSyntax? TrySimplifyConditionalExpression(
         ConditionalExpressionSyntax conditionalExpression
     )
     {
-        if (!AnalyzerHelpers.ContainsNullCheckedObjectTernary(conditionalExpression))
+        if (
+            !TryGetSimplifiableBranch(
+                conditionalExpression,
+                out var valueBranch,
+                out var checkedPaths
+            )
+        )
         {
             return null;
         }
 
-        var checkedPath = ExtractCheckedPath(conditionalExpression.Condition);
-        if (string.IsNullOrWhiteSpace(checkedPath))
-        {
-            return null;
-        }
-
-        var objectBranch = conditionalExpression.WhenTrue.IsKind(SyntaxKind.NullLiteralExpression)
-            ? conditionalExpression.WhenFalse
-            : conditionalExpression.WhenTrue;
-
-        return objectBranch switch
+        return valueBranch switch
         {
             AnonymousObjectCreationExpressionSyntax anonymousObject => SimplifyAnonymousObject(
                 anonymousObject,
-                checkedPath!
+                checkedPaths
             ),
             ObjectCreationExpressionSyntax objectCreation => SimplifyNamedObject(
                 objectCreation,
-                checkedPath!
+                checkedPaths
             ),
-            _ => null,
+            _ => SyntaxFactory.ParseExpression(SimplifyValueBranch(valueBranch, checkedPaths)),
         };
     }
 
     private static ExpressionSyntax SimplifyAnonymousObject(
         AnonymousObjectCreationExpressionSyntax anonymousObject,
-        string checkedPath
+        IReadOnlyList<string> checkedPaths
     )
     {
-        var members = anonymousObject.Initializers.Select(initializer =>
-        {
-            var memberName = AnalyzerHelpers.GetAnonymousMemberName(initializer);
-            var value = ApplyNullConditional(initializer.Expression.ToString(), checkedPath);
-            return $"{memberName} = {value}";
-        });
-        return SyntaxFactory.ParseExpression($"new {{ {string.Join(", ", members)} }}");
+        var members = anonymousObject.Initializers
+            .Select(initializer =>
+                AppendValueWithContinuation(
+                    $"{AnalyzerHelpers.GetAnonymousMemberName(initializer)} = ",
+                    SimplifyValueBranch(initializer.Expression, checkedPaths)
+                )
+            )
+            .ToList();
+        return SyntaxFactory.ParseExpression(BuildInitializerExpression("new", members));
     }
 
     private static ExpressionSyntax SimplifyNamedObject(
         ObjectCreationExpressionSyntax objectCreation,
-        string checkedPath
+        IReadOnlyList<string> checkedPaths
     )
     {
-        var members =
-            objectCreation
-                .Initializer?.Expressions.OfType<AssignmentExpressionSyntax>()
-                .Select(assignment =>
-                    $"{assignment.Left} = {ApplyNullConditional(assignment.Right.ToString(), checkedPath)}"
-                ) ?? Enumerable.Empty<string>();
-        return SyntaxFactory.ParseExpression(
-            $"new {objectCreation.Type} {{ {string.Join(", ", members)} }}"
-        );
+        var header = objectCreation.ArgumentList is null
+            ? $"new {objectCreation.Type}"
+            : $"new {objectCreation.Type}{objectCreation.ArgumentList}";
+        var members = objectCreation
+            .Initializer?.Expressions.OfType<AssignmentExpressionSyntax>()
+            .Select(assignment =>
+                AppendValueWithContinuation(
+                    $"{assignment.Left} = ",
+                    SimplifyValueBranch(assignment.Right, checkedPaths)
+                )
+            )
+            .ToList();
+        if (members is null || members.Count == 0)
+        {
+            return SyntaxFactory.ParseExpression(header);
+        }
+
+        return SyntaxFactory.ParseExpression(BuildInitializerExpression(header, members));
     }
 
-    private static string? ExtractCheckedPath(ExpressionSyntax condition)
+    private static bool TryGetSimplifiableBranch(
+        ConditionalExpressionSyntax conditionalExpression,
+        out ExpressionSyntax valueBranch,
+        out IReadOnlyList<string> checkedPaths
+    )
     {
+        var collectedPaths = new List<string>();
         if (
-            condition is BinaryExpressionSyntax binaryExpression
-            && binaryExpression.IsKind(SyntaxKind.NotEqualsExpression)
-            && binaryExpression.Right.IsKind(SyntaxKind.NullLiteralExpression)
+            IsNullLike(conditionalExpression.WhenFalse)
+            && TryCollectNullGuardPaths(
+                conditionalExpression.Condition,
+                valueWhenConditionTrue: true,
+                collectedPaths
+            )
         )
         {
-            return binaryExpression.Left.ToString();
+            valueBranch = conditionalExpression.WhenTrue;
+            checkedPaths = collectedPaths;
+            return true;
         }
 
         if (
-            condition is BinaryExpressionSyntax logicalAnd
-            && logicalAnd.IsKind(SyntaxKind.LogicalAndExpression)
+            IsNullLike(conditionalExpression.WhenTrue)
+            && TryCollectNullGuardPaths(
+                conditionalExpression.Condition,
+                valueWhenConditionTrue: false,
+                collectedPaths = new List<string>()
+            )
         )
         {
-            return ExtractCheckedPath(logicalAnd.Left);
+            valueBranch = conditionalExpression.WhenFalse;
+            checkedPaths = collectedPaths;
+            return true;
         }
 
-        return null;
+        valueBranch = conditionalExpression;
+        checkedPaths = Array.Empty<string>();
+        return false;
+    }
+
+    private static bool TryCollectNullGuardPaths(
+        ExpressionSyntax condition,
+        bool valueWhenConditionTrue,
+        ICollection<string> checkedPaths
+    )
+    {
+        condition = UnwrapParentheses(condition);
+        if (condition is not BinaryExpressionSyntax binaryExpression)
+        {
+            return false;
+        }
+
+        if (
+            valueWhenConditionTrue
+                && binaryExpression.IsKind(SyntaxKind.LogicalAndExpression)
+            || !valueWhenConditionTrue
+                && binaryExpression.IsKind(SyntaxKind.LogicalOrExpression)
+        )
+        {
+            return TryCollectNullGuardPaths(
+                    binaryExpression.Left,
+                    valueWhenConditionTrue,
+                    checkedPaths
+                )
+                && TryCollectNullGuardPaths(
+                    binaryExpression.Right,
+                    valueWhenConditionTrue,
+                    checkedPaths
+                );
+        }
+
+        if (!TryGetNullCheckedPath(binaryExpression, valueWhenConditionTrue, out var checkedPath))
+        {
+            return false;
+        }
+
+        checkedPaths.Add(checkedPath);
+        return true;
+    }
+
+    private static bool TryGetNullCheckedPath(
+        BinaryExpressionSyntax binaryExpression,
+        bool valueWhenConditionTrue,
+        out string checkedPath
+    )
+    {
+        var matchesExpectedOperator = valueWhenConditionTrue
+            ? binaryExpression.IsKind(SyntaxKind.NotEqualsExpression)
+            : binaryExpression.IsKind(SyntaxKind.EqualsExpression);
+        if (!matchesExpectedOperator)
+        {
+            checkedPath = string.Empty;
+            return false;
+        }
+
+        if (IsNullLike(binaryExpression.Right))
+        {
+            checkedPath = UnwrapParentheses(binaryExpression.Left).ToString();
+            return !string.IsNullOrWhiteSpace(checkedPath);
+        }
+
+        if (IsNullLike(binaryExpression.Left))
+        {
+            checkedPath = UnwrapParentheses(binaryExpression.Right).ToString();
+            return !string.IsNullOrWhiteSpace(checkedPath);
+        }
+
+        checkedPath = string.Empty;
+        return false;
+    }
+
+    private static string SimplifyValueBranch(
+        ExpressionSyntax expression,
+        IReadOnlyList<string> checkedPaths
+    )
+    {
+        expression = UnwrapParentheses(expression);
+        if (expression is CastExpressionSyntax castExpression)
+        {
+            var rewrittenInner = ApplyNullConditionals(
+                castExpression.Expression.ToString(),
+                checkedPaths
+            );
+            if (CanDropNullableCast(castExpression.Type, rewrittenInner))
+            {
+                return rewrittenInner;
+            }
+
+            return $"({castExpression.Type}){rewrittenInner}";
+        }
+
+        return ApplyNullConditionals(expression.ToString(), checkedPaths);
+    }
+
+    private static bool CanDropNullableCast(TypeSyntax type, string expressionText)
+    {
+        return expressionText.Contains("?.", StringComparison.Ordinal)
+            && (
+                type is NullableTypeSyntax
+                || type.ToString().Contains("Nullable<", StringComparison.Ordinal)
+            );
+    }
+
+    private static string ApplyNullConditionals(
+        string expressionText,
+        IReadOnlyList<string> checkedPaths
+    )
+    {
+        var rewritten = expressionText;
+        foreach (
+            var checkedPath in checkedPaths
+                .Where(path => !string.IsNullOrWhiteSpace(path))
+                .Distinct(StringComparer.Ordinal)
+                .OrderByDescending(path => path.Length)
+        )
+        {
+            rewritten = ApplyNullConditional(rewritten, checkedPath);
+        }
+
+        return rewritten;
     }
 
     private static string ApplyNullConditional(string expressionText, string checkedPath)
     {
         var needle = checkedPath + ".";
         var replacement = checkedPath + "?.";
-        var index = expressionText.IndexOf(needle, StringComparison.Ordinal);
-        if (index < 0)
+        var rewritten = expressionText;
+        while (true)
         {
-            return expressionText;
+            var index = rewritten.IndexOf(needle, StringComparison.Ordinal);
+            if (index < 0)
+            {
+                return rewritten;
+            }
+
+            rewritten = rewritten.Remove(index, needle.Length).Insert(index, replacement);
+        }
+    }
+
+    private static bool IsNullLike(ExpressionSyntax expression)
+    {
+        expression = UnwrapParentheses(expression);
+        return expression switch
+        {
+            LiteralExpressionSyntax literalExpression
+                when literalExpression.IsKind(SyntaxKind.NullLiteralExpression) => true,
+            CastExpressionSyntax castExpression => IsNullLike(castExpression.Expression),
+            _ => false,
+        };
+    }
+
+    private static ExpressionSyntax UnwrapParentheses(ExpressionSyntax expression)
+    {
+        while (expression is ParenthesizedExpressionSyntax parenthesizedExpression)
+        {
+            expression = parenthesizedExpression.Expression;
         }
 
-        return expressionText.Remove(index, needle.Length).Insert(index, replacement);
+        return expression;
+    }
+
+    private static string BuildInitializerExpression(string header, IReadOnlyList<string> items)
+    {
+        if (!ShouldExpandInitializer(items))
+        {
+            return items.Count == 0
+                ? $"{header} {{ }}"
+                : $"{header} {{ {string.Join(", ", items)} }}";
+        }
+
+        var lines = new List<string> { $"{header} {{" };
+        foreach (var item in items)
+        {
+            var itemLines = SplitLines(item);
+            for (var index = 0; index < itemLines.Length; index++)
+            {
+                var suffix = index == itemLines.Length - 1 ? "," : string.Empty;
+                lines.Add($"    {itemLines[index]}{suffix}");
+            }
+        }
+
+        lines.Add("}");
+        return string.Join("\n", lines);
+    }
+
+    private static bool ShouldExpandInitializer(IReadOnlyList<string> items)
+    {
+        return items.Count > 1 || items.Any(ContainsLineBreak);
+    }
+
+    private static string AppendValueWithContinuation(string prefix, string value)
+    {
+        var lines = SplitLines(value);
+        if (lines.Length == 0)
+        {
+            return prefix;
+        }
+
+        if (lines.Length == 1)
+        {
+            return prefix + lines[0];
+        }
+
+        var formattedLines = new List<string> { prefix + lines[0] };
+        formattedLines.AddRange(lines.Skip(1).Select(IndentAllLines));
+        return string.Join("\n", formattedLines);
+    }
+
+    private static string IndentAllLines(string value)
+    {
+        var prefix = "    ";
+        return string.Join("\n", SplitLines(value).Select(line => prefix + line));
+    }
+
+    private static bool ContainsLineBreak(string value)
+    {
+        return value.IndexOf('\n') >= 0 || value.IndexOf('\r') >= 0;
+    }
+
+    private static string[] SplitLines(string value)
+    {
+        return value.Replace("\r\n", "\n").Replace('\r', '\n').Split('\n');
+    }
+
+    private static Document WithFormattedSyntaxRoot(Document document, SyntaxNode root)
+    {
+        using var workspace = new AdhocWorkspace();
+        return document.WithSyntaxRoot(Formatter.Format(root, workspace));
+    }
+
+    private sealed class ProjectionExpressionRewriter(
+        bool simplifyTernary,
+        bool convertNamedObjectsToAnonymous
+    ) : CSharpSyntaxRewriter
+    {
+        public override SyntaxNode? VisitConditionalExpression(
+            ConditionalExpressionSyntax node
+        )
+        {
+            var rewritten = (ConditionalExpressionSyntax)base.VisitConditionalExpression(node)!;
+            if (!simplifyTernary)
+            {
+                return rewritten;
+            }
+
+            return TrySimplifyConditionalExpression(rewritten) ?? rewritten;
+        }
+
+        public override SyntaxNode? VisitObjectCreationExpression(
+            ObjectCreationExpressionSyntax node
+        )
+        {
+            var rewritten = (ObjectCreationExpressionSyntax)base.VisitObjectCreationExpression(
+                node
+            )!;
+            if (!convertNamedObjectsToAnonymous)
+            {
+                return rewritten;
+            }
+
+            return ConvertObjectCreationToAnonymous(rewritten, simplifyTernary);
+        }
     }
 
     private static ObjectCreationExpressionSyntax CreateObjectCreationFromAnonymous(

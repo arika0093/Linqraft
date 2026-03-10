@@ -274,6 +274,61 @@ public sealed class GlobalPropertyConfigurationTests
     }
 
     [Test]
+    public void Generated_prebuilt_expression_source_dedents_after_nested_select_projection()
+    {
+        var result = FormattingRoots
+            .AsQueryable()
+            .SelectExpr<FormattingRoot, ConfiguredSelectChainFormattingDto>(root => new
+            {
+                root.Id,
+                Child2Summaries = root.Child2.Select(child => new
+                {
+                    child.Summary,
+                    GrandChildCount = child.GrandChilds.Count,
+                    FirstGrandChildNote = child.GrandChilds[0].Notes,
+                }),
+                Child2Count = root.Child2.Count,
+            })
+            .ToList();
+
+        result.Count.ShouldBe(1);
+        result[0].Child2Summaries.Count().ShouldBe(1);
+        result[0].Child2Count.ShouldBe(1);
+        result[0].Child2Summaries.First().GrandChildCount.ShouldBe(2);
+        result[0].Child2Summaries.First().FirstGrandChildNote.ShouldBe("Alpha");
+
+        var projectionSource = GetGeneratedProjectionSourceContaining(
+            "ConfiguredSelectChainFormattingDto",
+            "Child2Summaries = root.Child2"
+        );
+        var lines = projectionSource.Replace("\r\n", "\n", StringComparison.Ordinal).Split('\n');
+        var childLineIndex = Array.FindIndex(
+            lines,
+            line => line.Contains("Child2Summaries = root.Child2", StringComparison.Ordinal)
+        );
+
+        childLineIndex.ShouldBeGreaterThanOrEqualTo(0);
+        lines[childLineIndex + 1]
+            .Trim()
+            .ShouldStartWith(".Select(child => new global::GlobalGenerated.Child2SummariesDto_");
+        lines[childLineIndex + 2].Trim().ShouldBe("Summary = child.Summary,");
+        lines[childLineIndex + 3].Trim().ShouldBe("GrandChildCount = child.GrandChilds.Count,");
+        lines[childLineIndex + 4].Trim().ShouldBe("FirstGrandChildNote = child.GrandChilds[0].Notes,");
+        lines[childLineIndex + 5].Trim().ShouldBe("}),");
+        lines[childLineIndex + 6].Trim().ShouldBe("Child2Count = root.Child2.Count,");
+        CountLeadingSpaces(lines[childLineIndex]).ShouldBe(12);
+        CountLeadingSpaces(lines[childLineIndex + 1]).ShouldBe(16);
+        CountLeadingSpaces(lines[childLineIndex + 2]).ShouldBe(20);
+        CountLeadingSpaces(lines[childLineIndex + 3]).ShouldBe(20);
+        CountLeadingSpaces(lines[childLineIndex + 4]).ShouldBe(20);
+        CountLeadingSpaces(lines[childLineIndex + 5]).ShouldBe(16);
+        CountLeadingSpaces(lines[childLineIndex + 6]).ShouldBe(12);
+        projectionSource
+            .Contains("Child2Summaries = root.Child2.Select(", StringComparison.Ordinal)
+            .ShouldBeFalse();
+    }
+
+    [Test]
     public void Generated_projection_source_simplifies_null_coalescing_collection_fallbacks()
     {
         var result = Orders

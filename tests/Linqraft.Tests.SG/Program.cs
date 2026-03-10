@@ -52,6 +52,38 @@ public sealed class SourceGeneratorSmokeTests
     }
 
     [Test]
+    public void Generator_keeps_prebuilt_expression_generation_opt_in()
+    {
+        var driver = CreateDriver(usePrebuildExpression: false);
+        var compilation = CreateCompilation(CreateProjectionTree(), CreateMarkerTree("default"));
+
+        driver = driver.RunGeneratorsAndUpdateCompilation(
+            compilation,
+            out var outputCompilation,
+            out var diagnostics
+        );
+
+        diagnostics.ShouldBeEmpty();
+        outputCompilation
+            .GetDiagnostics()
+            .Where(diagnostic =>
+                diagnostic.Severity == DiagnosticSeverity.Error && diagnostic.Id != "CS9137"
+            )
+            .ShouldBeEmpty();
+
+        var generatedSources = GetGeneratedSourceMap(driver.GetRunResult());
+        generatedSources.ShouldNotBeEmpty();
+        generatedSources
+            .Values.Any(source =>
+                source.Contains(
+                    "private static readonly global::System.Linq.Expressions.Expression",
+                    StringComparison.Ordinal
+                )
+            )
+            .ShouldBeFalse();
+    }
+
+    [Test]
     public void Unrelated_syntax_changes_reuse_cached_incremental_outputs()
     {
         var driver = CreateDriver();
@@ -124,7 +156,7 @@ public sealed class SourceGeneratorSmokeTests
             .ShouldBeTrue(trackedStepReasonSummary);
     }
 
-    private static GeneratorDriver CreateDriver()
+    private static GeneratorDriver CreateDriver(bool usePrebuildExpression = true)
     {
         var parseOptions = new CSharpParseOptions(LanguageVersion.Preview);
         var generator = new LinqraftSourceGenerator().AsSourceGenerator();
@@ -132,7 +164,7 @@ public sealed class SourceGeneratorSmokeTests
             new[] { generator },
             additionalTexts: Array.Empty<AdditionalText>(),
             parseOptions: parseOptions,
-            optionsProvider: new TestAnalyzerConfigOptionsProvider(),
+            optionsProvider: new TestAnalyzerConfigOptionsProvider(usePrebuildExpression),
             driverOptions: new GeneratorDriverOptions(
                 IncrementalGeneratorOutputKind.None,
                 trackIncrementalGeneratorSteps: true
@@ -304,7 +336,8 @@ public sealed class SourceGeneratorSmokeTests
             .DistinctBy(reference => reference.Display, StringComparer.Ordinal);
     }
 
-    private sealed class TestAnalyzerConfigOptionsProvider : AnalyzerConfigOptionsProvider
+    private sealed class TestAnalyzerConfigOptionsProvider(bool usePrebuildExpression)
+        : AnalyzerConfigOptionsProvider
     {
         private readonly AnalyzerConfigOptions _empty = new TestAnalyzerConfigOptions(
             new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
@@ -317,7 +350,9 @@ public sealed class SourceGeneratorSmokeTests
                 ["build_property.InterceptorsPreviewNamespaces"] = "Linqraft",
                 ["build_property.LinqraftCommentOutput"] = "None",
                 ["build_property.LinqraftHasRequired"] = "false",
-                ["build_property.LinqraftUsePrebuildExpression"] = "true",
+                ["build_property.LinqraftUsePrebuildExpression"] = usePrebuildExpression
+                    ? "true"
+                    : "false",
             }
         );
 

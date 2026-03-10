@@ -3,7 +3,6 @@
     <OutputType>Exe</OutputType>
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
-    <LinqraftUsePrebuildExpression>true</LinqraftUsePrebuildExpression>
     <EmitCompilerGeneratedFiles>true</EmitCompilerGeneratedFiles>
     <CompilerGeneratedFilesOutputPath>.generated</CompilerGeneratedFilesOutputPath>
     <!-- Disable NativeAOT warnings -->

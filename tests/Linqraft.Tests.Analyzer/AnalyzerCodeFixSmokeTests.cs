@@ -412,6 +412,135 @@ public sealed class AnalyzerCodeFixSmokeTests
     }
 
     [Test]
+    public async Task Anonymous_select_benchmark_code_fix_simplifies_nested_projection_ternaries()
+    {
+        const string source = """
+            using System;
+            using System.Collections.Generic;
+            using System.Linq;
+
+            namespace System.Linq
+            {
+                public static class SelectExprExtensions
+                {
+                    public static IQueryable<TResult> SelectExpr<TIn, TResult>(this IQueryable<TIn> query, Func<TIn, TResult> selector)
+                        where TIn : class => throw null!;
+                }
+            }
+
+            public class SampleChildLeaf
+            {
+                public int Id { get; set; }
+                public string? Grault { get; set; }
+            }
+
+            public class SampleChildThird
+            {
+                public int Id { get; set; }
+                public string Corge { get; set; } = string.Empty;
+                public SampleChildLeaf? Child { get; set; }
+            }
+
+            public class SampleChildSecond
+            {
+                public int Id { get; set; }
+                public string? Quux { get; set; }
+            }
+
+            public class SampleChildInner
+            {
+                public int Id { get; set; }
+                public string? Qux { get; set; }
+            }
+
+            public class SampleChildClass
+            {
+                public int Id { get; set; }
+                public string Baz { get; set; } = string.Empty;
+                public SampleChildInner? Child { get; set; }
+            }
+
+            public class SampleClass
+            {
+                public int Id { get; set; }
+                public string Foo { get; set; } = string.Empty;
+                public string Bar { get; set; } = string.Empty;
+                public IEnumerable<SampleChildClass> Childs { get; set; } = Array.Empty<SampleChildClass>();
+                public SampleChildSecond? Child2 { get; set; }
+                public SampleChildThird Child3 { get; set; } = new();
+            }
+
+            public class QueryHolder
+            {
+                public object Project(IQueryable<SampleClass> source)
+                {
+                    return source.Select(s => new
+                    {
+                        s.Id,
+                        s.Foo,
+                        s.Bar,
+                        Childs = s.Childs.Select(c => new
+                        {
+                            c.Id,
+                            c.Baz,
+                            ChildId = c.Child != null ? (int?)c.Child.Id : null,
+                            ChildQux = c.Child != null ? c.Child.Qux : null,
+                        }),
+                        Child2Id = s.Child2 != null ? (int?)s.Child2.Id : null,
+                        Child2Quux = s.Child2 != null ? s.Child2.Quux : null,
+                        Child3Id = s.Child3.Id,
+                        Child3Corge = s.Child3.Corge,
+                        Child3ChildId = s.Child3 != null && s.Child3.Child != null ? (int?)s.Child3.Child.Id : null,
+                        Child3ChildGrault = s.Child3 != null && s.Child3.Child != null ? s.Child3.Child.Grault : null,
+                    });
+                }
+            }
+            """;
+
+        var result = await ApplyFixAsync(source, "LQRS002", "Convert to SelectExpr");
+        var fixedText = result.PrimaryDocumentText;
+        var compilationErrors = await GetCompilationErrorsAsync(result.ChangedSolution);
+
+        compilationErrors.ShouldBeEmpty();
+        fixedText.ShouldContain("source.SelectExpr(s => new");
+        fixedText.ShouldContain("Childs = s.Childs.Select(c => new");
+        fixedText.ShouldContain("ChildId = c.Child?.Id");
+        fixedText.ShouldContain("ChildQux = c.Child?.Qux");
+        fixedText.ShouldContain("Child2Id = s.Child2?.Id");
+        fixedText.ShouldContain("Child2Quux = s.Child2?.Quux");
+        fixedText.ShouldContain("Child3ChildId = s.Child3?.Child?.Id");
+        fixedText.ShouldContain("Child3ChildGrault = s.Child3?.Child?.Grault");
+        fixedText.ShouldNotContain("c.Child != null ? (int?)c.Child.Id : null");
+        fixedText.ShouldNotContain(
+            "s.Child3 != null && s.Child3.Child != null ? (int?)s.Child3.Child.Id : null"
+        );
+
+        var anonymousLines = fixedText.Replace("\r\n", "\n").Split('\n');
+        var anonymousChildsIndex = Array.FindIndex(
+            anonymousLines,
+            line => line.Contains("Childs = s.Childs.Select(c => new", StringComparison.Ordinal)
+        );
+        var anonymousChildIdIndex = Array.FindIndex(
+            anonymousLines,
+            line => line.Contains("ChildId = c.Child?.Id", StringComparison.Ordinal)
+        );
+        var anonymousChild2IdIndex = Array.FindIndex(
+            anonymousLines,
+            line => line.Contains("Child2Id = s.Child2?.Id", StringComparison.Ordinal)
+        );
+
+        anonymousChildsIndex.ShouldBeGreaterThanOrEqualTo(0);
+        anonymousChildIdIndex.ShouldBeGreaterThan(anonymousChildsIndex);
+        anonymousChild2IdIndex.ShouldBeGreaterThan(anonymousChildIdIndex);
+        CountLeadingSpaces(anonymousLines[anonymousChildIdIndex]).ShouldBeGreaterThan(
+            CountLeadingSpaces(anonymousLines[anonymousChildsIndex])
+        );
+        CountLeadingSpaces(anonymousLines[anonymousChild2IdIndex]).ShouldBe(
+            CountLeadingSpaces(anonymousLines[anonymousChildsIndex])
+        );
+    }
+
+    [Test]
     public async Task Produces_response_type_code_fix_adds_attribute()
     {
         const string source = """
@@ -524,6 +653,158 @@ public sealed class AnalyzerCodeFixSmokeTests
         compilationErrors.ShouldBeEmpty();
         fixedText.ShouldContain("source.SelectExpr<Entity, ProjectDto>(entity => new");
         fixedText.ShouldContain("ChildData = new { Name = entity.Child?.Name }");
+    }
+
+    [Test]
+    public async Task Named_select_benchmark_code_fix_simplifies_nested_projection_ternaries()
+    {
+        const string source = """
+            using System;
+            using System.Collections.Generic;
+            using System.Linq;
+
+            namespace System.Linq
+            {
+                public static class SelectExprExtensions
+                {
+                    public static IQueryable<TResult> SelectExpr<TIn, TResult>(this IQueryable<TIn> query, Func<TIn, object> selector)
+                        where TIn : class => throw null!;
+                }
+            }
+
+            public class SampleChildLeaf
+            {
+                public int Id { get; set; }
+                public string? Grault { get; set; }
+            }
+
+            public class SampleChildThird
+            {
+                public int Id { get; set; }
+                public string Corge { get; set; } = string.Empty;
+                public SampleChildLeaf? Child { get; set; }
+            }
+
+            public class SampleChildSecond
+            {
+                public int Id { get; set; }
+                public string? Quux { get; set; }
+            }
+
+            public class SampleChildInner
+            {
+                public int Id { get; set; }
+                public string? Qux { get; set; }
+            }
+
+            public class SampleChildClass
+            {
+                public int Id { get; set; }
+                public string Baz { get; set; } = string.Empty;
+                public SampleChildInner? Child { get; set; }
+            }
+
+            public class SampleClass
+            {
+                public int Id { get; set; }
+                public string Foo { get; set; } = string.Empty;
+                public string Bar { get; set; } = string.Empty;
+                public IEnumerable<SampleChildClass> Childs { get; set; } = Array.Empty<SampleChildClass>();
+                public SampleChildSecond? Child2 { get; set; }
+                public SampleChildThird Child3 { get; set; } = new();
+            }
+
+            public class ManualSampleChildDto
+            {
+                public int Id { get; set; }
+                public string Baz { get; set; } = string.Empty;
+                public int? ChildId { get; set; }
+                public string? ChildQux { get; set; }
+            }
+
+            public class ManualSampleClassDto
+            {
+                public int Id { get; set; }
+                public string Foo { get; set; } = string.Empty;
+                public string Bar { get; set; } = string.Empty;
+                public IEnumerable<ManualSampleChildDto>? Childs { get; set; }
+                public int? Child2Id { get; set; }
+                public string? Child2Quux { get; set; }
+                public int Child3Id { get; set; }
+                public string Child3Corge { get; set; } = string.Empty;
+                public int? Child3ChildId { get; set; }
+                public string? Child3ChildGrault { get; set; }
+            }
+
+            public class QueryHolder
+            {
+                public IQueryable<ManualSampleClassDto> Project(IQueryable<SampleClass> source)
+                {
+                    return source.Select(s => new ManualSampleClassDto
+                    {
+                        Id = s.Id,
+                        Foo = s.Foo,
+                        Bar = s.Bar,
+                        Childs = s.Childs.Select(c => new ManualSampleChildDto
+                        {
+                            Id = c.Id,
+                            Baz = c.Baz,
+                            ChildId = c.Child != null ? c.Child.Id : null,
+                            ChildQux = c.Child != null ? c.Child.Qux : null,
+                        }),
+                        Child2Id = s.Child2 != null ? s.Child2.Id : null,
+                        Child2Quux = s.Child2 != null ? s.Child2.Quux : null,
+                        Child3Id = s.Child3.Id,
+                        Child3Corge = s.Child3.Corge,
+                        Child3ChildId = s.Child3 != null && s.Child3.Child != null ? s.Child3.Child.Id : null,
+                        Child3ChildGrault = s.Child3 != null && s.Child3.Child != null ? s.Child3.Child.Grault : null,
+                    });
+                }
+            }
+            """;
+
+        var result = await ApplyFixAsync(source, "LQRS003", "Convert to SelectExpr<T, TDto>");
+        var fixedText = result.PrimaryDocumentText;
+        var compilationErrors = await GetCompilationErrorsAsync(result.ChangedSolution);
+
+        compilationErrors.ShouldBeEmpty();
+        fixedText.ShouldContain("source.SelectExpr<SampleClass, ManualSampleClassDto>(s => new");
+        fixedText.ShouldContain("Childs = s.Childs.Select(c => new");
+        fixedText.ShouldContain("ChildId = c.Child?.Id");
+        fixedText.ShouldContain("ChildQux = c.Child?.Qux");
+        fixedText.ShouldContain("Child2Id = s.Child2?.Id");
+        fixedText.ShouldContain("Child2Quux = s.Child2?.Quux");
+        fixedText.ShouldContain("Child3ChildId = s.Child3?.Child?.Id");
+        fixedText.ShouldContain("Child3ChildGrault = s.Child3?.Child?.Grault");
+        fixedText.ShouldNotContain("new ManualSampleChildDto");
+        fixedText.ShouldNotContain("c.Child != null ? c.Child.Id : null");
+        fixedText.ShouldNotContain(
+            "s.Child3 != null && s.Child3.Child != null ? s.Child3.Child.Id : null"
+        );
+
+        var namedLines = fixedText.Replace("\r\n", "\n").Split('\n');
+        var namedChildsIndex = Array.FindIndex(
+            namedLines,
+            line => line.Contains("Childs = s.Childs.Select(c => new", StringComparison.Ordinal)
+        );
+        var namedChildIdIndex = Array.FindIndex(
+            namedLines,
+            line => line.Contains("ChildId = c.Child?.Id", StringComparison.Ordinal)
+        );
+        var namedChild2IdIndex = Array.FindIndex(
+            namedLines,
+            line => line.Contains("Child2Id = s.Child2?.Id", StringComparison.Ordinal)
+        );
+
+        namedChildsIndex.ShouldBeGreaterThanOrEqualTo(0);
+        namedChildIdIndex.ShouldBeGreaterThan(namedChildsIndex);
+        namedChild2IdIndex.ShouldBeGreaterThan(namedChildIdIndex);
+        CountLeadingSpaces(namedLines[namedChildIdIndex]).ShouldBeGreaterThan(
+            CountLeadingSpaces(namedLines[namedChildsIndex])
+        );
+        CountLeadingSpaces(namedLines[namedChild2IdIndex]).ShouldBe(
+            CountLeadingSpaces(namedLines[namedChildsIndex])
+        );
     }
 
     [Test]
@@ -751,6 +1032,11 @@ public sealed class AnalyzerCodeFixSmokeTests
             PrimaryDocumentText = text.ToString(),
             ChangedSolution = changedSolution,
         };
+    }
+
+    private static int CountLeadingSpaces(string value)
+    {
+        return value.TakeWhile(character => character == ' ').Count();
     }
 
     private static async Task<Diagnostic> GetDiagnosticAsync(Document document, string diagnosticId)

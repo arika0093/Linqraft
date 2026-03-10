@@ -28,8 +28,9 @@ internal static class GeneratedSourceFormatter
         var lastQuestionIndent = -1;
         var previousWasBlank = false;
 
-        foreach (var rawLine in lines)
+        for (var index = 0; index < lines.Length; index++)
         {
+            var rawLine = lines[index];
             var trimmed = rawLine.Trim();
             if (trimmed.Length == 0)
             {
@@ -47,6 +48,7 @@ internal static class GeneratedSourceFormatter
             var leadingCloseCount = CountLeadingClosingBraces(trimmed);
             var baseIndent = System.Math.Max(0, scopeIndent - leadingCloseCount);
             var effectiveIndent = baseIndent;
+            var nextTrimmed = GetNextNonEmptyTrimmedLine(lines, index + 1);
             if (trimmed[0] is '.' or '[')
             {
                 effectiveIndent =
@@ -79,9 +81,47 @@ internal static class GeneratedSourceFormatter
                 && trailingCloseCount == 0
                     ? System.Math.Max(0, effectiveIndent - 1)
                     : System.Math.Max(0, effectiveIndent + openCount - trailingCloseCount);
+
+            if (
+                leadingCloseCount > 0
+                && StartsWithChainClosure(trimmed, leadingCloseCount)
+                && !IsContinuationLine(nextTrimmed)
+            )
+            {
+                scopeIndent = System.Math.Max(0, scopeIndent - 1);
+            }
         }
 
         return builder.ToString();
+    }
+
+    private static string GetNextNonEmptyTrimmedLine(string[] lines, int startIndex)
+    {
+        for (var index = startIndex; index < lines.Length; index++)
+        {
+            var trimmed = lines[index].Trim();
+            if (trimmed.Length != 0)
+            {
+                return trimmed;
+            }
+        }
+
+        return string.Empty;
+    }
+
+    private static bool StartsWithChainClosure(string trimmed, int leadingCloseCount)
+    {
+        if (leadingCloseCount >= trimmed.Length)
+        {
+            return false;
+        }
+
+        return trimmed[leadingCloseCount] is ')' or ']' && trimmed.EndsWith(",", System.StringComparison.Ordinal);
+    }
+
+    private static bool IsContinuationLine(string trimmed)
+    {
+        return trimmed.Length != 0 && trimmed[0] is '.' or '[' or '?' or ':';
     }
 
     private static int CountLeadingClosingBraces(string text)
