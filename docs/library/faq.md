@@ -153,7 +153,6 @@ Include:
 * [Linqraft.Sample](../../examples/Linqraft.Sample) - Basic usage examples
 * [Linqraft.ApiSample](../../examples/Linqraft.ApiSample) - API integration example
 * [Linqraft.Benchmark](../../examples/Linqraft.Benchmark) - Performance benchmarks
-* [Online Playground](https://arika0093.github.io/Linqraft/playground/) - Try it in your browser
 
 ## Next Steps
 

@@ -5,8 +5,6 @@
 
 Write Select queries easily with on-demand DTO generation and null-propagation operators. No dependencies.
 
-[Web Page](https://arika0093.github.io/Linqraft/) | [Online Playground](https://arika0093.github.io/Linqraft/playground/)
-
 ## Features
 ### Overview
 Linqraft is a Roslyn Source Generator for easily writing `IQueryable` projections.
@@ -149,8 +147,6 @@ namespace Tutorial.LinqraftGenerated_F1A64BF4
 ```
 
 </details>
-
-Interested? Try it out in the [Playground](https://arika0093.github.io/Linqraft/playground/)!
 
 ### Drop-in Replacement Analyzers
 
