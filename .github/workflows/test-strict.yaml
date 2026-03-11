@@ -68,6 +68,9 @@ jobs:
             10.0.x
             8.0.x
 
+      - name: Set Target Frameworks
+        run: echo 'TFMS=${{ matrix.tfm }}' >> $GITHUB_ENV
+
       - name: Restore dependencies
         run: dotnet restore
 
