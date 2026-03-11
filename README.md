@@ -159,15 +159,9 @@ namespace Tutorial.LinqraftGenerated_F1A64BF4
 ![](./assets/replace-codefix-sample.gif)
 
 ## Quick Start
-For detailed installation instructions, see the [Installation Guide](./docs/library/installation.md).
-
 ### Prerequisites
-This library requires following environment:
-
-* C# 13 or later
-* One of the following versions (or later):
-  * .NET 8.0.400 
-  * Visual Studio 2022 version 17.11
+Linqraft works out of the box with **.NET 9 and later**. For .NET 8(C# 12) and below, additional setup is required.  
+For detailed installation instructions, see the [Installation Guide](./docs/library/installation.md).
 
 ### Installation
 
