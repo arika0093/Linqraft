@@ -62,7 +62,5 @@ app.MapGet(
             .ToList();
     }
 );
-
-app.UseHttpsRedirection();
 app.MapControllers();
 app.Run();
