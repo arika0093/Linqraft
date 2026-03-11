@@ -25,6 +25,7 @@
     <Project Path="tests/Linqraft.Tests.EFCore/Linqraft.Tests.EFCore.csproj" />
     <Project Path="tests/Linqraft.Tests.SG/Linqraft.Tests.SG.csproj" />
     <Project Path="tests/Linqraft.Tests.Configuration/Linqraft.Tests.Configuration.csproj" />
+    <Project Path="tests/Linqraft.Tests.ProjectReferenceDependency/Linqraft.Tests.ProjectReferenceDependency.csproj" />
     <Project Path="tests/Linqraft.Tests/Linqraft.Tests.csproj" />
   </Folder>
 </Solution>

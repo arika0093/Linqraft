@@ -9,4 +9,8 @@
     <PublishAot>true</PublishAot>
     <LinqraftUsePrebuildExpression>false</LinqraftUsePrebuildExpression>
   </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\Linqraft.Tests.ProjectReferenceDependency\Linqraft.Tests.ProjectReferenceDependency.csproj" />
+  </ItemGroup>
 </Project>
