@@ -82,7 +82,7 @@ public class Issue_NullConditionalWithChainsTest
         };
 
         var result = testData
-            .AsQueryable()
+            .AsTestQueryable()
             .SelectExpr<TestData, ResultDto>(d => new
             {
                 data = d.Children.Select(c => new
@@ -150,7 +150,7 @@ public class Issue_NullConditionalWithChainsTest
         };
 
         var result = testData
-            .AsQueryable()
+            .AsTestQueryable()
             .SelectExpr<Parent2, Parent2Dto>(p => new
             {
                 // FirstOrDefault returns single nullable element

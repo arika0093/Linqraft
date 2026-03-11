@@ -10,7 +10,7 @@ public class ByteArrayCaseTest
     public void ByteArray_WithNullableAccess_ShouldBeGenerated()
     {
         var converted = TestData
-            .AsQueryable()
+            .AsTestQueryable()
             .SelectExpr<ByteArrayEntity, ByteArrayDto>(u => new
             {
                 u.UserId,
@@ -48,7 +48,7 @@ public class ByteArrayCaseTest
         };
 
         var converted = dataWithNonNull
-            .AsQueryable()
+            .AsTestQueryable()
             .SelectExpr<ByteArrayEntity, ByteArrayDto2>(u => new
             {
                 u.UserId,

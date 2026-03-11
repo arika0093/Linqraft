@@ -37,8 +37,8 @@ public class Issue_NestedPropertyDocumentationTest
         };
 
         var results = orders
-            .AsQueryable()
-            .SelectExpr<Order, OrderDto>(s => new
+            .AsTestQueryable()
+            .SelectExpr<Order, IssueNestedPropertyOrderDto>(s => new
             {
                 Items = s.OrderItems.Select(oi => new
                 {
@@ -79,4 +79,4 @@ internal class Product
     public string Name { get; set; } = "";
 }
 
-internal partial class OrderDto { }
+internal partial class IssueNestedPropertyOrderDto { }

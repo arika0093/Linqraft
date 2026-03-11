@@ -53,7 +53,7 @@ public class Issue109_CommentsInSelectExprTest
         ];
 
         var result = datas
-            .AsQueryable()
+            .AsTestQueryable()
             .SelectExpr<TestForIssue109, TestForIssue109Dto>(s => new
             {
                 Id = s.Id,
@@ -112,7 +112,7 @@ public class Issue109_CommentsInSelectExprTest
         ];
 
         var result = datas
-            .AsQueryable()
+            .AsTestQueryable()
             .SelectExpr<TestForIssue109, TestForIssue109Dto>(s => new
             {
                 Id = s.Id,

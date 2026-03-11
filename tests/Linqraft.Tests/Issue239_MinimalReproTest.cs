@@ -23,7 +23,7 @@ public class Issue239_MinimalReproTest
     [Test]
     public void TwoSelectExprWithSameStructureShouldShareNestedDto()
     {
-        var data = _testData.AsQueryable();
+        var data = _testData.AsTestQueryable();
 
         // result1 and result2 use the exact same anonymous structure
         // They should share the same ItemTitlesDto definition

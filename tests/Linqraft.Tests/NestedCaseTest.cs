@@ -63,7 +63,7 @@ public class NestedCaseTest
     public void NestedCase_SelectExpr_Anonymous()
     {
         var converted = NestData
-            .AsQueryable()
+            .AsTestQueryable()
             .SelectExpr(s => new
             {
                 s.Id,
@@ -104,7 +104,7 @@ public class NestedCaseTest
     public void NestedCase_SelectExpr_Explicit()
     {
         var converted = NestData
-            .AsQueryable()
+            .AsTestQueryable()
             .SelectExpr<NestBase, NestBaseDto>(s => new
             {
                 s.Id,
@@ -172,7 +172,7 @@ public class NestedCaseTest
         };
 
         var converted = testData
-            .AsQueryable()
+            .AsTestQueryable()
             .SelectExpr(s => new NestBasePredefinedDto
             {
                 Id = s.Id,
@@ -233,7 +233,7 @@ public class NestedCaseTest
 
         // Use predefined DTO in nested Select (not anonymous type)
         var converted = testData
-            .AsQueryable()
+            .AsTestQueryable()
             .SelectExpr(s => new NestBaseWithNamedChildrenDto
             {
                 Id = s.Id,

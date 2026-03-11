@@ -21,7 +21,7 @@ public class Issue132_LambdaNullabilityTest
         {
             Person[] people = [];
             var result = people
-                .AsQueryable()
+                .AsTestQueryable()
                 .SelectExpr<Person, PersonDto>(s => new { Id = s.Id, Name = s.Name })
                 .ToList();
 
@@ -52,7 +52,7 @@ public class Issue132_LambdaNullabilityTest
                 },
             ];
             var result = people
-                .AsQueryable()
+                .AsTestQueryable()
                 .SelectExpr<PersonWithChildren, PersonWithChildrenDto>(s => new
                 {
                     Id = s.Id,
@@ -75,7 +75,7 @@ public class Issue132_LambdaNullabilityTest
         // Direct call (not in lambda) - this works correctly
         Person[] people = [];
         var result = people
-            .AsQueryable()
+            .AsTestQueryable()
             .SelectExpr<Person, PersonDtoDirectCall>(s => new { Id = s.Id, Name = s.Name })
             .ToList();
 
@@ -100,7 +100,7 @@ public class Issue132_LambdaNullabilityTest
             },
         ];
         var result = people
-            .AsQueryable()
+            .AsTestQueryable()
             .SelectExpr<PersonWithChildren, PersonWithChildrenDtoDirectCall>(s => new
             {
                 Id = s.Id,
@@ -137,7 +137,7 @@ public class Issue132_LambdaNullabilityTest
                 },
             ];
             var result = people
-                .AsQueryable()
+                .AsTestQueryable()
                 .SelectExpr<PersonWithNullableChildren, PersonWithNullableChildrenDto>(s => new
                 {
                     Id = s.Id,

@@ -138,14 +138,14 @@ internal static class SupportSourceEmitter
                     /// <summary>
                     /// Projects an <see cref="IQueryable{T}"/> source with captured values supplied separately for generator-friendly interception.
                     /// </summary>
-                    public static IQueryable<TResult> SelectExpr<TIn, TResult>(this IQueryable<TIn> query, global::System.Func<TIn, TResult> selector, {{DynamicallyAccessedPublicProperties}} object capture)
+                    public static IQueryable<TResult> SelectExpr<TIn, TResult>(this IQueryable<TIn> query, global::System.Func<TIn, TResult> selector, object capture)
                         where TIn : class => throw ThrowInterceptionRequired;
 
                     /// <summary>
                     /// Projects an <see cref="IQueryable{T}"/> source into a named DTO with an explicit capture object. This placeholder must be intercepted by generated code before execution.
                     /// </summary>
                     {{OverloadResolutionLowPriority}}
-                    public static IQueryable<TResult> SelectExpr<TIn, TResult>(this IQueryable<TIn> query, global::System.Func<TIn, object> selector, {{DynamicallyAccessedPublicProperties}} object capture)
+                    public static IQueryable<TResult> SelectExpr<TIn, TResult>(this IQueryable<TIn> query, global::System.Func<TIn, object> selector, object capture)
                         where TIn : class => throw ThrowInterceptionRequired;
 
                     /// <summary>
@@ -164,14 +164,14 @@ internal static class SupportSourceEmitter
                     /// <summary>
                     /// Projects an <see cref="IEnumerable{T}"/> source with captured values supplied separately for generator-friendly interception.
                     /// </summary>
-                    public static IEnumerable<TResult> SelectExpr<TIn, TResult>(this IEnumerable<TIn> query, global::System.Func<TIn, TResult> selector, {{DynamicallyAccessedPublicProperties}} object capture)
+                    public static IEnumerable<TResult> SelectExpr<TIn, TResult>(this IEnumerable<TIn> query, global::System.Func<TIn, TResult> selector, object capture)
                         where TIn : class => throw ThrowInterceptionRequired;
 
                     /// <summary>
                     /// Projects an <see cref="IEnumerable{T}"/> source into a named DTO with an explicit capture object. This placeholder must be intercepted by generated code before execution.
                     /// </summary>
                     {{OverloadResolutionLowPriority}}
-                    public static IEnumerable<TResult> SelectExpr<TIn, TResult>(this IEnumerable<TIn> query, global::System.Func<TIn, object> selector, {{DynamicallyAccessedPublicProperties}} object capture)
+                    public static IEnumerable<TResult> SelectExpr<TIn, TResult>(this IEnumerable<TIn> query, global::System.Func<TIn, object> selector, object capture)
                         where TIn : class => throw ThrowInterceptionRequired;
                 }
             }

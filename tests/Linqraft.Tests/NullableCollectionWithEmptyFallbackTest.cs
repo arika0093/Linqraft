@@ -61,7 +61,7 @@ public class NullableCollectionWithEmptyFallbackTest
         // This is the exact scenario from the issue
         // When InnerData is null, Child3Datas should be an empty collection, not null
         var result = _testData
-            .AsQueryable()
+            .AsTestQueryable()
             .SelectExpr<NullableParentTestData, NullableParentDto>(d => new
             {
                 Child3Datas = d.InnerData?.Childs.Select(c => new { c.Child3.Id }),
@@ -77,7 +77,7 @@ public class NullableCollectionWithEmptyFallbackTest
     {
         // Same scenario with ToList() at the end
         var result = _testData
-            .AsQueryable()
+            .AsTestQueryable()
             .SelectExpr<NullableParentTestData, NullableParentWithListDto>(d => new
             {
                 Child3Datas = d.InnerData?.Childs.Select(c => new { c.Child3.Id }).ToList(),
@@ -97,7 +97,7 @@ public class NullableCollectionWithEmptyFallbackTest
         // the collection should now be non-nullable (List<int>, not List<int>?)
         // because we generate empty collection fallback for all Select/SelectMany expressions
         var result = _testData
-            .AsQueryable()
+            .AsTestQueryable()
             .SelectExpr<NullableParentTestData, NullableParentSimpleDto>(d => new
             {
                 Child3Ids = d.InnerData?.Childs.Select(c => c.Child3.Id).ToList(),

@@ -39,7 +39,7 @@ public class Issue172_PredefinedNestedNamedTypesTest
     public void SelectExpr_PredefinedDto_NestedSelectWithNamedType_ShouldBeFullyQualified()
     {
         var result = _data
-            .AsQueryable()
+            .AsTestQueryable()
             .SelectExpr(x => new Issue172_EntityDto
             {
                 Id = x.Id,
@@ -79,7 +79,7 @@ public class Issue172_PredefinedNestedNamedTypesTest
     public void SelectExpr_PredefinedDto_TernaryWithNamedType_ShouldBeFullyQualified()
     {
         var result = _data
-            .AsQueryable()
+            .AsTestQueryable()
             .SelectExpr(x => new Issue172_EntityDto
             {
                 Id = x.Id,
@@ -106,7 +106,7 @@ public class Issue172_PredefinedNestedNamedTypesTest
     public void SelectExpr_PredefinedDto_DirectObjectCreation_ShouldBeFullyQualified()
     {
         var result = _data
-            .AsQueryable()
+            .AsTestQueryable()
             .SelectExpr(x => new Issue172_EntityDto
             {
                 Id = x.Id,

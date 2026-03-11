@@ -23,7 +23,7 @@ public sealed class SupportSourceProjectReferenceTest
     [Test]
     public void Project_reference_dependency_can_use_linqraft_without_duplicate_support_sources()
     {
-        var dependencyProjection = Orders.AsQueryable().ProjectFromDependency().ToList();
+        var dependencyProjection = Orders.AsTestQueryable().ProjectFromDependency().ToList();
 
         dependencyProjection.Count.ShouldBe(1);
         dependencyProjection[0].Id.ShouldBe(1);
@@ -31,7 +31,7 @@ public sealed class SupportSourceProjectReferenceTest
         dependencyProjection[0].LineCount.ShouldBe(2);
 
         var localProjection = Orders
-            .AsQueryable()
+            .AsTestQueryable()
             .SelectExpr<ReferencedOrder, ReferencedOrderFromCurrentProjectDto>(order => new
             {
                 order.Id,

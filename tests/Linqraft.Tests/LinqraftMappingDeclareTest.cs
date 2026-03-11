@@ -79,7 +79,7 @@ public class LinqraftMappingDeclareTest
                 Description = "Desc2",
                 Child = null,
             },
-        }.AsQueryable();
+        }.AsTestQueryable();
 
         // Act - the generated extension method should be available
         var result = data.ProjectToMappingDeclareSourceClass().ToList();
@@ -115,7 +115,7 @@ public class LinqraftMappingDeclareTest
                 Description = "Description2",
                 Child = null,
             },
-        }.AsQueryable();
+        }.AsTestQueryable();
 
         // Act - the custom method name should be available
         var result = data.CustomProjection().ToList();
@@ -152,7 +152,7 @@ public class LinqraftMappingDeclareTest
                 Title = "Parent2",
                 Children = new List<MappingDeclareChildClass>(),
             },
-        }.AsQueryable();
+        }.AsTestQueryable();
 
         // Act - the generated method should be available
         var result = data.ProjectToMappingDeclareParentClass().ToList();

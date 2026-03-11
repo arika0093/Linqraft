@@ -17,7 +17,7 @@ public class InternalPartialClassTest
             new() { Id = 1, Name = "Test" },
         };
 
-        var result = data.AsQueryable()
+        var result = data.AsTestQueryable()
             .SelectExpr<SampleEntity, InternalTestDto>(x => new { x.Id, x.Name })
             .ToList();
 
@@ -43,7 +43,7 @@ public class InternalPartialClassTest
             },
         };
 
-        var result = data.AsQueryable()
+        var result = data.AsTestQueryable()
             .SelectExpr<ParentEntity, InternalParentDto>(x => new
             {
                 x.Id,

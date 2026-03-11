@@ -31,7 +31,7 @@ public class Issue_OfTypeInSelectExprTest
     {
         // OfType<OfTypeChildA> should only include OfTypeChildA instances
         var result = _testData
-            .AsQueryable()
+            .AsTestQueryable()
             .SelectExpr(x => new { x.Id, AItems = x.Items.OfType<OfTypeChildA>().ToList() })
             .ToList();
 
@@ -46,7 +46,7 @@ public class Issue_OfTypeInSelectExprTest
     public void OfType_InSelectExprWithExplicitDto_ShouldFilterCorrectly()
     {
         var result = _testData
-            .AsQueryable()
+            .AsTestQueryable()
             .SelectExpr<OfTypeParent, OfTypeResultDto>(x => new
             {
                 x.Id,

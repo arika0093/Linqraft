@@ -61,7 +61,7 @@ public sealed class GeneratedProjectionRuntimeTests
     public void Explicit_dto_projection_runs()
     {
         var result = Orders
-            .AsQueryable()
+            .AsTestQueryable()
             .SelectExpr<ProjectionOrder, ProjectionOrderDto>(order => new
             {
                 order.Id,
@@ -82,7 +82,7 @@ public sealed class GeneratedProjectionRuntimeTests
     public void Predefined_dto_projection_runs()
     {
         var result = Products
-            .AsQueryable()
+            .AsTestQueryable()
             .SelectExpr(product => new ProjectionProductRow
             {
                 Id = product.Id,
@@ -100,7 +100,7 @@ public sealed class GeneratedProjectionRuntimeTests
     public void Anonymous_projection_runs()
     {
         var result = People
-            .AsQueryable()
+            .AsTestQueryable()
             .SelectExpr(person => new
             {
                 person.Id,
@@ -136,7 +136,7 @@ public sealed class GeneratedProjectionRuntimeTests
         const decimal threshold = 50m;
 
         var result = Invoices
-            .AsQueryable()
+            .AsTestQueryable()
             .SelectExpr<ProjectionInvoice, ProjectionDecisionDto>(
                 invoice => new { invoice.Id, IsLarge = invoice.Total >= threshold },
                 new { threshold }
@@ -168,7 +168,7 @@ public sealed class GeneratedProjectionRuntimeTests
     public void Predeclared_property_is_populated()
     {
         var result = Orders
-            .AsQueryable()
+            .AsTestQueryable()
             .SelectExpr<ProjectionOrder, ProjectionDeclaredOrderDto>(order => new
             {
                 order.Id,
@@ -278,12 +278,14 @@ internal sealed class TrackingQueryProvider : IQueryProvider
     public IQueryable CreateQuery(Expression expression)
     {
         var elementType = expression.Type.GetGenericArguments().Last();
+#pragma warning disable IL3050
         return (IQueryable)
             Activator.CreateInstance(
                 typeof(TrackingQueryable<>).MakeGenericType(elementType),
                 this,
                 expression
             )!;
+#pragma warning restore IL3050
     }
 
     public IQueryable<TElement> CreateQuery<TElement>(Expression expression)

@@ -74,7 +74,7 @@ public class SelectManyCaseTest
     {
         // Flatten children collection using SelectMany
         var converted = TestData
-            .AsQueryable()
+            .AsTestQueryable()
             .SelectExpr(x => new
             {
                 x.Id,
@@ -105,7 +105,7 @@ public class SelectManyCaseTest
     {
         // SelectMany with projection in lambda
         var converted = TestData
-            .AsQueryable()
+            .AsTestQueryable()
             .SelectExpr(x => new
             {
                 x.Id,
@@ -135,7 +135,7 @@ public class SelectManyCaseTest
     {
         // SelectMany with explicit DTO type
         var converted = TestData
-            .AsQueryable()
+            .AsTestQueryable()
             .SelectExpr<ParentEntity, ParentWithFlatGrandChildrenDto>(x => new
             {
                 x.Id,
@@ -181,7 +181,7 @@ public class SelectManyCaseTest
         };
 
         var converted = testData
-            .AsQueryable()
+            .AsTestQueryable()
             .SelectExpr(x => new
             {
                 x.Id,

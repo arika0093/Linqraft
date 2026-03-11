@@ -57,7 +57,7 @@ public class LinqraftMappingGenerateTest
                 Description = null,
                 Child = null,
             },
-        }.AsQueryable();
+        }.AsTestQueryable();
 
         // Act
         var result = MappingTestQueries.ProjectToDto(data).ToList();
@@ -100,7 +100,7 @@ public class LinqraftMappingGenerateTest
                 Title = "Parent2",
                 Children = new List<MappingTestChildClass>(),
             },
-        }.AsQueryable();
+        }.AsTestQueryable();
 
         // Act
         var result = MappingTestQueries.ProjectToDtoWithChildren(data).ToList();

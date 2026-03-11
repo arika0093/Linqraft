@@ -42,7 +42,7 @@ public class TernaryNestedDtoTest
         };
 
         var result = testData
-            .AsQueryable()
+            .AsTestQueryable()
             .SelectExpr<Parent, ParentDto>(p => new
             {
                 p.Id,
@@ -82,7 +82,7 @@ public class TernaryNestedDtoTest
         };
 
         var result = testData
-            .AsQueryable()
+            .AsTestQueryable()
             .SelectExpr(p => new
             {
                 p.Id,
@@ -122,7 +122,7 @@ public class TernaryNestedDtoTest
         };
 
         var result = testData
-            .AsQueryable()
+            .AsTestQueryable()
             .SelectExpr<Parent, ParentDto2>(p => new
             {
                 p.Id,

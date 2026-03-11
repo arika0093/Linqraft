@@ -21,7 +21,7 @@ public class SameClassManyPatternsTest
     public void Default()
     {
         var converted = Datas
-            .AsQueryable()
+            .AsTestQueryable()
             .SelectExpr<SimpleClass, DefaultDto>(s => new
             {
                 s.Id,
@@ -35,7 +35,7 @@ public class SameClassManyPatternsTest
     public void Default2()
     {
         var converted = Datas
-            .AsQueryable()
+            .AsTestQueryable()
             .SelectExpr<SimpleClass, DefaultDto>(s => new
             {
                 s.Id,
@@ -49,7 +49,7 @@ public class SameClassManyPatternsTest
     public void Custom1()
     {
         var converted = Datas
-            .AsQueryable()
+            .AsTestQueryable()
             .SelectExpr<SimpleClass, Custom1Dto>(s => new
             {
                 s.Id,
@@ -63,7 +63,7 @@ public class SameClassManyPatternsTest
     public void Custom2()
     {
         var converted = Datas
-            .AsQueryable()
+            .AsTestQueryable()
             .SelectExpr<SimpleClass, Custom2Dto>(s => new
             {
                 s.Id,
@@ -77,7 +77,7 @@ public class SameClassManyPatternsTest
     public void AnotherOutput1()
     {
         var converted = Datas
-            .AsQueryable()
+            .AsTestQueryable()
             .SelectExpr<SimpleClass, AnotherOutput1Dto>(s => new
             {
                 s.Id,
@@ -91,7 +91,7 @@ public class SameClassManyPatternsTest
     public void AnotherOutput2()
     {
         var converted = Datas
-            .AsQueryable()
+            .AsTestQueryable()
             .SelectExpr<SimpleClass, AnotherOutput2Dto>(s => new
             {
                 s.Id,

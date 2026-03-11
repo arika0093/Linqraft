@@ -41,7 +41,7 @@ public class Issue159_NestedObjectCreationTest
     public void SelectExpr_NestedNamedType_ShouldPreserveOriginalType()
     {
         var result = _datas
-            .AsQueryable()
+            .AsTestQueryable()
             .SelectExpr(d => new
             {
                 TestData = d.InnerData?.Childs.Select(c => new
@@ -70,7 +70,7 @@ public class Issue159_NestedObjectCreationTest
     public void SelectExpr_NestedObjectInInitializer_ShouldUseFullyQualifiedNames()
     {
         var result = _datas
-            .AsQueryable()
+            .AsTestQueryable()
             .SelectExpr(d => new
             {
                 TestData = d.InnerData?.Childs.Select(c => new
@@ -101,7 +101,7 @@ public class Issue159_NestedObjectCreationTest
     public void SelectExpr_NestedNamedType_ShouldPreserveOriginalType_WithExplicit()
     {
         var result = _datas
-            .AsQueryable()
+            .AsTestQueryable()
             .SelectExpr<Issue159_TestData, Issue159TestDtoShouldPreserveOriginal>(d => new
             {
                 TestData = d.InnerData?.Childs.Select(c => new
@@ -130,7 +130,7 @@ public class Issue159_NestedObjectCreationTest
     public void SelectExpr_NestedObjectInInitializer_ShouldUseFullyQualifiedNames_WithExplicit()
     {
         var result = _datas
-            .AsQueryable()
+            .AsTestQueryable()
             .SelectExpr<Issue159_TestData, Issue159TestDtoShouldUseFullyQualifiedNames>(d => new
             {
                 TestData = d.InnerData?.Childs.Select(c => new

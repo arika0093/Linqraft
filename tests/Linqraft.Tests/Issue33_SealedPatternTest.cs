@@ -11,7 +11,7 @@ public partial class Issue33_SealedPatternTest
     {
         var order = new List<Order> { new() { Id = 1 } };
         var converted = order
-            .AsQueryable()
+            .AsTestQueryable()
             .SelectExpr<Order, OrderDtoDisposable>(e => new { e.Id })
             .ToList();
     }

@@ -14,7 +14,7 @@ public class Issue157_UseStaticValueInQuery
     {
         PersonWithChildren[] people = [];
         var result = people
-            .AsQueryable()
+            .AsTestQueryable()
             .SelectExpr<PersonWithChildren, Issue157TestDto>(s => new
             {
                 FilteredData = s

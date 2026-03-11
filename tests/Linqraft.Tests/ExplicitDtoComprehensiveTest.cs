@@ -290,7 +290,7 @@ public class ExplicitDtoComprehensiveTest
     public void ExplicitDto_SingleLevelNullableOperator()
     {
         var result = SimpleTestData
-            .AsQueryable()
+            .AsTestQueryable()
             .SelectExpr<SimpleEntity, SimpleNullableDto>(e => new
             {
                 e.Id,
@@ -311,7 +311,7 @@ public class ExplicitDtoComprehensiveTest
     public void ExplicitDto_NullConditionalOnNullableProperty()
     {
         var result = NullableChildTestData
-            .AsQueryable()
+            .AsTestQueryable()
             .SelectExpr<EntityWithNullableChild, NullConditionalDto>(e => new
             {
                 e.Id,
@@ -332,7 +332,7 @@ public class ExplicitDtoComprehensiveTest
     public void ExplicitDto_MultiLevelNullConditional_TwoLevels()
     {
         var result = NullableChildTestData
-            .AsQueryable()
+            .AsTestQueryable()
             .SelectExpr<EntityWithNullableChild, TwoLevelNullConditionalDto>(e => new
             {
                 e.Id,
@@ -353,7 +353,7 @@ public class ExplicitDtoComprehensiveTest
     public void ExplicitDto_MultiLevelNullConditional_ThreeLevels()
     {
         var result = NullableChildTestData
-            .AsQueryable()
+            .AsTestQueryable()
             .SelectExpr<EntityWithNullableChild, ThreeLevelNullConditionalDto>(e => new
             {
                 e.Id,
@@ -373,7 +373,7 @@ public class ExplicitDtoComprehensiveTest
     public void ExplicitDto_MixedNullConditionalLevels()
     {
         var result = NullableChildTestData
-            .AsQueryable()
+            .AsTestQueryable()
             .SelectExpr<EntityWithNullableChild, MixedNullConditionalDto>(e => new
             {
                 e.Id,
@@ -404,7 +404,7 @@ public class ExplicitDtoComprehensiveTest
     public void ExplicitDto_NestedSelectWithSimpleProjection()
     {
         var result = CollectionTestData
-            .AsQueryable()
+            .AsTestQueryable()
             .SelectExpr<EntityWithCollections, NestedSelectSimpleDto>(e => new
             {
                 e.Id,
@@ -422,7 +422,7 @@ public class ExplicitDtoComprehensiveTest
     public void ExplicitDto_NestedSelectWithComplexProjection()
     {
         var result = CollectionTestData
-            .AsQueryable()
+            .AsTestQueryable()
             .SelectExpr<EntityWithCollections, NestedSelectComplexDto>(e => new
             {
                 e.Id,
@@ -440,7 +440,7 @@ public class ExplicitDtoComprehensiveTest
     public void ExplicitDto_NestedSelectWithNullConditional()
     {
         var result = CollectionTestData
-            .AsQueryable()
+            .AsTestQueryable()
             .SelectExpr<EntityWithCollections, NestedSelectWithNullConditionalDto>(e => new
             {
                 e.Id,
@@ -467,7 +467,7 @@ public class ExplicitDtoComprehensiveTest
     public void ExplicitDto_MultipleNestedSelects()
     {
         var result = ComplexTestData
-            .AsQueryable()
+            .AsTestQueryable()
             .SelectExpr<ComplexEntity, MultipleNestedSelectsDto>(e => new
             {
                 e.Id,
@@ -487,7 +487,7 @@ public class ExplicitDtoComprehensiveTest
     public void ExplicitDto_TwoLevelNestedSelect()
     {
         var result = ComplexTestData
-            .AsQueryable()
+            .AsTestQueryable()
             .SelectExpr<ComplexEntity, TwoLevelNestedSelectDto>(e => new
             {
                 e.Id,
@@ -515,7 +515,7 @@ public class ExplicitDtoComprehensiveTest
     public void ExplicitDto_NullConditionalWithNestedSelect()
     {
         var result = ComplexTestData
-            .AsQueryable()
+            .AsTestQueryable()
             .SelectExpr<ComplexEntity, NullConditionalWithNestedSelectDto>(e => new
             {
                 e.Id,
@@ -542,7 +542,7 @@ public class ExplicitDtoComprehensiveTest
     public void ExplicitDto_NestedSelectWithMultiLevelNullConditional()
     {
         var result = ComplexTestData
-            .AsQueryable()
+            .AsTestQueryable()
             .SelectExpr<ComplexEntity, NestedSelectWithMultiLevelNullConditionalDto>(e => new
             {
                 e.Id,
@@ -569,7 +569,7 @@ public class ExplicitDtoComprehensiveTest
     public void ExplicitDto_TwoLevelNestedSelectWithNullConditionals()
     {
         var result = ComplexTestData
-            .AsQueryable()
+            .AsTestQueryable()
             .SelectExpr<ComplexEntity, TwoLevelNestedSelectWithNullConditionalsDto>(e => new
             {
                 e.Id,
@@ -601,7 +601,7 @@ public class ExplicitDtoComprehensiveTest
     public void ExplicitDto_ComplexMixedScenario()
     {
         var result = ComplexTestData
-            .AsQueryable()
+            .AsTestQueryable()
             .SelectExpr<ComplexEntity, ComplexMixedScenarioDto>(e => new
             {
                 e.Id,
@@ -652,7 +652,7 @@ public class ExplicitDtoComprehensiveTest
     public void ExplicitDto_NullableCollectionWithNestedSelect()
     {
         var result = CollectionTestData
-            .AsQueryable()
+            .AsTestQueryable()
             .SelectExpr<EntityWithCollections, NullableCollectionDto>(e => new
             {
                 e.Id,
@@ -708,7 +708,7 @@ public class ExplicitDtoComprehensiveTest
         };
 
         var result = testData
-            .AsQueryable()
+            .AsTestQueryable()
             .SelectExpr<ComplexEntity, ThreeLevelNestedDto>(e => new
             {
                 e.Id,
@@ -756,7 +756,7 @@ public class ExplicitDtoComprehensiveTest
         };
 
         var result = testData
-            .AsQueryable()
+            .AsTestQueryable()
             .SelectExpr<EntityWithNullableChild, AllNullDto>(e => new
             {
                 e.Id,
@@ -793,7 +793,7 @@ public class ExplicitDtoComprehensiveTest
         };
 
         var result = testData
-            .AsQueryable()
+            .AsTestQueryable()
             .SelectExpr<ComplexEntity, EmptyCollectionsDto>(e => new
             {
                 e.Id,
@@ -812,7 +812,7 @@ public class ExplicitDtoComprehensiveTest
     public void ExplicitDto_MixedNullAndNonNullInCollection()
     {
         var result = CollectionTestData
-            .AsQueryable()
+            .AsTestQueryable()
             .SelectExpr<EntityWithCollections, MixedNullCollectionDto>(e => new
             {
                 e.Id,
@@ -839,7 +839,7 @@ public class ExplicitDtoComprehensiveTest
     public void ExplicitDto_ConditionalNestedSelect()
     {
         var result = CollectionTestData
-            .AsQueryable()
+            .AsTestQueryable()
             .SelectExpr<EntityWithCollections, ConditionalNestedSelectDto>(e => new
             {
                 e.Id,
@@ -863,7 +863,7 @@ public class ExplicitDtoComprehensiveTest
     public void ExplicitDto_MultiplePropertiesWithSameNullConditionalChain()
     {
         var result = NullableChildTestData
-            .AsQueryable()
+            .AsTestQueryable()
             .SelectExpr<EntityWithNullableChild, MultiplePropertiesSameChainDto>(e => new
             {
                 e.Id,
@@ -885,7 +885,7 @@ public class ExplicitDtoComprehensiveTest
     public void ExplicitDto_NestedSelectWithAggregation()
     {
         var result = CollectionTestData
-            .AsQueryable()
+            .AsTestQueryable()
             .SelectExpr<EntityWithCollections, NestedSelectAggregationDto>(e => new
             {
                 e.Id,
@@ -908,7 +908,7 @@ public class ExplicitDtoComprehensiveTest
     public void ExplicitDto_NestedSelectWithFiltering()
     {
         var result = CollectionTestData
-            .AsQueryable()
+            .AsTestQueryable()
             .SelectExpr<EntityWithCollections, NestedSelectFilteringDto>(e => new
             {
                 e.Id,
@@ -929,7 +929,7 @@ public class ExplicitDtoComprehensiveTest
     public void ExplicitDto_CombinedAggregationAndNullConditional()
     {
         var result = ComplexTestData
-            .AsQueryable()
+            .AsTestQueryable()
             .SelectExpr<ComplexEntity, CombinedAggregationNullConditionalDto>(e => new
             {
                 e.Id,

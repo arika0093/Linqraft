@@ -13,7 +13,7 @@ public class GlobalNamespaceNestedTest
     public void Test_GlobalNamespace_WithNestedSelect()
     {
         var result = SampleData
-            .AsQueryable()
+            .AsTestQueryable()
             .SelectExpr<GlobalParentClass, GlobalParentDto>(s => new
             {
                 s.Id,
@@ -35,7 +35,7 @@ public class GlobalNamespaceNestedTest
     public void Test_GlobalNamespace_AnonymousType_WithNestedSelect()
     {
         var result = SampleData
-            .AsQueryable()
+            .AsTestQueryable()
             .SelectExpr(s => new
             {
                 s.Id,

@@ -9,7 +9,7 @@ public partial class Issue_NestedSelectExprTest
 
     public void NestedSelectExpr_WithExplicitDtoTypes_ShouldWork()
     {
-        var query = TestData.AsQueryable();
+        var query = TestData.AsTestQueryable();
 
         var result = query
             .SelectExpr<NestedEntity, NestedEntityDto>(x => new

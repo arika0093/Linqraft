@@ -110,7 +110,7 @@ public class TernaryWithSelectIssueTest
     {
         // Pattern: c.Child2.Child3 != null ? c.Child2.Child3.Child4s.Select(...) : null
         var result = _datas
-            .AsQueryable()
+            .AsTestQueryable()
             .SelectExpr<TestData, TestDataDto1>(d => new
             {
                 d.Id,
@@ -152,7 +152,7 @@ public class TernaryWithSelectIssueTest
     {
         // Pattern: c.Child2.Child3 == null ? null : c.Child2.Child3.Child4s.Select(...)
         var result = _datas
-            .AsQueryable()
+            .AsTestQueryable()
             .SelectExpr<TestData, TestDataDto2>(d => new
             {
                 d.Id,

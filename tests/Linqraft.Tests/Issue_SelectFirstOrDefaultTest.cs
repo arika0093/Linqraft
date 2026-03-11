@@ -10,7 +10,7 @@ public class Issue_SelectFirstOrDefaultTest
     public void SelectFirstOrDefault_ShouldGenerateValidType()
     {
         var converted = TestData
-            .AsQueryable()
+            .AsTestQueryable()
             .SelectExpr<Sample, SampleDto>(s => new
             {
                 s.Id,

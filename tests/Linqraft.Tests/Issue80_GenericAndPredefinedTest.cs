@@ -33,7 +33,7 @@ public class Issue80_GenericAndPredefinedTest
         ];
 
         var result = datas
-            .AsQueryable()
+            .AsTestQueryable()
             .SelectExpr<TestForIssue80, TestForIssue80Dto>(d => new TestForIssue80Dto
             {
                 Id = d.Id,

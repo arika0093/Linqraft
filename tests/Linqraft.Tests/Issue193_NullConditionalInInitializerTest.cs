@@ -30,7 +30,7 @@ public class Issue193_NullConditionalInInitializerTest
     public void SelectExpr_PredefinedDto_NullConditionalInInitializer_ShouldOnlyAffectProperty()
     {
         var result = _data
-            .AsQueryable()
+            .AsTestQueryable()
             .SelectExpr(x => new Issue193_EntityDto
             {
                 Id = x.Id,
@@ -84,7 +84,7 @@ public class Issue193_NullConditionalInInitializerTest
             },
         };
 
-        var result = data.AsQueryable()
+        var result = data.AsTestQueryable()
             .SelectExpr(x => new Issue193_EntityWithNullableItemsDto
             {
                 Id = x.Id,
@@ -134,7 +134,7 @@ public class Issue193_NullConditionalInInitializerTest
             },
         };
 
-        var result = data.AsQueryable()
+        var result = data.AsTestQueryable()
             .SelectExpr(x => new Issue193_EntityWithNullableItemsDto
             {
                 Id = x.Id,

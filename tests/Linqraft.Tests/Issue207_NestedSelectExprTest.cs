@@ -62,7 +62,7 @@ public partial class Issue207_NestedSelectExprTest
     [Test]
     public void NestedSelectExpr_WithExplicitDtoTypes_ShouldWork()
     {
-        var query = TestData.AsQueryable();
+        var query = TestData.AsTestQueryable();
 
         // Outer SelectExpr with explicit DTO type
         // Items uses inner SelectExpr with explicit DTO type

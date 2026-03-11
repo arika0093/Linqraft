@@ -13,7 +13,7 @@ public class TutorialCaseTest
     public void TryTutorialCaseExplicit()
     {
         var orders = Orders
-            .AsQueryable()
+            .AsTestQueryable()
             // Order: input entity type
             // OrderDto: output DTO type (auto-generated)
             .SelectExpr<Order, OrderDto>(o => new

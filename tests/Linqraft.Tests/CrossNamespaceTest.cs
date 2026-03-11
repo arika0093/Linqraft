@@ -9,7 +9,7 @@ public class CrossNamespaceTest
     public void GeneratedDtoShouldBeInCallerNamespace()
     {
         var rst = SampleData
-            .AsQueryable()
+            .AsTestQueryable()
             .SelectExpr<Linqraft.Tests.SourceNamespace.TestClass, TestSampleDto>(s => new
             {
                 Bar = s.Id,
@@ -25,7 +25,7 @@ public class CrossNamespaceTest
     public void GeneratedDtoWithNestedPropertiesShouldBeInCallerNamespace()
     {
         var rst = SampleDataWithChild
-            .AsQueryable()
+            .AsTestQueryable()
             .SelectExpr<Linqraft.Tests.SourceNamespace.ParentClass, ParentDto>(s => new
             {
                 ParentId = s.Id,
@@ -42,7 +42,7 @@ public class CrossNamespaceTest
     public void ManuallyDefinedDtoShouldUseDefinedNamespace()
     {
         var rst = SampleData
-            .AsQueryable()
+            .AsTestQueryable()
             .SelectExpr(s => new PredefinedDto { Name = s.Name, Value = s.Id })
             .First();
 

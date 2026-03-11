@@ -25,7 +25,7 @@ public partial class PartialNestedDtoTest
         };
 
         var converted = testData
-            .AsQueryable()
+            .AsTestQueryable()
             .SelectExpr<Entity, SampleService.EntityDto>(e => new
             {
                 e.Id,
@@ -60,7 +60,7 @@ public partial class PartialNestedDtoTest
         };
 
         var converted = testData
-            .AsQueryable()
+            .AsTestQueryable()
             .SelectExpr<Entity, OuterClass.InnerClass.DeepDto>(e => new { e.Id, e.Name })
             .ToList();
 
@@ -90,7 +90,7 @@ public partial class PartialNestedDtoTest
         };
 
         var converted = testData
-            .AsQueryable()
+            .AsTestQueryable()
             .SelectExpr<Entity, EntityDtoInClass>(e => new
             {
                 e.Id,

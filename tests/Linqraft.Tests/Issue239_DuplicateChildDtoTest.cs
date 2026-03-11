@@ -27,7 +27,7 @@ public partial class Issue239_DuplicateChildDtoTest
         // Arrange & Act - Two separate SelectExpr calls with identical anonymous structure
         // This should generate only ONE ItemDto class definition, not two
         var result1 = _testData
-            .AsQueryable()
+            .AsTestQueryable()
             .SelectExpr(x => new
             {
                 x.Id,
@@ -38,7 +38,7 @@ public partial class Issue239_DuplicateChildDtoTest
             .ToList();
 
         var result2 = _testData
-            .AsQueryable()
+            .AsTestQueryable()
             .SelectExpr(x => new
             {
                 x.Id,

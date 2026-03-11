@@ -155,8 +155,7 @@ internal static class SourceWriters
 
                 var receiverType = GetReceiverTypeName(request.ReceiverKind);
                 var selectorResultType = request.UseObjectSelectorSignature ? "object" : "TResult";
-                var captureParameter =
-                    "[global::System.Diagnostics.CodeAnalysis.DynamicallyAccessedMembers(global::System.Diagnostics.CodeAnalysis.DynamicallyAccessedMemberTypes.PublicProperties)] object capture";
+                var captureParameter = "object capture";
                 var signature =
                     request.Captures.Length == 0
                         ? $"public static {receiverType}<TResult> {request.MethodName}<TIn, TResult>(this {receiverType}<TIn> query, global::System.Func<TIn, {selectorResultType}> selector) where TIn : class"
@@ -168,6 +167,12 @@ internal static class SourceWriters
                 {
                     builder.AppendLine(
                         $"[global::System.Runtime.CompilerServices.InterceptsLocationAttribute({interceptableLocationVersion}, \"{EscapeStringLiteral(interceptableLocationData)}\")]"
+                    );
+                }
+                if (request.Captures.Length != 0)
+                {
+                    builder.AppendLine(
+                        "[global::System.Diagnostics.CodeAnalysis.UnconditionalSuppressMessage(\"Trimming\", \"IL2075\", Justification = \"Capture reflection inspects runtime-generated anonymous objects.\")]"
                     );
                 }
 

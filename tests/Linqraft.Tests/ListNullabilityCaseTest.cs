@@ -38,7 +38,7 @@ public class ListNullabilityCaseTest
     public void ListProperty_ShouldBeNonNullable_WhenGeneratedFromNestedSelect()
     {
         var converted = TestData
-            .AsQueryable()
+            .AsTestQueryable()
             .SelectExpr<ListNullEntity, EntityDto>(e => new
             {
                 e.Id,
@@ -64,7 +64,7 @@ public class ListNullabilityCaseTest
         // This is the exact scenario from issue #18
         // The List property should be non-nullable even though the nested lambda uses ?.
         var converted = TestData
-            .AsQueryable()
+            .AsTestQueryable()
             .SelectExpr<ListNullEntity, EntityWithNullConditionalDto>(e => new
             {
                 e.Id,
@@ -87,7 +87,7 @@ public class ListNullabilityCaseTest
     public void MultipleListProperties_ShouldBeNonNullable()
     {
         var converted = TestData
-            .AsQueryable()
+            .AsTestQueryable()
             .SelectExpr<ListNullEntity, EntityMultiListDto>(e => new
             {
                 e.Id,
@@ -105,7 +105,7 @@ public class ListNullabilityCaseTest
     public void ListOfComplexType_ShouldBeNonNullable()
     {
         var converted = TestData
-            .AsQueryable()
+            .AsTestQueryable()
             .SelectExpr<ListNullEntity, EntityComplexListDto>(e => new
             {
                 e.Id,

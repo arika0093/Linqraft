@@ -46,7 +46,7 @@ public class Issue_TernaryAndNullConditionalWithAnonymousTypeTest
     public void TernaryWithSelect_EmptyArrayLiteral_ShouldGenerateEnumerableEmpty()
     {
         var result = _testData
-            .AsQueryable()
+            .AsTestQueryable()
             .SelectExpr<Container, TernaryTestDto1>(x => new
             {
                 Items = x.Items != null ? x.Items.Select(i => new { i.Title }) : [],
@@ -76,7 +76,7 @@ public class Issue_TernaryAndNullConditionalWithAnonymousTypeTest
     public void NullConditionalSelect_WithNullCoalescing_ShouldGenerateExplicitNullCheck()
     {
         var result = _testData
-            .AsQueryable()
+            .AsTestQueryable()
             .SelectExpr<Container, TernaryTestDto2>(x => new
             {
                 Items = x.Items?.Select(i => new { i.Title }) ?? [],
@@ -106,7 +106,7 @@ public class Issue_TernaryAndNullConditionalWithAnonymousTypeTest
     public void NullableProperty_NullConditionalSelect_ShouldGenerateCorrectCode()
     {
         var result = _testData
-            .AsQueryable()
+            .AsTestQueryable()
             .SelectExpr<Container, TernaryTestDto3>(x => new
             {
                 Items = x.NullableItems?.Select(i => new { i.Title }) ?? [],

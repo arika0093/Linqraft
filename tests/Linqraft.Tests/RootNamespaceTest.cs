@@ -1,5 +1,6 @@
 using System.Collections.Generic;
 using System.Linq;
+using Linqraft.Tests;
 
 public class RootNamespaceTest
 {
@@ -7,7 +8,7 @@ public class RootNamespaceTest
     public void Test_GlobalNamespaceHandling()
     {
         var rst = SampleData
-            .AsQueryable()
+            .AsTestQueryable()
             .SelectExpr<RootSampleClass, Test>(s => new { s.Id })
             .ToList();
     }

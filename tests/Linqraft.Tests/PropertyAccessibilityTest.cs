@@ -50,7 +50,7 @@ public class PropertyAccessibilityTest
             },
         };
 
-        var result = data.AsQueryable()
+        var result = data.AsTestQueryable()
             .SelectExpr<TestEntity, MixedAccessibilityDto>(x => new
             {
                 x.Id,
@@ -79,7 +79,7 @@ public class PropertyAccessibilityTest
             },
         };
 
-        var result = data.AsQueryable()
+        var result = data.AsTestQueryable()
             .SelectExpr<ComplexEntity, MultiAccessibilityDto>(x => new
             {
                 x.PublicField,
@@ -107,7 +107,7 @@ public class PropertyAccessibilityTest
             },
         };
 
-        var result = data.AsQueryable()
+        var result = data.AsTestQueryable()
             .SelectExpr<TestEntity, AllInternalPropertiesDto>(x => new { x.Id, x.InternalValue })
             .ToList();
 
@@ -132,7 +132,7 @@ public class PropertyAccessibilityTest
             },
         };
 
-        var result = data.AsQueryable()
+        var result = data.AsTestQueryable()
             .SelectExpr<ParentEntity, ParentWithInternalChildrenDto>(x => new
             {
                 x.Id,
@@ -160,7 +160,7 @@ public class PropertyAccessibilityTest
             },
         };
 
-        var result = data.AsQueryable()
+        var result = data.AsTestQueryable()
             .SelectExpr<TestEntity, PartiallyPredefinedDto>(x => new
             {
                 x.Id,

@@ -13,7 +13,7 @@ public class LocalVariableCaptureTest
         SkipIfNativeAot();
         var val = 100;
         var converted = TestData
-            .AsQueryable()
+            .AsTestQueryable()
             .SelectExpr(x => new { x.Id, NewValue = x.Value + val }, new { val })
             .ToList();
 
@@ -31,7 +31,7 @@ public class LocalVariableCaptureTest
         var multiplier = 2;
         var suffix = " units";
         var converted = TestData
-            .AsQueryable()
+            .AsTestQueryable()
             .SelectExpr(
                 x => new
                 {
@@ -63,7 +63,7 @@ public class LocalVariableCaptureTest
         SkipIfNativeAot();
         var val = 100;
         var converted = TestData
-            .AsQueryable()
+            .AsTestQueryable()
             .SelectExpr<TestItem, ExplicitDto1>(
                 x => new { x.Id, NewValue = x.Value + val },
                 new { val }
@@ -84,7 +84,7 @@ public class LocalVariableCaptureTest
         var val = 100;
         var multiplier = 2;
         var converted = TestData
-            .AsQueryable()
+            .AsTestQueryable()
             .SelectExpr<TestItem, ExplicitDto2>(
                 x => new
                 {
@@ -110,7 +110,7 @@ public class LocalVariableCaptureTest
         SkipIfNativeAot();
         var val = 100;
         var converted = TestData
-            .AsQueryable()
+            .AsTestQueryable()
             .SelectExpr(
                 x => new PredefinedDto1 { Id = x.Id, NewValue = x.Value + val },
                 new { val }
@@ -131,7 +131,7 @@ public class LocalVariableCaptureTest
         var val = 100;
         var multiplier = 2;
         var converted = TestData
-            .AsQueryable()
+            .AsTestQueryable()
             .SelectExpr(
                 x => new PredefinedDto2
                 {
@@ -159,7 +159,7 @@ public class LocalVariableCaptureTest
         var offset = 60;
         var total = baseValue + offset;
         var converted = TestData
-            .AsQueryable()
+            .AsTestQueryable()
             .SelectExpr(x => new { x.Id, ComputedValue = x.Value + total }, new { total })
             .ToList();
 
@@ -175,7 +175,7 @@ public class LocalVariableCaptureTest
         SkipIfNativeAot();
         var date = new DateTime(2024, 1, 1);
         var converted = TestData
-            .AsQueryable()
+            .AsTestQueryable()
             .SelectExpr(
                 x => new
                 {
@@ -204,7 +204,7 @@ public class LocalVariableCaptureTest
         var users = BuildUsers();
 
         var converted = users
-            .AsQueryable()
+            .AsTestQueryable()
             .SelectExpr<UserWithCommits, UserCommitDto>(
                 u => new
                 {
@@ -234,7 +234,7 @@ public class LocalVariableCaptureTest
         var users = BuildUsers();
 
         var converted = users
-            .AsQueryable()
+            .AsTestQueryable()
             .SelectExpr<UserWithCommits, UserCommitDto>(
                 u => new
                 {
@@ -283,7 +283,7 @@ public class LocalVariableCaptureTest
         var users = BuildUsers();
 
         var converted = users
-            .AsQueryable()
+            .AsTestQueryable()
             .SelectExpr<UserWithCommits, UserCommitDto>(
                 u => new
                 {

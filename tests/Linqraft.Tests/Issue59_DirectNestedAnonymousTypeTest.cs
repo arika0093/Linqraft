@@ -117,7 +117,7 @@ public class Issue59DirectNestedAnonymousTypeTest
     public void ExplicitDto_SingleDirectNestedAnonymousType()
     {
         var result = TestData
-            .AsQueryable()
+            .AsTestQueryable()
             .SelectExpr<Quote, SingleNestedDto>(q => new
             {
                 q.Id,
@@ -149,7 +149,7 @@ public class Issue59DirectNestedAnonymousTypeTest
     public void ExplicitDto_SingleDirectNestedAnonymousType2()
     {
         var result = TestData
-            .AsQueryable()
+            .AsTestQueryable()
             .SelectExpr<Quote, SingleNestedDto2>(q => new
             {
                 q.Id,
@@ -182,7 +182,7 @@ public class Issue59DirectNestedAnonymousTypeTest
     public void ExplicitDto_MultipleDirectNestedAnonymousTypes()
     {
         var result = TestData
-            .AsQueryable()
+            .AsTestQueryable()
             .SelectExpr<Quote, MultipleNestedDto>(q => new
             {
                 q.Id,
@@ -226,7 +226,7 @@ public class Issue59DirectNestedAnonymousTypeTest
     public void ExplicitDto_NestedAnonymousTypeInCollection()
     {
         var result = TestData
-            .AsQueryable()
+            .AsTestQueryable()
             .SelectExpr<Quote, CollectionWithNestedDto>(q => new
             {
                 q.Id,
@@ -271,7 +271,7 @@ public class Issue59DirectNestedAnonymousTypeTest
     {
         // This is the pattern from issue #59
         var result = TestData
-            .AsQueryable()
+            .AsTestQueryable()
             .SelectExpr<Quote, ComplexQuoteDto>(q => new
             {
                 q.Id,
@@ -360,7 +360,7 @@ public class Issue59DirectNestedAnonymousTypeTest
     public void ExplicitDto_DirectNestedWithFirstOrDefault()
     {
         var result = TestData
-            .AsQueryable()
+            .AsTestQueryable()
             .SelectExpr<Quote, FirstOrDefaultNestedDto>(q => new
             {
                 q.Id,
@@ -380,7 +380,7 @@ public class Issue59DirectNestedAnonymousTypeTest
         // Test case where multiple nested types have the same structure
         // This ensures unique DTO names are generated correctly
         var result = TestData
-            .AsQueryable()
+            .AsTestQueryable()
             .SelectExpr<Quote, SameStructureNestedDto>(q => new
             {
                 q.Id,
