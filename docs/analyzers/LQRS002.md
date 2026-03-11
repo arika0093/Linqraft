@@ -16,11 +16,13 @@ Detects `System.Linq` `Select` calls performed on `IQueryable<T>` whose selector
 - Calls on `IEnumerable<T>`/in-memory sequences (the analyzer checks the invocation target's type).
 - Selectors that do not create an anonymous type.
 - Cases with named object creations are handled by `LQRS003`.
+- Anonymous selectors that already contain a simplifiable null ternary are surfaced as [LQRS005](./LQRS005.md) instead.
 
 ## Code Fixes
 `SelectToSelectExprAnonymousCodeFixProvider` can offer conversions such as:
 - Convert `Select(...)` → `SelectExpr(...)` preserving the anonymous projection.
 - Convert `Select(...)` → `SelectExpr<TSource, TDto>(...)` with a generated DTO type when that is preferable.
+- When the selector references outer variables, the conversion also adds the required `capture:` entries automatically.
 
 ### Automatic Ternary Null Check Simplification
 As of version 0.5.0, the code fix also **automatically simplifies ternary null check patterns** (previously handled by LQRS004). When converting `Select` to `SelectExpr`, patterns like:
@@ -69,6 +71,8 @@ var result = query.SelectExpr<Product, ResultDto_XXXXXXXX>(x => new
 ```
 
 ### With Ternary Null Check Simplification
+Selectors that contain these null-ternary patterns are reported as [LQRS005](./LQRS005.md), but the conversion behavior is the same.
+
 Before:
 ```csharp
 var result = query.Select(x => new

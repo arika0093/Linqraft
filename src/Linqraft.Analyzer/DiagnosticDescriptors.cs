@@ -6,7 +6,7 @@ namespace Linqraft.Analyzer;
 internal static class DiagnosticDescriptors
 {
     public static readonly DiagnosticDescriptor ApiControllerProducesResponseType = new(
-        "LQRF002",
+        "LQRF001",
         "Action can declare ProducesResponseType",
         "Action '{0}' can declare ProducesResponseType(typeof({1}))",
         "Design",
@@ -37,6 +37,24 @@ internal static class DiagnosticDescriptors
         "IQueryable.Select can be converted to SelectExpr",
         "IQueryable.Select can be converted to SelectExpr",
         "Design",
+        DiagnosticSeverity.Hidden,
+        isEnabledByDefault: true
+    );
+
+    public static readonly DiagnosticDescriptor SelectToSelectExprAnonymousWithNullTernary = new(
+        "LQRS005",
+        "IQueryable.Select can be converted to SelectExpr",
+        "IQueryable.Select can be converted to SelectExpr",
+        "Design",
+        DiagnosticSeverity.Info,
+        isEnabledByDefault: true
+    );
+
+    public static readonly DiagnosticDescriptor SelectToSelectExprNamedWithNullTernary = new(
+        "LQRS006",
+        "IQueryable.Select can be converted to SelectExpr",
+        "IQueryable.Select can be converted to SelectExpr",
+        "Design",
         DiagnosticSeverity.Info,
         isEnabledByDefault: true
     );
@@ -51,7 +69,7 @@ internal static class DiagnosticDescriptors
     );
 
     public static readonly DiagnosticDescriptor UnnecessaryCapture = new(
-        "LQRS005",
+        "LQRW003",
         "Capture entry is unused",
         "Capture value '{0}' is not used by the SelectExpr selector",
         "Usage",
@@ -101,6 +119,8 @@ internal static class DiagnosticDescriptors
             SelectExprToTyped,
             SelectToSelectExprAnonymous,
             SelectToSelectExprNamed,
+            SelectToSelectExprAnonymousWithNullTernary,
+            SelectToSelectExprNamedWithNullTernary,
             TernaryNullCheckToConditional,
             UnnecessaryCapture,
             GeneratedHashedNamespaceUsage,

@@ -21,17 +21,17 @@ Detects conditional (ternary) expressions where one branch returns `null` (or a 
 ## Suggested Transformation
 The analyzer reports an informational diagnostic and suggests a null-propagation style replacement when the pattern is a simple null check that guards an object creation. A common safe transformation is to move the nullable operator into the member access so that inner member accesses use the null-conditional operator.
 
-### Relationship with LQRS002/LQRS003
+### Relationship with LQRS002/LQRS003/LQRS005/LQRS006
 
 Some `Select` → `SelectExpr` conversion options automatically apply this transformation:
-- **LQRS002** (anonymous type): Always applies ternary simplification
-- **LQRS003 "Explicit"**: Applies ternary simplification
+- **LQRS005** (anonymous type with null ternary): Always applies ternary simplification
+- **LQRS006 "Convert to SelectExpr<T, TDto>"**: Applies ternary simplification
 
 Others preserve the original ternary patterns:
-- **LQRS003 "Explicit (strict)"**: Does NOT apply ternary simplification
-- **LQRS003 "Predefined"**: Does NOT apply ternary simplification
+- **LQRS006 "Convert to SelectExpr<T, TDto> (strict)"**: Does NOT apply ternary simplification
+- **LQRS006 "Convert to SelectExpr (use predefined classes)"**: Does NOT apply ternary simplification
 
-For the conversions that preserve ternary patterns, you can use LQRS004 to manually apply the transformation afterward if desired.
+The hidden baseline suggestions [LQRS002](./LQRS002.md) and [LQRS003](./LQRS003.md) still cover the non-ternary cases. For conversions that preserve ternary patterns, you can use LQRS004 to manually apply the transformation afterward if desired.
 
 ### Replacement example
 Given a conditional like:

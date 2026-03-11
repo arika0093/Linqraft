@@ -1,6 +1,6 @@
 # LQRS003 - SelectToSelectExprNamedAnalyzer
 
-**Severity:** Info  
+**Severity:** Hidden  
 **Category:** Design  
 **Default:** Enabled
 
@@ -16,6 +16,7 @@ Detects `System.Linq` `Select` invocations on `IQueryable<T>` whose selector cre
 - Calls on `IEnumerable<T>`.
 - Selectors that do not create an object.
 - Anonymous-type projections (handled by `LQRS002`).
+- Named selectors that already contain a simplifiable null ternary are surfaced as [LQRS006](./LQRS006.md) instead.
 
 ## Code Fixes
 `SelectToSelectExprNamedCodeFixProvider` registers three distinct fixes (titles shown are from the provider):
@@ -29,7 +30,11 @@ Detects `System.Linq` `Select` invocations on `IQueryable<T>` whose selector cre
 - **Convert to SelectExpr (use predefined classes)**
   - Replaces the method name `Select` with `SelectExpr` (no generic type arguments) and preserves the existing named DTO type in the selector. This variant **does NOT apply ternary null check simplification**, preserving the original ternary patterns. You can apply [LQRS004](LQRS004.md) manually afterward if needed.
 
+All three conversions also add the required `capture:` entries automatically when the selector uses outer variables.
+
 ### Automatic Ternary Null Check Simplification
+Selectors that contain these patterns are reported as [LQRS006](./LQRS006.md), but they reuse the same code-fix family.
+
 The first code fix option **automatically simplifies ternary null check patterns**. When converting `Select` to `SelectExpr`, patterns like:
 
 ```csharp

@@ -323,6 +323,14 @@ internal static class AnalyzerHelpers
                 .Contains("!= null", StringComparison.Ordinal);
     }
 
+    public static bool ContainsSimplifiableNullCheckTernary(ExpressionSyntax expression)
+    {
+        return expression
+            .DescendantNodesAndSelf()
+            .OfType<ConditionalExpressionSyntax>()
+            .Any(IsSimplifiableNullCheckTernary);
+    }
+
     public static bool ImplementsOpenGeneric(ITypeSymbol? typeSymbol, string metadataName)
     {
         if (typeSymbol is null)
@@ -351,6 +359,116 @@ internal static class AnalyzerHelpers
         }
 
         return char.ToUpperInvariant(value[0]) + value[1..];
+    }
+
+    private static bool IsSimplifiableNullCheckTernary(
+        ConditionalExpressionSyntax conditionalExpression
+    )
+    {
+        var checkedPaths = new List<string>();
+        return IsNullLike(conditionalExpression.WhenFalse)
+            && TryCollectNullGuardPaths(
+                conditionalExpression.Condition,
+                valueWhenConditionTrue: true,
+                checkedPaths
+            )
+            || IsNullLike(conditionalExpression.WhenTrue)
+                && TryCollectNullGuardPaths(
+                    conditionalExpression.Condition,
+                    valueWhenConditionTrue: false,
+                    new List<string>()
+                );
+    }
+
+    private static bool TryCollectNullGuardPaths(
+        ExpressionSyntax condition,
+        bool valueWhenConditionTrue,
+        ICollection<string> checkedPaths
+    )
+    {
+        condition = UnwrapParentheses(condition);
+        if (condition is not BinaryExpressionSyntax binaryExpression)
+        {
+            return false;
+        }
+
+        if (
+            valueWhenConditionTrue && binaryExpression.IsKind(SyntaxKind.LogicalAndExpression)
+            || !valueWhenConditionTrue && binaryExpression.IsKind(SyntaxKind.LogicalOrExpression)
+        )
+        {
+            return TryCollectNullGuardPaths(
+                    binaryExpression.Left,
+                    valueWhenConditionTrue,
+                    checkedPaths
+                )
+                && TryCollectNullGuardPaths(
+                    binaryExpression.Right,
+                    valueWhenConditionTrue,
+                    checkedPaths
+                );
+        }
+
+        if (!TryGetNullCheckedPath(binaryExpression, valueWhenConditionTrue, out var checkedPath))
+        {
+            return false;
+        }
+
+        checkedPaths.Add(checkedPath);
+        return true;
+    }
+
+    private static bool TryGetNullCheckedPath(
+        BinaryExpressionSyntax binaryExpression,
+        bool valueWhenConditionTrue,
+        out string checkedPath
+    )
+    {
+        var matchesExpectedOperator = valueWhenConditionTrue
+            ? binaryExpression.IsKind(SyntaxKind.NotEqualsExpression)
+            : binaryExpression.IsKind(SyntaxKind.EqualsExpression);
+        if (!matchesExpectedOperator)
+        {
+            checkedPath = string.Empty;
+            return false;
+        }
+
+        if (IsNullLike(binaryExpression.Right))
+        {
+            checkedPath = UnwrapParentheses(binaryExpression.Left).ToString();
+            return !string.IsNullOrWhiteSpace(checkedPath);
+        }
+
+        if (IsNullLike(binaryExpression.Left))
+        {
+            checkedPath = UnwrapParentheses(binaryExpression.Right).ToString();
+            return !string.IsNullOrWhiteSpace(checkedPath);
+        }
+
+        checkedPath = string.Empty;
+        return false;
+    }
+
+    private static bool IsNullLike(ExpressionSyntax expression)
+    {
+        expression = UnwrapParentheses(expression);
+        return expression switch
+        {
+            LiteralExpressionSyntax literalExpression
+                when literalExpression.IsKind(SyntaxKind.NullLiteralExpression) => true,
+            CastExpressionSyntax castExpression => IsNullLike(castExpression.Expression),
+            _ => false,
+        };
+    }
+
+    private static ExpressionSyntax UnwrapParentheses(ExpressionSyntax expression)
+    {
+        while (expression is ParenthesizedExpressionSyntax parenthesizedExpression)
+        {
+            expression = parenthesizedExpression.Expression;
+        }
+
+        return expression;
     }
 
     private static bool IsLocalAccess(

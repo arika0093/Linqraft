@@ -63,11 +63,37 @@ public sealed class LinqraftCompositeAnalyzer : DiagnosticAnalyzer
             return;
         }
 
+        var containsNullTernary =
+            AnalyzerHelpers.GetLambdaExpressionBody(lambda) is { } selectorBody
+            && AnalyzerHelpers.ContainsSimplifiableNullCheckTernary(selectorBody);
+
+        if (AnalyzerHelpers.IsAnonymousProjection(lambda) && containsNullTernary)
+        {
+            context.ReportDiagnostic(
+                Diagnostic.Create(
+                    DiagnosticDescriptors.SelectToSelectExprAnonymousWithNullTernary,
+                    invocation.GetLocation()
+                )
+            );
+            return;
+        }
+
         if (AnalyzerHelpers.IsAnonymousProjection(lambda))
         {
             context.ReportDiagnostic(
                 Diagnostic.Create(
                     DiagnosticDescriptors.SelectToSelectExprAnonymous,
+                    invocation.GetLocation()
+                )
+            );
+            return;
+        }
+
+        if (AnalyzerHelpers.IsNamedProjection(lambda) && containsNullTernary)
+        {
+            context.ReportDiagnostic(
+                Diagnostic.Create(
+                    DiagnosticDescriptors.SelectToSelectExprNamedWithNullTernary,
                     invocation.GetLocation()
                 )
             );

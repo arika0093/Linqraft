@@ -1,4 +1,4 @@
-# LQRF002 - ApiControllerProducesResponseTypeAnalyzer
+# LQRF001 - ApiControllerProducesResponseTypeAnalyzer
 
 **Severity:** Info  
 **Category:** Design  

@@ -22,12 +22,14 @@ public sealed class LinqraftCompositeCodeFixProvider : CodeFixProvider
 {
     public override ImmutableArray<string> FixableDiagnosticIds =>
         ImmutableArray.Create(
-            "LQRF002",
+            "LQRF001",
             "LQRS001",
             "LQRS002",
             "LQRS003",
             "LQRS004",
             "LQRS005",
+            "LQRS006",
+            "LQRW003",
             "LQRE001",
             "LQRE002"
         );
@@ -53,15 +55,17 @@ public sealed class LinqraftCompositeCodeFixProvider : CodeFixProvider
                     RegisterSelectExprToTyped(context, node);
                     break;
                 case "LQRS002":
+                case "LQRS005":
                     RegisterSelectAnonymousFixes(context, node);
                     break;
                 case "LQRS003":
+                case "LQRS006":
                     RegisterSelectNamedFixes(context, node);
                     break;
                 case "LQRS004":
                     RegisterTernaryFix(context, node);
                     break;
-                case "LQRS005":
+                case "LQRW003":
                     RegisterUnnecessaryCaptureFix(context, node, diagnostic);
                     break;
                 case "LQRE001":
@@ -70,7 +74,7 @@ public sealed class LinqraftCompositeCodeFixProvider : CodeFixProvider
                 case "LQRE002":
                     RegisterGroupByKeyFix(context, node);
                     break;
-                case "LQRF002":
+                case "LQRF001":
                     RegisterProducesResponseTypeFix(context, node);
                     break;
             }
@@ -245,7 +249,7 @@ public sealed class LinqraftCompositeCodeFixProvider : CodeFixProvider
                         captureName!,
                         cancellationToken
                     ),
-                $"LQRS005.{captureName}"
+                $"LQRW003.{captureName}"
             ),
             context.Diagnostics
         );
@@ -314,7 +318,7 @@ public sealed class LinqraftCompositeCodeFixProvider : CodeFixProvider
                 "Add ProducesResponseType",
                 cancellationToken =>
                     AddProducesResponseTypeAsync(context.Document, method, cancellationToken),
-                "LQRF002"
+                "LQRF001"
             ),
             context.Diagnostics
         );
@@ -344,24 +348,22 @@ public sealed class LinqraftCompositeCodeFixProvider : CodeFixProvider
     )
     {
         var root = await document.GetSyntaxRootAsync(cancellationToken).ConfigureAwait(false);
-        if (root is null)
+        var semanticModel = await document
+            .GetSemanticModelAsync(cancellationToken)
+            .ConfigureAwait(false);
+        if (root is null || semanticModel is null)
         {
             return document;
         }
 
         var updatedInvocation = RenameInvocation(invocation, "SelectExpr");
         var originalLambda = AnalyzerHelpers.GetSelectorLambda(invocation);
+        var captureNames = originalLambda is null
+            ? Array.Empty<string>()
+            : GetMissingCaptureNames(invocation, originalLambda, semanticModel, cancellationToken);
         if (explicitDto)
         {
             if (originalLambda is null)
-            {
-                return document;
-            }
-
-            var semanticModel = await document
-                .GetSemanticModelAsync(cancellationToken)
-                .ConfigureAwait(false);
-            if (semanticModel is null)
             {
                 return document;
             }
@@ -390,6 +392,7 @@ public sealed class LinqraftCompositeCodeFixProvider : CodeFixProvider
             );
         }
 
+        updatedInvocation = AddCaptureNames(updatedInvocation, captureNames);
         return WithFormattedSyntaxRoot(document, root.ReplaceNode(invocation, updatedInvocation));
     }
 
@@ -404,14 +407,20 @@ public sealed class LinqraftCompositeCodeFixProvider : CodeFixProvider
         if (keepNamedDto)
         {
             var root = await document.GetSyntaxRootAsync(cancellationToken).ConfigureAwait(false);
-            if (root is null)
+            var semanticModel = await document
+                .GetSemanticModelAsync(cancellationToken)
+                .ConfigureAwait(false);
+            var lambda = AnalyzerHelpers.GetSelectorLambda(invocation);
+            if (root is null || semanticModel is null || lambda is null)
             {
                 return document;
             }
 
-            return document.WithSyntaxRoot(
-                root.ReplaceNode(invocation, RenameInvocation(invocation, "SelectExpr"))
+            var updatedInvocation = AddCaptureNames(
+                RenameInvocation(invocation, "SelectExpr"),
+                GetMissingCaptureNames(invocation, lambda, semanticModel, cancellationToken)
             );
+            return WithFormattedSyntaxRoot(document, root.ReplaceNode(invocation, updatedInvocation));
         }
 
         return await ReplaceInvocationWithTypedSelectExprAsync(
@@ -447,6 +456,12 @@ public sealed class LinqraftCompositeCodeFixProvider : CodeFixProvider
             return document;
         }
 
+        var captureNames = GetMissingCaptureNames(
+            invocation,
+            lambda,
+            semanticModel,
+            cancellationToken
+        );
         var updatedInvocation = RenameInvocation(invocation, "SelectExpr");
         updatedInvocation = AddTypeArguments(
             updatedInvocation,
@@ -470,6 +485,7 @@ public sealed class LinqraftCompositeCodeFixProvider : CodeFixProvider
             updatedInvocation = updatedInvocation.ReplaceNode(objectCreation, converted);
         }
 
+        updatedInvocation = AddCaptureNames(updatedInvocation, captureNames);
         return WithFormattedSyntaxRoot(document, root.ReplaceNode(invocation, updatedInvocation));
     }
 
@@ -510,13 +526,7 @@ public sealed class LinqraftCompositeCodeFixProvider : CodeFixProvider
             return document;
         }
 
-        var captureArgument = invocation.ArgumentList.Arguments.FirstOrDefault(argument =>
-            argument.NameColon?.Name.Identifier.ValueText == "capture"
-            || (
-                !argument.Equals(invocation.ArgumentList.Arguments.First())
-                && argument.Expression is AnonymousObjectCreationExpressionSyntax
-            )
-        );
+        var captureArgument = GetCaptureArgument(invocation);
 
         if (
             captureArgument?.Expression is not AnonymousObjectCreationExpressionSyntax captureObject
@@ -558,54 +568,8 @@ public sealed class LinqraftCompositeCodeFixProvider : CodeFixProvider
             return document;
         }
 
-        var captureArgument = invocation.ArgumentList.Arguments.FirstOrDefault(argument =>
-            argument.NameColon?.Name.Identifier.ValueText == "capture"
-        );
-
-        if (captureArgument?.Expression is AnonymousObjectCreationExpressionSyntax captureObject)
-        {
-            if (
-                captureObject.Initializers.Any(initializer =>
-                    AnalyzerHelpers.GetAnonymousMemberName(initializer) == captureName
-                )
-            )
-            {
-                return document;
-            }
-
-            var updatedCapture = captureObject.WithInitializers(
-                captureObject.Initializers.Add(
-                    SyntaxFactory.AnonymousObjectMemberDeclarator(
-                        SyntaxFactory.IdentifierName(captureName)
-                    )
-                )
-            );
-            var updatedInvocation = invocation.ReplaceNode(captureObject, updatedCapture);
-            return document.WithSyntaxRoot(root.ReplaceNode(invocation, updatedInvocation));
-        }
-
-        var newCaptureArgument = SyntaxFactory.Argument(
-            SyntaxFactory.NameColon(SyntaxFactory.IdentifierName("capture")),
-            default,
-            SyntaxFactory.AnonymousObjectCreationExpression(
-                SyntaxFactory.SeparatedList(
-                    new[]
-                    {
-                        SyntaxFactory.AnonymousObjectMemberDeclarator(
-                            SyntaxFactory.IdentifierName(captureName)
-                        ),
-                    }
-                )
-            )
-        );
-
-        var updatedInvocationWithCapture = invocation.WithArgumentList(
-            invocation.ArgumentList.WithArguments(
-                invocation.ArgumentList.Arguments.Add(newCaptureArgument)
-            )
-        );
-
-        return document.WithSyntaxRoot(root.ReplaceNode(invocation, updatedInvocationWithCapture));
+        var updatedInvocation = AddCaptureNames(invocation, [captureName]);
+        return document.WithSyntaxRoot(root.ReplaceNode(invocation, updatedInvocation));
     }
 
     private static async Task<Document> ConvertGroupByKeyAsync(
@@ -737,6 +701,109 @@ public sealed class LinqraftCompositeCodeFixProvider : CodeFixProvider
             invocation.Expression is MemberAccessExpressionSyntax memberAccess
                 ? memberAccess.WithName(genericName)
                 : invocation.Expression
+        );
+    }
+
+    private static string[] GetMissingCaptureNames(
+        InvocationExpressionSyntax invocation,
+        LambdaExpressionSyntax lambda,
+        SemanticModel semanticModel,
+        CancellationToken cancellationToken
+    )
+    {
+        var existingCaptureNames = new HashSet<string>(
+            AnalyzerHelpers.GetCaptureNames(invocation),
+            StringComparer.Ordinal
+        );
+        var missingCaptureNames = new List<string>();
+        foreach (
+            var reference in AnalyzerHelpers
+                .CollectOuterReferences(lambda, semanticModel, cancellationToken)
+                .Distinct(SymbolEqualityComparer.Default)
+        )
+        {
+            if (existingCaptureNames.Add(reference.Name))
+            {
+                missingCaptureNames.Add(reference.Name);
+            }
+        }
+
+        return missingCaptureNames.ToArray();
+    }
+
+    private static InvocationExpressionSyntax AddCaptureNames(
+        InvocationExpressionSyntax invocation,
+        IEnumerable<string> captureNames
+    )
+    {
+        var pendingCaptureNames = captureNames
+            .Where(captureName => !string.IsNullOrWhiteSpace(captureName))
+            .Distinct(StringComparer.Ordinal)
+            .ToArray();
+        if (pendingCaptureNames.Length == 0)
+        {
+            return invocation;
+        }
+
+        var captureArgument = GetCaptureArgument(invocation);
+        if (captureArgument?.Expression is AnonymousObjectCreationExpressionSyntax captureObject)
+        {
+            var existingCaptureNames = new HashSet<string>(
+                captureObject.Initializers.Select(AnalyzerHelpers.GetAnonymousMemberName),
+                StringComparer.Ordinal
+            );
+            var updatedInitializers = captureObject.Initializers;
+            foreach (var captureName in pendingCaptureNames)
+            {
+                if (!existingCaptureNames.Add(captureName))
+                {
+                    continue;
+                }
+
+                updatedInitializers = updatedInitializers.Add(CreateCaptureInitializer(captureName));
+            }
+
+            return invocation.ReplaceNode(
+                captureObject,
+                captureObject.WithInitializers(updatedInitializers)
+            );
+        }
+
+        return invocation.WithArgumentList(
+            invocation.ArgumentList.WithArguments(
+                invocation.ArgumentList.Arguments.Add(CreateCaptureArgument(pendingCaptureNames))
+            )
+        );
+    }
+
+    private static ArgumentSyntax? GetCaptureArgument(InvocationExpressionSyntax invocation)
+    {
+        return invocation.ArgumentList.Arguments.FirstOrDefault(argument =>
+            argument.NameColon?.Name.Identifier.ValueText == "capture"
+            || (
+                !argument.Equals(invocation.ArgumentList.Arguments.First())
+                && argument.Expression is AnonymousObjectCreationExpressionSyntax
+            )
+        );
+    }
+
+    private static ArgumentSyntax CreateCaptureArgument(IEnumerable<string> captureNames)
+    {
+        return SyntaxFactory.Argument(
+            SyntaxFactory.NameColon(SyntaxFactory.IdentifierName("capture")),
+            default,
+            SyntaxFactory.AnonymousObjectCreationExpression(
+                SyntaxFactory.SeparatedList(
+                    captureNames.Select(CreateCaptureInitializer)
+                )
+            )
+        );
+    }
+
+    private static AnonymousObjectMemberDeclaratorSyntax CreateCaptureInitializer(string captureName)
+    {
+        return SyntaxFactory.AnonymousObjectMemberDeclarator(
+            SyntaxFactory.IdentifierName(captureName)
         );
     }
 

@@ -93,7 +93,7 @@ public sealed class AnalyzerSmokeTests
 
         var diagnostics = await GetDiagnosticsAsync(source);
         diagnostics.Select(diagnostic => diagnostic.Id).ShouldNotContain("LQRE001");
-        diagnostics.Select(diagnostic => diagnostic.Id).ShouldNotContain("LQRS005");
+        diagnostics.Select(diagnostic => diagnostic.Id).ShouldNotContain("LQRW003");
     }
 
     [Test]
@@ -120,6 +120,42 @@ public sealed class AnalyzerSmokeTests
         var diagnostic = diagnostics.Single(current => current.Id == "LQRS002");
 
         diagnostic.Severity.ShouldBe(DiagnosticSeverity.Hidden);
+        diagnostics.Select(current => current.Id).ShouldNotContain("LQRS005");
+    }
+
+    [Test]
+    public async Task Queryable_select_anonymous_with_null_ternary_reports_LQRS005()
+    {
+        const string source = """
+            using System.Linq;
+
+            public class Child
+            {
+                public int Id { get; set; }
+            }
+
+            public class Entity
+            {
+                public Child? Child { get; set; }
+            }
+
+            public class QueryHolder
+            {
+                public IQueryable<object> Project(IQueryable<Entity> source)
+                {
+                    return source.Select(entity => new
+                    {
+                        ChildData = entity.Child != null ? new { entity.Child.Id } : null,
+                    });
+                }
+            }
+            """;
+
+        var diagnostics = await GetDiagnosticsAsync(source);
+        var diagnostic = diagnostics.Single(current => current.Id == "LQRS005");
+
+        diagnostic.Severity.ShouldBe(DiagnosticSeverity.Info);
+        diagnostics.Select(current => current.Id).ShouldNotContain("LQRS002");
     }
 
     [Test]
@@ -250,7 +286,50 @@ public sealed class AnalyzerSmokeTests
             """;
 
         var diagnostics = await GetDiagnosticsAsync(source);
-        diagnostics.Select(diagnostic => diagnostic.Id).ShouldContain("LQRS003");
+        var diagnostic = diagnostics.Single(current => current.Id == "LQRS003");
+
+        diagnostic.Severity.ShouldBe(DiagnosticSeverity.Hidden);
+        diagnostics.Select(current => current.Id).ShouldNotContain("LQRS006");
+    }
+
+    [Test]
+    public async Task Queryable_select_named_with_null_ternary_reports_LQRS006()
+    {
+        const string source = """
+            using System.Linq;
+
+            public class Child
+            {
+                public string? Name { get; set; }
+            }
+
+            public class Entity
+            {
+                public Child? Child { get; set; }
+            }
+
+            public class EntityDto
+            {
+                public object? ChildData { get; set; }
+            }
+
+            public class QueryHolder
+            {
+                public IQueryable<EntityDto> Project(IQueryable<Entity> source)
+                {
+                    return source.Select(entity => new EntityDto
+                    {
+                        ChildData = entity.Child != null ? new { entity.Child.Name } : null,
+                    });
+                }
+            }
+            """;
+
+        var diagnostics = await GetDiagnosticsAsync(source);
+        var diagnostic = diagnostics.Single(current => current.Id == "LQRS006");
+
+        diagnostic.Severity.ShouldBe(DiagnosticSeverity.Info);
+        diagnostics.Select(current => current.Id).ShouldNotContain("LQRS003");
     }
 
     [Test]
@@ -295,7 +374,7 @@ public sealed class AnalyzerSmokeTests
     }
 
     [Test]
-    public async Task Unused_capture_reports_LQRS005()
+    public async Task Unused_capture_reports_LQRW003()
     {
         const string source = """
             using System;
@@ -330,7 +409,7 @@ public sealed class AnalyzerSmokeTests
             """;
 
         var diagnostics = await GetDiagnosticsAsync(source);
-        diagnostics.Select(diagnostic => diagnostic.Id).ShouldContain("LQRS005");
+        diagnostics.Select(diagnostic => diagnostic.Id).ShouldContain("LQRW003");
     }
 
     [Test]
@@ -396,7 +475,7 @@ public sealed class AnalyzerSmokeTests
     }
 
     [Test]
-    public async Task Api_controller_without_response_metadata_reports_LQRF002()
+    public async Task Api_controller_without_response_metadata_reports_LQRF001()
     {
         const string source = """
             using System;
@@ -440,11 +519,11 @@ public sealed class AnalyzerSmokeTests
             """;
 
         var diagnostics = await GetDiagnosticsAsync(source);
-        diagnostics.Select(diagnostic => diagnostic.Id).ShouldContain("LQRF002");
+        diagnostics.Select(diagnostic => diagnostic.Id).ShouldContain("LQRF001");
     }
 
     [Test]
-    public async Task Api_controller_with_response_metadata_does_not_report_LQRF002()
+    public async Task Api_controller_with_response_metadata_does_not_report_LQRF001()
     {
         const string source = """
             using System;
@@ -493,7 +572,7 @@ public sealed class AnalyzerSmokeTests
             """;
 
         var diagnostics = await GetDiagnosticsAsync(source);
-        diagnostics.Select(diagnostic => diagnostic.Id).ShouldNotContain("LQRF002");
+        diagnostics.Select(diagnostic => diagnostic.Id).ShouldNotContain("LQRF001");
     }
 
     private static async Task<ImmutableArray<Diagnostic>> GetDiagnosticsAsync(string source)

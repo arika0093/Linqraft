@@ -139,7 +139,7 @@ public sealed class AnalyzerCodeFixSmokeTests
             """;
 
         var fixedText = (
-            await ApplyFixAsync(source, "LQRS005", "Remove capture")
+            await ApplyFixAsync(source, "LQRW003", "Remove capture")
         ).PrimaryDocumentText;
 
         fixedText.ShouldNotContain("capture:");
@@ -183,7 +183,7 @@ public sealed class AnalyzerCodeFixSmokeTests
             """;
 
         var fixedText = (
-            await ApplyFixAsync(source, "LQRS005", "Remove capture 'offset'")
+            await ApplyFixAsync(source, "LQRW003", "Remove capture 'offset'")
         ).PrimaryDocumentText;
 
         fixedText.ShouldContain("capture: new");
@@ -308,12 +308,55 @@ public sealed class AnalyzerCodeFixSmokeTests
             }
             """;
 
-        var result = await ApplyFixAsync(source, "LQRS002", "Convert to SelectExpr");
+        var result = await ApplyFixAsync(source, "LQRS005", "Convert to SelectExpr");
         var fixedText = result.PrimaryDocumentText;
         var compilationErrors = await GetCompilationErrorsAsync(result.ChangedSolution);
 
         compilationErrors.ShouldBeEmpty();
         fixedText.ShouldContain("ChildData = new { Id = entity.Child?.Id }");
+    }
+
+    [Test]
+    public async Task Anonymous_select_code_fix_adds_capture_for_outer_variable()
+    {
+        const string source = """
+            using System;
+            using System.Linq;
+
+            namespace System.Linq
+            {
+                public static class SelectExprExtensions
+                {
+                    public static IQueryable<TResult> SelectExpr<TIn, TResult>(this IQueryable<TIn> query, Func<TIn, TResult> selector, object capture)
+                        where TIn : class => throw null!;
+                }
+            }
+
+            public class Entity
+            {
+                public int Id { get; set; }
+                public int Value { get; set; }
+            }
+
+            public class QueryHolder
+            {
+                public object Project(IQueryable<Entity> source, int threshold)
+                {
+                    return source.Select(entity => new
+                    {
+                        entity.Id,
+                        IsLarge = entity.Value > threshold,
+                    });
+                }
+            }
+            """;
+
+        var result = await ApplyFixAsync(source, "LQRS002", "Convert to SelectExpr");
+        var fixedText = result.PrimaryDocumentText;
+        var compilationErrors = await GetCompilationErrorsAsync(result.ChangedSolution);
+
+        compilationErrors.ShouldBeEmpty();
+        fixedText.ShouldContain("capture: new { threshold }");
     }
 
     [Test]
@@ -404,7 +447,7 @@ public sealed class AnalyzerCodeFixSmokeTests
             }
             """;
 
-        var result = await ApplyFixAsync(source, "LQRS002", "SelectExpr<T, TDto>");
+        var result = await ApplyFixAsync(source, "LQRS005", "SelectExpr<T, TDto>");
         var fixedText = result.PrimaryDocumentText;
         var compilationErrors = await GetCompilationErrorsAsync(result.ChangedSolution);
 
@@ -499,7 +542,7 @@ public sealed class AnalyzerCodeFixSmokeTests
             }
             """;
 
-        var result = await ApplyFixAsync(source, "LQRS002", "Convert to SelectExpr");
+        var result = await ApplyFixAsync(source, "LQRS005", "Convert to SelectExpr");
         var fixedText = result.PrimaryDocumentText;
         var compilationErrors = await GetCompilationErrorsAsync(result.ChangedSolution);
 
@@ -588,7 +631,7 @@ public sealed class AnalyzerCodeFixSmokeTests
             }
             """;
 
-        var result = await ApplyFixAsync(source, "LQRF002", "ProducesResponseType");
+        var result = await ApplyFixAsync(source, "LQRF001", "ProducesResponseType");
         var fixedText = result.PrimaryDocumentText;
         var compilationErrors = await GetCompilationErrorsAsync(result.ChangedSolution);
 
@@ -646,13 +689,62 @@ public sealed class AnalyzerCodeFixSmokeTests
             }
             """;
 
-        var result = await ApplyFixAsync(source, "LQRS003", "Convert to SelectExpr<T, TDto>");
+        var result = await ApplyFixAsync(source, "LQRS006", "Convert to SelectExpr<T, TDto>");
         var fixedText = result.PrimaryDocumentText;
         var compilationErrors = await GetCompilationErrorsAsync(result.ChangedSolution);
 
         compilationErrors.ShouldBeEmpty();
         fixedText.ShouldContain("source.SelectExpr<Entity, ProjectDto>(entity => new");
         fixedText.ShouldContain("ChildData = new { Name = entity.Child?.Name }");
+    }
+
+    [Test]
+    public async Task Named_select_code_fix_adds_capture_for_outer_variable()
+    {
+        const string source = """
+            using System;
+            using System.Linq;
+
+            namespace System.Linq
+            {
+                public static class SelectExprExtensions
+                {
+                    public static IQueryable<TResult> SelectExpr<TIn, TResult>(this IQueryable<TIn> query, Func<TIn, object> selector, object capture)
+                        where TIn : class => throw null!;
+                }
+            }
+
+            public class Entity
+            {
+                public int Id { get; set; }
+                public int Value { get; set; }
+            }
+
+            public class ProjectDto
+            {
+                public int Id { get; set; }
+                public bool IsLarge { get; set; }
+            }
+
+            public class QueryHolder
+            {
+                public IQueryable<ProjectDto> Project(IQueryable<Entity> source, int threshold)
+                {
+                    return source.Select(entity => new ProjectDto
+                    {
+                        Id = entity.Id,
+                        IsLarge = entity.Value > threshold,
+                    });
+                }
+            }
+            """;
+
+        var result = await ApplyFixAsync(source, "LQRS003", "Convert to SelectExpr<T, TDto>");
+        var fixedText = result.PrimaryDocumentText;
+        var compilationErrors = await GetCompilationErrorsAsync(result.ChangedSolution);
+
+        compilationErrors.ShouldBeEmpty();
+        fixedText.ShouldContain("capture: new { threshold }");
     }
 
     [Test]
@@ -763,7 +855,7 @@ public sealed class AnalyzerCodeFixSmokeTests
             }
             """;
 
-        var result = await ApplyFixAsync(source, "LQRS003", "Convert to SelectExpr<T, TDto>");
+        var result = await ApplyFixAsync(source, "LQRS006", "Convert to SelectExpr<T, TDto>");
         var fixedText = result.PrimaryDocumentText;
         var compilationErrors = await GetCompilationErrorsAsync(result.ChangedSolution);
 
@@ -853,7 +945,7 @@ public sealed class AnalyzerCodeFixSmokeTests
             }
             """;
 
-        var result = await ApplyFixAsync(source, "LQRS003", "(strict)");
+        var result = await ApplyFixAsync(source, "LQRS006", "(strict)");
         var fixedText = result.PrimaryDocumentText;
         var compilationErrors = await GetCompilationErrorsAsync(result.ChangedSolution);
 
