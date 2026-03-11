@@ -63,9 +63,7 @@ internal static class GeneratedSourceFormatter
             var openCount = CountOpenBraces(trimmed);
             var trailingCloseCount = CountCloseBraces(trimmed) - leadingCloseCount;
             scopeIndent =
-                trimmed[0] is '.' or '?' or ':'
-                && openCount == 0
-                && trailingCloseCount == 0
+                trimmed[0] is '.' or '?' or ':' && openCount == 0 && trailingCloseCount == 0
                     ? System.Math.Max(0, effectiveIndent - 1)
                     : System.Math.Max(0, effectiveIndent + openCount - trailingCloseCount);
 
@@ -103,7 +101,8 @@ internal static class GeneratedSourceFormatter
             return false;
         }
 
-        return trimmed[leadingCloseCount] is ')' or ']' && trimmed.EndsWith(",", System.StringComparison.Ordinal);
+        return trimmed[leadingCloseCount] is ')' or ']'
+            && trimmed.EndsWith(",", System.StringComparison.Ordinal);
     }
 
     private static bool IsContinuationLine(string trimmed)

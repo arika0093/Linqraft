@@ -51,7 +51,9 @@ public sealed class HashingHelperTests
     {
         if (!RuntimeFeature.IsDynamicCodeSupported)
         {
-            global::TUnit.Core.Skip.Test("Reflection-only hash verification is skipped under NativeAOT.");
+            global::TUnit.Core.Skip.Test(
+                "Reflection-only hash verification is skipped under NativeAOT."
+            );
         }
     }
 

@@ -82,7 +82,9 @@ public sealed class EfCoreInheritanceProjectionTests
             .Select(customer => new
             {
                 customer.Name,
-                PointsTotal = customer.Rewards.OfType<EfPointsReward>().Sum(reward => reward.Points),
+                PointsTotal = customer
+                    .Rewards.OfType<EfPointsReward>()
+                    .Sum(reward => reward.Points),
                 CouponCount = customer.Rewards.OfType<EfCouponReward>().Count(),
                 FirstCouponCode = customer
                     .Rewards.OfType<EfCouponReward>()
@@ -96,7 +98,9 @@ public sealed class EfCoreInheritanceProjectionTests
             .SelectExpr(customer => new
             {
                 customer.Name,
-                PointsTotal = customer.Rewards.OfType<EfPointsReward>().Sum(reward => reward.Points),
+                PointsTotal = customer
+                    .Rewards.OfType<EfPointsReward>()
+                    .Sum(reward => reward.Points),
                 CouponCount = customer.Rewards.OfType<EfCouponReward>().Count(),
                 FirstCouponCode = customer
                     .Rewards.OfType<EfCouponReward>()
@@ -184,8 +188,8 @@ public sealed class EfCoreInheritanceProjectionTests
                 reward.CouponCode,
                 reward.DiscountAmount,
                 RewardCount = reward.Customer.Rewards.Count,
-                LatestOrderNumber = reward.Customer
-                    .Orders.OrderByDescending(order => order.CreatedOn)
+                LatestOrderNumber = reward
+                    .Customer.Orders.OrderByDescending(order => order.CreatedOn)
                     .Select(order => order.OrderNumber)
                     .FirstOrDefault(),
             })
@@ -198,8 +202,8 @@ public sealed class EfCoreInheritanceProjectionTests
                 reward.CouponCode,
                 reward.DiscountAmount,
                 RewardCount = reward.Customer.Rewards.Count,
-                LatestOrderNumber = reward.Customer
-                    .Orders.OrderByDescending(order => order.CreatedOn)
+                LatestOrderNumber = reward
+                    .Customer.Orders.OrderByDescending(order => order.CreatedOn)
                     .Select(order => order.OrderNumber)
                     .FirstOrDefault(),
             })

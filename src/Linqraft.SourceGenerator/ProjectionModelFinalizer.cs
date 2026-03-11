@@ -106,7 +106,9 @@ internal static class ProjectionModelFinalizer
     )
     {
         var mergedDtos = new Dictionary<string, GeneratedDtoModel>(StringComparer.Ordinal);
-        var ownerHintNamesByDtoKey = new Dictionary<string, HashSet<string>>(StringComparer.Ordinal);
+        var ownerHintNamesByDtoKey = new Dictionary<string, HashSet<string>>(
+            StringComparer.Ordinal
+        );
         foreach (var dto in dtoModels)
         {
             if (mergedDtos.TryGetValue(dto.Key, out var existing))
@@ -149,13 +151,11 @@ internal static class ProjectionModelFinalizer
         return templates
             .OrderByDescending(template => template.IsRoot)
             .ThenBy(template => template.TemplateId, StringComparer.Ordinal)
-            .Select(template =>
-                new GeneratedDtoReplacementModel
-                {
-                    PlaceholderToken = template.PlaceholderToken,
-                    Dto = FinalizeDto(template, templates, configuration),
-                }
-            )
+            .Select(template => new GeneratedDtoReplacementModel
+            {
+                PlaceholderToken = template.PlaceholderToken,
+                Dto = FinalizeDto(template, templates, configuration),
+            })
             .ToArray();
     }
 
@@ -210,9 +210,10 @@ internal static class ProjectionModelFinalizer
     {
         var namespaceName = ResolveNamespace(template, configuration);
         var typeName = ResolveTypeName(template, configuration);
-        var containingTypePrefix = template.ContainingTypes.Length == 0
-            ? string.Empty
-            : $"{string.Join(".", template.ContainingTypes.Select(type => type.Name))}.";
+        var containingTypePrefix =
+            template.ContainingTypes.Length == 0
+                ? string.Empty
+                : $"{string.Join(".", template.ContainingTypes.Select(type => type.Name))}.";
         return string.IsNullOrWhiteSpace(namespaceName)
             ? $"global::{containingTypePrefix}{typeName}"
             : $"global::{namespaceName}.{containingTypePrefix}{typeName}";
@@ -249,10 +250,11 @@ internal static class ProjectionModelFinalizer
         LinqraftConfiguration configuration
     )
     {
-        return template.Kind == GeneratedDtoTemplateKind.NestedAuto
+        return
+            template.Kind == GeneratedDtoTemplateKind.NestedAuto
             && !configuration.NestedDtoUseHashNamespace
-                ? $"{template.Name}_{template.ShapeHash}"
-                : template.Name;
+            ? $"{template.Name}_{template.ShapeHash}"
+            : template.Name;
     }
 
     private static GeneratedDtoModel MergeDtoShape(

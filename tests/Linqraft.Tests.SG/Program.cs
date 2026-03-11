@@ -42,7 +42,10 @@ public sealed class SourceGeneratorSmokeTests
         projectionSources.Length.ShouldBe(2);
         projectionSources
             .Any(source =>
-                source.Value.Contains("partial class SmokeOrderSummaryDto", StringComparison.Ordinal)
+                source.Value.Contains(
+                    "partial class SmokeOrderSummaryDto",
+                    StringComparison.Ordinal
+                )
             )
             .ShouldBeTrue();
         projectionSources
@@ -54,7 +57,10 @@ public sealed class SourceGeneratorSmokeTests
             .Where(pair => !pair.Key.Contains("SelectExpr_", StringComparison.Ordinal))
             .Any(pair =>
                 pair.Value.Contains("partial class SmokeOrderSummaryDto", StringComparison.Ordinal)
-                || pair.Value.Contains("partial class SmokeOrderTotalsDto", StringComparison.Ordinal)
+                || pair.Value.Contains(
+                    "partial class SmokeOrderTotalsDto",
+                    StringComparison.Ordinal
+                )
             )
             .ShouldBeFalse();
     }

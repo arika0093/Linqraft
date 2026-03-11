@@ -798,9 +798,9 @@ public sealed class LinqraftCompositeCodeFixProvider : CodeFixProvider
         var returnType = methodSymbol?.ReturnType as INamedTypeSymbol;
         if (returnType?.TypeArguments.Length == 1)
         {
-            return returnType.TypeArguments[0].ToDisplayString(
-                SymbolDisplayFormat.MinimallyQualifiedFormat
-            );
+            return returnType
+                .TypeArguments[0]
+                .ToDisplayString(SymbolDisplayFormat.MinimallyQualifiedFormat);
         }
 
         return AnalyzerHelpers.GenerateDtoName(invocation);
@@ -829,7 +829,10 @@ public sealed class LinqraftCompositeCodeFixProvider : CodeFixProvider
         bool simplifyTernary
     )
     {
-        if (objectCreation.ArgumentList is { Arguments.Count: > 0 } || objectCreation.Initializer is null)
+        if (
+            objectCreation.ArgumentList is { Arguments.Count: > 0 }
+            || objectCreation.Initializer is null
+        )
         {
             return objectCreation;
         }
@@ -891,8 +894,8 @@ public sealed class LinqraftCompositeCodeFixProvider : CodeFixProvider
         IReadOnlyList<string> checkedPaths
     )
     {
-        var members = anonymousObject.Initializers
-            .Select(initializer =>
+        var members = anonymousObject
+            .Initializers.Select(initializer =>
                 AppendValueWithContinuation(
                     $"{AnalyzerHelpers.GetAnonymousMemberName(initializer)} = ",
                     SimplifyValueBranch(initializer.Expression, checkedPaths)
@@ -980,10 +983,8 @@ public sealed class LinqraftCompositeCodeFixProvider : CodeFixProvider
         }
 
         if (
-            valueWhenConditionTrue
-                && binaryExpression.IsKind(SyntaxKind.LogicalAndExpression)
-            || !valueWhenConditionTrue
-                && binaryExpression.IsKind(SyntaxKind.LogicalOrExpression)
+            valueWhenConditionTrue && binaryExpression.IsKind(SyntaxKind.LogicalAndExpression)
+            || !valueWhenConditionTrue && binaryExpression.IsKind(SyntaxKind.LogicalOrExpression)
         )
         {
             return TryCollectNullGuardPaths(
@@ -1202,9 +1203,7 @@ public sealed class LinqraftCompositeCodeFixProvider : CodeFixProvider
         bool convertNamedObjectsToAnonymous
     ) : CSharpSyntaxRewriter
     {
-        public override SyntaxNode? VisitConditionalExpression(
-            ConditionalExpressionSyntax node
-        )
+        public override SyntaxNode? VisitConditionalExpression(ConditionalExpressionSyntax node)
         {
             var rewritten = (ConditionalExpressionSyntax)base.VisitConditionalExpression(node)!;
             if (!simplifyTernary)
@@ -1219,9 +1218,8 @@ public sealed class LinqraftCompositeCodeFixProvider : CodeFixProvider
             ObjectCreationExpressionSyntax node
         )
         {
-            var rewritten = (ObjectCreationExpressionSyntax)base.VisitObjectCreationExpression(
-                node
-            )!;
+            var rewritten = (ObjectCreationExpressionSyntax)
+                base.VisitObjectCreationExpression(node)!;
             if (!convertNamedObjectsToAnonymous)
             {
                 return rewritten;

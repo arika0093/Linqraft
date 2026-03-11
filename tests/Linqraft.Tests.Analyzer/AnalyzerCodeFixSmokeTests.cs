@@ -356,7 +356,9 @@ public sealed class AnalyzerCodeFixSmokeTests
         var compilationErrors = await GetCompilationErrorsAsync(result.ChangedSolution);
 
         compilationErrors.ShouldBeEmpty();
-        fixedText.ShouldContain("source.SelectExpr<Entity, ProjectDto>(entity => new { entity.Id })");
+        fixedText.ShouldContain(
+            "source.SelectExpr<Entity, ProjectDto>(entity => new { entity.Id })"
+        );
     }
 
     [Test]
@@ -532,12 +534,10 @@ public sealed class AnalyzerCodeFixSmokeTests
         anonymousChildsIndex.ShouldBeGreaterThanOrEqualTo(0);
         anonymousChildIdIndex.ShouldBeGreaterThan(anonymousChildsIndex);
         anonymousChild2IdIndex.ShouldBeGreaterThan(anonymousChildIdIndex);
-        CountLeadingSpaces(anonymousLines[anonymousChildIdIndex]).ShouldBeGreaterThan(
-            CountLeadingSpaces(anonymousLines[anonymousChildsIndex])
-        );
-        CountLeadingSpaces(anonymousLines[anonymousChild2IdIndex]).ShouldBe(
-            CountLeadingSpaces(anonymousLines[anonymousChildsIndex])
-        );
+        CountLeadingSpaces(anonymousLines[anonymousChildIdIndex])
+            .ShouldBeGreaterThan(CountLeadingSpaces(anonymousLines[anonymousChildsIndex]));
+        CountLeadingSpaces(anonymousLines[anonymousChild2IdIndex])
+            .ShouldBe(CountLeadingSpaces(anonymousLines[anonymousChildsIndex]));
     }
 
     [Test]
@@ -799,12 +799,10 @@ public sealed class AnalyzerCodeFixSmokeTests
         namedChildsIndex.ShouldBeGreaterThanOrEqualTo(0);
         namedChildIdIndex.ShouldBeGreaterThan(namedChildsIndex);
         namedChild2IdIndex.ShouldBeGreaterThan(namedChildIdIndex);
-        CountLeadingSpaces(namedLines[namedChildIdIndex]).ShouldBeGreaterThan(
-            CountLeadingSpaces(namedLines[namedChildsIndex])
-        );
-        CountLeadingSpaces(namedLines[namedChild2IdIndex]).ShouldBe(
-            CountLeadingSpaces(namedLines[namedChildsIndex])
-        );
+        CountLeadingSpaces(namedLines[namedChildIdIndex])
+            .ShouldBeGreaterThan(CountLeadingSpaces(namedLines[namedChildsIndex]));
+        CountLeadingSpaces(namedLines[namedChild2IdIndex])
+            .ShouldBe(CountLeadingSpaces(namedLines[namedChildsIndex]));
     }
 
     [Test]

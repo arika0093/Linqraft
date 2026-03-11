@@ -12,7 +12,11 @@ public sealed class SupportSourceProjectReferenceTest
         {
             Id = 1,
             Customer = new ReferencedCustomer { Name = "Ada" },
-            Items = [new ReferencedOrderItem { Quantity = 2 }, new ReferencedOrderItem { Quantity = 3 }],
+            Items =
+            [
+                new ReferencedOrderItem { Quantity = 2 },
+                new ReferencedOrderItem { Quantity = 3 },
+            ],
         },
     ];
 

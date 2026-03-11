@@ -16,5 +16,4 @@ internal static class CodeTemplateContents
 
     public const string OverloadResolutionLowPriority =
         "[System.Runtime.CompilerServices.OverloadResolutionPriorityAttribute(-1)]";
-
 }

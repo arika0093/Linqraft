@@ -233,7 +233,9 @@ public sealed class GlobalPropertyConfigurationTests
                     {
                         child.Summary,
                         GrandChild2Notes = child.GrandChilds.Select(grandChild => grandChild.Notes),
-                        GrandChild2Values = child.GrandChilds.Select(grandChild => grandChild.Value),
+                        GrandChild2Values = child.GrandChilds.Select(grandChild =>
+                            grandChild.Value
+                        ),
                     })
                     .ToList(),
             })
@@ -259,10 +261,14 @@ public sealed class GlobalPropertyConfigurationTests
         lines[childLineIndex + 2].Trim().ShouldBe("Summary = child.Summary,");
         lines[childLineIndex + 3]
             .Trim()
-            .ShouldBe("GrandChild2Notes = child.GrandChilds.Select(grandChild => grandChild.Notes),");
+            .ShouldBe(
+                "GrandChild2Notes = child.GrandChilds.Select(grandChild => grandChild.Notes),"
+            );
         lines[childLineIndex + 4]
             .Trim()
-            .ShouldBe("GrandChild2Values = child.GrandChilds.Select(grandChild => grandChild.Value),");
+            .ShouldBe(
+                "GrandChild2Values = child.GrandChilds.Select(grandChild => grandChild.Value),"
+            );
         lines[childLineIndex + 5].Trim().ShouldBe("})");
         CountLeadingSpaces(lines[childLineIndex]).ShouldBe(12);
         CountLeadingSpaces(lines[childLineIndex + 1]).ShouldBe(16);
@@ -313,7 +319,9 @@ public sealed class GlobalPropertyConfigurationTests
             .ShouldStartWith(".Select(child => new global::GlobalGenerated.Child2SummariesDto_");
         lines[childLineIndex + 2].Trim().ShouldBe("Summary = child.Summary,");
         lines[childLineIndex + 3].Trim().ShouldBe("GrandChildCount = child.GrandChilds.Count,");
-        lines[childLineIndex + 4].Trim().ShouldBe("FirstGrandChildNote = child.GrandChilds[0].Notes,");
+        lines[childLineIndex + 4]
+            .Trim()
+            .ShouldBe("FirstGrandChildNote = child.GrandChilds[0].Notes,");
         lines[childLineIndex + 5].Trim().ShouldBe("}),");
         lines[childLineIndex + 6].Trim().ShouldBe("Child2Count = root.Child2.Count,");
         CountLeadingSpaces(lines[childLineIndex]).ShouldBe(12);
@@ -381,7 +389,9 @@ public sealed class GlobalPropertyConfigurationTests
         projectionSource.Contains("ThrowIfNull(", StringComparison.Ordinal).ShouldBeFalse();
         projectionSource.Contains("var matchedQuery =", StringComparison.Ordinal).ShouldBeFalse();
         projectionSource.Contains("matchedQuery is null", StringComparison.Ordinal).ShouldBeFalse();
-        projectionSource.Contains("unexpected result type", StringComparison.Ordinal).ShouldBeFalse();
+        projectionSource
+            .Contains("unexpected result type", StringComparison.Ordinal)
+            .ShouldBeFalse();
         projectionSource
             .Contains(
                 "var converted = ((global::System.Linq.IQueryable<global::Order>)(object)query).Select(",
@@ -424,12 +434,15 @@ public sealed class GlobalPropertyConfigurationTests
         var multiplier = 4;
         var result = CaptureFormattingItems
             .AsQueryable()
-            .SelectExpr<CaptureFormattingItem, ConfiguredCaptureFormattingDto>(item => new
-            {
-                item.Id,
-                NewValue = item.Value + val,
-                DoubledValue = item.Value * multiplier,
-            }, new { val, multiplier })
+            .SelectExpr<CaptureFormattingItem, ConfiguredCaptureFormattingDto>(
+                item => new
+                {
+                    item.Id,
+                    NewValue = item.Value + val,
+                    DoubledValue = item.Value * multiplier,
+                },
+                new { val, multiplier }
+            )
             .ToList();
 
         result.Count.ShouldBe(2);
@@ -492,12 +505,8 @@ public sealed class GlobalPropertyConfigurationTests
         CountLeadingSpaces(lines[firstValueIndex]).ShouldBe(12);
         CountLeadingSpaces(lines[firstValueIndex + 1]).ShouldBe(12);
         CountLeadingSpaces(lines[secondPropertyIndex]).ShouldBe(12);
-        lines[secondPropertyIndex - 1]
-            .Trim()
-            .ShouldStartWith("var __linqraft_capture_0_val =");
-        lines[convertedIndex - 1]
-            .Trim()
-            .ShouldStartWith("var __linqraft_capture_1_multiplier =");
+        lines[secondPropertyIndex - 1].Trim().ShouldStartWith("var __linqraft_capture_0_val =");
+        lines[convertedIndex - 1].Trim().ShouldStartWith("var __linqraft_capture_1_multiplier =");
         CountLeadingSpaces(lines[convertedIndex]).ShouldBe(12);
         CountLeadingSpaces(lines[returnIndex]).ShouldBe(12);
     }
@@ -519,7 +528,12 @@ public sealed class GlobalPropertyConfigurationTests
 
     private static string GetGeneratedRoot()
     {
-        return Path.Combine(GetRepositoryRoot(), "tests", "Linqraft.Tests.Configuration", ".generated");
+        return Path.Combine(
+            GetRepositoryRoot(),
+            "tests",
+            "Linqraft.Tests.Configuration",
+            ".generated"
+        );
     }
 
     private static string GetRepositoryRoot()

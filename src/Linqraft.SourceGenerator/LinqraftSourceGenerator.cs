@@ -66,42 +66,55 @@ public sealed class LinqraftSourceGenerator : IIncrementalGenerator
             .Where(static template => template is not null)
             .Select(static (template, _) => template!);
 
-        var projectionModels = selectExprTemplates.Combine(configuration).Select(
-            static (data, _) => ProjectionModelFinalizer.FinalizeProjection(data.Left, data.Right)
-        );
-        var mappingClassModels = mappingClassTemplates.Combine(configuration).Select(
-            static (data, _) => ProjectionModelFinalizer.FinalizeMapping(data.Left, data.Right)
-        );
-        var mappingMethodModels = mappingMethodTemplates.Combine(configuration).Select(
-            static (data, _) => ProjectionModelFinalizer.FinalizeMapping(data.Left, data.Right)
-        );
+        var projectionModels = selectExprTemplates
+            .Combine(configuration)
+            .Select(
+                static (data, _) =>
+                    ProjectionModelFinalizer.FinalizeProjection(data.Left, data.Right)
+            );
+        var mappingClassModels = mappingClassTemplates
+            .Combine(configuration)
+            .Select(
+                static (data, _) => ProjectionModelFinalizer.FinalizeMapping(data.Left, data.Right)
+            );
+        var mappingMethodModels = mappingMethodTemplates
+            .Combine(configuration)
+            .Select(
+                static (data, _) => ProjectionModelFinalizer.FinalizeMapping(data.Left, data.Right)
+            );
 
         var projectionSources = projectionModels.Select(
-            static (model, _) => (OwnedGeneratedSourceModel)new ProjectionOwnedGeneratedSourceModel
-            {
-                HintName = $"{model.Request.HintName}.g.cs",
-                OwnerHintName = model.Request.HintName,
-                Request = model.Request,
-                GeneratedDtos = model.GeneratedDtos,
-            }
+            static (model, _) =>
+                (OwnedGeneratedSourceModel)
+                    new ProjectionOwnedGeneratedSourceModel
+                    {
+                        HintName = $"{model.Request.HintName}.g.cs",
+                        OwnerHintName = model.Request.HintName,
+                        Request = model.Request,
+                        GeneratedDtos = model.GeneratedDtos,
+                    }
         );
         var mappingClassSources = mappingClassModels.Select(
-            static (model, _) => (OwnedGeneratedSourceModel)new MappingOwnedGeneratedSourceModel
-            {
-                HintName = $"{model.Request.HintName}.g.cs",
-                OwnerHintName = model.Request.HintName,
-                Request = model.Request,
-                GeneratedDtos = model.GeneratedDtos,
-            }
+            static (model, _) =>
+                (OwnedGeneratedSourceModel)
+                    new MappingOwnedGeneratedSourceModel
+                    {
+                        HintName = $"{model.Request.HintName}.g.cs",
+                        OwnerHintName = model.Request.HintName,
+                        Request = model.Request,
+                        GeneratedDtos = model.GeneratedDtos,
+                    }
         );
         var mappingMethodSources = mappingMethodModels.Select(
-            static (model, _) => (OwnedGeneratedSourceModel)new MappingOwnedGeneratedSourceModel
-            {
-                HintName = $"{model.Request.HintName}.g.cs",
-                OwnerHintName = model.Request.HintName,
-                Request = model.Request,
-                GeneratedDtos = model.GeneratedDtos,
-            }
+            static (model, _) =>
+                (OwnedGeneratedSourceModel)
+                    new MappingOwnedGeneratedSourceModel
+                    {
+                        HintName = $"{model.Request.HintName}.g.cs",
+                        OwnerHintName = model.Request.HintName,
+                        Request = model.Request,
+                        GeneratedDtos = model.GeneratedDtos,
+                    }
         );
 
         var ownedSources = MergeCollectedValues(
@@ -112,11 +125,12 @@ public sealed class LinqraftSourceGenerator : IIncrementalGenerator
         var generatedSources = ownedSources
             .Combine(configuration)
             .Select(
-                static (data, _) => new GeneratedSourceBuildContextModel
-                {
-                    OwnedSources = data.Left,
-                    Configuration = data.Right,
-                }
+                static (data, _) =>
+                    new GeneratedSourceBuildContextModel
+                    {
+                        OwnedSources = data.Left,
+                        Configuration = data.Right,
+                    }
             )
             .Select(static (context, _) => BuildGeneratedSources(context));
 
@@ -139,8 +153,7 @@ public sealed class LinqraftSourceGenerator : IIncrementalGenerator
         );
         var collocatedDtosByOwnerHint = mergedDtos
             .Where(dto =>
-                dto.OwnerHintNames.Length == 1
-                && ownedSourceHints.Contains(dto.OwnerHintNames[0])
+                dto.OwnerHintNames.Length == 1 && ownedSourceHints.Contains(dto.OwnerHintNames[0])
             )
             .GroupBy(dto => dto.OwnerHintNames[0], StringComparer.Ordinal)
             .ToDictionary(
@@ -157,7 +170,10 @@ public sealed class LinqraftSourceGenerator : IIncrementalGenerator
             )
         )
         {
-            collocatedDtosByOwnerHint.TryGetValue(ownedSource.OwnerHintName, out var collocatedDtos);
+            collocatedDtosByOwnerHint.TryGetValue(
+                ownedSource.OwnerHintName,
+                out var collocatedDtos
+            );
             generatedSources.Add(
                 new GeneratedSourceFileModel
                 {
@@ -215,9 +231,9 @@ public sealed class LinqraftSourceGenerator : IIncrementalGenerator
     )
         where T : IEquatable<T>
     {
-        return first.Combine(second).Select(
-            static (pair, _) => new EquatableArray<T>(pair.Left.Concat(pair.Right))
-        );
+        return first
+            .Combine(second)
+            .Select(static (pair, _) => new EquatableArray<T>(pair.Left.Concat(pair.Right)));
     }
 
     private static IncrementalValueProvider<EquatableArray<T>> MergeCollectedValues<T>(
@@ -226,9 +242,9 @@ public sealed class LinqraftSourceGenerator : IIncrementalGenerator
     )
         where T : IEquatable<T>
     {
-        return first.Combine(second).Select(
-            static (pair, _) => new EquatableArray<T>(pair.Left.Concat(pair.Right))
-        );
+        return first
+            .Combine(second)
+            .Select(static (pair, _) => new EquatableArray<T>(pair.Left.Concat(pair.Right)));
     }
 
     private static IncrementalValueProvider<EquatableArray<T>> MergeCollectedValues<T>(

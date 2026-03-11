@@ -74,7 +74,9 @@ public sealed class EfCoreBasicProjectionTests
                 order.OrderNumber,
                 CustomerName = order.Customer!.Name,
                 ItemCount = order.Items.Count,
-                HighValueItemCount = order.Items.Count(item => item.Quantity * item.UnitPrice >= 30),
+                HighValueItemCount = order.Items.Count(item =>
+                    item.Quantity * item.UnitPrice >= 30
+                ),
                 TotalAmount = order.Items.Sum(item => item.Quantity * item.UnitPrice),
                 FirstLargeItem = order
                     .Items.Where(item => item.Quantity >= 3)
@@ -90,7 +92,9 @@ public sealed class EfCoreBasicProjectionTests
                 order.OrderNumber,
                 CustomerName = order.Customer!.Name,
                 ItemCount = order.Items.Count,
-                HighValueItemCount = order.Items.Count(item => item.Quantity * item.UnitPrice >= 30),
+                HighValueItemCount = order.Items.Count(item =>
+                    item.Quantity * item.UnitPrice >= 30
+                ),
                 TotalAmount = order.Items.Sum(item => item.Quantity * item.UnitPrice),
                 FirstLargeItem = order
                     .Items.Where(item => item.Quantity >= 3)
@@ -197,7 +201,8 @@ public sealed class EfCoreBasicProjectionTests
                     .Rewards.OfType<EfCouponReward>()
                     .OrderBy(reward => reward.Id)
                     .Select(reward => reward.CouponCode)
-                    .FirstOrDefault() ?? "NONE",
+                    .FirstOrDefault()
+                    ?? "NONE",
                 HasLargeCardPayment = customer
                     .Orders.SelectMany(order => order.Payments)
                     .OfType<EfCardPayment>()
@@ -217,7 +222,8 @@ public sealed class EfCoreBasicProjectionTests
                     .Rewards.OfType<EfCouponReward>()
                     .OrderBy(reward => reward.Id)
                     .Select(reward => reward.CouponCode)
-                    .FirstOrDefault() ?? "NONE",
+                    .FirstOrDefault()
+                    ?? "NONE",
                 HasLargeCardPayment = customer
                     .Orders.SelectMany(order => order.Payments)
                     .OfType<EfCardPayment>()

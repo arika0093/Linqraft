@@ -186,14 +186,7 @@ internal sealed class SqliteTestDatabase : IAsyncDisposable
                         UnitPrice = 7,
                     },
                 ],
-                Payments =
-                [
-                    new EfBankTransferPayment
-                    {
-                        Amount = 21,
-                        Reference = "BANK-0002",
-                    },
-                ],
+                Payments = [new EfBankTransferPayment { Amount = 21, Reference = "BANK-0002" }],
             },
         };
 

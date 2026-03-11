@@ -46,9 +46,7 @@ internal static class HashingHelper
             var current = index;
             for (var bit = 0; bit < 8; bit++)
             {
-                current = (current & 1) == 0
-                    ? current >> 1
-                    : (current >> 1) ^ 0xEDB88320u;
+                current = (current & 1) == 0 ? current >> 1 : (current >> 1) ^ 0xEDB88320u;
             }
 
             table[index] = current;

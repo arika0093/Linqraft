@@ -1116,8 +1116,10 @@ internal sealed class ProjectionExpressionEmitter
     {
         return expression switch
         {
-            CollectionExpressionSyntax collectionExpression => collectionExpression.Elements.Count == 0,
-            InvocationExpressionSyntax invocation => GetInvocationName(invocation.Expression) == "Empty"
+            CollectionExpressionSyntax collectionExpression => collectionExpression.Elements.Count
+                == 0,
+            InvocationExpressionSyntax invocation => GetInvocationName(invocation.Expression)
+                == "Empty"
                 && invocation.ArgumentList.Arguments.Count == 0,
             _ => false,
         };
@@ -1366,5 +1368,4 @@ internal sealed class ProjectionExpressionEmitter
 
         public required ISymbol? RootSymbol { get; init; }
     }
-
 }

@@ -5,6 +5,7 @@ using Linqraft.Core.Configuration;
 using Linqraft.Core.Formatting;
 using Linqraft.Core.Generation;
 using Linqraft.Core.Utilities;
+
 namespace Linqraft.SourceGenerator;
 
 internal static class SourceWriters
@@ -212,9 +213,7 @@ internal static class SourceWriters
                         builder,
                         $"var converted = (({matchedQueryType})(object)query).Select({selectArgument});"
                     );
-                    builder.AppendLine(
-                        $"return ({receiverType}<TResult>)(object)converted;"
-                    );
+                    builder.AppendLine($"return ({receiverType}<TResult>)(object)converted;");
                 }
 
                 builder.AppendLine("}");
