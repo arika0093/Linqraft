@@ -37,7 +37,7 @@ internal class CustomMethodNameMappingDeclare : LinqraftMappingDeclare<MappingDe
 
 // Test with nested collections
 [LinqraftMappingGenerate]
-public class NestedCollectionMappingDeclare : LinqraftMappingDeclare<MappingDeclareParentClass>
+internal class NestedCollectionMappingDeclare : LinqraftMappingDeclare<MappingDeclareParentClass>
 {
     protected override void DefineMapping()
     {
