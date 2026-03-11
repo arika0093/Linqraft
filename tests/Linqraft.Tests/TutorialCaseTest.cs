@@ -1,7 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Runtime.CompilerServices;
+using Linqraft.Tests;
 
 namespace Tutorial;
 
@@ -9,16 +9,9 @@ public class TutorialCaseTest
 {
     private readonly List<Order> Orders = [];
 
-    [Test]
+    [Test, SkipOnNativeAot]
     public void TryTutorialCaseExplicit()
     {
-        if (!RuntimeFeature.IsDynamicCodeSupported)
-        {
-            global::TUnit.Core.Skip.Test(
-                "Decimal expression-tree arithmetic is currently not NativeAOT-safe."
-            );
-        }
-
         var orders = Orders
             .AsQueryable()
             // Order: input entity type
