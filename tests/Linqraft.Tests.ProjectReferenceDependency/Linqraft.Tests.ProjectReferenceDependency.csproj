@@ -7,7 +7,6 @@
   <ItemGroup>
     <PackageReference Remove="Shouldly" />
     <PackageReference Remove="TUnit" />
-    <PackageReference Remove="PolySharp" />
     <Using Remove="Shouldly" />
   </ItemGroup>
 </Project>
