@@ -1014,7 +1014,8 @@ internal static class ProjectionTemplateBuilder
                 .OfType<IPropertySymbol>()
                 .Select(property => property.Name)
                 .Distinct(StringComparer.Ordinal)
-                .ToList() ?? new List<string>();
+                .ToList()
+            ?? new List<string>();
 
         return new GeneratedDtoTemplateModel
         {
@@ -1284,7 +1285,7 @@ internal static class ProjectionTemplateBuilder
             ParenthesizedLambdaExpressionSyntax parenthesized => parenthesized
                 .ParameterList.Parameters.FirstOrDefault()
                 ?.Identifier.ValueText
-            ?? "x",
+                ?? "x",
             _ => "x",
         };
     }
