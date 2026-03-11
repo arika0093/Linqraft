@@ -112,8 +112,7 @@ internal sealed class ProjectionExpressionEmitter
             PostfixUnaryExpressionSyntax postfixUnary =>
                 $"{Emit(postfixUnary.Operand)}{postfixUnary.OperatorToken.Text}",
             ParenthesizedExpressionSyntax parenthesized => $"({Emit(parenthesized.Expression)})",
-            CastExpressionSyntax castExpression =>
-                $"({QualifyType(castExpression.Type)}){Emit(castExpression.Expression)}",
+            CastExpressionSyntax castExpression => EmitCastExpression(castExpression),
             AssignmentExpressionSyntax assignment =>
                 $"{Emit(assignment.Left)} {assignment.OperatorToken.Text} {Emit(assignment.Right)}",
             SimpleLambdaExpressionSyntax lambda => EmitLambda(
@@ -1240,6 +1239,40 @@ internal sealed class ProjectionExpressionEmitter
         }
 
         return string.Join("\n", [$"{castPrefix}(", IndentAllLines(expression), ")"]);
+    }
+
+    private string EmitCastExpression(CastExpressionSyntax expression)
+    {
+        var operand = expression.Expression is ParenthesizedExpressionSyntax parenthesized
+            && CanOmitParenthesizedCastOperand(parenthesized.Expression)
+                ? parenthesized.Expression
+                : expression.Expression;
+
+        return WrapCastExpression(
+            $"({QualifyType(expression.Type)})",
+            Emit(operand)
+        );
+    }
+
+    private static bool CanOmitParenthesizedCastOperand(ExpressionSyntax expression)
+    {
+        return expression
+            is IdentifierNameSyntax
+                or GenericNameSyntax
+                or ThisExpressionSyntax
+                or BaseExpressionSyntax
+                or LiteralExpressionSyntax
+                or InterpolatedStringExpressionSyntax
+                or TypeOfExpressionSyntax
+                or DefaultExpressionSyntax
+                or InvocationExpressionSyntax
+                or MemberAccessExpressionSyntax
+                or ElementAccessExpressionSyntax
+                or ObjectCreationExpressionSyntax
+                or AnonymousObjectCreationExpressionSyntax
+                or CollectionExpressionSyntax
+                or ImplicitArrayCreationExpressionSyntax
+                or ArrayCreationExpressionSyntax;
     }
 
     private static string BuildInitializerExpression(string header, IReadOnlyList<string> items)

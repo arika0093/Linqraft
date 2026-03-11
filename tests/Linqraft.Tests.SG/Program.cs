@@ -214,6 +214,80 @@ public sealed class SourceGeneratorSmokeTests
             .ShouldBeFalse();
     }
 
+    [Test]
+    public void Mapping_generation_respects_visibility_override_and_indents_multiline_null_ternaries()
+    {
+        var driver = CreateDriver();
+        var compilation = CreateCompilation(
+            CreateMappingVisibilityAndFormattingTree(),
+            CreateMarkerTree("visibility")
+        );
+
+        driver = driver.RunGeneratorsAndUpdateCompilation(
+            compilation,
+            out var outputCompilation,
+            out var diagnostics
+        );
+
+        diagnostics.ShouldBeEmpty();
+        outputCompilation
+            .GetDiagnostics()
+            .Where(diagnostic =>
+                diagnostic.Severity == DiagnosticSeverity.Error && diagnostic.Id != "CS9137"
+            )
+            .ShouldBeEmpty();
+
+        var generatedSources = GetGeneratedSourceMap(driver.GetRunResult());
+        var mappingSource = generatedSources
+            .Values.Single(source =>
+                source.Contains("ProjectToPublicOrderRow", StringComparison.Ordinal)
+            );
+
+        mappingSource.ShouldContain("public static partial class PublicOrderMapping_");
+        mappingSource.ShouldContain(
+            "public static global::System.Linq.IQueryable<global::SmokeFixture.PublicOrderRow> ProjectToPublicOrderRow"
+        );
+
+        var lines = mappingSource.Replace("\r\n", "\n").Split('\n');
+        var propertyIndex = FindLineIndex(
+            lines,
+            0,
+            line => line.Contains("TotalFeeAmount = order.Shipment != null", StringComparison.Ordinal)
+        );
+        var questionIndex = FindLineIndex(
+            lines,
+            propertyIndex + 1,
+            line => line.TrimStart().StartsWith("? ", StringComparison.Ordinal)
+        );
+        var shipmentIndex = FindLineIndex(
+            lines,
+            questionIndex + 1,
+            line => line.Trim().Equals("order.Shipment", StringComparison.Ordinal)
+        );
+        var eventsIndex = FindLineIndex(
+            lines,
+            shipmentIndex + 1,
+            line => line.Trim().StartsWith(".Events", StringComparison.Ordinal)
+        );
+        var closingIndex = FindLineIndex(
+            lines,
+            eventsIndex + 1,
+            line => line.Trim().Equals(")", StringComparison.Ordinal)
+        );
+        var nullIndex = FindLineIndex(
+            lines,
+            closingIndex + 1,
+            line => line.TrimStart().StartsWith(": ", StringComparison.Ordinal)
+        );
+
+        CountLeadingSpaces(lines[shipmentIndex])
+            .ShouldBeGreaterThan(CountLeadingSpaces(lines[questionIndex]));
+        CountLeadingSpaces(lines[eventsIndex])
+            .ShouldBeGreaterThan(CountLeadingSpaces(lines[shipmentIndex]));
+        CountLeadingSpaces(lines[closingIndex]).ShouldBe(CountLeadingSpaces(lines[questionIndex]));
+        CountLeadingSpaces(lines[nullIndex]).ShouldBe(CountLeadingSpaces(lines[questionIndex]));
+    }
+
     private static GeneratorDriver CreateDriver(bool usePrebuildExpression = true)
     {
         var parseOptions = new CSharpParseOptions(LanguageVersion.Preview);
@@ -385,6 +459,63 @@ public sealed class SourceGeneratorSmokeTests
         );
     }
 
+    private static SyntaxTree CreateMappingVisibilityAndFormattingTree()
+    {
+        const string source = """
+            using System.Collections.Generic;
+            using System.Linq;
+            using Linqraft;
+
+            namespace SmokeFixture;
+
+            public sealed class Fee
+            {
+                public int Amount { get; set; }
+            }
+
+            public sealed class ShipmentEvent
+            {
+                public List<Fee> Fees { get; set; } = new();
+            }
+
+            public sealed class Shipment
+            {
+                public List<ShipmentEvent> Events { get; set; } = new();
+            }
+
+            public sealed class SmokeOrder
+            {
+                public Shipment? Shipment { get; set; }
+            }
+
+            [LinqraftMappingGenerate("ProjectToPublicOrderRow", Visibility = LinqraftMappingVisibility.Public)]
+            internal sealed class PublicOrderMapping : LinqraftMappingDeclare<SmokeOrder>
+            {
+                protected override void DefineMapping()
+                {
+                    Source.SelectExpr<SmokeOrder, PublicOrderRow>(order => new
+                    {
+                        TotalFeeAmount = order.Shipment != null
+                            ? (int)(
+                                order.Shipment
+                                    .Events
+                                    .Sum(evt => evt.Fees.Sum(fee => fee.Amount))
+                            )
+                            : (int?)null,
+                    });
+                }
+            }
+
+            public partial class PublicOrderRow;
+            """;
+
+        return CSharpSyntaxTree.ParseText(
+            SourceText.From(source),
+            new CSharpParseOptions(LanguageVersion.Preview),
+            path: "SmokeMappings.Visibility.cs"
+        );
+    }
+
     private static Dictionary<string, string> GetGeneratedSourceMap(
         GeneratorDriverRunResult runResult
     )
@@ -397,6 +528,28 @@ public sealed class SourceGeneratorSmokeTests
                 source => source.SourceText.ToString(),
                 StringComparer.Ordinal
             );
+    }
+
+    private static int FindLineIndex(
+        IReadOnlyList<string> lines,
+        int startIndex,
+        Func<string, bool> predicate
+    )
+    {
+        for (var index = startIndex; index < lines.Count; index++)
+        {
+            if (predicate(lines[index]))
+            {
+                return index;
+            }
+        }
+
+        throw new InvalidOperationException("Expected generated line was not found.");
+    }
+
+    private static int CountLeadingSpaces(string value)
+    {
+        return value.TakeWhile(character => character == ' ').Count();
     }
 
     private static IEnumerable<MetadataReference> GetMetadataReferences()

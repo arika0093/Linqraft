@@ -95,6 +95,29 @@ internal class OrderMappingDeclare : LinqraftMappingDeclare<Order>
 var orders = await dbContext.Orders.CustomProjection().ToListAsync();
 ```
 
+### Controlling Generated Visibility
+
+`LinqraftMappingDeclare<T>` itself is emitted as an internal base type, so declaration classes that inherit from it also stay internal. If you need the generated extension method to be public, set the attribute's `Visibility` named argument explicitly:
+
+```csharp
+[LinqraftMappingGenerate(
+    "ProjectToSummary",
+    Visibility = LinqraftMappingVisibility.Public)]
+internal sealed class OrderSummaryMapping : LinqraftMappingDeclare<Order>
+{
+    protected override void DefineMapping()
+    {
+        Source.SelectExpr<Order, OrderSummaryDto>(order => new
+        {
+            order.Id,
+            order.OrderNumber,
+        });
+    }
+}
+```
+
+For helper-class mappings, the generated static helper class and extension method both use that visibility. When omitted, helper-class mappings remain `internal`.
+
 ## Approach 2: Static Partial Class
 
 For more control over the containing class, define a static partial class with a template method marked with `[LinqraftMappingGenerate]`:
@@ -149,6 +172,24 @@ var orders = await dbContext.Orders
     .ProjectToDto()
     .ToListAsync();
 ```
+
+Static-partial mappings also support the same `Visibility` named argument:
+
+```csharp
+public static partial class OrderQueries
+{
+    [LinqraftMappingGenerate(
+        "ProjectToDto",
+        Visibility = LinqraftMappingVisibility.Public)]
+    internal static IQueryable<OrderDto> Template(this IQueryable<Order> source) => source
+        .SelectExpr<Order, OrderDto>(order => new
+        {
+            order.Id,
+        });
+}
+```
+
+For this approach, `Visibility` changes the generated method accessibility only. The containing static partial class still controls the maximum effective visibility, so make the class `public` if you want a public extension method.
 
 ## Using with EF Core
 
@@ -217,15 +258,17 @@ The same works with the static partial class approach - simply use the generated
 ### Helper Class Requirements:
 1. **Inherit from `LinqraftMappingDeclare<T>`**: Your class must inherit from the base helper class
 2. **Add `[LinqraftMappingGenerate]` attribute**: The class must be marked with this attribute (with or without a custom method name)
-3. **Override `DefineMapping()`**: Implement the abstract method with your mapping logic
-4. **Use `Source` property**: Use the `Source` property to access the queryable
-5. **SelectExpr Inside**: The `DefineMapping()` method must contain exactly one `SelectExpr` call
+3. **Optional `Visibility` override**: Set `Visibility = LinqraftMappingVisibility.Public` when the generated extension should be public
+4. **Override `DefineMapping()`**: Implement the abstract method with your mapping logic
+5. **Use `Source` property**: Use the `Source` property to access the queryable
+6. **SelectExpr Inside**: The `DefineMapping()` method must contain exactly one `SelectExpr` call
 
 ### Static Partial Class Requirements:
 1. **Static Partial Class**: The containing class must be `static` and `partial`
 2. **[LinqraftMappingGenerate] attribute**: Methods must be marked with this attribute and specify the desired method name
-3. **Top-Level Class**: Extension methods must be in a non-nested class
-4. **SelectExpr Inside**: The template method must contain at least one `SelectExpr` call
+3. **Optional `Visibility` override**: Use `Visibility = LinqraftMappingVisibility.Public` or `.Internal` to override the generated method accessibility
+4. **Top-Level Class**: Extension methods must be in a non-nested class
+5. **SelectExpr Inside**: The template method must contain at least one `SelectExpr` call
 
 ## Further Reading
 

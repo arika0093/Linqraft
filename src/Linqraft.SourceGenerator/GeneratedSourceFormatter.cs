@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 
@@ -9,6 +10,7 @@ internal static class GeneratedSourceFormatter
     {
         var lines = source.Replace("\r\n", "\n").Split('\n');
         var builder = new StringBuilder(source.Length + 64);
+        var groupingIndentStack = new Stack<int>();
         var scopeIndent = 0;
         var lastNonEmptyIndent = 0;
         var lastTrimmed = string.Empty;
@@ -33,6 +35,7 @@ internal static class GeneratedSourceFormatter
 
             previousWasBlank = false;
             var leadingCloseCount = CountLeadingClosingBraces(trimmed);
+            var leadingGroupCloseCount = CountLeadingGroupingClosures(trimmed);
             var baseIndent = System.Math.Max(0, scopeIndent - leadingCloseCount);
             var effectiveIndent = baseIndent;
             var nextTrimmed = GetNextNonEmptyTrimmedLine(lines, index + 1);
@@ -54,6 +57,20 @@ internal static class GeneratedSourceFormatter
                     lastQuestionIndent >= 0 ? lastQuestionIndent : lastNonEmptyIndent + 1;
                 lastQuestionIndent = -1;
             }
+            else if (leadingGroupCloseCount > 0 && groupingIndentStack.Count > 0)
+            {
+                effectiveIndent = groupingIndentStack.Peek();
+            }
+            else if (
+                groupingIndentStack.Count > 0
+                && trimmed[0] is not '.' and not '[' and not '?' and not ':' and not ')' and not ']'
+            )
+            {
+                effectiveIndent = System.Math.Max(
+                    effectiveIndent,
+                    groupingIndentStack.Peek() + 1
+                );
+            }
 
             builder.Append(' ', effectiveIndent * 4);
             builder.AppendLine(trimmed);
@@ -74,6 +91,12 @@ internal static class GeneratedSourceFormatter
             )
             {
                 scopeIndent = System.Math.Max(0, scopeIndent - 1);
+            }
+
+            PopGroupingIndents(groupingIndentStack, leadingGroupCloseCount);
+            if (EndsWithGroupingOpener(trimmed))
+            {
+                groupingIndentStack.Push(effectiveIndent);
             }
         }
 
@@ -121,6 +144,17 @@ internal static class GeneratedSourceFormatter
         return count;
     }
 
+    private static int CountLeadingGroupingClosures(string text)
+    {
+        var count = 0;
+        while (count < text.Length && (text[count] == ')' || text[count] == ']'))
+        {
+            count++;
+        }
+
+        return count;
+    }
+
     private static int CountOpenBraces(string text)
     {
         return text.Count(character => character == '{');
@@ -129,5 +163,18 @@ internal static class GeneratedSourceFormatter
     private static int CountCloseBraces(string text)
     {
         return text.Count(character => character == '}');
+    }
+
+    private static bool EndsWithGroupingOpener(string trimmed)
+    {
+        return trimmed.Length != 0 && trimmed[^1] is '(' or '[';
+    }
+
+    private static void PopGroupingIndents(Stack<int> groupingIndentStack, int count)
+    {
+        for (var index = 0; index < count && groupingIndentStack.Count > 0; index++)
+        {
+            groupingIndentStack.Pop();
+        }
     }
 }

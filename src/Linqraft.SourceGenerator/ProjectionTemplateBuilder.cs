@@ -80,7 +80,14 @@ internal static class ProjectionTemplateBuilder
             return null;
         }
 
-        var methodName = GetMappingMethodName(classSymbol.GetAttributes());
+        var mappingAttribute = GetMappingGenerateAttribute(classSymbol.GetAttributes());
+        var methodName = GetMappingMethodName(mappingAttribute);
+        var accessibilityKeyword = GetMappingGeneratedAccessibilityKeyword(
+            classSymbol.DeclaredAccessibility,
+            selectExpr,
+            attributeContext.SemanticModel,
+            GetMappingVisibilityKeyword(mappingAttribute)
+        );
         return new MappingSourceTemplateModel
         {
             Request = new MappingRequestTemplate
@@ -89,14 +96,8 @@ internal static class ProjectionTemplateBuilder
                 Namespace = SymbolNameHelper.GetNamespace(classSymbol.ContainingNamespace),
                 ContainingTypeName =
                     $"{classSymbol.Name}_{HashingHelper.ComputeHash(classSymbol.ToDisplayString(), 8)}",
-                AccessibilityKeyword = SymbolNameHelper.GetAccessibilityKeyword(
-                    classSymbol.DeclaredAccessibility
-                ),
-                MethodAccessibilityKeyword = GetMappingMethodAccessibilityKeyword(
-                    classSymbol.DeclaredAccessibility,
-                    selectExpr,
-                    attributeContext.SemanticModel
-                ),
+                AccessibilityKeyword = accessibilityKeyword,
+                MethodAccessibilityKeyword = accessibilityKeyword,
                 MethodName = string.IsNullOrWhiteSpace(methodName)
                     ? $"ProjectTo{classSymbol.BaseType?.TypeArguments.FirstOrDefault()?.Name}"
                     : methodName!,
@@ -158,6 +159,7 @@ internal static class ProjectionTemplateBuilder
             return null;
         }
 
+        var mappingAttribute = GetMappingGenerateAttribute(methodSymbol.GetAttributes());
         return new MappingSourceTemplateModel
         {
             Request = new MappingRequestTemplate
@@ -170,14 +172,13 @@ internal static class ProjectionTemplateBuilder
                 AccessibilityKeyword = SymbolNameHelper.GetAccessibilityKeyword(
                     methodSymbol.ContainingType.DeclaredAccessibility
                 ),
-                MethodAccessibilityKeyword = GetMappingMethodAccessibilityKeyword(
+                MethodAccessibilityKeyword = GetMappingGeneratedAccessibilityKeyword(
                     methodSymbol.DeclaredAccessibility,
                     selectExpr,
-                    attributeContext.SemanticModel
+                    attributeContext.SemanticModel,
+                    GetMappingVisibilityKeyword(mappingAttribute)
                 ),
-                MethodName =
-                    GetMappingMethodName(methodSymbol.GetAttributes())
-                    ?? declaration.Identifier.ValueText,
+                MethodName = GetMappingMethodName(mappingAttribute) ?? declaration.Identifier.ValueText,
                 ReceiverKind = projection.Request.ReceiverKind,
                 SourceTypeName = projection.Request.SourceTypeName,
                 ResultTypeTemplate = projection.Request.ResultTypeTemplate,
@@ -1598,25 +1599,52 @@ internal static class ProjectionTemplateBuilder
         return nullableAnnotation == NullableAnnotation.Annotated ? "?" : string.Empty;
     }
 
-    private static string GetMappingMethodAccessibilityKeyword(
+    private static string GetMappingGeneratedAccessibilityKeyword(
         Accessibility declaredAccessibility,
         InvocationExpressionSyntax selectExpr,
-        SemanticModel semanticModel
+        SemanticModel semanticModel,
+        string? requestedVisibilityKeyword
     )
     {
         var nameSyntax = GetInvocationNameSyntax(selectExpr.Expression) as GenericNameSyntax;
         if (nameSyntax?.TypeArgumentList.Arguments.Count >= 2)
         {
+            var sourceType = semanticModel
+                .GetTypeInfo(nameSyntax.TypeArgumentList.Arguments[0])
+                .Type;
             var resultType = semanticModel
                 .GetTypeInfo(nameSyntax.TypeArgumentList.Arguments[1])
                 .Type;
-            if (resultType is not null && resultType.DeclaredAccessibility != Accessibility.Public)
+            if (!IsPubliclyAccessible(sourceType) || !IsPubliclyAccessible(resultType))
             {
                 return "internal";
             }
         }
 
-        return SymbolNameHelper.GetAccessibilityKeyword(declaredAccessibility);
+        return requestedVisibilityKeyword
+            ?? SymbolNameHelper.GetAccessibilityKeyword(declaredAccessibility);
+    }
+
+    private static bool IsPubliclyAccessible(ITypeSymbol? typeSymbol)
+    {
+        if (typeSymbol is null)
+        {
+            return false;
+        }
+
+        return typeSymbol switch
+        {
+            IArrayTypeSymbol arrayType => IsPubliclyAccessible(arrayType.ElementType),
+            IDynamicTypeSymbol => true,
+            ITypeParameterSymbol => true,
+            INamedTypeSymbol namedType => namedType.DeclaredAccessibility == Accessibility.Public
+                && (
+                    namedType.ContainingType is null
+                    || IsPubliclyAccessible(namedType.ContainingType)
+                )
+                && namedType.TypeArguments.All(IsPubliclyAccessible),
+            _ => typeSymbol.DeclaredAccessibility == Accessibility.Public,
+        };
     }
 
     private static bool IsSelectExprInvocation(InvocationExpressionSyntax invocation)
@@ -1692,14 +1720,51 @@ internal static class ProjectionTemplateBuilder
         return false;
     }
 
-    private static string? GetMappingMethodName(ImmutableArray<AttributeData> attributes)
+    private static AttributeData? GetMappingGenerateAttribute(
+        ImmutableArray<AttributeData> attributes
+    )
     {
         return attributes
-                .FirstOrDefault(attribute =>
-                    attribute.AttributeClass?.Name == "LinqraftMappingGenerateAttribute"
+            .FirstOrDefault(attribute =>
+                attribute.AttributeClass?.Name == "LinqraftMappingGenerateAttribute"
+            );
+    }
+
+    private static string? GetMappingMethodName(AttributeData? attribute)
+    {
+        return attribute?.ConstructorArguments.FirstOrDefault().Value as string;
+    }
+
+    private static string? GetMappingVisibilityKeyword(AttributeData? attribute)
+    {
+        if (attribute is null)
+        {
+            return null;
+        }
+
+        foreach (var namedArgument in attribute.NamedArguments)
+        {
+            if (
+                !string.Equals(
+                    namedArgument.Key,
+                    "Visibility",
+                    StringComparison.Ordinal
                 )
-                ?.ConstructorArguments.FirstOrDefault()
-                .Value as string;
+                || namedArgument.Value.Value is null
+            )
+            {
+                continue;
+            }
+
+            return Convert.ToInt32(namedArgument.Value.Value) switch
+            {
+                1 => "internal",
+                2 => "public",
+                _ => null,
+            };
+        }
+
+        return null;
     }
 
     private static ContainingTypeInfo[] GetContainingTypes(INamedTypeSymbol? symbol)
