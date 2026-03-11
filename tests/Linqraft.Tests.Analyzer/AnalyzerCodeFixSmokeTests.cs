@@ -584,7 +584,7 @@ public sealed class AnalyzerCodeFixSmokeTests
     }
 
     [Test]
-    public async Task Produces_response_type_code_fix_adds_attribute()
+    public async Task Produces_response_type_code_fix_uses_status_code_and_list_shape()
     {
         const string source = """
             using System;
@@ -595,10 +595,14 @@ public sealed class AnalyzerCodeFixSmokeTests
                 public sealed class ApiControllerAttribute : Attribute { }
                 public sealed class ProducesResponseTypeAttribute : Attribute
                 {
-                    public ProducesResponseTypeAttribute(Type type) { }
+                    public ProducesResponseTypeAttribute(int statusCode) { }
+                    public Type? Type { get; set; }
                 }
                 public interface IActionResult { }
-                public abstract class ControllerBase { }
+                public abstract class ControllerBase
+                {
+                    protected IActionResult Ok(object? value) => throw null!;
+                }
             }
 
             namespace System.Linq
@@ -622,11 +626,11 @@ public sealed class AnalyzerCodeFixSmokeTests
             {
                 public Microsoft.AspNetCore.Mvc.IActionResult Get(IQueryable<Entity> source)
                 {
-                    var _ = source.SelectExpr<Entity, EntityDto>(entity => new
+                    var results = source.SelectExpr<Entity, EntityDto>(entity => new
                     {
                         entity.Id,
-                    });
-                    return default!;
+                    }).ToList();
+                    return Ok(results);
                 }
             }
             """;
@@ -636,8 +640,73 @@ public sealed class AnalyzerCodeFixSmokeTests
         var compilationErrors = await GetCompilationErrorsAsync(result.ChangedSolution);
 
         compilationErrors.ShouldBeEmpty();
+        fixedText.ShouldContain("using Microsoft.AspNetCore.Mvc;");
+        fixedText.ShouldContain("using System.Collections.Generic;");
+        fixedText.ShouldContain("[ProducesResponseType(200, Type = typeof(List<EntityDto>))]");
+        fixedText.ShouldNotContain("global::Microsoft.AspNetCore.Mvc.ProducesResponseType");
+    }
+
+    [Test]
+    public async Task Produces_response_type_code_fix_uses_ienumerable_shape_without_tolist()
+    {
+        const string source = """
+            using System;
+            using System.Linq;
+
+            namespace Microsoft.AspNetCore.Mvc
+            {
+                public sealed class ApiControllerAttribute : Attribute { }
+                public sealed class ProducesResponseTypeAttribute : Attribute
+                {
+                    public ProducesResponseTypeAttribute(int statusCode) { }
+                    public Type? Type { get; set; }
+                }
+                public interface IActionResult { }
+                public abstract class ControllerBase
+                {
+                    protected IActionResult Ok(object? value) => throw null!;
+                }
+            }
+
+            namespace System.Linq
+            {
+                public static class SelectExprExtensions
+                {
+                    public static IQueryable<TResult> SelectExpr<TIn, TResult>(this IQueryable<TIn> query, Func<TIn, object> selector)
+                        where TIn : class => throw null!;
+                }
+            }
+
+            public class Entity
+            {
+                public int Id { get; set; }
+            }
+
+            public class EntityDto { }
+
+            [Microsoft.AspNetCore.Mvc.ApiController]
+            public sealed class EntityController : Microsoft.AspNetCore.Mvc.ControllerBase
+            {
+                public Microsoft.AspNetCore.Mvc.IActionResult Get(IQueryable<Entity> source)
+                {
+                    var results = source.SelectExpr<Entity, EntityDto>(entity => new
+                    {
+                        entity.Id,
+                    });
+                    return Ok(results);
+                }
+            }
+            """;
+
+        var result = await ApplyFixAsync(source, "LQRF001", "ProducesResponseType");
+        var fixedText = result.PrimaryDocumentText;
+        var compilationErrors = await GetCompilationErrorsAsync(result.ChangedSolution);
+
+        compilationErrors.ShouldBeEmpty();
+        fixedText.ShouldContain("using Microsoft.AspNetCore.Mvc;");
+        fixedText.ShouldContain("using System.Collections.Generic;");
         fixedText.ShouldContain(
-            "[global::Microsoft.AspNetCore.Mvc.ProducesResponseType(typeof(EntityDto))]"
+            "[ProducesResponseType(200, Type = typeof(IEnumerable<EntityDto>))]"
         );
     }
 
@@ -953,6 +1022,76 @@ public sealed class AnalyzerCodeFixSmokeTests
         fixedText.ShouldContain("ChildData = entity.Child != null ? new");
         fixedText.ShouldContain("Name = entity.Child.Name");
         fixedText.ShouldNotContain("entity.Child?.Name");
+        fixedText.ShouldNotContain("new ChildDto");
+    }
+
+    [Test]
+    public async Task Named_select_explicit_dto_strict_code_fix_adds_nullable_cast_for_value_type_ternary()
+    {
+        const string source = """
+            using System;
+            using System.Collections.Generic;
+            using System.Linq;
+
+            namespace System.Linq
+            {
+                public static class SelectExprExtensions
+                {
+                    public static IQueryable<TResult> SelectExpr<TIn, TResult>(this IQueryable<TIn> query, Func<TIn, object> selector)
+                        where TIn : class => throw null!;
+                }
+            }
+
+            public class Child
+            {
+                public int Id { get; set; }
+                public string? Name { get; set; }
+            }
+
+            public class ChildContainer
+            {
+                public Child? Child { get; set; }
+            }
+
+            public class Entity
+            {
+                public IEnumerable<ChildContainer> Children { get; set; } = Array.Empty<ChildContainer>();
+            }
+
+            public class ChildDto
+            {
+                public int? ChildId { get; set; }
+                public string? ChildName { get; set; }
+            }
+
+            public class ProjectDto
+            {
+                public IEnumerable<ChildDto> Children { get; set; } = Array.Empty<ChildDto>();
+            }
+
+            public class QueryHolder
+            {
+                public IQueryable<ProjectDto> Project(IQueryable<Entity> source)
+                {
+                    return source.Select(entity => new ProjectDto
+                    {
+                        Children = entity.Children.Select(c => new ChildDto
+                        {
+                            ChildId = c.Child != null ? c.Child.Id : null,
+                            ChildName = c.Child != null ? c.Child.Name : null,
+                        }),
+                    });
+                }
+            }
+            """;
+
+        var result = await ApplyFixAsync(source, "LQRS006", "(strict)");
+        var fixedText = result.PrimaryDocumentText;
+        var compilationErrors = await GetCompilationErrorsAsync(result.ChangedSolution);
+
+        compilationErrors.ShouldBeEmpty();
+        fixedText.ShouldContain("ChildId = (int?)(c.Child != null ? c.Child.Id : null)");
+        fixedText.ShouldContain("ChildName = c.Child != null ? c.Child.Name : null");
         fixedText.ShouldNotContain("new ChildDto");
     }
 

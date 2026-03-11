@@ -14,7 +14,7 @@ Detects `SelectExpr<T, TDto>` usage inside ASP.NET Core `[ApiController]` action
 - The method does not already have a `ProducesResponseType` attribute.
 
 ## Suggested Fix
-The analyzer suggests adding `[ProducesResponseType(typeof(TDto))]` (or the appropriate status-code overload) to the action to improve OpenAPI metadata. This is currently reported as an informational suggestion.
+The analyzer suggests adding `[ProducesResponseType(...)]` metadata that matches the action result shape. For example, `Ok(query.ToList())` should use `[ProducesResponseType(200, Type = typeof(List<TDto>))]`, while `Ok(query)` should use `[ProducesResponseType(200, Type = typeof(IEnumerable<TDto>))]`.
 
 ## Example
 Before:
@@ -37,7 +37,7 @@ After (suggested):
 [Route("api/[controller]")]
 public class ProductsController : ControllerBase
 {
-    [ProducesResponseType(typeof(ProductDto))]
+    [ProducesResponseType(200, Type = typeof(IEnumerable<ProductDto>))]
     public IActionResult Get()
     {
         var dto = _db.Products.SelectExpr<Product, ProductDto>(p => new { p.Id, p.Name });

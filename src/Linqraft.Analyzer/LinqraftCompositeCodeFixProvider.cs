@@ -387,7 +387,9 @@ public sealed class LinqraftCompositeCodeFixProvider : CodeFixProvider
                 RewriteProjectionExpression(
                     anonymousObject,
                     simplifyTernary: true,
-                    convertNamedObjectsToAnonymous: false
+                    convertNamedObjectsToAnonymous: false,
+                    semanticModel,
+                    cancellationToken
                 )
             );
         }
@@ -473,16 +475,20 @@ public sealed class LinqraftCompositeCodeFixProvider : CodeFixProvider
         if (
             !keepNamedProjection
             && updatedLambda is not null
+            && AnalyzerHelpers.GetLambdaExpressionBody(lambda)
+                is ObjectCreationExpressionSyntax originalObjectCreation
             && AnalyzerHelpers.GetLambdaExpressionBody(updatedLambda)
-                is ObjectCreationExpressionSyntax objectCreation
+                is ObjectCreationExpressionSyntax updatedObjectCreation
         )
         {
             var converted = RewriteProjectionExpression(
-                objectCreation,
+                originalObjectCreation,
                 simplifyTernary,
-                convertNamedObjectsToAnonymous: true
+                convertNamedObjectsToAnonymous: true,
+                semanticModel,
+                cancellationToken
             );
-            updatedInvocation = updatedInvocation.ReplaceNode(objectCreation, converted);
+            updatedInvocation = updatedInvocation.ReplaceNode(updatedObjectCreation, converted);
         }
 
         updatedInvocation = AddCaptureNames(updatedInvocation, captureNames);
@@ -631,7 +637,10 @@ public sealed class LinqraftCompositeCodeFixProvider : CodeFixProvider
     )
     {
         var root = await document.GetSyntaxRootAsync(cancellationToken).ConfigureAwait(false);
-        if (root is null)
+        var semanticModel = await document
+            .GetSemanticModelAsync(cancellationToken)
+            .ConfigureAwait(false);
+        if (root is null || semanticModel is null)
         {
             return document;
         }
@@ -650,26 +659,463 @@ public sealed class LinqraftCompositeCodeFixProvider : CodeFixProvider
             return document;
         }
 
-        var dtoType = genericName.TypeArgumentList.Arguments[1].ToString();
+        var dtoTypeSyntax = genericName.TypeArgumentList.Arguments[1];
+        var dtoTypeSymbol = semanticModel.GetTypeInfo(dtoTypeSyntax, cancellationToken).Type;
+        var (statusCode, responseType) = GetProducesResponseTypeMetadata(
+            method,
+            selectExpr,
+            dtoTypeSymbol,
+            semanticModel,
+            cancellationToken
+        );
+        var namespaces = new HashSet<string>(StringComparer.Ordinal)
+        {
+            "Microsoft.AspNetCore.Mvc",
+        };
+        var responseTypeText = responseType?.ToDisplayString(
+            SymbolDisplayFormat.MinimallyQualifiedFormat
+        );
+        if (responseType is not null)
+        {
+            CollectNamespaces(responseType, namespaces);
+        }
+
+        responseTypeText ??= dtoTypeSymbol?.ToDisplayString(
+            SymbolDisplayFormat.MinimallyQualifiedFormat
+        );
+        if (!string.IsNullOrWhiteSpace(responseTypeText))
+        {
+            CollectNamespaces(dtoTypeSymbol, namespaces);
+        }
+
+        responseTypeText ??= dtoTypeSyntax.ToString();
+        var attributeArguments = new List<AttributeArgumentSyntax>
+        {
+            SyntaxFactory.AttributeArgument(
+                SyntaxFactory.LiteralExpression(
+                    SyntaxKind.NumericLiteralExpression,
+                    SyntaxFactory.Literal(statusCode)
+                )
+            ),
+            SyntaxFactory.AttributeArgument(
+                nameEquals: SyntaxFactory.NameEquals(SyntaxFactory.IdentifierName("Type")),
+                nameColon: default,
+                expression: SyntaxFactory.TypeOfExpression(
+                    SyntaxFactory.ParseTypeName(responseTypeText)
+                )
+            ),
+        };
         var attribute = SyntaxFactory.AttributeList(
             SyntaxFactory.SingletonSeparatedList(
                 SyntaxFactory.Attribute(
-                    SyntaxFactory.ParseName(
-                        "global::Microsoft.AspNetCore.Mvc.ProducesResponseType"
-                    ),
+                    SyntaxFactory.IdentifierName("ProducesResponseType"),
                     SyntaxFactory.AttributeArgumentList(
-                        SyntaxFactory.SingletonSeparatedList(
-                            SyntaxFactory.AttributeArgument(
-                                SyntaxFactory.ParseExpression($"typeof({dtoType})")
-                            )
-                        )
+                        SyntaxFactory.SeparatedList(attributeArguments)
                     )
                 )
             )
         );
 
         var updatedMethod = method.AddAttributeLists(attribute);
-        return document.WithSyntaxRoot(root.ReplaceNode(method, updatedMethod));
+        var updatedRoot = root.ReplaceNode(method, updatedMethod);
+        updatedRoot = EnsureUsings(updatedRoot, namespaces.ToArray());
+        return WithFormattedSyntaxRoot(document, updatedRoot);
+    }
+
+    private static (int StatusCode, ITypeSymbol? ResponseType) GetProducesResponseTypeMetadata(
+        MethodDeclarationSyntax method,
+        InvocationExpressionSyntax selectExpr,
+        ITypeSymbol? dtoType,
+        SemanticModel semanticModel,
+        CancellationToken cancellationToken
+    )
+    {
+        int? inferredStatusCode = null;
+        foreach (var returnExpression in GetReturnExpressions(method))
+        {
+            if (
+                !TryGetProducesResponseTypeCandidate(
+                    returnExpression,
+                    semanticModel,
+                    cancellationToken,
+                    out var statusCode,
+                    out var payloadType
+                )
+            )
+            {
+                continue;
+            }
+
+            inferredStatusCode ??= statusCode;
+            if (
+                TryMatchProducesResponseType(
+                    payloadType,
+                    dtoType,
+                    semanticModel.Compilation,
+                    out var responseType
+                )
+            )
+            {
+                return (statusCode, responseType);
+            }
+        }
+
+        return (
+            inferredStatusCode ?? 200,
+            GetFallbackProducesResponseType(selectExpr, dtoType, semanticModel, cancellationToken)
+        );
+    }
+
+    private static ITypeSymbol? GetFallbackProducesResponseType(
+        InvocationExpressionSyntax selectExpr,
+        ITypeSymbol? dtoType,
+        SemanticModel semanticModel,
+        CancellationToken cancellationToken
+    )
+    {
+        var payloadType = GetTypeInfo(
+            GetOutermostExpression(selectExpr),
+            semanticModel,
+            cancellationToken
+        );
+        if (
+            TryMatchProducesResponseType(
+                payloadType,
+                dtoType,
+                semanticModel.Compilation,
+                out var responseType
+            )
+        )
+        {
+            return responseType;
+        }
+
+        return dtoType;
+    }
+
+    private static IEnumerable<ExpressionSyntax> GetReturnExpressions(
+        MethodDeclarationSyntax method
+    )
+    {
+        if (method.ExpressionBody is not null)
+        {
+            yield return method.ExpressionBody.Expression;
+        }
+
+        if (method.Body is null)
+        {
+            yield break;
+        }
+
+        foreach (
+            var returnStatement in method.Body.DescendantNodes().OfType<ReturnStatementSyntax>()
+        )
+        {
+            if (returnStatement.Expression is not null)
+            {
+                yield return returnStatement.Expression;
+            }
+        }
+    }
+
+    private static bool TryGetProducesResponseTypeCandidate(
+        ExpressionSyntax returnExpression,
+        SemanticModel semanticModel,
+        CancellationToken cancellationToken,
+        out int statusCode,
+        out ITypeSymbol? payloadType
+    )
+    {
+        returnExpression = UnwrapReturnExpression(returnExpression);
+        if (returnExpression is not InvocationExpressionSyntax invocation)
+        {
+            statusCode = 0;
+            payloadType = null;
+            return false;
+        }
+
+        switch (AnalyzerHelpers.GetInvocationName(invocation.Expression))
+        {
+            case "Ok":
+                statusCode = 200;
+                payloadType = GetArgumentType(invocation, 0, semanticModel, cancellationToken);
+                return true;
+            case "Created":
+            case "CreatedAtAction":
+            case "CreatedAtRoute":
+                statusCode = 201;
+                payloadType = GetLastArgumentType(invocation, semanticModel, cancellationToken);
+                return true;
+            case "Accepted":
+            case "AcceptedAtAction":
+            case "AcceptedAtRoute":
+                statusCode = 202;
+                payloadType = GetLastArgumentType(invocation, semanticModel, cancellationToken);
+                return true;
+            case "BadRequest":
+                statusCode = 400;
+                payloadType = GetArgumentType(invocation, 0, semanticModel, cancellationToken);
+                return true;
+            case "Unauthorized":
+                statusCode = 401;
+                payloadType = GetArgumentType(invocation, 0, semanticModel, cancellationToken);
+                return true;
+            case "Forbid":
+                statusCode = 403;
+                payloadType = null;
+                return true;
+            case "NotFound":
+                statusCode = 404;
+                payloadType = GetArgumentType(invocation, 0, semanticModel, cancellationToken);
+                return true;
+            case "Conflict":
+                statusCode = 409;
+                payloadType = GetArgumentType(invocation, 0, semanticModel, cancellationToken);
+                return true;
+            case "StatusCode":
+                var statusCodeArgument = invocation.ArgumentList.Arguments.FirstOrDefault();
+                if (statusCodeArgument is null)
+                {
+                    break;
+                }
+
+                var constantValue = semanticModel.GetConstantValue(
+                    statusCodeArgument.Expression,
+                    cancellationToken
+                );
+                if (!constantValue.HasValue || constantValue.Value is not int constantStatusCode)
+                {
+                    break;
+                }
+
+                statusCode = constantStatusCode;
+                payloadType = GetArgumentType(invocation, 1, semanticModel, cancellationToken);
+                return true;
+        }
+
+        statusCode = 0;
+        payloadType = null;
+        return false;
+    }
+
+    private static ExpressionSyntax UnwrapReturnExpression(ExpressionSyntax expression)
+    {
+        expression = UnwrapParentheses(expression);
+        while (expression is AwaitExpressionSyntax awaitExpression)
+        {
+            expression = UnwrapParentheses(awaitExpression.Expression);
+        }
+
+        return expression;
+    }
+
+    private static ITypeSymbol? GetArgumentType(
+        InvocationExpressionSyntax invocation,
+        int argumentIndex,
+        SemanticModel semanticModel,
+        CancellationToken cancellationToken
+    )
+    {
+        if (argumentIndex < 0 || argumentIndex >= invocation.ArgumentList.Arguments.Count)
+        {
+            return null;
+        }
+
+        return GetTypeInfo(
+            invocation.ArgumentList.Arguments[argumentIndex].Expression,
+            semanticModel,
+            cancellationToken
+        );
+    }
+
+    private static ITypeSymbol? GetLastArgumentType(
+        InvocationExpressionSyntax invocation,
+        SemanticModel semanticModel,
+        CancellationToken cancellationToken
+    )
+    {
+        return GetArgumentType(
+            invocation,
+            invocation.ArgumentList.Arguments.Count - 1,
+            semanticModel,
+            cancellationToken
+        );
+    }
+
+    private static ITypeSymbol? GetTypeInfo(
+        ExpressionSyntax expression,
+        SemanticModel semanticModel,
+        CancellationToken cancellationToken
+    )
+    {
+        var typeInfo = semanticModel.GetTypeInfo(expression, cancellationToken);
+        return typeInfo.Type ?? typeInfo.ConvertedType;
+    }
+
+    private static bool TryMatchProducesResponseType(
+        ITypeSymbol? payloadType,
+        ITypeSymbol? dtoType,
+        Compilation compilation,
+        out ITypeSymbol? responseType
+    )
+    {
+        if (dtoType is null)
+        {
+            responseType = payloadType;
+            return payloadType is not null;
+        }
+
+        if (payloadType is null)
+        {
+            responseType = null;
+            return false;
+        }
+
+        if (SymbolEqualityComparer.Default.Equals(payloadType, dtoType))
+        {
+            responseType = dtoType;
+            return true;
+        }
+
+        if (
+            payloadType is IArrayTypeSymbol arrayType
+            && SymbolEqualityComparer.Default.Equals(arrayType.ElementType, dtoType)
+        )
+        {
+            responseType = arrayType;
+            return true;
+        }
+
+        if (
+            !TryGetSequenceElementType(payloadType, out var elementType)
+            || !SymbolEqualityComparer.Default.Equals(elementType, dtoType)
+        )
+        {
+            responseType = null;
+            return false;
+        }
+
+        responseType = IsListType(payloadType)
+            ? payloadType
+            : CreateConstructedType(
+                compilation,
+                "System.Collections.Generic.IEnumerable`1",
+                dtoType
+            ) ?? payloadType;
+        return true;
+    }
+
+    private static bool TryGetSequenceElementType(
+        ITypeSymbol? sequenceType,
+        out ITypeSymbol? elementType
+    )
+    {
+        if (sequenceType is IArrayTypeSymbol arrayType)
+        {
+            elementType = arrayType.ElementType;
+            return true;
+        }
+
+        if (
+            sequenceType is not INamedTypeSymbol namedType
+            || sequenceType.SpecialType == SpecialType.System_String
+        )
+        {
+            elementType = null;
+            return false;
+        }
+
+        if (IsSequenceTypeDefinition(namedType))
+        {
+            elementType = namedType.TypeArguments[0];
+            return true;
+        }
+
+        var matchingInterface = namedType.AllInterfaces.FirstOrDefault(IsSequenceTypeDefinition);
+        if (matchingInterface is not null)
+        {
+            elementType = matchingInterface.TypeArguments[0];
+            return true;
+        }
+
+        elementType = null;
+        return false;
+    }
+
+    private static bool IsSequenceTypeDefinition(INamedTypeSymbol type)
+    {
+        return type.TypeArguments.Length == 1
+            && type.OriginalDefinition.ToDisplayString()
+                is "System.Collections.Generic.IEnumerable<T>"
+                    or "System.Collections.Generic.IAsyncEnumerable<T>"
+                    or "System.Linq.IQueryable<T>"
+                    or "System.Linq.IOrderedQueryable<T>";
+    }
+
+    private static bool IsListType(ITypeSymbol type)
+    {
+        return type is INamedTypeSymbol namedType
+            && namedType.OriginalDefinition.ToDisplayString()
+                == "System.Collections.Generic.List<T>";
+    }
+
+    private static INamedTypeSymbol? CreateConstructedType(
+        Compilation compilation,
+        string metadataName,
+        ITypeSymbol typeArgument
+    )
+    {
+        return compilation.GetTypeByMetadataName(metadataName)?.Construct(typeArgument);
+    }
+
+    private static ExpressionSyntax GetOutermostExpression(ExpressionSyntax expression)
+    {
+        var current = expression;
+        while (true)
+        {
+            if (
+                current.Parent is MemberAccessExpressionSyntax memberAccess
+                && memberAccess.Expression == current
+                && memberAccess.Parent is InvocationExpressionSyntax invocation
+                && invocation.Expression == memberAccess
+            )
+            {
+                current = invocation;
+                continue;
+            }
+
+            if (current.Parent is AwaitExpressionSyntax awaitExpression)
+            {
+                current = awaitExpression;
+                continue;
+            }
+
+            return current;
+        }
+    }
+
+    private static void CollectNamespaces(ITypeSymbol? type, ISet<string> namespaces)
+    {
+        switch (type)
+        {
+            case null:
+                return;
+            case IArrayTypeSymbol arrayType:
+                CollectNamespaces(arrayType.ElementType, namespaces);
+                return;
+            case INamedTypeSymbol namedType:
+                if (!namedType.ContainingNamespace.IsGlobalNamespace)
+                {
+                    namespaces.Add(namedType.ContainingNamespace.ToDisplayString());
+                }
+
+                foreach (var typeArgument in namedType.TypeArguments)
+                {
+                    CollectNamespaces(typeArgument, namespaces);
+                }
+
+                return;
+        }
     }
 
     private static InvocationExpressionSyntax RenameInvocation(
@@ -893,7 +1339,9 @@ public sealed class LinqraftCompositeCodeFixProvider : CodeFixProvider
 
     private static ExpressionSyntax ConvertObjectCreationToAnonymous(
         ObjectCreationExpressionSyntax objectCreation,
-        bool simplifyTernary
+        INamedTypeSymbol? targetType,
+        SemanticModel? semanticModel,
+        int position
     )
     {
         if (
@@ -907,22 +1355,119 @@ public sealed class LinqraftCompositeCodeFixProvider : CodeFixProvider
         var members = objectCreation
             .Initializer.Expressions.OfType<AssignmentExpressionSyntax>()
             .Select(assignment =>
-                AppendValueWithContinuation($"{assignment.Left} = ", assignment.Right.ToString())
+                AppendValueWithContinuation(
+                    $"{assignment.Left} = ",
+                    AddAnonymousTargetTypeCastIfNeeded(
+                            assignment.Right,
+                            targetType is null
+                                ? null
+                                : GetObjectInitializerMemberType(targetType, assignment.Left),
+                            semanticModel,
+                            position
+                        )
+                        .ToString()
+                )
             )
             .ToList();
 
         return SyntaxFactory.ParseExpression(BuildInitializerExpression("new", members));
     }
 
+    private static ExpressionSyntax AddAnonymousTargetTypeCastIfNeeded(
+        ExpressionSyntax expression,
+        ITypeSymbol? targetType,
+        SemanticModel? semanticModel,
+        int position
+    )
+    {
+        expression = UnwrapParentheses(expression);
+        if (
+            targetType is null
+            || expression is CastExpressionSyntax
+            || expression is not ConditionalExpressionSyntax conditionalExpression
+            || (!IsNullLike(conditionalExpression.WhenTrue)
+                && !IsNullLike(conditionalExpression.WhenFalse))
+            || !NeedsTargetTypeCast(targetType)
+        )
+        {
+            return expression;
+        }
+
+        var targetTypeText =
+            semanticModel is null
+                ? targetType.ToDisplayString(SymbolDisplayFormat.MinimallyQualifiedFormat)
+                : targetType.ToMinimalDisplayString(
+                    semanticModel,
+                    position,
+                    SymbolDisplayFormat.MinimallyQualifiedFormat
+                );
+        return SyntaxFactory.CastExpression(
+            SyntaxFactory.ParseTypeName(targetTypeText),
+            SyntaxFactory.ParenthesizedExpression(expression.WithoutTrivia())
+        );
+    }
+
+    private static bool NeedsTargetTypeCast(ITypeSymbol targetType)
+    {
+        return targetType.IsValueType || IsNullableValueType(targetType);
+    }
+
+    private static bool IsNullableValueType(ITypeSymbol type)
+    {
+        return type is INamedTypeSymbol namedType
+            && namedType.OriginalDefinition.SpecialType == SpecialType.System_Nullable_T;
+    }
+
+    private static ITypeSymbol? GetObjectInitializerMemberType(
+        INamedTypeSymbol objectType,
+        ExpressionSyntax assignmentTarget
+    )
+    {
+        var memberName = GetAssignedMemberName(assignmentTarget);
+        if (string.IsNullOrWhiteSpace(memberName))
+        {
+            return null;
+        }
+
+        for (INamedTypeSymbol? current = objectType; current is not null; current = current.BaseType)
+        {
+            var member = current.GetMembers(memberName).FirstOrDefault();
+            switch (member)
+            {
+                case IPropertySymbol propertySymbol:
+                    return propertySymbol.Type;
+                case IFieldSymbol fieldSymbol:
+                    return fieldSymbol.Type;
+            }
+        }
+
+        return null;
+    }
+
+    private static string GetAssignedMemberName(ExpressionSyntax assignmentTarget)
+    {
+        return assignmentTarget switch
+        {
+            IdentifierNameSyntax identifierName => identifierName.Identifier.ValueText,
+            SimpleNameSyntax simpleName => simpleName.Identifier.ValueText,
+            MemberAccessExpressionSyntax memberAccess => memberAccess.Name.Identifier.ValueText,
+            _ => string.Empty,
+        };
+    }
+
     private static ExpressionSyntax RewriteProjectionExpression(
         ExpressionSyntax expression,
         bool simplifyTernary,
-        bool convertNamedObjectsToAnonymous
+        bool convertNamedObjectsToAnonymous,
+        SemanticModel? semanticModel = null,
+        CancellationToken cancellationToken = default
     )
     {
         var rewriter = new ProjectionExpressionRewriter(
             simplifyTernary,
-            convertNamedObjectsToAnonymous
+            convertNamedObjectsToAnonymous,
+            semanticModel,
+            cancellationToken
         );
         return (ExpressionSyntax)(rewriter.Visit(expression) ?? expression);
     }
@@ -1267,7 +1812,9 @@ public sealed class LinqraftCompositeCodeFixProvider : CodeFixProvider
 
     private sealed class ProjectionExpressionRewriter(
         bool simplifyTernary,
-        bool convertNamedObjectsToAnonymous
+        bool convertNamedObjectsToAnonymous,
+        SemanticModel? semanticModel,
+        CancellationToken cancellationToken
     ) : CSharpSyntaxRewriter
     {
         public override SyntaxNode? VisitConditionalExpression(ConditionalExpressionSyntax node)
@@ -1292,7 +1839,13 @@ public sealed class LinqraftCompositeCodeFixProvider : CodeFixProvider
                 return rewritten;
             }
 
-            return ConvertObjectCreationToAnonymous(rewritten, simplifyTernary);
+            var targetType = semanticModel?.GetTypeInfo(node, cancellationToken).Type as INamedTypeSymbol;
+            return ConvertObjectCreationToAnonymous(
+                rewritten,
+                targetType,
+                semanticModel,
+                node.SpanStart
+            );
         }
     }
 
