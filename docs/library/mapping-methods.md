@@ -95,15 +95,6 @@ internal class OrderMappingDeclare : LinqraftMappingDeclare<Order>
 var orders = await dbContext.Orders.CustomProjection().ToListAsync();
 ```
 
-### Accessibility
-
-The generated class inherits the accessibility of your declaring class:
-
-```csharp
-public class PublicMapping : LinqraftMappingDeclare<Order> { ... }  // Generates public class
-internal class InternalMapping : LinqraftMappingDeclare<Order> { ... }  // Generates internal class
-```
-
 ## Approach 2: Static Partial Class
 
 For more control over the containing class, define a static partial class with a template method marked with `[LinqraftMappingGenerate]`:

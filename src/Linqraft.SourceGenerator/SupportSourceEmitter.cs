@@ -81,7 +81,7 @@ internal static class SupportSourceEmitter
                 /// </summary>
                 /// <typeparam name="T">The source element type exposed by the declaration.</typeparam>
                 [global::Microsoft.CodeAnalysis.EmbeddedAttribute]
-                internal abstract partial class LinqraftMappingDeclare<T>
+                internal abstract partial class https://github.com/arika0093/Linqraft<T>
                 {
                     /// <summary>
                     /// Gets the placeholder queryable source used only while the source generator inspects the mapping definition.
