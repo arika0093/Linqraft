@@ -6,20 +6,20 @@ This guide covers the installation and setup requirements for Linqraft.
 
 Linqraft requires **C# 13.0 or later**.
 
-### .NET 9 or later
-No additional setup is required for .NET 9 or later. You can proceed to the [Installing Linqraft](#installing-linqraft) section.
+### .NET 8 or later
+No additional setup is required for .NET 8 or later. You can proceed to the [Installing Linqraft](#installing-linqraft) section.
 
-### .NET 8 or below
+### .NET 7 or below
 
-If you're using .NET 8 or below, you'll need to enable C# 13 features manually:
+If you're using .NET 7 or below, you'll need to enable C# 12 features manually:
 
-1. Set the `LangVersion` property to `13.0` or later
+1. Set the `LangVersion` property to `12.0` or later
 2. Use [PolySharp](https://github.com/Sergio0694/PolySharp/) or [Polyfill](https://github.com/SimonCropp/Polyfill) to enable C# latest features
 
 ```xml
 <Project>
   <PropertyGroup>
-    <LangVersion>13.0</LangVersion>
+    <LangVersion>12.0</LangVersion>
   </PropertyGroup>
   <ItemGroup>
     <PackageReference Include="Polysharp" Version="1.*" />

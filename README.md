@@ -160,7 +160,7 @@ namespace Tutorial.LinqraftGenerated_F1A64BF4
 
 ## Quick Start
 ### Prerequisites
-Linqraft works out of the box with **.NET 9 and later**. For .NET 8(C# 12) and below, additional setup is required.  
+Linqraft works out of the box with **.NET 8 and later**. For .NET 7(C# 11) and below, additional setup is required.  
 For detailed installation instructions, see the [Installation Guide](./docs/library/installation.md).
 
 ### Installation
