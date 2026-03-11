@@ -155,6 +155,7 @@ internal sealed class SqliteTestDatabase : IAsyncDisposable
                 OrderNumber = "ORD-001",
                 CreatedOn = new DateTime(2024, 1, 1),
                 Customer = customers[0],
+                Shipment = CreateShipment(1),
                 Items =
                 [
                     new EfOrderItem
@@ -177,6 +178,7 @@ internal sealed class SqliteTestDatabase : IAsyncDisposable
                 OrderNumber = "ORD-002",
                 CreatedOn = new DateTime(2024, 1, 2),
                 Customer = null,
+                Shipment = null,
                 Items =
                 [
                     new EfOrderItem
@@ -202,6 +204,7 @@ internal sealed class SqliteTestDatabase : IAsyncDisposable
                     OrderNumber = $"ORD-{index:000}",
                     CreatedOn = new DateTime(2024, 1, 1).AddDays(index),
                     Customer = customer,
+                    Shipment = CreateShipment(index),
                     Items = items,
                     Payments = CreatePayments(index, totalAmount),
                 }
@@ -254,6 +257,60 @@ internal sealed class SqliteTestDatabase : IAsyncDisposable
         }
 
         return items;
+    }
+
+    private static EfShipment? CreateShipment(int orderIndex)
+    {
+        if (orderIndex % 2 == 0)
+        {
+            return null;
+        }
+
+        return new EfShipment
+        {
+            CarrierName = orderIndex % 3 == 0 ? null : $"Carrier-{orderIndex % 4}",
+            Events =
+            [
+                new EfShipmentEvent
+                {
+                    Sequence = 1,
+                    Code = $"SCAN-{orderIndex:000}-A",
+                    Summary = new EfShipmentEventSummary
+                    {
+                        Note = "Accepted",
+                        Surcharge = 1 + (orderIndex % 3),
+                    },
+                    Fees =
+                    [
+                        new EfShipmentFee
+                        {
+                            Label = "Fuel",
+                            Amount = 2 + (orderIndex % 4),
+                        },
+                    ],
+                },
+                new EfShipmentEvent
+                {
+                    Sequence = 2,
+                    Code = $"SCAN-{orderIndex:000}-B",
+                    Summary = orderIndex % 5 == 0
+                        ? null
+                        : new EfShipmentEventSummary
+                        {
+                            Note = "Hub",
+                            Surcharge = 2 + (orderIndex % 5),
+                        },
+                    Fees =
+                    [
+                        new EfShipmentFee
+                        {
+                            Label = "Handling",
+                            Amount = 1 + (orderIndex % 6),
+                        },
+                    ],
+                },
+            ],
+        };
     }
 
     private static List<EfPaymentBase> CreatePayments(int orderIndex, int totalAmount)

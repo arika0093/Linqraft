@@ -18,6 +18,8 @@ public sealed class EfOrder
     public List<EfOrderItem> Items { get; set; } = [];
 
     public List<EfPaymentBase> Payments { get; set; } = [];
+
+    public EfShipment? Shipment { get; set; }
 }
 
 public sealed class EfCustomer
@@ -88,4 +90,60 @@ public sealed class EfCouponReward : EfRewardBase
     public string CouponCode { get; set; } = string.Empty;
 
     public int DiscountAmount { get; set; }
+}
+
+public sealed class EfShipment
+{
+    public int Id { get; set; }
+
+    public int OrderId { get; set; }
+
+    public EfOrder Order { get; set; } = null!;
+
+    public string? CarrierName { get; set; }
+
+    public List<EfShipmentEvent> Events { get; set; } = [];
+}
+
+public sealed class EfShipmentEvent
+{
+    public int Id { get; set; }
+
+    public int ShipmentId { get; set; }
+
+    public EfShipment Shipment { get; set; } = null!;
+
+    public int Sequence { get; set; }
+
+    public string? Code { get; set; }
+
+    public EfShipmentEventSummary? Summary { get; set; }
+
+    public List<EfShipmentFee>? Fees { get; set; } = [];
+}
+
+public sealed class EfShipmentEventSummary
+{
+    public int Id { get; set; }
+
+    public int ShipmentEventId { get; set; }
+
+    public EfShipmentEvent ShipmentEvent { get; set; } = null!;
+
+    public string? Note { get; set; }
+
+    public int Surcharge { get; set; }
+}
+
+public sealed class EfShipmentFee
+{
+    public int Id { get; set; }
+
+    public int ShipmentEventId { get; set; }
+
+    public EfShipmentEvent ShipmentEvent { get; set; } = null!;
+
+    public string? Label { get; set; }
+
+    public int Amount { get; set; }
 }

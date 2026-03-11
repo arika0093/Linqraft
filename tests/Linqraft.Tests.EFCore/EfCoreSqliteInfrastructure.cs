@@ -16,6 +16,14 @@ internal sealed class EfCoreSqliteDbContext(DbContextOptions<EfCoreSqliteDbConte
 
     public DbSet<EfRewardBase> Rewards => Set<EfRewardBase>();
 
+    public DbSet<EfShipment> Shipments => Set<EfShipment>();
+
+    public DbSet<EfShipmentEvent> ShipmentEvents => Set<EfShipmentEvent>();
+
+    public DbSet<EfShipmentEventSummary> ShipmentEventSummaries => Set<EfShipmentEventSummary>();
+
+    public DbSet<EfShipmentFee> ShipmentFees => Set<EfShipmentFee>();
+
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         modelBuilder
@@ -38,23 +46,29 @@ internal sealed class EfCoreSqliteDbContext(DbContextOptions<EfCoreSqliteDbConte
             .HasOne(reward => reward.Customer)
             .WithMany(customer => customer.Rewards)
             .HasForeignKey(reward => reward.CustomerId);
+
+        modelBuilder
+            .Entity<EfOrder>()
+            .HasOne(order => order.Shipment)
+            .WithOne(shipment => shipment.Order)
+            .HasForeignKey<EfShipment>(shipment => shipment.OrderId);
+
+        modelBuilder
+            .Entity<EfShipment>()
+            .HasMany(shipment => shipment.Events)
+            .WithOne(@event => @event.Shipment)
+            .HasForeignKey(@event => @event.ShipmentId);
+
+        modelBuilder
+            .Entity<EfShipmentEvent>()
+            .HasOne(@event => @event.Summary)
+            .WithOne(summary => summary.ShipmentEvent)
+            .HasForeignKey<EfShipmentEventSummary>(summary => summary.ShipmentEventId);
+
+        modelBuilder
+            .Entity<EfShipmentEvent>()
+            .HasMany(@event => @event.Fees)
+            .WithOne(fee => fee.ShipmentEvent)
+            .HasForeignKey(fee => fee.ShipmentEventId);
     }
 }
-
-internal static partial class EfOrderQueries
-{
-    [LinqraftMappingGenerate("ProjectToEfCompiledOrderRow")]
-    internal static IQueryable<EfCompiledOrderRow> Template(this IQueryable<EfOrder> source)
-    {
-        return source.SelectExpr<EfOrder, EfCompiledOrderRow>(order => new
-        {
-            order.Id,
-            order.OrderNumber,
-            TotalAmount = order.Items.Sum(item => item.Quantity * item.UnitPrice),
-        });
-    }
-}
-
-public partial class EfSqliteOrderRow;
-
-public partial class EfCompiledOrderRow;

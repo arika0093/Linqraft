@@ -528,13 +528,15 @@ internal sealed class ProjectionExpressionEmitter
                     && !ShouldOmitConditionalCast(expression, expressionType)
                         ? $"({expressionTypeName})"
                         : string.Empty;
-                var formattedAccess = castPrefix + access;
-                if (
-                    string.IsNullOrEmpty(castPrefix)
-                    && TryFormatFluentAccess(receiver, access, out var multilineAccess)
-                )
+                var formattedAccess = access;
+                if (TryFormatFluentAccess(receiver, access, out var multilineAccess))
                 {
                     formattedAccess = multilineAccess;
+                }
+
+                if (!string.IsNullOrEmpty(castPrefix))
+                {
+                    formattedAccess = WrapCastExpression(castPrefix, formattedAccess);
                 }
 
                 if (ContainsLineBreak(formattedAccess) || ContainsLineBreak(fallback))
@@ -1228,6 +1230,19 @@ internal sealed class ProjectionExpressionEmitter
         }
 
         return segments;
+    }
+
+    private static string WrapCastExpression(string castPrefix, string expression)
+    {
+        if (!ContainsLineBreak(expression))
+        {
+            return $"{castPrefix}({expression})";
+        }
+
+        return string.Join(
+            "\n",
+            [$"{castPrefix}(", IndentAllLines(expression), ")"]
+        );
     }
 
     private static string BuildInitializerExpression(string header, IReadOnlyList<string> items)

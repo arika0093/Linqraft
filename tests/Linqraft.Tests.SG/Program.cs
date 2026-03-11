@@ -170,6 +170,47 @@ public sealed class SourceGeneratorSmokeTests
             .ShouldBeTrue(trackedStepReasonSummary);
     }
 
+    [Test]
+    public void Class_level_mapping_requires_mapping_declare_inheritance()
+    {
+        var driver = CreateDriver();
+        var compilation = CreateCompilation(CreateMappingDeclarationTree(), CreateMarkerTree("class"));
+
+        driver = driver.RunGeneratorsAndUpdateCompilation(
+            compilation,
+            out var outputCompilation,
+            out var diagnostics
+        );
+
+        diagnostics.ShouldBeEmpty();
+        outputCompilation
+            .GetDiagnostics()
+            .Where(diagnostic =>
+                diagnostic.Severity == DiagnosticSeverity.Error && diagnostic.Id != "CS9137"
+            )
+            .ShouldBeEmpty();
+
+        var generatedSources = GetGeneratedSourceMap(driver.GetRunResult());
+        generatedSources
+            .Keys.Count(key => key.StartsWith("Mapping_", StringComparison.Ordinal))
+            .ShouldBe(1);
+        generatedSources
+            .Values.Any(source =>
+                source.Contains("ProjectToValidOrderProjection", StringComparison.Ordinal)
+            )
+            .ShouldBeTrue();
+        generatedSources
+            .Values.Any(source =>
+                source.Contains("partial class ValidOrderProjectionDto", StringComparison.Ordinal)
+            )
+            .ShouldBeTrue();
+        generatedSources
+            .Values.Any(source =>
+                source.Contains("IgnoredOrderProjectionDto", StringComparison.Ordinal)
+            )
+            .ShouldBeFalse();
+    }
+
     private static GeneratorDriver CreateDriver(bool usePrebuildExpression = true)
     {
         var parseOptions = new CSharpParseOptions(LanguageVersion.Preview);
@@ -289,6 +330,55 @@ public sealed class SourceGeneratorSmokeTests
             SourceText.From(source),
             new CSharpParseOptions(LanguageVersion.Preview),
             path: "BuildMarker.cs"
+        );
+    }
+
+    private static SyntaxTree CreateMappingDeclarationTree()
+    {
+        const string source = """
+            using System.Linq;
+            using Linqraft;
+
+            namespace SmokeFixture;
+
+            public sealed class SmokeOrder
+            {
+                public int Id { get; set; }
+            }
+
+            [LinqraftMappingGenerate("ProjectToValidOrderProjection")]
+            internal sealed class ValidOrderMapping : LinqraftMappingDeclare<SmokeOrder>
+            {
+                protected override void DefineMapping()
+                {
+                    Source.SelectExpr<SmokeOrder, ValidOrderProjectionDto>(order => new
+                    {
+                        order.Id,
+                    });
+                }
+            }
+
+            [LinqraftMappingGenerate("ProjectToIgnoredOrderProjection")]
+            internal sealed class IgnoredOrderMapping
+            {
+                internal IQueryable<IgnoredOrderProjectionDto> DefineMapping(IQueryable<SmokeOrder> source)
+                {
+                    return source.SelectExpr<SmokeOrder, IgnoredOrderProjectionDto>(order => new
+                    {
+                        order.Id,
+                    });
+                }
+            }
+
+            public partial class ValidOrderProjectionDto;
+
+            public partial class IgnoredOrderProjectionDto;
+            """;
+
+        return CSharpSyntaxTree.ParseText(
+            SourceText.From(source),
+            new CSharpParseOptions(LanguageVersion.Preview),
+            path: "SmokeMappings.cs"
         );
     }
 
