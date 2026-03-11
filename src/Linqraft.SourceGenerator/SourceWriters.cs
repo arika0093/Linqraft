@@ -36,6 +36,9 @@ internal static class SourceWriters
             case ProjectionOwnedGeneratedSourceModel projection:
                 WriteInterceptorDeclaration(builder, projection.Request);
                 break;
+            case ObjectGenerationOwnedGeneratedSourceModel generation:
+                WriteObjectGenerationDeclaration(builder, generation.Request);
+                break;
             case MappingOwnedGeneratedSourceModel mapping:
                 WriteMappingDeclaration(builder, mapping.Request);
                 break;
@@ -143,6 +146,7 @@ internal static class SourceWriters
                 );
                 if (
                     request.CanUsePrebuiltExpression
+                    && request.OperationKind == ProjectionOperationKind.Select
                     && request.ReceiverKind == ReceiverKind.IQueryable
                 )
                 {
@@ -154,12 +158,21 @@ internal static class SourceWriters
                 }
 
                 var receiverType = GetReceiverTypeName(request.ReceiverKind);
-                var selectorResultType = request.UseObjectSelectorSignature ? "object" : "TResult";
+                var selectorResultType = GetSelectorResultType(request);
                 var captureParameter = "object capture";
-                var signature =
-                    request.Captures.Length == 0
+                var signature = request.OperationKind switch
+                {
+                    ProjectionOperationKind.Select => request.Captures.Length == 0
                         ? $"public static {receiverType}<TResult> {request.MethodName}<TIn, TResult>(this {receiverType}<TIn> query, global::System.Func<TIn, {selectorResultType}> selector) where TIn : class"
-                        : $"public static {receiverType}<TResult> {request.MethodName}<TIn, TResult>(this {receiverType}<TIn> query, global::System.Func<TIn, {selectorResultType}> selector, {captureParameter}) where TIn : class";
+                        : $"public static {receiverType}<TResult> {request.MethodName}<TIn, TResult>(this {receiverType}<TIn> query, global::System.Func<TIn, {selectorResultType}> selector, {captureParameter}) where TIn : class",
+                    ProjectionOperationKind.SelectMany => request.Captures.Length == 0
+                        ? $"public static {receiverType}<TResult> {request.MethodName}<TIn, TResult>(this {receiverType}<TIn> query, global::System.Func<TIn, {selectorResultType}> selector) where TIn : class"
+                        : $"public static {receiverType}<TResult> {request.MethodName}<TIn, TResult>(this {receiverType}<TIn> query, global::System.Func<TIn, {selectorResultType}> selector, {captureParameter}) where TIn : class",
+                    ProjectionOperationKind.GroupBy => request.Captures.Length == 0
+                        ? $"public static {receiverType}<TResult> {request.MethodName}<TIn, TKey, TResult>(this {receiverType}<TIn> query, global::System.Func<TIn, TKey> keySelector, global::System.Func<global::System.Linq.IGrouping<TKey, TIn>, {selectorResultType}> selector) where TIn : class"
+                        : $"public static {receiverType}<TResult> {request.MethodName}<TIn, TKey, TResult>(this {receiverType}<TIn> query, global::System.Func<TIn, TKey> keySelector, global::System.Func<global::System.Linq.IGrouping<TKey, TIn>, {selectorResultType}> selector, {captureParameter}) where TIn : class",
+                    _ => throw new InvalidOperationException($"Unsupported projection operation '{request.OperationKind}'."),
+                };
                 if (
                     request.InterceptableLocationVersion is { } interceptableLocationVersion
                     && request.InterceptableLocationData is { } interceptableLocationData
@@ -211,14 +224,67 @@ internal static class SourceWriters
 
                     var selectArgument =
                         request.CanUsePrebuiltExpression
+                        && request.OperationKind == ProjectionOperationKind.Select
                         && request.ReceiverKind == ReceiverKind.IQueryable
                             ? expressionFieldName
                             : lambda;
-                    AppendMultilineLine(
-                        builder,
-                        $"var converted = (({matchedQueryType})(object)query).Select({selectArgument});"
-                    );
+                    var convertedInvocation = request.OperationKind switch
+                    {
+                        ProjectionOperationKind.Select =>
+                            $"(({matchedQueryType})(object)query).Select({selectArgument})",
+                        ProjectionOperationKind.SelectMany =>
+                            $"(({matchedQueryType})(object)query).SelectMany({lambda})",
+                        ProjectionOperationKind.GroupBy =>
+                            $"(({matchedQueryType})(object)query).GroupBy({ProjectionBodyEmitter.AppendValueInline($"{request.KeySelectorParameterName} => ", request.KeySelectorBodyText ?? "default!")}).Select({lambda})",
+                        _ => throw new InvalidOperationException(
+                            $"Unsupported projection operation '{request.OperationKind}'."
+                        ),
+                    };
+                    AppendMultilineLine(builder, $"var converted = {convertedInvocation};");
                     builder.AppendLine($"return ({receiverType}<TResult>)(object)converted;");
+                }
+
+                builder.AppendLine("}");
+            }
+
+            builder.AppendLine("}");
+        }
+
+        builder.AppendLine("}");
+    }
+
+    private static void WriteObjectGenerationDeclaration(
+        IndentedStringBuilder builder,
+        ObjectGenerationRequest request
+    )
+    {
+        builder.AppendLine("namespace Linqraft");
+        builder.AppendLine("{");
+        using (builder.Indent())
+        {
+            builder.AppendLine("file static partial class GeneratedExpression");
+            builder.AppendLine("{");
+            using (builder.Indent())
+            {
+                if (
+                    request.InterceptableLocationVersion is { } interceptableLocationVersion
+                    && request.InterceptableLocationData is { } interceptableLocationData
+                )
+                {
+                    builder.AppendLine(
+                        $"[global::System.Runtime.CompilerServices.InterceptsLocationAttribute({interceptableLocationVersion}, \"{EscapeStringLiteral(interceptableLocationData)}\")]"
+                    );
+                }
+
+                builder.AppendLine(
+                    $"internal static T {request.MethodName}<T>(object x)"
+                );
+                builder.AppendLine("{");
+                using (builder.Indent())
+                {
+                    builder.AppendLine(
+                        $"return (T)(object)global::Linqraft.LinqraftKit.ConvertAnonymous<{request.ResultTypeName}>(x);"
+                    );
                 }
 
                 builder.AppendLine("}");
@@ -317,6 +383,18 @@ internal static class SourceWriters
     private static string FinalizeSource(IndentedStringBuilder builder)
     {
         return GeneratedSourceFormatter.FormatGeneratedSource(builder.ToString());
+    }
+
+    private static string GetSelectorResultType(ProjectionRequest request)
+    {
+        if (request.UseObjectSelectorSignature)
+        {
+            return "object";
+        }
+
+        return request.OperationKind == ProjectionOperationKind.SelectMany
+            ? "global::System.Collections.Generic.IEnumerable<TResult>"
+            : "TResult";
     }
 
     private static string GetReceiverTypeName(ReceiverKind receiverKind)

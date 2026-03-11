@@ -324,15 +324,19 @@ internal sealed class ProjectionExpressionEmitter
 
     private string EmitInvocation(InvocationExpressionSyntax expression)
     {
-        if (GetInvocationName(expression.Expression) == "SelectExpr")
+        return GetInvocationName(expression.Expression) switch
         {
-            return EmitSelectExprInvocation(expression);
-        }
-
-        return $"{Emit(expression.Expression)}{EmitArgumentList(expression.ArgumentList)}";
+            "SelectExpr" => EmitProjectionInvocation(expression, "Select"),
+            "SelectManyExpr" => EmitProjectionInvocation(expression, "SelectMany"),
+            "GroupByExpr" => EmitGroupByExprInvocation(expression),
+            _ => $"{Emit(expression.Expression)}{EmitArgumentList(expression.ArgumentList)}",
+        };
     }
 
-    private string EmitSelectExprInvocation(InvocationExpressionSyntax expression)
+    private string EmitProjectionInvocation(
+        InvocationExpressionSyntax expression,
+        string projectionMethodName
+    )
     {
         var receiver = expression.Expression switch
         {
@@ -345,10 +349,26 @@ internal sealed class ProjectionExpressionEmitter
             .FirstOrDefault();
         if (selector is null)
         {
-            return $"{receiver}.Select{EmitArgumentList(expression.ArgumentList)}";
+            return $"{receiver}.{projectionMethodName}{EmitArgumentList(expression.ArgumentList)}";
         }
 
-        return $"{receiver}.Select({Emit(selector)})";
+        return $"{receiver}.{projectionMethodName}({Emit(selector)})";
+    }
+
+    private string EmitGroupByExprInvocation(InvocationExpressionSyntax expression)
+    {
+        var receiver = expression.Expression switch
+        {
+            MemberAccessExpressionSyntax memberAccess => Emit(memberAccess.Expression),
+            _ => Emit(expression.Expression),
+        };
+        var lambdas = expression.ArgumentList.Arguments.Select(argument => argument.Expression).OfType<LambdaExpressionSyntax>().ToArray();
+        if (lambdas.Length < 2)
+        {
+            return $"{receiver}.GroupBy{EmitArgumentList(expression.ArgumentList)}";
+        }
+
+        return $"{receiver}.GroupBy({Emit(lambdas[0])}).Select({Emit(lambdas[1])})";
     }
 
     private string EmitArgumentList(ArgumentListSyntax argumentList)

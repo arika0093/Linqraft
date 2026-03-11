@@ -34,6 +34,11 @@ internal sealed record MappingOwnedGeneratedSourceModel : OwnedGeneratedSourceMo
     public required MappingRequest Request { get; init; }
 }
 
+internal sealed record ObjectGenerationOwnedGeneratedSourceModel : OwnedGeneratedSourceModel
+{
+    public required ObjectGenerationRequest Request { get; init; }
+}
+
 internal sealed record GeneratedSourceBuildContextModel
 {
     public required EquatableArray<OwnedGeneratedSourceModel> OwnedSources { get; init; }

@@ -9,6 +9,7 @@ Linqraft provides three main usage patterns for different scenarios. This guide 
 | [Anonymous](#anonymous-pattern) | Anonymous type | Quick queries, one-off projections |
 | [Explicit DTO](#explicit-dto-pattern) | Auto-generated DTO | Reusable DTOs, API responses, type-safe code |
 | [Pre-existing DTO](#pre-existing-dto-pattern) | Your DTO class | Using existing DTOs, shared types |
+| [Aggregation & Flattening](#aggregation--flattening-helpers) | Named or anonymous projections | GroupBy / SelectMany pipelines without manual intermediate IGrouping handling |
 
 ## Anonymous Pattern
 
@@ -195,3 +196,48 @@ var orders = await dbContext.Orders
 **Cons:**
 * Must manually maintain DTO classes
 * Changes to query require updating the DTO
+
+## Aggregation & Flattening Helpers
+
+`GroupByExpr` and `SelectManyExpr` reuse the same DTO-generation pipeline as `SelectExpr`, but let you skip manual intermediate `GroupBy(...).Select(...)` and `SelectMany(...).Select(...)` steps.
+
+### GroupByExpr
+
+Use `GroupByExpr` when the final result is a projection over an `IGrouping<TKey, TSource>`.
+
+```csharp
+var result = dbContext.HealthChecks
+    .GroupByExpr<HealthCheck, string, HealthSummaryDto>(
+        check => check.Region,
+        group => new
+        {
+            Region = group.Key,
+            AllHealthy = group.All(x => x.Status == "Healthy"),
+            Checks = group.Select(x => new
+            {
+                x.Id,
+                x.Status,
+            }),
+        })
+    .ToListAsync();
+```
+
+### SelectManyExpr
+
+Use `SelectManyExpr` when the end result is a flattened projection.
+
+```csharp
+var rows = dbContext.Orders
+    .SelectManyExpr<Order, OrderItemRow>(order =>
+        order.Items.Select(item => new
+        {
+            OrderId = order.Id,
+            item.ProductName,
+            item.Quantity,
+        }))
+    .ToListAsync();
+```
+
+### LinqraftKit.Generate
+
+For non-`IEnumerable` / non-`IQueryable` anonymous objects, Linqraft also provides the internal helper `LinqraftKit.Generate<T>(object)` to convert a runtime anonymous object into a DTO-shaped object using the same naming conventions as Linqraft projections.

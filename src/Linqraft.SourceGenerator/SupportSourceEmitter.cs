@@ -97,8 +97,8 @@ internal static class SupportSourceEmitter
                 /// </summary>
                 /// <typeparam name="T">The source element type exposed by the declaration.</typeparam>
                 [global::Microsoft.CodeAnalysis.EmbeddedAttribute]
-                internal abstract partial class LinqraftMappingDeclare<T>
-                {
+                 internal abstract partial class LinqraftMappingDeclare<T>
+                 {
                     /// <summary>
                     /// Gets the placeholder queryable source used only while the source generator inspects the mapping definition.
                     /// </summary>
@@ -107,9 +107,187 @@ internal static class SupportSourceEmitter
                     /// <summary>
                     /// Describes the projection that should be turned into a reusable mapping method.
                     /// </summary>
-                    protected abstract void DefineMapping();
-                }
-            }
+                     protected abstract void DefineMapping();
+                 }
+
+                 /// <summary>
+                 /// Provides runtime helpers that Linqraft can pair with generated DTOs for non-query object conversion.
+                 /// </summary>
+                 [global::Microsoft.CodeAnalysis.EmbeddedAttribute]
+                 [global::System.Diagnostics.CodeAnalysis.UnconditionalSuppressMessage("Trimming", "IL2067", Justification = "LinqraftKit runtime object conversion reflects over DTO and anonymous-object properties by design.")]
+                 [global::System.Diagnostics.CodeAnalysis.UnconditionalSuppressMessage("Trimming", "IL2070", Justification = "LinqraftKit runtime object conversion reflects over DTO and anonymous-object properties by design.")]
+                 [global::System.Diagnostics.CodeAnalysis.UnconditionalSuppressMessage("Trimming", "IL2075", Justification = "LinqraftKit runtime object conversion reflects over DTO and anonymous-object properties by design.")]
+                 [global::System.Diagnostics.CodeAnalysis.UnconditionalSuppressMessage("AOT", "IL3050", Justification = "LinqraftKit runtime object conversion is intended for non-NativeAOT object materialization scenarios.")]
+                 internal static partial class LinqraftKit
+                 {
+                     internal static T Generate<T>(object x)
+                         => ConvertAnonymous<T>(x);
+
+                     internal static T ConvertAnonymous<T>(object x)
+                         => (T)ConvertAnonymous(typeof(T), x)!;
+
+                     private static object? ConvertAnonymous(global::System.Type targetType, object? source)
+                     {
+                         if (source is null)
+                         {
+                             if (!targetType.IsValueType || global::System.Nullable.GetUnderlyingType(targetType) is not null)
+                             {
+                                 return null;
+                             }
+
+                             return global::System.Activator.CreateInstance(targetType);
+                         }
+
+                         var nonNullableTargetType = global::System.Nullable.GetUnderlyingType(targetType) ?? targetType;
+                         var sourceType = source.GetType();
+                         if (nonNullableTargetType.IsAssignableFrom(sourceType))
+                         {
+                             return source;
+                         }
+
+                         if (TryConvertSimpleValue(nonNullableTargetType, source, out var simpleValue))
+                         {
+                             return simpleValue;
+                         }
+
+                         if (TryConvertEnumerable(nonNullableTargetType, source, out var enumerableValue))
+                         {
+                             return enumerableValue;
+                         }
+
+                         var instance = global::System.Activator.CreateInstance(nonNullableTargetType)
+                             ?? throw new global::System.InvalidOperationException($"Could not create '{nonNullableTargetType.FullName}'.");
+                         var sourceProperties = sourceType.GetProperties(global::System.Reflection.BindingFlags.Instance | global::System.Reflection.BindingFlags.Public)
+                             .ToDictionary(property => property.Name, global::System.StringComparer.Ordinal);
+
+                         foreach (var property in nonNullableTargetType.GetProperties(global::System.Reflection.BindingFlags.Instance | global::System.Reflection.BindingFlags.Public))
+                         {
+                             if (!property.CanWrite || !sourceProperties.TryGetValue(property.Name, out var sourceProperty))
+                             {
+                                 continue;
+                             }
+
+                             var propertyValue = sourceProperty.GetValue(source);
+                             property.SetValue(instance, ConvertAnonymous(property.PropertyType, propertyValue));
+                         }
+
+                         return instance;
+                     }
+
+                     private static bool TryConvertSimpleValue(global::System.Type targetType, object source, out object? converted)
+                     {
+                         converted = null;
+                         if (targetType.IsEnum)
+                         {
+                             converted = source is string enumName
+                                 ? global::System.Enum.Parse(targetType, enumName, ignoreCase: false)
+                                 : global::System.Enum.ToObject(targetType, source);
+                             return true;
+                         }
+
+                         if (targetType == typeof(string)
+                             || targetType == typeof(decimal)
+                             || targetType == typeof(global::System.DateTime)
+                             || targetType == typeof(global::System.DateTimeOffset)
+                             || targetType == typeof(global::System.Guid)
+                             || targetType == typeof(global::System.TimeSpan)
+                             || targetType == typeof(bool)
+                             || targetType == typeof(byte)
+                             || targetType == typeof(sbyte)
+                             || targetType == typeof(short)
+                             || targetType == typeof(ushort)
+                             || targetType == typeof(int)
+                             || targetType == typeof(uint)
+                             || targetType == typeof(long)
+                             || targetType == typeof(ulong)
+                             || targetType == typeof(float)
+                             || targetType == typeof(double)
+                             || targetType == typeof(char))
+                         {
+                             converted = global::System.Convert.ChangeType(source, targetType);
+                             return true;
+                         }
+
+                         return false;
+                     }
+
+                     private static bool TryConvertEnumerable(global::System.Type targetType, object source, out object? converted)
+                     {
+                         converted = null;
+                         if (source is string || source is not global::System.Collections.IEnumerable sourceEnumerable)
+                         {
+                             return false;
+                         }
+
+                         var elementType = GetEnumerableElementType(targetType);
+                         if (elementType is null)
+                         {
+                             return false;
+                         }
+
+                         var listType = typeof(global::System.Collections.Generic.List<>).MakeGenericType(elementType);
+                         var list = (global::System.Collections.IList)(global::System.Activator.CreateInstance(listType)
+                             ?? throw new global::System.InvalidOperationException($"Could not create '{listType.FullName}'."));
+                         foreach (var item in sourceEnumerable)
+                         {
+                             list.Add(ConvertAnonymous(elementType, item));
+                         }
+
+                         if (targetType.IsArray)
+                         {
+                             var array = global::System.Array.CreateInstance(elementType, list.Count);
+                             list.CopyTo(array, 0);
+                             converted = array;
+                             return true;
+                         }
+
+                         if (targetType.IsAssignableFrom(listType))
+                         {
+                             converted = list;
+                             return true;
+                         }
+
+                         if (!targetType.IsInterface && !targetType.IsAbstract)
+                         {
+                             var concrete = global::System.Activator.CreateInstance(targetType);
+                             var addMethod = targetType.GetMethod("Add", [elementType]);
+                             if (concrete is not null && addMethod is not null)
+                             {
+                                 foreach (var item in list)
+                                 {
+                                     addMethod.Invoke(concrete, [item]);
+                                 }
+
+                                 converted = concrete;
+                                 return true;
+                             }
+                         }
+
+                         converted = list;
+                         return true;
+                     }
+
+                     private static global::System.Type? GetEnumerableElementType(global::System.Type targetType)
+                     {
+                         if (targetType.IsArray)
+                         {
+                             return targetType.GetElementType();
+                         }
+
+                         if (targetType.IsGenericType && targetType.GetGenericArguments().Length == 1)
+                         {
+                             return targetType.GetGenericArguments()[0];
+                         }
+
+                         return targetType
+                             .GetInterfaces()
+                             .FirstOrDefault(candidate =>
+                                 candidate.IsGenericType
+                                 && candidate.GetGenericTypeDefinition() == typeof(global::System.Collections.Generic.IEnumerable<>))
+                             ?.GetGenericArguments()[0];
+                     }
+                 }
+             }
 
             namespace System.Linq
             {
@@ -173,8 +351,64 @@ internal static class SupportSourceEmitter
                     {{OverloadResolutionLowPriority}}
                     public static IEnumerable<TResult> SelectExpr<TIn, TResult>(this IEnumerable<TIn> query, global::System.Func<TIn, object> selector, object capture)
                         where TIn : class => throw ThrowInterceptionRequired;
-                }
-            }
+
+                     public static IQueryable<TResult> SelectManyExpr<TIn, TResult>(this IQueryable<TIn> query, global::System.Func<TIn, global::System.Collections.Generic.IEnumerable<TResult>> selector)
+                         where TIn : class => throw ThrowInterceptionRequired;
+
+                     {{OverloadResolutionLowPriority}}
+                     public static IQueryable<TResult> SelectManyExpr<TIn, TResult>(this IQueryable<TIn> query, global::System.Func<TIn, object> selector)
+                         where TIn : class => throw ThrowInterceptionRequired;
+
+                     public static IQueryable<TResult> SelectManyExpr<TIn, TResult>(this IQueryable<TIn> query, global::System.Func<TIn, global::System.Collections.Generic.IEnumerable<TResult>> selector, object capture)
+                         where TIn : class => throw ThrowInterceptionRequired;
+
+                     {{OverloadResolutionLowPriority}}
+                     public static IQueryable<TResult> SelectManyExpr<TIn, TResult>(this IQueryable<TIn> query, global::System.Func<TIn, object> selector, object capture)
+                         where TIn : class => throw ThrowInterceptionRequired;
+
+                     public static IEnumerable<TResult> SelectManyExpr<TIn, TResult>(this IEnumerable<TIn> query, global::System.Func<TIn, global::System.Collections.Generic.IEnumerable<TResult>> selector)
+                         where TIn : class => throw ThrowInterceptionRequired;
+
+                     {{OverloadResolutionLowPriority}}
+                     public static IEnumerable<TResult> SelectManyExpr<TIn, TResult>(this IEnumerable<TIn> query, global::System.Func<TIn, object> selector)
+                         where TIn : class => throw ThrowInterceptionRequired;
+
+                     public static IEnumerable<TResult> SelectManyExpr<TIn, TResult>(this IEnumerable<TIn> query, global::System.Func<TIn, global::System.Collections.Generic.IEnumerable<TResult>> selector, object capture)
+                         where TIn : class => throw ThrowInterceptionRequired;
+
+                     {{OverloadResolutionLowPriority}}
+                     public static IEnumerable<TResult> SelectManyExpr<TIn, TResult>(this IEnumerable<TIn> query, global::System.Func<TIn, object> selector, object capture)
+                         where TIn : class => throw ThrowInterceptionRequired;
+
+                     public static IQueryable<TResult> GroupByExpr<TIn, TKey, TResult>(this IQueryable<TIn> query, global::System.Func<TIn, TKey> keySelector, global::System.Func<global::System.Linq.IGrouping<TKey, TIn>, TResult> selector)
+                         where TIn : class => throw ThrowInterceptionRequired;
+
+                     {{OverloadResolutionLowPriority}}
+                     public static IQueryable<TResult> GroupByExpr<TIn, TKey, TResult>(this IQueryable<TIn> query, global::System.Func<TIn, TKey> keySelector, global::System.Func<global::System.Linq.IGrouping<TKey, TIn>, object> selector)
+                         where TIn : class => throw ThrowInterceptionRequired;
+
+                     public static IQueryable<TResult> GroupByExpr<TIn, TKey, TResult>(this IQueryable<TIn> query, global::System.Func<TIn, TKey> keySelector, global::System.Func<global::System.Linq.IGrouping<TKey, TIn>, TResult> selector, object capture)
+                         where TIn : class => throw ThrowInterceptionRequired;
+
+                     {{OverloadResolutionLowPriority}}
+                     public static IQueryable<TResult> GroupByExpr<TIn, TKey, TResult>(this IQueryable<TIn> query, global::System.Func<TIn, TKey> keySelector, global::System.Func<global::System.Linq.IGrouping<TKey, TIn>, object> selector, object capture)
+                         where TIn : class => throw ThrowInterceptionRequired;
+
+                     public static IEnumerable<TResult> GroupByExpr<TIn, TKey, TResult>(this IEnumerable<TIn> query, global::System.Func<TIn, TKey> keySelector, global::System.Func<global::System.Linq.IGrouping<TKey, TIn>, TResult> selector)
+                         where TIn : class => throw ThrowInterceptionRequired;
+
+                     {{OverloadResolutionLowPriority}}
+                     public static IEnumerable<TResult> GroupByExpr<TIn, TKey, TResult>(this IEnumerable<TIn> query, global::System.Func<TIn, TKey> keySelector, global::System.Func<global::System.Linq.IGrouping<TKey, TIn>, object> selector)
+                         where TIn : class => throw ThrowInterceptionRequired;
+
+                     public static IEnumerable<TResult> GroupByExpr<TIn, TKey, TResult>(this IEnumerable<TIn> query, global::System.Func<TIn, TKey> keySelector, global::System.Func<global::System.Linq.IGrouping<TKey, TIn>, TResult> selector, object capture)
+                         where TIn : class => throw ThrowInterceptionRequired;
+
+                     {{OverloadResolutionLowPriority}}
+                     public static IEnumerable<TResult> GroupByExpr<TIn, TKey, TResult>(this IEnumerable<TIn> query, global::System.Func<TIn, TKey> keySelector, global::System.Func<global::System.Linq.IGrouping<TKey, TIn>, object> selector, object capture)
+                         where TIn : class => throw ThrowInterceptionRequired;
+                 }
+             }
             """;
 
         return source;

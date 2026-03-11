@@ -26,13 +26,27 @@ public sealed class LinqraftSourceGenerator : IIncrementalGenerator
             static (provider, _) => LinqraftConfiguration.Parse(provider.GlobalOptions)
         );
 
-        var selectExprTemplates = context
+        var projectionTemplates = context
             .SyntaxProvider.CreateSyntaxProvider(
                 static (node, _) =>
                     node is InvocationExpressionSyntax invocation
-                    && IsPotentialSelectExprInvocation(invocation),
+                    && IsPotentialProjectionInvocation(invocation),
                 static (syntaxContext, cancellationToken) =>
-                    ProjectionTemplateBuilder.AnalyzeSelectInvocation(
+                    ProjectionTemplateBuilder.AnalyzeProjectionInvocation(
+                        syntaxContext,
+                        cancellationToken
+                    )
+            )
+            .Where(static template => template is not null)
+            .Select(static (template, _) => template!);
+
+        var objectGenerationTemplates = context
+            .SyntaxProvider.CreateSyntaxProvider(
+                static (node, _) =>
+                    node is InvocationExpressionSyntax invocation
+                    && IsPotentialObjectGenerationInvocation(invocation),
+                static (syntaxContext, cancellationToken) =>
+                    ProjectionTemplateBuilder.AnalyzeObjectGenerationInvocation(
                         syntaxContext,
                         cancellationToken
                     )
@@ -66,11 +80,17 @@ public sealed class LinqraftSourceGenerator : IIncrementalGenerator
             .Where(static template => template is not null)
             .Select(static (template, _) => template!);
 
-        var projectionModels = selectExprTemplates
+        var projectionModels = projectionTemplates
             .Combine(configuration)
             .Select(
                 static (data, _) =>
                     ProjectionModelFinalizer.FinalizeProjection(data.Left, data.Right)
+            );
+        var objectGenerationModels = objectGenerationTemplates
+            .Combine(configuration)
+            .Select(
+                static (data, _) =>
+                    ProjectionModelFinalizer.FinalizeObjectGeneration(data.Left, data.Right)
             );
         var mappingClassModels = mappingClassTemplates
             .Combine(configuration)
@@ -87,6 +107,17 @@ public sealed class LinqraftSourceGenerator : IIncrementalGenerator
             static (model, _) =>
                 (OwnedGeneratedSourceModel)
                     new ProjectionOwnedGeneratedSourceModel
+                    {
+                        HintName = $"{model.Request.HintName}.g.cs",
+                        OwnerHintName = model.Request.HintName,
+                        Request = model.Request,
+                        GeneratedDtos = model.GeneratedDtos,
+                    }
+        );
+        var objectGenerationSources = objectGenerationModels.Select(
+            static (model, _) =>
+                (OwnedGeneratedSourceModel)
+                    new ObjectGenerationOwnedGeneratedSourceModel
                     {
                         HintName = $"{model.Request.HintName}.g.cs",
                         OwnerHintName = model.Request.HintName,
@@ -117,11 +148,15 @@ public sealed class LinqraftSourceGenerator : IIncrementalGenerator
                     }
         );
 
-        var ownedSources = MergeCollectedValues(
+        var queryOwnedSources = MergeCollectedValues(
             projectionSources.Collect(),
-            mappingClassSources.Collect(),
-            mappingMethodSources.Collect()
+            objectGenerationSources.Collect()
         );
+        var queryAndClassOwnedSources = MergeCollectedValues(
+            queryOwnedSources,
+            mappingClassSources.Collect()
+        );
+        var ownedSources = MergeCollectedValues(queryAndClassOwnedSources, mappingMethodSources.Collect());
         var generatedSources = ownedSources
             .Combine(configuration)
             .Select(
@@ -132,11 +167,12 @@ public sealed class LinqraftSourceGenerator : IIncrementalGenerator
                         Configuration = data.Right,
                     }
             )
-            .Select(static (context, _) => BuildGeneratedSources(context));
+            .Select(static (context, _) => LinqraftSourceGenerator.BuildGeneratedSources(context));
 
         context.RegisterSourceOutput(
             generatedSources,
-            static (output, sourceSet) => AddGeneratedSources(output, sourceSet)
+            static (output, sourceSet) =>
+                LinqraftSourceGenerator.AddGeneratedSources(output, sourceSet)
         );
     }
 
@@ -257,14 +293,26 @@ public sealed class LinqraftSourceGenerator : IIncrementalGenerator
         return MergeCollectedValues(MergeCollectedValues(first, second), third);
     }
 
-    private static bool IsPotentialSelectExprInvocation(InvocationExpressionSyntax invocation)
+    private static bool IsPotentialProjectionInvocation(InvocationExpressionSyntax invocation)
     {
         return invocation.Expression switch
         {
             MemberAccessExpressionSyntax memberAccess
-                when memberAccess.Name.Identifier.ValueText == "SelectExpr" => true,
-            GenericNameSyntax genericName when genericName.Identifier.ValueText == "SelectExpr" =>
+                when memberAccess.Name.Identifier.ValueText is "SelectExpr" or "SelectManyExpr" or "GroupByExpr" => true,
+            GenericNameSyntax genericName
+                when genericName.Identifier.ValueText is "SelectExpr" or "SelectManyExpr" or "GroupByExpr" =>
                 true,
+            _ => false,
+        };
+    }
+
+    private static bool IsPotentialObjectGenerationInvocation(InvocationExpressionSyntax invocation)
+    {
+        return invocation.Expression switch
+        {
+            MemberAccessExpressionSyntax memberAccess
+                when memberAccess.Name.Identifier.ValueText == "Generate" => true,
+            GenericNameSyntax genericName when genericName.Identifier.ValueText == "Generate" => true,
             _ => false,
         };
     }

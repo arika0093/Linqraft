@@ -31,11 +31,19 @@ internal static class ProjectionModelFinalizer
             {
                 HintName = requestTemplate.HintName,
                 MethodName = requestTemplate.MethodName,
+                OperationKind = requestTemplate.OperationKind,
                 ReceiverKind = requestTemplate.ReceiverKind,
                 Pattern = requestTemplate.Pattern,
                 SourceTypeName = requestTemplate.SourceTypeName,
                 ResultTypeName = resultTypeName,
                 SelectorParameterName = requestTemplate.SelectorParameterName,
+                KeySelectorParameterName = requestTemplate.KeySelectorParameterName,
+                KeySelectorBodyText = requestTemplate.KeySelectorBodyTemplate is null
+                    ? null
+                    : ProjectionBodyEmitter.ReplaceTokens(
+                        requestTemplate.KeySelectorBodyTemplate,
+                        replacements
+                    ),
                 UseObjectSelectorSignature = requestTemplate.UseObjectSelectorSignature,
                 CanUsePrebuiltExpression =
                     requestTemplate.CanUsePrebuiltExpressionWhenConfigured
@@ -43,13 +51,43 @@ internal static class ProjectionModelFinalizer
                 InterceptableLocationVersion = requestTemplate.InterceptableLocationVersion,
                 InterceptableLocationData = requestTemplate.InterceptableLocationData,
                 Captures = requestTemplate.Captures,
-                ProjectionBodyText = ProjectionBodyEmitter.BuildProjectionBody(
-                    requestTemplate.Projection,
-                    requestTemplate.Pattern,
-                    resultTypeName,
-                    configuration.ArrayNullabilityRemoval,
+                ProjectionBodyText = requestTemplate.ProjectionBodyTemplate is { } projectionBodyTemplate
+                    ? ProjectionBodyEmitter.ReplaceTokens(projectionBodyTemplate, replacements)
+                    : ProjectionBodyEmitter.BuildProjectionBody(
+                        requestTemplate.Projection!,
+                        requestTemplate.Pattern,
+                        resultTypeName,
+                        configuration.ArrayNullabilityRemoval,
+                        replacements
+                    ),
+            },
+            GeneratedDtos = dtoReplacements.Select(replacement => replacement.Dto).ToArray(),
+        };
+    }
+
+    public static ObjectGenerationModel FinalizeObjectGeneration(
+        ObjectGenerationSourceTemplateModel template,
+        LinqraftConfiguration configuration
+    )
+    {
+        var dtoReplacements = BuildDtoReplacements(template.GeneratedDtos, configuration);
+        var replacements = dtoReplacements.ToDictionary(
+            replacement => replacement.PlaceholderToken,
+            replacement => replacement.Dto.FullyQualifiedName,
+            StringComparer.Ordinal
+        );
+        return new ObjectGenerationModel
+        {
+            Request = new ObjectGenerationRequest
+            {
+                HintName = template.Request.HintName,
+                MethodName = template.Request.MethodName,
+                ResultTypeName = ProjectionBodyEmitter.ReplaceTokens(
+                    template.Request.ResultTypeTemplate,
                     replacements
                 ),
+                InterceptableLocationVersion = template.Request.InterceptableLocationVersion,
+                InterceptableLocationData = template.Request.InterceptableLocationData,
             },
             GeneratedDtos = dtoReplacements.Select(replacement => replacement.Dto).ToArray(),
         };
