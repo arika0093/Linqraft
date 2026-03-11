@@ -15,7 +15,6 @@ public partial class InMemoryQueryAotBenchmark
 {
     private List<SampleClass> _data = null!;
 
-    [Params(100)]
     public int DataCount { get; set; }
 
     [GlobalSetup]
@@ -172,10 +171,7 @@ public partial class InMemoryQueryAotBenchmark
                 s.Id,
                 s.Foo,
                 s.Bar,
-                Childs = s.Childs.SelectExpr<
-                    SampleChildClass,
-                    InMemoryQueryAotLinqraftSampleChildClassDto
-                >(c => new
+                Childs = s.Childs.Select(c => new
                 {
                     c.Id,
                     c.Baz,
