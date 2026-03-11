@@ -51,7 +51,7 @@ internal static class SupportSourceEmitter
                      Internal = 1,
                      Public = 2,
                  }
- 
+
                  /// <summary>
                  /// Marks a mapping declaration that Linqraft should turn into a reusable projection method.
                  /// </summary>

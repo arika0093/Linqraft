@@ -238,10 +238,9 @@ public sealed class SourceGeneratorSmokeTests
             .ShouldBeEmpty();
 
         var generatedSources = GetGeneratedSourceMap(driver.GetRunResult());
-        var mappingSource = generatedSources
-            .Values.Single(source =>
-                source.Contains("ProjectToPublicOrderRow", StringComparison.Ordinal)
-            );
+        var mappingSource = generatedSources.Values.Single(source =>
+            source.Contains("ProjectToPublicOrderRow", StringComparison.Ordinal)
+        );
 
         mappingSource.ShouldContain("public static partial class PublicOrderMapping_");
         mappingSource.ShouldContain(
@@ -252,7 +251,8 @@ public sealed class SourceGeneratorSmokeTests
         var propertyIndex = FindLineIndex(
             lines,
             0,
-            line => line.Contains("TotalFeeAmount = order.Shipment != null", StringComparison.Ordinal)
+            line =>
+                line.Contains("TotalFeeAmount = order.Shipment != null", StringComparison.Ordinal)
         );
         var questionIndex = FindLineIndex(
             lines,

@@ -66,10 +66,7 @@ internal static class GeneratedSourceFormatter
                 && trimmed[0] is not '.' and not '[' and not '?' and not ':' and not ')' and not ']'
             )
             {
-                effectiveIndent = System.Math.Max(
-                    effectiveIndent,
-                    groupingIndentStack.Peek() + 1
-                );
+                effectiveIndent = System.Math.Max(effectiveIndent, groupingIndentStack.Peek() + 1);
             }
 
             builder.Append(' ', effectiveIndent * 4);

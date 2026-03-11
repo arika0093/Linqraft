@@ -1243,15 +1243,13 @@ internal sealed class ProjectionExpressionEmitter
 
     private string EmitCastExpression(CastExpressionSyntax expression)
     {
-        var operand = expression.Expression is ParenthesizedExpressionSyntax parenthesized
+        var operand =
+            expression.Expression is ParenthesizedExpressionSyntax parenthesized
             && CanOmitParenthesizedCastOperand(parenthesized.Expression)
                 ? parenthesized.Expression
                 : expression.Expression;
 
-        return WrapCastExpression(
-            $"({QualifyType(expression.Type)})",
-            Emit(operand)
-        );
+        return WrapCastExpression($"({QualifyType(expression.Type)})", Emit(operand));
     }
 
     private static bool CanOmitParenthesizedCastOperand(ExpressionSyntax expression)

@@ -178,7 +178,8 @@ internal static class ProjectionTemplateBuilder
                     attributeContext.SemanticModel,
                     GetMappingVisibilityKeyword(mappingAttribute)
                 ),
-                MethodName = GetMappingMethodName(mappingAttribute) ?? declaration.Identifier.ValueText,
+                MethodName =
+                    GetMappingMethodName(mappingAttribute) ?? declaration.Identifier.ValueText,
                 ReceiverKind = projection.Request.ReceiverKind,
                 SourceTypeName = projection.Request.SourceTypeName,
                 ResultTypeTemplate = projection.Request.ResultTypeTemplate,
@@ -1013,8 +1014,7 @@ internal static class ProjectionTemplateBuilder
                 .OfType<IPropertySymbol>()
                 .Select(property => property.Name)
                 .Distinct(StringComparer.Ordinal)
-                .ToList()
-            ?? new List<string>();
+                .ToList() ?? new List<string>();
 
         return new GeneratedDtoTemplateModel
         {
@@ -1284,7 +1284,7 @@ internal static class ProjectionTemplateBuilder
             ParenthesizedLambdaExpressionSyntax parenthesized => parenthesized
                 .ParameterList.Parameters.FirstOrDefault()
                 ?.Identifier.ValueText
-                ?? "x",
+            ?? "x",
             _ => "x",
         };
     }
@@ -1724,10 +1724,9 @@ internal static class ProjectionTemplateBuilder
         ImmutableArray<AttributeData> attributes
     )
     {
-        return attributes
-            .FirstOrDefault(attribute =>
-                attribute.AttributeClass?.Name == "LinqraftMappingGenerateAttribute"
-            );
+        return attributes.FirstOrDefault(attribute =>
+            attribute.AttributeClass?.Name == "LinqraftMappingGenerateAttribute"
+        );
     }
 
     private static string? GetMappingMethodName(AttributeData? attribute)
@@ -1745,11 +1744,7 @@ internal static class ProjectionTemplateBuilder
         foreach (var namedArgument in attribute.NamedArguments)
         {
             if (
-                !string.Equals(
-                    namedArgument.Key,
-                    "Visibility",
-                    StringComparison.Ordinal
-                )
+                !string.Equals(namedArgument.Key, "Visibility", StringComparison.Ordinal)
                 || namedArgument.Value.Value is null
             )
             {

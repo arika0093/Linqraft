@@ -367,11 +367,11 @@ internal static class AnalyzerHelpers
     {
         var checkedPaths = new List<string>();
         return IsNullLike(conditionalExpression.WhenFalse)
-            && TryCollectNullGuardPaths(
-                conditionalExpression.Condition,
-                valueWhenConditionTrue: true,
-                checkedPaths
-            )
+                && TryCollectNullGuardPaths(
+                    conditionalExpression.Condition,
+                    valueWhenConditionTrue: true,
+                    checkedPaths
+                )
             || IsNullLike(conditionalExpression.WhenTrue)
                 && TryCollectNullGuardPaths(
                     conditionalExpression.Condition,

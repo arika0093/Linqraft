@@ -422,7 +422,10 @@ public sealed class LinqraftCompositeCodeFixProvider : CodeFixProvider
                 RenameInvocation(invocation, "SelectExpr"),
                 GetMissingCaptureNames(invocation, lambda, semanticModel, cancellationToken)
             );
-            return WithFormattedSyntaxRoot(document, root.ReplaceNode(invocation, updatedInvocation));
+            return WithFormattedSyntaxRoot(
+                document,
+                root.ReplaceNode(invocation, updatedInvocation)
+            );
         }
 
         return await ReplaceInvocationWithTypedSelectExprAsync(
@@ -668,10 +671,7 @@ public sealed class LinqraftCompositeCodeFixProvider : CodeFixProvider
             semanticModel,
             cancellationToken
         );
-        var namespaces = new HashSet<string>(StringComparer.Ordinal)
-        {
-            "Microsoft.AspNetCore.Mvc",
-        };
+        var namespaces = new HashSet<string>(StringComparer.Ordinal) { "Microsoft.AspNetCore.Mvc" };
         var responseTypeText = responseType?.ToDisplayString(
             SymbolDisplayFormat.MinimallyQualifiedFormat
         );
@@ -1206,7 +1206,9 @@ public sealed class LinqraftCompositeCodeFixProvider : CodeFixProvider
                     continue;
                 }
 
-                updatedInitializers = updatedInitializers.Add(CreateCaptureInitializer(captureName));
+                updatedInitializers = updatedInitializers.Add(
+                    CreateCaptureInitializer(captureName)
+                );
             }
 
             return invocation.ReplaceNode(
@@ -1239,14 +1241,14 @@ public sealed class LinqraftCompositeCodeFixProvider : CodeFixProvider
             SyntaxFactory.NameColon(SyntaxFactory.IdentifierName("capture")),
             default,
             SyntaxFactory.AnonymousObjectCreationExpression(
-                SyntaxFactory.SeparatedList(
-                    captureNames.Select(CreateCaptureInitializer)
-                )
+                SyntaxFactory.SeparatedList(captureNames.Select(CreateCaptureInitializer))
             )
         );
     }
 
-    private static AnonymousObjectMemberDeclaratorSyntax CreateCaptureInitializer(string captureName)
+    private static AnonymousObjectMemberDeclaratorSyntax CreateCaptureInitializer(
+        string captureName
+    )
     {
         return SyntaxFactory.AnonymousObjectMemberDeclarator(
             SyntaxFactory.IdentifierName(captureName)
@@ -1385,22 +1387,23 @@ public sealed class LinqraftCompositeCodeFixProvider : CodeFixProvider
             targetType is null
             || expression is CastExpressionSyntax
             || expression is not ConditionalExpressionSyntax conditionalExpression
-            || (!IsNullLike(conditionalExpression.WhenTrue)
-                && !IsNullLike(conditionalExpression.WhenFalse))
+            || (
+                !IsNullLike(conditionalExpression.WhenTrue)
+                && !IsNullLike(conditionalExpression.WhenFalse)
+            )
             || !NeedsTargetTypeCast(targetType)
         )
         {
             return expression;
         }
 
-        var targetTypeText =
-            semanticModel is null
-                ? targetType.ToDisplayString(SymbolDisplayFormat.MinimallyQualifiedFormat)
-                : targetType.ToMinimalDisplayString(
-                    semanticModel,
-                    position,
-                    SymbolDisplayFormat.MinimallyQualifiedFormat
-                );
+        var targetTypeText = semanticModel is null
+            ? targetType.ToDisplayString(SymbolDisplayFormat.MinimallyQualifiedFormat)
+            : targetType.ToMinimalDisplayString(
+                semanticModel,
+                position,
+                SymbolDisplayFormat.MinimallyQualifiedFormat
+            );
         return SyntaxFactory.CastExpression(
             SyntaxFactory.ParseTypeName(targetTypeText),
             SyntaxFactory.ParenthesizedExpression(expression.WithoutTrivia())
@@ -1429,7 +1432,11 @@ public sealed class LinqraftCompositeCodeFixProvider : CodeFixProvider
             return null;
         }
 
-        for (INamedTypeSymbol? current = objectType; current is not null; current = current.BaseType)
+        for (
+            INamedTypeSymbol? current = objectType;
+            current is not null;
+            current = current.BaseType
+        )
         {
             var member = current.GetMembers(memberName).FirstOrDefault();
             switch (member)
@@ -1839,7 +1846,8 @@ public sealed class LinqraftCompositeCodeFixProvider : CodeFixProvider
                 return rewritten;
             }
 
-            var targetType = semanticModel?.GetTypeInfo(node, cancellationToken).Type as INamedTypeSymbol;
+            var targetType =
+                semanticModel?.GetTypeInfo(node, cancellationToken).Type as INamedTypeSymbol;
             return ConvertObjectCreationToAnonymous(
                 rewritten,
                 targetType,
