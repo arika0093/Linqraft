@@ -23,7 +23,7 @@
     </PackageReference>
     <PackageReference Include="Microsoft.Extensions.Logging.Abstractions" Version="10.*" />
     <!-- Mapping libraries for benchmark comparison -->
-    <PackageReference Include="AutoMapper" Version="16.0.0" />
+    <PackageReference Include="AutoMapper" Version="16.1.0" />
     <PackageReference Include="AutoMapper.Extensions.ExpressionMapping" Version="10.1.0" />
     <PackageReference Include="Mapster" Version="7.*" />
     <PackageReference Include="Riok.Mapperly" Version="4.*" />
