@@ -29,9 +29,11 @@ public sealed class EfCoreNullableProjectionTests
                 order.OrderNumber,
                 CarrierName = order.Shipment?.CarrierName,
                 FirstEvent = order.Shipment?.Events.OrderBy(evt => evt.Sequence).FirstOrDefault(),
-                TotalFeeAmount = order.Shipment?.Events.Sum(evt => evt.Fees!.Sum(fee => fee.Amount)),
-                TotalSurcharge = order.Shipment?.Events
-                    .Where(evt => evt.Summary != null)
+                TotalFeeAmount = order.Shipment?.Events.Sum(evt =>
+                    evt.Fees!.Sum(fee => fee.Amount)
+                ),
+                TotalSurcharge = order
+                    .Shipment?.Events.Where(evt => evt.Summary != null)
                     .Sum(evt => evt.Summary!.Surcharge),
             })
             .ToListAsync();
@@ -66,10 +68,7 @@ public sealed class EfCoreNullableProjectionTests
 
         var result = await query.ProjectToEfNullableShipmentRow().ToListAsync();
 
-        result
-            .Select(row => ToExpectation(row))
-            .ToList()
-            .ShouldBe(expected);
+        result.Select(row => ToExpectation(row)).ToList().ShouldBe(expected);
     }
 
     private static async Task<List<EfNullableShipmentExpectation>> CreateExpectedRowsAsync(
@@ -78,11 +77,11 @@ public sealed class EfCoreNullableProjectionTests
     {
         var orders = await query
             .Include(order => order.Shipment)
-            .ThenInclude(shipment => shipment!.Events)
-            .ThenInclude(evt => evt.Summary)
+                .ThenInclude(shipment => shipment!.Events)
+                    .ThenInclude(evt => evt.Summary)
             .Include(order => order.Shipment)
-            .ThenInclude(shipment => shipment!.Events)
-            .ThenInclude(evt => evt.Fees)
+                .ThenInclude(shipment => shipment!.Events)
+                    .ThenInclude(evt => evt.Fees)
             .ToListAsync();
 
         return orders.Select(ToExpectation).ToList();
@@ -95,8 +94,8 @@ public sealed class EfCoreNullableProjectionTests
             order.Shipment?.CarrierName,
             order.Shipment?.Events.OrderBy(evt => evt.Sequence).FirstOrDefault()?.Code,
             order.Shipment?.Events.Sum(evt => evt.Fees!.Sum(fee => fee.Amount)),
-            order.Shipment?.Events
-                .Where(evt => evt.Summary != null)
+            order
+                .Shipment?.Events.Where(evt => evt.Summary != null)
                 .Sum(evt => evt.Summary!.Surcharge)
         );
     }

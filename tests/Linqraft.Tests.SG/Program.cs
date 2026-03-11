@@ -174,7 +174,10 @@ public sealed class SourceGeneratorSmokeTests
     public void Class_level_mapping_requires_mapping_declare_inheritance()
     {
         var driver = CreateDriver();
-        var compilation = CreateCompilation(CreateMappingDeclarationTree(), CreateMarkerTree("class"));
+        var compilation = CreateCompilation(
+            CreateMappingDeclarationTree(),
+            CreateMarkerTree("class")
+        );
 
         driver = driver.RunGeneratorsAndUpdateCompilation(
             compilation,

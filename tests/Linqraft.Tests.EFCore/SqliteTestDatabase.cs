@@ -280,33 +280,23 @@ internal sealed class SqliteTestDatabase : IAsyncDisposable
                         Note = "Accepted",
                         Surcharge = 1 + (orderIndex % 3),
                     },
-                    Fees =
-                    [
-                        new EfShipmentFee
-                        {
-                            Label = "Fuel",
-                            Amount = 2 + (orderIndex % 4),
-                        },
-                    ],
+                    Fees = [new EfShipmentFee { Label = "Fuel", Amount = 2 + (orderIndex % 4) }],
                 },
                 new EfShipmentEvent
                 {
                     Sequence = 2,
                     Code = $"SCAN-{orderIndex:000}-B",
-                    Summary = orderIndex % 5 == 0
-                        ? null
-                        : new EfShipmentEventSummary
-                        {
-                            Note = "Hub",
-                            Surcharge = 2 + (orderIndex % 5),
-                        },
+                    Summary =
+                        orderIndex % 5 == 0
+                            ? null
+                            : new EfShipmentEventSummary
+                            {
+                                Note = "Hub",
+                                Surcharge = 2 + (orderIndex % 5),
+                            },
                     Fees =
                     [
-                        new EfShipmentFee
-                        {
-                            Label = "Handling",
-                            Amount = 1 + (orderIndex % 6),
-                        },
+                        new EfShipmentFee { Label = "Handling", Amount = 1 + (orderIndex % 6) },
                     ],
                 },
             ],

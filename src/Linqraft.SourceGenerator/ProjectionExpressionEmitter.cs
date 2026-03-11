@@ -1239,10 +1239,7 @@ internal sealed class ProjectionExpressionEmitter
             return $"{castPrefix}({expression})";
         }
 
-        return string.Join(
-            "\n",
-            [$"{castPrefix}(", IndentAllLines(expression), ")"]
-        );
+        return string.Join("\n", [$"{castPrefix}(", IndentAllLines(expression), ")"]);
     }
 
     private static string BuildInitializerExpression(string header, IReadOnlyList<string> items)
