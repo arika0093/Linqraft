@@ -22,6 +22,7 @@
   <Folder Name="/tests/">
     <File Path="tests/Directory.Build.props" />
     <Project Path="tests/Linqraft.Tests.Analyzer/Linqraft.Tests.Analyzer.csproj" />
+    <Project Path="tests/Linqraft.Tests.Core/Linqraft.Tests.Core.csproj" />
     <Project Path="tests/Linqraft.Tests.EFCore/Linqraft.Tests.EFCore.csproj" />
     <Project Path="tests/Linqraft.Tests.SG/Linqraft.Tests.SG.csproj" />
     <Project Path="tests/Linqraft.Tests.Configuration/Linqraft.Tests.Configuration.csproj" />

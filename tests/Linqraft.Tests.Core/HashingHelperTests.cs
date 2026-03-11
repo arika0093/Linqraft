@@ -1,7 +1,7 @@
 using System.Linq;
 using System.Runtime.CompilerServices;
 
-namespace Linqraft.Tests;
+namespace Linqraft.Tests.Core;
 
 public sealed class HashingHelperTests
 {

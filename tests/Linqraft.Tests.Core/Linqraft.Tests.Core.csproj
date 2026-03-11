@@ -1,0 +1,5 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <ItemGroup>
+    <ProjectReference Include="..\..\src\Linqraft.Core\Linqraft.Core.csproj" />
+  </ItemGroup>
+</Project>
