@@ -14,6 +14,9 @@ internal static class CodeTemplateContents
     public const string DynamicallyAccessedPublicProperties =
         "[global::System.Diagnostics.CodeAnalysis.DynamicallyAccessedMembers(global::System.Diagnostics.CodeAnalysis.DynamicallyAccessedMemberTypes.PublicProperties)]";
 
-    public const string OverloadResolutionLowPriority =
-        "[System.Runtime.CompilerServices.OverloadResolutionPriorityAttribute(-1)]";
+    public const string OverloadResolutionLowPriority = """
+        #if NET9_0_OR_GREATER
+            [System.Runtime.CompilerServices.OverloadResolutionPriorityAttribute(-1)]
+        #endif
+        """;
 }
