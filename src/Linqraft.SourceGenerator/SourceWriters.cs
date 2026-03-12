@@ -131,11 +131,13 @@ internal static class SourceWriters
         ProjectionRequest request
     )
     {
-        builder.AppendLine("namespace System.Linq");
+        builder.AppendLine("namespace Linqraft");
         builder.AppendLine("{");
         using (builder.Indent())
         {
-            builder.AppendLine($"internal static partial class {GetProjectionSupportClassName(request.OperationKind)}");
+            builder.AppendLine(
+                $"internal static partial class {GetProjectionSupportClassName(request.OperationKind)}"
+            );
             builder.AppendLine("{");
             using (builder.Indent())
             {
@@ -171,7 +173,9 @@ internal static class SourceWriters
                     ProjectionOperationKind.GroupBy => request.Captures.Length == 0
                         ? $"public static {receiverType}<TResult> {request.MethodName}<TIn, TKey, TResult>(this {receiverType}<TIn> query, global::System.Func<TIn, TKey> keySelector, global::System.Func<global::System.Linq.IGrouping<TKey, TIn>, {selectorResultType}> selector) where TIn : class"
                         : $"public static {receiverType}<TResult> {request.MethodName}<TIn, TKey, TResult>(this {receiverType}<TIn> query, global::System.Func<TIn, TKey> keySelector, global::System.Func<global::System.Linq.IGrouping<TKey, TIn>, {selectorResultType}> selector, {captureParameter}) where TIn : class",
-                    _ => throw new InvalidOperationException($"Unsupported projection operation '{request.OperationKind}'."),
+                    _ => throw new InvalidOperationException(
+                        $"Unsupported projection operation '{request.OperationKind}'."
+                    ),
                 };
                 if (
                     request.InterceptableLocationVersion is { } interceptableLocationVersion
@@ -276,9 +280,7 @@ internal static class SourceWriters
                     );
                 }
 
-                builder.AppendLine(
-                    $"internal static T {request.MethodName}<T>(object x)"
-                );
+                builder.AppendLine($"internal static T {request.MethodName}<T>(object x)");
                 builder.AppendLine("{");
                 using (builder.Indent())
                 {

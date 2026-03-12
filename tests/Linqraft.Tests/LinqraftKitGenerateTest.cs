@@ -14,11 +14,7 @@ public sealed class LinqraftKitGenerateTest
             {
                 Id = 42,
                 Customer = new { Name = "Ada" },
-                ItemNames = new[]
-                {
-                    "Keyboard",
-                    "Mouse",
-                },
+                ItemNames = new[] { "Keyboard", "Mouse" },
             }
         );
 
@@ -33,21 +29,17 @@ public sealed class LinqraftKitGenerateTest
         var dto = LinqraftKit.Generate<GenerateProjectionBundleDto>(
             new
             {
-                Orders = global::Linqraft.Tests.TestQueryableExtensions
-                    .AsTestQueryable(global::Linqraft.Tests.GenerateProjectionData.Orders)
+                Orders = GenerateProjectionData
+                    .Orders.AsQueryable()
                     .SelectExpr<GenerateSourceOrder, GenerateProjectionOrderRowDto>(order => new
                     {
                         order.Id,
                         order.CustomerName,
                     })
                     .ToList(),
-                Decisions = global::Linqraft.Tests.TestQueryableExtensions
-                    .AsTestQueryable(global::Linqraft.Tests.GenerateProjectionData.Invoices)
-                    .SelectExpr<GenerateSourceInvoice, GenerateProjectionDecisionRowDto>(invoice => new
-                    {
-                        invoice.Id,
-                        IsLarge = invoice.Total >= 100m,
-                    })
+                Decisions = GenerateProjectionData
+                    .Invoices.AsQueryable()
+                    .Select(invoice => new { invoice.Id, IsLarge = invoice.Total >= 100m })
                     .ToList(),
             }
         );
@@ -89,5 +81,3 @@ public partial class GenerateAnonymousOrderDto;
 public partial class GenerateProjectionBundleDto;
 
 public partial class GenerateProjectionOrderRowDto;
-
-public partial class GenerateProjectionDecisionRowDto;
