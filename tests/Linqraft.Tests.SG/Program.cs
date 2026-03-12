@@ -36,6 +36,10 @@ public sealed class SourceGeneratorSmokeTests
         generatedSources
             .Keys.Any(path => path.EndsWith("Linqraft.Declarations.g.cs", StringComparison.Ordinal))
             .ShouldBeTrue();
+        var supportSource = generatedSources["Linqraft.Declarations.g.cs"];
+        supportSource.ShouldContain("global using Linqraft;");
+        supportSource.ShouldContain("namespace Linqraft");
+        supportSource.ShouldNotContain("namespace System.Linq");
         var projectionSources = generatedSources
             .Where(pair => pair.Key.Contains("SelectExpr_", StringComparison.Ordinal))
             .ToArray();

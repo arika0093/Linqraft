@@ -40,4 +40,7 @@
   <ItemGroup>
     <Using Include="Shouldly" />
   </ItemGroup>
+  <ItemGroup Condition="'$(EmitCompilerGeneratedFiles)' == 'true' and '$(CompilerGeneratedFilesOutputPath)' != ''">
+    <Compile Remove="$(CompilerGeneratedFilesOutputPath)/**/*.cs" />
+  </ItemGroup>
 </Project>

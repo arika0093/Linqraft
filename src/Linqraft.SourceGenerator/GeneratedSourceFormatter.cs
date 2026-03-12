@@ -39,10 +39,18 @@ internal static class GeneratedSourceFormatter
             var baseIndent = System.Math.Max(0, scopeIndent - leadingCloseCount);
             var effectiveIndent = baseIndent;
             var nextTrimmed = GetNextNonEmptyTrimmedLine(lines, index + 1);
-            if (trimmed[0] is '.' or '[')
+            if (trimmed[0] == '.')
             {
                 effectiveIndent =
                     lastTrimmed.Length != 0 && (lastTrimmed[0] is '.' or '[' or '}')
+                        ? lastNonEmptyIndent
+                        : lastNonEmptyIndent + 1;
+            }
+            else if (trimmed[0] == '[')
+            {
+                effectiveIndent = IsAttributeContext(lastTrimmed)
+                    ? baseIndent
+                    : lastTrimmed.Length != 0 && (lastTrimmed[0] is '.' or '[' or '}')
                         ? lastNonEmptyIndent
                         : lastNonEmptyIndent + 1;
             }
@@ -128,6 +136,14 @@ internal static class GeneratedSourceFormatter
     private static bool IsContinuationLine(string trimmed)
     {
         return trimmed.Length != 0 && trimmed[0] is '.' or '[' or '?' or ':';
+    }
+
+    private static bool IsAttributeContext(string trimmed)
+    {
+        return trimmed.StartsWith("//", System.StringComparison.Ordinal)
+            || trimmed.StartsWith("///", System.StringComparison.Ordinal)
+            || trimmed.StartsWith("[", System.StringComparison.Ordinal)
+            || trimmed == "{";
     }
 
     private static int CountLeadingClosingBraces(string text)
