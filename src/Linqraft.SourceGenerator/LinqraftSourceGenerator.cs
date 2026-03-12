@@ -228,7 +228,7 @@ public sealed class LinqraftSourceGenerator : IIncrementalGenerator
             generatedSources.Add(
                 new GeneratedSourceFileModel
                 {
-                    HintName = $"{SymbolNameHelper.SanitizeHintName(dto.Dto.Key)}.g.cs",
+                    HintName = GetStandaloneDtoHintName(dto),
                     SourceText = SourceWriters.WriteDtoUnit(dto.Dto, context.Configuration),
                 }
             );
@@ -248,6 +248,16 @@ public sealed class LinqraftSourceGenerator : IIncrementalGenerator
     )
     {
         return dto.OwnerHintNames.Length != 1 || !ownedSourceHints.Contains(dto.OwnerHintNames[0]);
+    }
+
+    private static string GetStandaloneDtoHintName(GeneratedDtoEmissionModel dto)
+    {
+        if (dto.OwnerHintNames.Length == 1)
+        {
+            return $"{dto.OwnerHintNames[0]}.g.cs";
+        }
+
+        return $"Model_{HashingHelper.ComputeHash(dto.Dto.Key, 16)}.g.cs";
     }
 
     private static void AddGeneratedSources(

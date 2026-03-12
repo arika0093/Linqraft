@@ -47,6 +47,13 @@ internal sealed record ContainingTypeInfo
     public required string Name { get; init; }
 }
 
+internal sealed record GeneratedSourceOriginModel
+{
+    public required string FileName { get; init; }
+
+    public required int LineNumber { get; init; }
+}
+
 internal sealed record GeneratedPropertyTemplateModel
 {
     public required string Name { get; init; }
@@ -110,6 +117,8 @@ internal sealed record GeneratedDtoTemplateModel
 
     public required string OwnerHintName { get; init; }
 
+    public required EquatableArray<GeneratedSourceOriginModel> Origins { get; init; }
+
     public required string ShapeSignature { get; init; }
 
     public required EquatableArray<ContainingTypeInfo> ContainingTypes { get; init; }
@@ -122,6 +131,8 @@ internal sealed record ProjectionRequestTemplate
     public required string HintName { get; init; }
 
     public required string MethodName { get; init; }
+
+    public required GeneratedSourceOriginModel Origin { get; init; }
 
     public required ProjectionOperationKind OperationKind { get; init; }
 
@@ -157,6 +168,8 @@ internal sealed record ProjectionRequestTemplate
 internal sealed record MappingRequestTemplate
 {
     public required string HintName { get; init; }
+
+    public required GeneratedSourceOriginModel Origin { get; init; }
 
     public required string Namespace { get; init; }
 
@@ -228,6 +241,8 @@ internal sealed record GeneratedDtoModel
 
     public required string OwnerHintName { get; init; }
 
+    public required EquatableArray<GeneratedSourceOriginModel> Origins { get; init; }
+
     public required string ShapeSignature { get; init; }
 
     public required EquatableArray<ContainingTypeInfo> ContainingTypes { get; init; }
@@ -247,6 +262,8 @@ internal sealed record ProjectionRequest
     public required string HintName { get; init; }
 
     public required string MethodName { get; init; }
+
+    public required GeneratedSourceOriginModel Origin { get; init; }
 
     public required ProjectionOperationKind OperationKind { get; init; }
 
@@ -283,6 +300,8 @@ internal sealed record ObjectGenerationRequestTemplate
 
     public required string MethodName { get; init; }
 
+    public required GeneratedSourceOriginModel Origin { get; init; }
+
     public required string ResultTypeTemplate { get; init; }
 
     public required ProjectionTemplateModel Projection { get; init; }
@@ -305,6 +324,8 @@ internal sealed record ObjectGenerationRequest
 
     public required string MethodName { get; init; }
 
+    public required GeneratedSourceOriginModel Origin { get; init; }
+
     public required string ResultTypeName { get; init; }
 
     public required string ProjectionBodyText { get; init; }
@@ -324,6 +345,8 @@ internal sealed record ObjectGenerationModel
 internal sealed record MappingRequest
 {
     public required string HintName { get; init; }
+
+    public required GeneratedSourceOriginModel Origin { get; init; }
 
     public required string Namespace { get; init; }
 
