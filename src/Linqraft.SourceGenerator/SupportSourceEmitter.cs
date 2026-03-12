@@ -99,13 +99,15 @@ internal static class SupportSourceEmitter
                     private static global::System.InvalidOperationException ThrowInterceptionRequired
                         => new global::System.InvalidOperationException("Linqraft source generator should replace Generate invocations before execution.");
 
-                    internal static T Generate<T>(object x)
+                    /// <summary>
+                    /// Generates a DTO of type <typeparamref name="T"/> by evaluating the provided anonymous object initializer.
+                    /// The initializer can contain any number of projections using <c>SelectExpr</c> and other supported Linqraft features,
+                    /// and Linqraft will combine them into a single generated DTO type.
+                    /// </summary>
+                    public static T Generate<T>(object x)
                         => throw ThrowInterceptionRequired;
                 }
-            }
 
-            namespace System.Linq
-            {
                 /// <summary>
                 /// Provides the SelectExpr entry points that Linqraft intercepts ahead of time.
                 /// </summary>

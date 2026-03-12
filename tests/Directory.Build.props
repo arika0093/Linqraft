@@ -7,8 +7,8 @@
     <Nullable>enable</Nullable>
     <IsPackable>false</IsPackable>
     <SuppressTfmSupportBuildWarnings>true</SuppressTfmSupportBuildWarnings>
-    <InterceptorsNamespaces>$(InterceptorsNamespaces);Linqraft;System.Linq</InterceptorsNamespaces>
-    <InterceptorsPreviewNamespaces>$(InterceptorsPreviewNamespaces);Linqraft;System.Linq</InterceptorsPreviewNamespaces>
+    <InterceptorsNamespaces>$(InterceptorsNamespaces);Linqraft</InterceptorsNamespaces>
+    <InterceptorsPreviewNamespaces>$(InterceptorsPreviewNamespaces);Linqraft</InterceptorsPreviewNamespaces>
     <SuppressTfmSupportBuildErrors>true</SuppressTfmSupportBuildErrors>
     <EnableTUnitPolyfills>false</EnableTUnitPolyfills>
   </PropertyGroup>
