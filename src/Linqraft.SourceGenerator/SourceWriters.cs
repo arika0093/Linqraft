@@ -284,7 +284,6 @@ internal static class SourceWriters
                 builder.AppendLine("{");
                 using (builder.Indent())
                 {
-                    builder.AppendLine("_ = x;");
                     AppendMultilineLine(
                         builder,
                         $"return (T)(object){request.ProjectionBodyText};"
