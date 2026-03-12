@@ -708,15 +708,7 @@ internal static class ProjectionTemplateBuilder
         }
 
         var argument = invocation.ArgumentList.Arguments.FirstOrDefault()?.Expression;
-        if (argument is null)
-        {
-            return null;
-        }
-
-        var argumentType =
-            semanticModel.GetTypeInfo(argument, cancellationToken).ConvertedType
-            ?? semanticModel.GetTypeInfo(argument, cancellationToken).Type;
-        if (argumentType is not INamedTypeSymbol namedArgumentType || !namedArgumentType.IsAnonymousType)
+        if (argument is not AnonymousObjectCreationExpressionSyntax anonymousObject)
         {
             return null;
         }
@@ -734,13 +726,28 @@ internal static class ProjectionTemplateBuilder
             ownerHintName,
             cancellationToken
         );
-        var builder = new AnonymousObjectDtoBuilder(ownerHintName);
-        var rootDtoWithProperties = builder.BuildRootDto(
-            rootDto,
-            namedArgumentType,
-            rootDto.PreferredNamespace,
-            rootDto.UseGlobalNamespaceFallback
+        var buildContext = new ProjectionBuildContext(
+            semanticModel,
+            Array.Empty<ProjectionExpressionEmitter.CaptureEntry>(),
+            cancellationToken
         );
+        var existingProperties = new HashSet<string>(
+            rootDto
+                .Properties.Where(property => property.IsSuppressed)
+                .Select(property => property.Name),
+            StringComparer.Ordinal
+        );
+        var buildResult = buildContext.BuildProjectionTemplate(
+            anonymousObject,
+            rootDto.PlaceholderToken,
+            rootDto,
+            existingProperties,
+            namedContext: true,
+            defaultNamespace: rootDto.PreferredNamespace,
+            useGlobalNamespaceFallback: rootDto.UseGlobalNamespaceFallback,
+            ownerHintName: ownerHintName
+        );
+        buildContext.RegisterDto(buildResult.DtoTemplate!);
         var interceptableLocation = semanticModel.GetInterceptableLocation(invocation, cancellationToken);
 
         return new ObjectGenerationSourceTemplateModel
@@ -749,11 +756,12 @@ internal static class ProjectionTemplateBuilder
             {
                 HintName = ownerHintName,
                 MethodName = ownerHintName,
-                ResultTypeTemplate = rootDtoWithProperties.PlaceholderToken,
+                ResultTypeTemplate = rootDto.PlaceholderToken,
+                Projection = buildResult.Projection,
                 InterceptableLocationVersion = interceptableLocation?.Version,
                 InterceptableLocationData = interceptableLocation?.Data,
             },
-            GeneratedDtos = builder.GetGeneratedDtos(rootDtoWithProperties),
+            GeneratedDtos = buildContext.GetGeneratedDtos(),
         };
     }
 
@@ -2148,189 +2156,6 @@ internal static class ProjectionTemplateBuilder
                             .Contains("LinqraftMappingGenerate", StringComparison.Ordinal)
                     )
             );
-    }
-
-    private sealed class AnonymousObjectDtoBuilder
-    {
-        private readonly string _ownerHintName;
-        private readonly Dictionary<string, GeneratedDtoTemplateModel> _generatedDtos = new(
-            StringComparer.Ordinal
-        );
-
-        public AnonymousObjectDtoBuilder(string ownerHintName)
-        {
-            _ownerHintName = ownerHintName;
-        }
-
-        public GeneratedDtoTemplateModel BuildRootDto(
-            GeneratedDtoTemplateModel rootDto,
-            INamedTypeSymbol anonymousType,
-            string defaultNamespace,
-            bool useGlobalNamespaceFallback
-        )
-        {
-            var properties = rootDto.Properties.ToDictionary(
-                property => property.Name,
-                StringComparer.Ordinal
-            );
-            foreach (var property in anonymousType
-                .GetMembers()
-                .OfType<IPropertySymbol>()
-                .Where(property => property.GetMethod is not null)
-                .Select(property => BuildProperty(property, defaultNamespace, useGlobalNamespaceFallback)))
-            {
-                properties[property.Name] = property;
-            }
-
-            var mergedProperties = properties.Values.ToArray();
-            return rootDto with
-            {
-                Properties = mergedProperties,
-                ShapeSignature =
-                    $"{rootDto.TemplateId}|{string.Join(";", mergedProperties.Select(property => $"{property.Name}:{property.TypeTemplate}:{property.FallbackTypeTemplate}:{property.IsSuppressed}"))}",
-            };
-        }
-
-        public EquatableArray<GeneratedDtoTemplateModel> GetGeneratedDtos(
-            GeneratedDtoTemplateModel rootDto
-        )
-        {
-            _generatedDtos[rootDto.TemplateId] = rootDto;
-            return _generatedDtos.Values
-                .OrderByDescending(dto => dto.IsRoot)
-                .ThenBy(dto => dto.TemplateId, StringComparer.Ordinal)
-                .ToArray();
-        }
-
-        private GeneratedPropertyTemplateModel BuildProperty(
-            IPropertySymbol property,
-            string defaultNamespace,
-            bool useGlobalNamespaceFallback
-        )
-        {
-            var typeTemplate = BuildTypeTemplate(
-                property.Type,
-                property.Name,
-                defaultNamespace,
-                useGlobalNamespaceFallback
-            );
-            return new GeneratedPropertyTemplateModel
-            {
-                Name = property.Name,
-                TypeTemplate = typeTemplate,
-                FallbackTypeTemplate = typeTemplate,
-                Documentation = null,
-                IsSuppressed = false,
-            };
-        }
-
-        private string BuildTypeTemplate(
-            ITypeSymbol typeSymbol,
-            string memberName,
-            string defaultNamespace,
-            bool useGlobalNamespaceFallback
-        )
-        {
-            if (typeSymbol is INamedTypeSymbol namedType && namedType.IsAnonymousType)
-            {
-                var nestedDto = CreateAnonymousTypeDtoTemplate(
-                    namedType,
-                    memberName,
-                    defaultNamespace,
-                    useGlobalNamespaceFallback
-                );
-                return nestedDto.PlaceholderToken;
-            }
-
-            if (typeSymbol is IArrayTypeSymbol arrayType)
-            {
-                var elementType = BuildTypeTemplate(
-                    arrayType.ElementType,
-                    memberName,
-                    defaultNamespace,
-                    useGlobalNamespaceFallback
-                );
-                return $"{elementType}[]";
-            }
-
-            if (typeSymbol is INamedTypeSymbol genericType && genericType.IsGenericType)
-            {
-                var arguments = genericType
-                    .TypeArguments.Select(argument =>
-                        BuildTypeTemplate(argument, memberName, defaultNamespace, useGlobalNamespaceFallback)
-                    )
-                    .ToArray();
-                var containerName = ResolveGenericContainerName(genericType);
-                return $"{containerName}<{string.Join(", ", arguments)}>{GetNullableSuffix(genericType.NullableAnnotation)}";
-            }
-
-            return typeSymbol.ToFullyQualifiedTypeName();
-        }
-
-        private GeneratedDtoTemplateModel CreateAnonymousTypeDtoTemplate(
-            INamedTypeSymbol anonymousType,
-            string memberName,
-            string defaultNamespace,
-            bool useGlobalNamespaceFallback
-        )
-        {
-            var dtoBaseName = memberName.EndsWith("Dto", StringComparison.Ordinal)
-                ? memberName
-                : $"{memberName}Dto";
-            var signature =
-                $"{defaultNamespace}|{dtoBaseName}|{string.Join(";", anonymousType.GetMembers().OfType<IPropertySymbol>().Select(property => $"{property.Name}:{property.Type.ToDisplayString()}"))}";
-            var hash = HashingHelper.ComputeHash(signature, 8);
-            var templateId = $"nested:{defaultNamespace}|{dtoBaseName}|{hash}";
-            if (_generatedDtos.TryGetValue(templateId, out var existing))
-            {
-                return existing;
-            }
-
-            var template = new GeneratedDtoTemplateModel
-            {
-                TemplateId = templateId,
-                PlaceholderToken = CreateDtoPlaceholderToken(templateId),
-                Kind = GeneratedDtoTemplateKind.NestedAuto,
-                PreferredNamespace = defaultNamespace,
-                UseGlobalNamespaceFallback = useGlobalNamespaceFallback,
-                Name = dtoBaseName,
-                ShapeHash = hash,
-                AccessibilityKeyword = "public",
-                DeclaredIsRecord = null,
-                IsRoot = false,
-                IsAutoGeneratedNested = true,
-                Documentation = null,
-                OwnerHintName = _ownerHintName,
-                ShapeSignature = signature,
-                ContainingTypes = Array.Empty<ContainingTypeInfo>(),
-                Properties = Array.Empty<GeneratedPropertyTemplateModel>(),
-            };
-            _generatedDtos[templateId] = template;
-
-            var completed = template with
-            {
-                Properties = anonymousType
-                    .GetMembers()
-                    .OfType<IPropertySymbol>()
-                    .Where(property => property.GetMethod is not null)
-                    .Select(property => BuildProperty(property, defaultNamespace, useGlobalNamespaceFallback))
-                    .ToArray(),
-            };
-            _generatedDtos[templateId] = completed with
-            {
-                ShapeSignature =
-                    $"{signature}|{string.Join(";", completed.Properties.Select(property => $"{property.Name}:{property.TypeTemplate}"))}",
-            };
-            return _generatedDtos[templateId];
-        }
-
-        private static string ResolveGenericContainerName(INamedTypeSymbol genericType)
-        {
-            var display = genericType.OriginalDefinition.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat);
-            var markerIndex = display.IndexOf('<');
-            var container = markerIndex >= 0 ? display[..markerIndex] : display;
-            return container;
-        }
     }
 
     private static ExpressionSyntax? GetReceiverExpression(InvocationExpressionSyntax invocation)

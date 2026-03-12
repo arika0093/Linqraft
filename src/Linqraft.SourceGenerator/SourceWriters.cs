@@ -131,11 +131,11 @@ internal static class SourceWriters
         ProjectionRequest request
     )
     {
-        builder.AppendLine("namespace Linqraft");
+        builder.AppendLine("namespace System.Linq");
         builder.AppendLine("{");
         using (builder.Indent())
         {
-            builder.AppendLine("file static partial class GeneratedExpression");
+            builder.AppendLine($"internal static partial class {GetProjectionSupportClassName(request.OperationKind)}");
             builder.AppendLine("{");
             using (builder.Indent())
             {
@@ -262,7 +262,7 @@ internal static class SourceWriters
         builder.AppendLine("{");
         using (builder.Indent())
         {
-            builder.AppendLine("file static partial class GeneratedExpression");
+            builder.AppendLine("internal static partial class LinqraftKit");
             builder.AppendLine("{");
             using (builder.Indent())
             {
@@ -282,8 +282,10 @@ internal static class SourceWriters
                 builder.AppendLine("{");
                 using (builder.Indent())
                 {
-                    builder.AppendLine(
-                        $"return (T)(object)global::Linqraft.LinqraftKit.ConvertAnonymous<{request.ResultTypeName}>(x);"
+                    builder.AppendLine("_ = x;");
+                    AppendMultilineLine(
+                        builder,
+                        $"return (T)(object){request.ProjectionBodyText};"
                     );
                 }
 
@@ -395,6 +397,19 @@ internal static class SourceWriters
         return request.OperationKind == ProjectionOperationKind.SelectMany
             ? "global::System.Collections.Generic.IEnumerable<TResult>"
             : "TResult";
+    }
+
+    private static string GetProjectionSupportClassName(ProjectionOperationKind operationKind)
+    {
+        return operationKind switch
+        {
+            ProjectionOperationKind.Select => "SelectExprExtensions",
+            ProjectionOperationKind.SelectMany => "SelectManyExprExtensions",
+            ProjectionOperationKind.GroupBy => "GroupByExprExtensions",
+            _ => throw new InvalidOperationException(
+                $"Unsupported projection operation '{operationKind}'."
+            ),
+        };
     }
 
     private static string GetReceiverTypeName(ReceiverKind receiverKind)

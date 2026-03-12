@@ -1,6 +1,6 @@
 <Project>
   <PropertyGroup>
-    <InterceptorsNamespaces>$(InterceptorsNamespaces);Linqraft</InterceptorsNamespaces>
-    <InterceptorsPreviewNamespaces>$(InterceptorsPreviewNamespaces);Linqraft</InterceptorsPreviewNamespaces>
+    <InterceptorsNamespaces>$(InterceptorsNamespaces);Linqraft;System.Linq</InterceptorsNamespaces>
+    <InterceptorsPreviewNamespaces>$(InterceptorsPreviewNamespaces);Linqraft;System.Linq</InterceptorsPreviewNamespaces>
   </PropertyGroup>
 </Project>

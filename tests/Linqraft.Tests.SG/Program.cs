@@ -606,8 +606,8 @@ public sealed class SourceGeneratorSmokeTests
             new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
             {
                 ["build_property.RootNamespace"] = "SmokeFixture",
-                ["build_property.InterceptorsNamespaces"] = "Linqraft",
-                ["build_property.InterceptorsPreviewNamespaces"] = "Linqraft",
+                ["build_property.InterceptorsNamespaces"] = "Linqraft;System.Linq",
+                ["build_property.InterceptorsPreviewNamespaces"] = "Linqraft;System.Linq",
                 ["build_property.LinqraftCommentOutput"] = "None",
                 ["build_property.LinqraftHasRequired"] = "false",
                 ["build_property.LinqraftUsePrebuildExpression"] = usePrebuildExpression

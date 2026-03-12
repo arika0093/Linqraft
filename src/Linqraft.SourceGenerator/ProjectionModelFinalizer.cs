@@ -86,6 +86,13 @@ internal static class ProjectionModelFinalizer
                     template.Request.ResultTypeTemplate,
                     replacements
                 ),
+                ProjectionBodyText = ProjectionBodyEmitter.BuildProjectionBody(
+                    template.Request.Projection,
+                    ProjectionPattern.PredefinedDto,
+                    ProjectionBodyEmitter.ReplaceTokens(template.Request.ResultTypeTemplate, replacements),
+                    configuration.ArrayNullabilityRemoval,
+                    replacements
+                ),
                 InterceptableLocationVersion = template.Request.InterceptableLocationVersion,
                 InterceptableLocationData = template.Request.InterceptableLocationData,
             },
