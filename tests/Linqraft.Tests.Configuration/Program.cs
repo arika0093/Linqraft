@@ -198,23 +198,33 @@ public sealed class GlobalPropertyConfigurationTests
         );
 
         itemsLineIndex.ShouldBeGreaterThanOrEqualTo(0);
-        lines[itemsLineIndex + 1].Trim().ShouldBe("? order.Items");
+        lines[itemsLineIndex + 1]
+            .Trim()
+            .ShouldBe("? global::System.Linq.Enumerable.ToList(");
         lines[itemsLineIndex + 2]
             .Trim()
-            .ShouldStartWith(".Select(item => new global::GlobalGenerated.ItemsDto_");
-        lines[itemsLineIndex + 3].Trim().ShouldBe("ProductName = item.ProductName,");
-        lines[itemsLineIndex + 4].Trim().ShouldBe("Quantity = item.Quantity,");
-        lines[itemsLineIndex + 5].Trim().ShouldBe("})");
-        lines[itemsLineIndex + 6].Trim().ShouldBe(".ToList()");
-        lines[itemsLineIndex + 7].Trim().ShouldBe(": null,");
+            .ShouldBe("global::System.Linq.Enumerable.Select(");
+        lines[itemsLineIndex + 3].Trim().ShouldBe("order.Items,");
+        lines[itemsLineIndex + 4]
+            .Trim()
+            .ShouldStartWith("item => new global::GlobalGenerated.ItemsDto_");
+        lines[itemsLineIndex + 5].Trim().ShouldBe("ProductName = item.ProductName,");
+        lines[itemsLineIndex + 6].Trim().ShouldBe("Quantity = item.Quantity,");
+        lines[itemsLineIndex + 7].Trim().ShouldBe("}");
+        lines[itemsLineIndex + 8].Trim().ShouldBe(")");
+        lines[itemsLineIndex + 9].Trim().ShouldBe(")");
+        lines[itemsLineIndex + 10].Trim().ShouldBe(": null,");
         CountLeadingSpaces(lines[itemsLineIndex]).ShouldBe(12);
         CountLeadingSpaces(lines[itemsLineIndex + 1]).ShouldBe(16);
         CountLeadingSpaces(lines[itemsLineIndex + 2]).ShouldBe(20);
         CountLeadingSpaces(lines[itemsLineIndex + 3]).ShouldBe(24);
         CountLeadingSpaces(lines[itemsLineIndex + 4]).ShouldBe(24);
-        CountLeadingSpaces(lines[itemsLineIndex + 5]).ShouldBe(20);
-        CountLeadingSpaces(lines[itemsLineIndex + 6]).ShouldBe(20);
-        CountLeadingSpaces(lines[itemsLineIndex + 7]).ShouldBe(16);
+        CountLeadingSpaces(lines[itemsLineIndex + 5]).ShouldBe(28);
+        CountLeadingSpaces(lines[itemsLineIndex + 6]).ShouldBe(28);
+        CountLeadingSpaces(lines[itemsLineIndex + 7]).ShouldBe(24);
+        CountLeadingSpaces(lines[itemsLineIndex + 8]).ShouldBe(20);
+        CountLeadingSpaces(lines[itemsLineIndex + 9]).ShouldBe(16);
+        CountLeadingSpaces(lines[itemsLineIndex + 10]).ShouldBe(16);
         projectionSource
             .Contains("Items = order.Items != null ? order.Items.Select(", StringComparison.Ordinal)
             .ShouldBeFalse();
@@ -246,36 +256,62 @@ public sealed class GlobalPropertyConfigurationTests
 
         var projectionSource = GetGeneratedProjectionSourceContaining(
             "ConfiguredNestedFormattingDto",
-            "Child2Summaries = root.Child2"
+            "Child2Summaries = global::System.Linq.Enumerable.ToList("
         );
         var lines = projectionSource.Replace("\r\n", "\n", StringComparison.Ordinal).Split('\n');
         var childLineIndex = Array.FindIndex(
             lines,
-            line => line.Contains("Child2Summaries = root.Child2", StringComparison.Ordinal)
+            line =>
+                line.Contains(
+                    "Child2Summaries = global::System.Linq.Enumerable.ToList(",
+                    StringComparison.Ordinal
+                )
         );
 
         childLineIndex.ShouldBeGreaterThanOrEqualTo(0);
         lines[childLineIndex + 1]
             .Trim()
-            .ShouldStartWith(".Select(child => new global::GlobalGenerated.Child2SummariesDto_");
-        lines[childLineIndex + 2].Trim().ShouldBe("Summary = child.Summary,");
+            .ShouldBe("global::System.Linq.Enumerable.Select(");
+        lines[childLineIndex + 2].Trim().ShouldBe("root.Child2,");
         lines[childLineIndex + 3]
             .Trim()
-            .ShouldBe(
-                "GrandChild2Notes = child.GrandChilds.Select(grandChild => grandChild.Notes),"
-            );
-        lines[childLineIndex + 4]
+            .ShouldStartWith("child => new global::GlobalGenerated.Child2SummariesDto_");
+        lines[childLineIndex + 4].Trim().ShouldBe("Summary = child.Summary,");
+        lines[childLineIndex + 5]
             .Trim()
             .ShouldBe(
-                "GrandChild2Values = child.GrandChilds.Select(grandChild => grandChild.Value),"
+                "GrandChild2Notes = global::System.Linq.Enumerable.Select("
             );
-        lines[childLineIndex + 5].Trim().ShouldBe("})");
+        lines[childLineIndex + 6].Trim().ShouldBe("child.GrandChilds,");
+        lines[childLineIndex + 7].Trim().ShouldBe("grandChild => grandChild.Notes");
+        lines[childLineIndex + 8].Trim().ShouldBe("),");
+        lines[childLineIndex + 9]
+            .Trim()
+            .ShouldBe(
+                "GrandChild2Values = global::System.Linq.Enumerable.Select("
+            );
+        lines[childLineIndex + 10].Trim().ShouldBe("child.GrandChilds,");
+        lines[childLineIndex + 11].Trim().ShouldBe("grandChild => grandChild.Value");
+        lines[childLineIndex + 12].Trim().ShouldBe("),");
+        lines[childLineIndex + 13].Trim().ShouldBe("}");
+        lines[childLineIndex + 14].Trim().ShouldBe(")");
+        lines[childLineIndex + 15].Trim().ShouldBe("),");
         CountLeadingSpaces(lines[childLineIndex]).ShouldBe(12);
         CountLeadingSpaces(lines[childLineIndex + 1]).ShouldBe(16);
         CountLeadingSpaces(lines[childLineIndex + 2]).ShouldBe(20);
         CountLeadingSpaces(lines[childLineIndex + 3]).ShouldBe(20);
-        CountLeadingSpaces(lines[childLineIndex + 4]).ShouldBe(20);
-        CountLeadingSpaces(lines[childLineIndex + 5]).ShouldBe(16);
+        CountLeadingSpaces(lines[childLineIndex + 4]).ShouldBe(24);
+        CountLeadingSpaces(lines[childLineIndex + 5]).ShouldBe(24);
+        CountLeadingSpaces(lines[childLineIndex + 6]).ShouldBe(28);
+        CountLeadingSpaces(lines[childLineIndex + 7]).ShouldBe(28);
+        CountLeadingSpaces(lines[childLineIndex + 8]).ShouldBe(24);
+        CountLeadingSpaces(lines[childLineIndex + 9]).ShouldBe(24);
+        CountLeadingSpaces(lines[childLineIndex + 10]).ShouldBe(28);
+        CountLeadingSpaces(lines[childLineIndex + 11]).ShouldBe(28);
+        CountLeadingSpaces(lines[childLineIndex + 12]).ShouldBe(24);
+        CountLeadingSpaces(lines[childLineIndex + 13]).ShouldBe(20);
+        CountLeadingSpaces(lines[childLineIndex + 14]).ShouldBe(16);
+        CountLeadingSpaces(lines[childLineIndex + 15]).ShouldBe(12);
         projectionSource.Contains("new {", StringComparison.Ordinal).ShouldBeFalse();
     }
 
@@ -305,32 +341,40 @@ public sealed class GlobalPropertyConfigurationTests
 
         var projectionSource = GetGeneratedProjectionSourceContaining(
             "ConfiguredSelectChainFormattingDto",
-            "Child2Summaries = root.Child2"
+            "Child2Summaries = global::System.Linq.Enumerable.Select("
         );
         var lines = projectionSource.Replace("\r\n", "\n", StringComparison.Ordinal).Split('\n');
         var childLineIndex = Array.FindIndex(
             lines,
-            line => line.Contains("Child2Summaries = root.Child2", StringComparison.Ordinal)
+            line =>
+                line.Contains(
+                    "Child2Summaries = global::System.Linq.Enumerable.Select(",
+                    StringComparison.Ordinal
+                )
         );
 
         childLineIndex.ShouldBeGreaterThanOrEqualTo(0);
-        lines[childLineIndex + 1]
+        lines[childLineIndex + 1].Trim().ShouldBe("root.Child2,");
+        lines[childLineIndex + 2]
             .Trim()
-            .ShouldStartWith(".Select(child => new global::GlobalGenerated.Child2SummariesDto_");
-        lines[childLineIndex + 2].Trim().ShouldBe("Summary = child.Summary,");
-        lines[childLineIndex + 3].Trim().ShouldBe("GrandChildCount = child.GrandChilds.Count,");
-        lines[childLineIndex + 4]
+            .ShouldStartWith("child => new global::GlobalGenerated.Child2SummariesDto_");
+        lines[childLineIndex + 3].Trim().ShouldBe("Summary = child.Summary,");
+        lines[childLineIndex + 4].Trim().ShouldBe("GrandChildCount = child.GrandChilds.Count,");
+        lines[childLineIndex + 5]
             .Trim()
             .ShouldBe("FirstGrandChildNote = child.GrandChilds[0].Notes,");
-        lines[childLineIndex + 5].Trim().ShouldBe("}),");
-        lines[childLineIndex + 6].Trim().ShouldBe("Child2Count = root.Child2.Count,");
+        lines[childLineIndex + 6].Trim().ShouldBe("}");
+        lines[childLineIndex + 7].Trim().ShouldBe("),");
+        lines[childLineIndex + 8].Trim().ShouldBe("Child2Count = root.Child2.Count,");
         CountLeadingSpaces(lines[childLineIndex]).ShouldBe(12);
         CountLeadingSpaces(lines[childLineIndex + 1]).ShouldBe(16);
-        CountLeadingSpaces(lines[childLineIndex + 2]).ShouldBe(20);
+        CountLeadingSpaces(lines[childLineIndex + 2]).ShouldBe(16);
         CountLeadingSpaces(lines[childLineIndex + 3]).ShouldBe(20);
         CountLeadingSpaces(lines[childLineIndex + 4]).ShouldBe(20);
-        CountLeadingSpaces(lines[childLineIndex + 5]).ShouldBe(16);
-        CountLeadingSpaces(lines[childLineIndex + 6]).ShouldBe(12);
+        CountLeadingSpaces(lines[childLineIndex + 5]).ShouldBe(20);
+        CountLeadingSpaces(lines[childLineIndex + 6]).ShouldBe(16);
+        CountLeadingSpaces(lines[childLineIndex + 7]).ShouldBe(12);
+        CountLeadingSpaces(lines[childLineIndex + 8]).ShouldBe(12);
         projectionSource
             .Contains("Child2Summaries = root.Child2.Select(", StringComparison.Ordinal)
             .ShouldBeFalse();
