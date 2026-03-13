@@ -23,7 +23,7 @@ public sealed class LinqraftKitGenerateTest
         dto.ItemNames.ShouldBe(["Keyboard", "Mouse"]);
     }
 
-    [Test]
+    [Test, SkipOnNativeAot]
     public void Generate_can_combine_multiple_selectexpr_results_into_one_generated_dto()
     {
         var dto = LinqraftKit.Generate<GenerateProjectionBundleDto>(
@@ -46,6 +46,24 @@ public sealed class LinqraftKitGenerateTest
 
         dto.Orders.Select(x => x.CustomerName).ShouldBe(["Ada", "Grace"]);
         dto.Decisions.Select(x => x.IsLarge).ShouldBe([false, true]);
+    }
+
+    [Test, SkipOnNativeAot]
+    public void Generate_can_read_captured_values_from_capture_argument()
+    {
+        var id = 42;
+        var prefix = "Order-";
+        var dto = LinqraftKit.Generate<GenerateCapturedOrderDto>(
+            new
+            {
+                Id = id,
+                Label = prefix + id,
+            },
+            capture: new { id, prefix }
+        );
+
+        dto.Id.ShouldBe(42);
+        dto.Label.ShouldBe("Order-42");
     }
 }
 
@@ -81,3 +99,5 @@ public partial class GenerateAnonymousOrderDto;
 public partial class GenerateProjectionBundleDto;
 
 public partial class GenerateProjectionOrderRowDto;
+
+public partial class GenerateCapturedOrderDto;

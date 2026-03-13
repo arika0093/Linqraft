@@ -40,6 +40,7 @@ public sealed class SourceGeneratorSmokeTests
         supportSource.ShouldNotContain("global using Linqraft;");
         supportSource.ShouldContain("namespace Linqraft");
         supportSource.ShouldNotContain("namespace System.Linq");
+        supportSource.ShouldContain("public static T Generate<T>(object x, object capture)");
         var projectionSources = generatedSources
             .Where(pair => pair.Key.Contains("SelectExpr_", StringComparison.Ordinal))
             .ToArray();
@@ -301,6 +302,73 @@ public sealed class SourceGeneratorSmokeTests
         CountLeadingSpaces(lines[nullIndex]).ShouldBe(CountLeadingSpaces(lines[questionIndex]));
     }
 
+    [Test]
+    public void Generator_does_not_intercept_unrelated_linqraftkit_generate_methods()
+    {
+        var driver = CreateDriver();
+        var compilation = CreateCompilation(
+            CreateUnrelatedGenerateTree(),
+            CreateMarkerTree("generate-identity")
+        );
+
+        driver = driver.RunGeneratorsAndUpdateCompilation(
+            compilation,
+            out var outputCompilation,
+            out var diagnostics
+        );
+
+        diagnostics.ShouldBeEmpty();
+        outputCompilation
+            .GetDiagnostics()
+            .Where(diagnostic =>
+                diagnostic.Severity == DiagnosticSeverity.Error && diagnostic.Id != "CS9137"
+            )
+            .ShouldBeEmpty();
+
+        var generatedSources = GetGeneratedSourceMap(driver.GetRunResult());
+        generatedSources
+            .Keys.Any(key => key.StartsWith("Generate_", StringComparison.Ordinal))
+            .ShouldBeFalse();
+    }
+
+    [Test]
+    public void Generator_emits_generate_capture_overload_and_capture_extraction()
+    {
+        var driver = CreateDriver();
+        var compilation = CreateCompilation(
+            CreateGenerateCaptureTree(),
+            CreateMarkerTree("generate-capture")
+        );
+
+        driver = driver.RunGeneratorsAndUpdateCompilation(
+            compilation,
+            out var outputCompilation,
+            out var diagnostics
+        );
+
+        diagnostics.ShouldBeEmpty();
+        outputCompilation
+            .GetDiagnostics()
+            .Where(diagnostic =>
+                diagnostic.Severity == DiagnosticSeverity.Error && diagnostic.Id != "CS9137"
+            )
+            .ShouldBeEmpty();
+
+        var generatedSources = GetGeneratedSourceMap(driver.GetRunResult());
+        var generateSource = generatedSources.Values.Single(source =>
+            source.Contains("GeneratedCaptureDto", StringComparison.Ordinal)
+            && source.Contains("captureType.GetProperty(\"id\"", StringComparison.Ordinal)
+        );
+
+        generateSource.ShouldContain("internal static T Generate_");
+        generateSource.ShouldContain("(object x, object capture)");
+        generateSource.ShouldContain("var captureType = capture.GetType();");
+        generateSource.ShouldContain("var __linqraft_capture_0_idProperty = captureType.GetProperty(\"id\"");
+        generateSource.ShouldContain("var __linqraft_capture_1_prefixProperty = captureType.GetProperty(\"prefix\"");
+        generateSource.ShouldContain("Id = __linqraft_capture_0_id");
+        generateSource.ShouldContain("Label = __linqraft_capture_1_prefix + __linqraft_capture_0_id");
+    }
+
     private static GeneratorDriver CreateDriver(bool usePrebuildExpression = true)
     {
         var parseOptions = new CSharpParseOptions(LanguageVersion.Preview);
@@ -526,6 +594,69 @@ public sealed class SourceGeneratorSmokeTests
             SourceText.From(source),
             new CSharpParseOptions(LanguageVersion.Preview),
             path: "SmokeMappings.Visibility.cs"
+        );
+    }
+
+    private static SyntaxTree CreateUnrelatedGenerateTree()
+    {
+        const string source = """
+            namespace OtherLibrary;
+
+            public static class LinqraftKit
+            {
+                public static T Generate<T>(object x) => throw new global::System.NotImplementedException();
+            }
+
+            public sealed class ExternalDto
+            {
+                public int Id { get; set; }
+            }
+
+            public static class Consumer
+            {
+                public static ExternalDto Create(int id)
+                {
+                    return global::OtherLibrary.LinqraftKit.Generate<ExternalDto>(new { Id = id });
+                }
+            }
+            """;
+
+        return CSharpSyntaxTree.ParseText(
+            SourceText.From(source),
+            new CSharpParseOptions(LanguageVersion.Preview),
+            path: "SmokeGenerate.Identity.cs"
+        );
+    }
+
+    private static SyntaxTree CreateGenerateCaptureTree()
+    {
+        const string source = """
+            using Linqraft;
+
+            namespace SmokeFixture;
+
+            public static class GenerateConsumer
+            {
+                public static GeneratedCaptureDto Create(int id, string prefix)
+                {
+                    return LinqraftKit.Generate<GeneratedCaptureDto>(
+                        new
+                        {
+                            Id = id,
+                            Label = prefix + id,
+                        },
+                        capture: new { id, prefix }
+                    );
+                }
+            }
+
+            public partial class GeneratedCaptureDto;
+            """;
+
+        return CSharpSyntaxTree.ParseText(
+            SourceText.From(source),
+            new CSharpParseOptions(LanguageVersion.Preview),
+            path: "SmokeGenerate.Capture.cs"
         );
     }
 

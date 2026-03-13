@@ -731,9 +731,10 @@ internal static class ProjectionTemplateBuilder
             ownerHintName,
             cancellationToken
         );
+        var captureEntries = AnalyzeCaptures(invocation, semanticModel, cancellationToken);
         var buildContext = new ProjectionBuildContext(
             semanticModel,
-            Array.Empty<ProjectionExpressionEmitter.CaptureEntry>(),
+            captureEntries,
             cancellationToken
         );
         var existingProperties = new HashSet<string>(
@@ -764,6 +765,14 @@ internal static class ProjectionTemplateBuilder
                 Origin = CreateOrigin(invocation),
                 ResultTypeTemplate = rootDto.PlaceholderToken,
                 Projection = buildResult.Projection,
+                Captures = captureEntries
+                    .Select(capture => new CaptureParameterModel
+                    {
+                        PropertyName = capture.PropertyName,
+                        LocalName = capture.LocalName,
+                        TypeName = capture.TypeName,
+                    })
+                    .ToArray(),
                 InterceptableLocationVersion = interceptableLocation?.Version,
                 InterceptableLocationData = interceptableLocation?.Data,
             },
@@ -2164,14 +2173,19 @@ internal static class ProjectionTemplateBuilder
             return false;
         }
 
-        return invocation.Expression switch
+        var methodSymbol = semanticModel.GetSymbolInfo(invocation, cancellationToken).Symbol as IMethodSymbol;
+        if (methodSymbol is null)
         {
-            MemberAccessExpressionSyntax memberAccess
-                when memberAccess.Expression.ToString().EndsWith("LinqraftKit", StringComparison.Ordinal) =>
-                true,
-            _ => (semanticModel.GetSymbolInfo(invocation, cancellationToken).Symbol as IMethodSymbol)
-                    ?.ContainingType.Name == "LinqraftKit",
-        };
+            return false;
+        }
+
+        var targetMethod = methodSymbol.ReducedFrom ?? methodSymbol;
+        return string.Equals(
+                targetMethod.ContainingType.ToDisplayString(),
+                "Linqraft.LinqraftKit",
+                StringComparison.Ordinal
+            )
+            && string.Equals(targetMethod.Name, "Generate", StringComparison.Ordinal);
     }
 
     private static bool IsSelectExprInvocation(InvocationExpressionSyntax invocation)

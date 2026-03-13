@@ -95,6 +95,7 @@ internal static class ProjectionModelFinalizer
                     configuration.ArrayNullabilityRemoval,
                     replacements
                 ),
+                Captures = template.Request.Captures,
                 InterceptableLocationVersion = template.Request.InterceptableLocationVersion,
                 InterceptableLocationData = template.Request.InterceptableLocationData,
             },

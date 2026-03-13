@@ -203,29 +203,7 @@ internal static class SourceWriters
 
                     if (request.Captures.Length != 0)
                     {
-                        builder.AppendLine("var captureType = capture.GetType();");
-                        foreach (var capture in request.Captures)
-                        {
-                            builder.AppendLine(
-                                $"var {capture.LocalName}Property = captureType.GetProperty(\"{EscapeStringLiteral(capture.PropertyName)}\", global::System.Reflection.BindingFlags.Instance | global::System.Reflection.BindingFlags.Public);"
-                            );
-                            builder.AppendLine($"if ({capture.LocalName}Property is null)");
-                            builder.AppendLine("{");
-                            using (builder.Indent())
-                            {
-                                builder.AppendLine(
-                                    $"throw new global::System.InvalidOperationException(\"Captured value '{EscapeStringLiteral(capture.PropertyName)}' was not found.\");"
-                                );
-                            }
-
-                            builder.AppendLine("}");
-                            builder.AppendLine(
-                                $"var {capture.LocalName}Value = {capture.LocalName}Property.GetValue(capture);"
-                            );
-                            builder.AppendLine(
-                                $"var {capture.LocalName} = {capture.LocalName}Value is null ? default! : ({capture.TypeName}){capture.LocalName}Value;"
-                            );
-                        }
+                        WriteCaptureExtraction(builder, request.Captures);
                     }
 
                     var selectArgument =
@@ -283,10 +261,26 @@ internal static class SourceWriters
                     );
                 }
 
-                builder.AppendLine($"internal static T {request.MethodName}<T>(object x)");
+                if (request.Captures.Length != 0)
+                {
+                    builder.AppendLine(
+                        "[global::System.Diagnostics.CodeAnalysis.UnconditionalSuppressMessage(\"Trimming\", \"IL2075\", Justification = \"Capture reflection inspects runtime-generated anonymous objects.\")]"
+                    );
+                }
+
+                builder.AppendLine(
+                    request.Captures.Length == 0
+                        ? $"internal static T {request.MethodName}<T>(object x)"
+                        : $"internal static T {request.MethodName}<T>(object x, object capture)"
+                );
                 builder.AppendLine("{");
                 using (builder.Indent())
                 {
+                    if (request.Captures.Length != 0)
+                    {
+                        WriteCaptureExtraction(builder, request.Captures);
+                    }
+
                     AppendMultilineLine(
                         builder,
                         $"return (T)(object){request.ProjectionBodyText};"
@@ -422,6 +416,36 @@ internal static class SourceWriters
         return receiverKind == ReceiverKind.IQueryable
             ? "global::System.Linq.IQueryable"
             : "global::System.Collections.Generic.IEnumerable";
+    }
+
+    private static void WriteCaptureExtraction(
+        IndentedStringBuilder builder,
+        IEnumerable<CaptureParameterModel> captures
+    )
+    {
+        builder.AppendLine("var captureType = capture.GetType();");
+        foreach (var capture in captures)
+        {
+            builder.AppendLine(
+                $"var {capture.LocalName}Property = captureType.GetProperty(\"{EscapeStringLiteral(capture.PropertyName)}\", global::System.Reflection.BindingFlags.Instance | global::System.Reflection.BindingFlags.Public);"
+            );
+            builder.AppendLine($"if ({capture.LocalName}Property is null)");
+            builder.AppendLine("{");
+            using (builder.Indent())
+            {
+                builder.AppendLine(
+                    $"throw new global::System.InvalidOperationException(\"Captured value '{EscapeStringLiteral(capture.PropertyName)}' was not found.\");"
+                );
+            }
+
+            builder.AppendLine("}");
+            builder.AppendLine(
+                $"var {capture.LocalName}Value = {capture.LocalName}Property.GetValue(capture);"
+            );
+            builder.AppendLine(
+                $"var {capture.LocalName} = {capture.LocalName}Value is null ? default! : ({capture.TypeName}){capture.LocalName}Value;"
+            );
+        }
     }
 
     private static void WriteDebugOriginComment(

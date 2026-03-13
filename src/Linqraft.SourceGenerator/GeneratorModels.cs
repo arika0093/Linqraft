@@ -306,6 +306,8 @@ internal sealed record ObjectGenerationRequestTemplate
 
     public required ProjectionTemplateModel Projection { get; init; }
 
+    public required EquatableArray<CaptureParameterModel> Captures { get; init; }
+
     public required int? InterceptableLocationVersion { get; init; }
 
     public required string? InterceptableLocationData { get; init; }
@@ -329,6 +331,8 @@ internal sealed record ObjectGenerationRequest
     public required string ResultTypeName { get; init; }
 
     public required string ProjectionBodyText { get; init; }
+
+    public required EquatableArray<CaptureParameterModel> Captures { get; init; }
 
     public required int? InterceptableLocationVersion { get; init; }
 

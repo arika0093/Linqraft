@@ -106,6 +106,9 @@ internal static class SupportSourceEmitter
                     /// </summary>
                     public static T Generate<T>(object x)
                         => throw ThrowInterceptionRequired;
+
+                    public static T Generate<T>(object x, object capture)
+                        => throw ThrowInterceptionRequired;
                 }
 
             }
