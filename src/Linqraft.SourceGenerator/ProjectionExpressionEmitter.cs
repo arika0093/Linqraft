@@ -666,7 +666,7 @@ internal sealed class ProjectionExpressionEmitter
         rewritten = string.Empty;
         if (
             ContainsReducedExtensionInvocation(expression)
-            || 
+            ||
             !TryDecomposeFluentChain(
                 expression,
                 out var root,
