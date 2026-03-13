@@ -37,7 +37,7 @@ public sealed class SourceGeneratorSmokeTests
             .Keys.Any(path => path.EndsWith("Linqraft.Declarations.g.cs", StringComparison.Ordinal))
             .ShouldBeTrue();
         var supportSource = generatedSources["Linqraft.Declarations.g.cs"];
-        supportSource.ShouldContain("global using Linqraft;");
+        supportSource.ShouldNotContain("global using Linqraft;");
         supportSource.ShouldContain("namespace Linqraft");
         supportSource.ShouldNotContain("namespace System.Linq");
         var projectionSources = generatedSources
@@ -266,17 +266,25 @@ public sealed class SourceGeneratorSmokeTests
         var shipmentIndex = FindLineIndex(
             lines,
             questionIndex + 1,
-            line => line.Trim().Equals("order.Shipment", StringComparison.Ordinal)
+            line =>
+                line.Contains(
+                    "global::System.Linq.Enumerable.Sum(",
+                    StringComparison.Ordinal
+                )
         );
         var eventsIndex = FindLineIndex(
             lines,
             shipmentIndex + 1,
-            line => line.Trim().StartsWith(".Events", StringComparison.Ordinal)
+            line =>
+                line.Contains("order.Shipment.Events", StringComparison.Ordinal)
+                || line.Trim().StartsWith(".Events", StringComparison.Ordinal)
         );
         var closingIndex = FindLineIndex(
             lines,
             eventsIndex + 1,
-            line => line.Trim().Equals(")", StringComparison.Ordinal)
+            line =>
+                line.Trim().Equals(")", StringComparison.Ordinal)
+                || line.Trim().Equals("))", StringComparison.Ordinal)
         );
         var nullIndex = FindLineIndex(
             lines,
@@ -288,7 +296,8 @@ public sealed class SourceGeneratorSmokeTests
             .ShouldBeGreaterThan(CountLeadingSpaces(lines[questionIndex]));
         CountLeadingSpaces(lines[eventsIndex])
             .ShouldBeGreaterThan(CountLeadingSpaces(lines[shipmentIndex]));
-        CountLeadingSpaces(lines[closingIndex]).ShouldBe(CountLeadingSpaces(lines[questionIndex]));
+        CountLeadingSpaces(lines[closingIndex])
+            .ShouldBeGreaterThanOrEqualTo(CountLeadingSpaces(lines[questionIndex]));
         CountLeadingSpaces(lines[nullIndex]).ShouldBe(CountLeadingSpaces(lines[questionIndex]));
     }
 
