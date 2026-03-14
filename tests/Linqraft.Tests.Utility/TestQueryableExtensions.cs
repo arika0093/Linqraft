@@ -2,9 +2,9 @@ using System.Collections.Generic;
 using System.Diagnostics.CodeAnalysis;
 using System.Linq;
 
-namespace Linqraft.Tests;
+namespace Linqraft.Tests.Utility;
 
-internal static class TestQueryableExtensions
+public static class TestQueryableExtensions
 {
     [UnconditionalSuppressMessage(
         "Trimming",
@@ -16,6 +16,6 @@ internal static class TestQueryableExtensions
         "IL3050",
         Justification = "Test-only LINQ-to-Objects query sources are used to exercise generated IQueryable projections."
     )]
-    internal static IQueryable<T> AsTestQueryable<T>(this IEnumerable<T> source) =>
+    public static IQueryable<T> AsTestQueryable<T>(this IEnumerable<T> source) =>
         source.AsQueryable();
 }

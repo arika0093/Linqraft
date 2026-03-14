@@ -1,7 +1,6 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Runtime.CompilerServices;
 
 namespace Linqraft.Tests;
 
@@ -10,11 +9,10 @@ public class LocalVariableCaptureTest
     [Test]
     public void AnonymousPattern_WithSingleCapturedVariable()
     {
-        SkipIfNativeAot();
         var val = 100;
         var converted = TestData
             .AsTestQueryable()
-            .SelectExpr(x => new { x.Id, NewValue = x.Value + val }, new { val })
+            .SelectExpr(x => new { x.Id, NewValue = x.Value + val }, () => val)
             .ToList();
 
         converted.Count.ShouldBe(2);
@@ -26,7 +24,6 @@ public class LocalVariableCaptureTest
     [Test]
     public void AnonymousPattern_WithMultipleCapturedVariables()
     {
-        SkipIfNativeAot();
         var val = 100;
         var multiplier = 2;
         var suffix = " units";
@@ -40,12 +37,7 @@ public class LocalVariableCaptureTest
                     DoubledValue = x.Value * multiplier,
                     Description = x.Name + suffix,
                 },
-                new
-                {
-                    val,
-                    multiplier,
-                    suffix,
-                }
+                () => (val, multiplier, suffix)
             )
             .ToList();
 
@@ -60,13 +52,12 @@ public class LocalVariableCaptureTest
     [Test]
     public void ExplicitPattern_WithSingleCapturedVariable()
     {
-        SkipIfNativeAot();
         var val = 100;
         var converted = TestData
             .AsTestQueryable()
             .SelectExpr<TestItem, ExplicitDto1>(
                 x => new { x.Id, NewValue = x.Value + val },
-                new { val }
+                () => val
             )
             .ToList();
 
@@ -80,7 +71,6 @@ public class LocalVariableCaptureTest
     [Test]
     public void ExplicitPattern_WithMultipleCapturedVariables()
     {
-        SkipIfNativeAot();
         var val = 100;
         var multiplier = 2;
         var converted = TestData
@@ -92,7 +82,7 @@ public class LocalVariableCaptureTest
                     NewValue = x.Value + val,
                     DoubledValue = x.Value * multiplier,
                 },
-                new { val, multiplier }
+                () => (val, multiplier)
             )
             .ToList();
 
@@ -107,13 +97,12 @@ public class LocalVariableCaptureTest
     [Test]
     public void PredefinedPattern_WithSingleCapturedVariable()
     {
-        SkipIfNativeAot();
         var val = 100;
         var converted = TestData
             .AsTestQueryable()
             .SelectExpr(
                 x => new PredefinedDto1 { Id = x.Id, NewValue = x.Value + val },
-                new { val }
+                () => val
             )
             .ToList();
 
@@ -127,7 +116,6 @@ public class LocalVariableCaptureTest
     [Test]
     public void PredefinedPattern_WithMultipleCapturedVariables()
     {
-        SkipIfNativeAot();
         var val = 100;
         var multiplier = 2;
         var converted = TestData
@@ -139,7 +127,7 @@ public class LocalVariableCaptureTest
                     NewValue = x.Value + val,
                     DoubledValue = x.Value * multiplier,
                 },
-                new { val, multiplier }
+                () => (val, multiplier)
             )
             .ToList();
 
@@ -154,13 +142,12 @@ public class LocalVariableCaptureTest
     [Test]
     public void CapturedVariable_WithComplexExpression()
     {
-        SkipIfNativeAot();
         var baseValue = 50;
         var offset = 60;
         var total = baseValue + offset;
         var converted = TestData
             .AsTestQueryable()
-            .SelectExpr(x => new { x.Id, ComputedValue = x.Value + total }, new { total })
+            .SelectExpr(x => new { x.Id, ComputedValue = x.Value + total }, () => total)
             .ToList();
 
         converted.Count.ShouldBe(2);
@@ -172,7 +159,6 @@ public class LocalVariableCaptureTest
     [Test]
     public void CapturedVariable_WithDateTime()
     {
-        SkipIfNativeAot();
         var date = new DateTime(2024, 1, 1);
         var converted = TestData
             .AsTestQueryable()
@@ -183,7 +169,7 @@ public class LocalVariableCaptureTest
                     x.Name,
                     ProcessedDate = date,
                 },
-                new { date }
+                () => date
             )
             .ToList();
 
@@ -195,7 +181,6 @@ public class LocalVariableCaptureTest
     [Test]
     public void Case1_CapturedRequestObject_AllowsMemberAccess()
     {
-        SkipIfNativeAot();
         var request = new RequestRange
         {
             FromDate = new DateTimeOffset(2024, 1, 1, 0, 0, 0, TimeSpan.Zero),
@@ -213,7 +198,7 @@ public class LocalVariableCaptureTest
                         request.FromDate <= c.Created && c.Created <= request.ToDate
                     ),
                 },
-                new { request }
+                () => request
             )
             .ToList();
 
@@ -225,7 +210,6 @@ public class LocalVariableCaptureTest
     [Test]
     public void Case2_CapturedRequestFields_AllowsMemberAccess()
     {
-        SkipIfNativeAot();
         var request = new RequestRange
         {
             FromDate = new DateTimeOffset(2024, 1, 1, 0, 0, 0, TimeSpan.Zero),
@@ -243,7 +227,7 @@ public class LocalVariableCaptureTest
                         request.FromDate <= c.Created && c.Created <= request.ToDate
                     ),
                 },
-                new { request.FromDate, request.ToDate }
+                () => (request.FromDate, request.ToDate)
             )
             .ToList();
 
@@ -255,11 +239,10 @@ public class LocalVariableCaptureTest
     [Test]
     public void IEnumerable_WithCapturedVariable()
     {
-        SkipIfNativeAot();
         var val = 100;
         var converted = TestData
             .AsEnumerable()
-            .SelectExpr(x => new { x.Id, NewValue = x.Value + val }, new { val })
+            .SelectExpr(x => new { x.Id, NewValue = x.Value + val }, () => val)
             .ToList();
 
         converted.Count.ShouldBe(2);
@@ -271,7 +254,6 @@ public class LocalVariableCaptureTest
     [Test]
     public void Case3_NestedMemberAccess_InCapturedFields()
     {
-        SkipIfNativeAot();
         var request = new NestedRequest
         {
             Range = new RequestRange
@@ -292,23 +274,13 @@ public class LocalVariableCaptureTest
                         request.Range.FromDate <= c.Created && c.Created <= request.Range.ToDate
                     ),
                 },
-                new { request.Range.FromDate, request.Range.ToDate }
+                () => (request.Range.FromDate, request.Range.ToDate)
             )
             .ToList();
 
         converted.Count.ShouldBe(2);
         converted[0].CommitCount.ShouldBe(1);
         converted[1].CommitCount.ShouldBe(0);
-    }
-
-    private static void SkipIfNativeAot()
-    {
-        if (!RuntimeFeature.IsDynamicCodeSupported)
-        {
-            global::TUnit.Core.Skip.Test(
-                "Anonymous-object capture reflection is currently not NativeAOT-safe."
-            );
-        }
     }
 
     private static List<UserWithCommits> BuildUsers() =>

@@ -1,7 +1,7 @@
 using System.Runtime.CompilerServices;
 using System.Threading.Tasks;
 
-namespace Linqraft.Tests;
+namespace Linqraft.Tests.Utility;
 
 /// <summary>
 /// Indicates that a test should be skipped when running on NativeAOT runtimes. <br/>
