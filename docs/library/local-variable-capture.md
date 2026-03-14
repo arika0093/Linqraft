@@ -36,6 +36,8 @@ var converted = dbContext.Entities
 
 Anonymous-object captures such as `capture: new { threshold, multiplier, suffix }` are still supported for existing code, but the delegate form is the recommended option.
 
+Linqraft intentionally keeps capture transport separate from the selector delegate itself. While captured locals are visible through `selector.Target` on a normal JIT runtime, NativeAOT trimming can remove the compiler-generated closure fields, so relying on reflection over the selector delegate is not stable enough for generated code.
+
 ## Generated Code
 
 ```csharp

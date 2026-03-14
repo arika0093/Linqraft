@@ -361,6 +361,8 @@ public sealed class SourceGeneratorSmokeTests
         generateSource.ShouldContain("internal static T Generate_");
         generateSource.ShouldContain("(object x, global::System.Func<object> capture)");
         generateSource.ShouldContain("var captureValueBoxed = capture();");
+        generateSource.ShouldNotContain("selector.Target");
+        generateSource.ShouldNotContain("GetFields(");
         generateSource.ShouldContain(
             "var captureValue = captureValueBoxed is null ? default! : ("
         );
