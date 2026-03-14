@@ -54,11 +54,7 @@ public sealed class LinqraftKitGenerateTest
         var id = 42;
         var prefix = "Order-";
         var dto = LinqraftKit.Generate<GenerateCapturedOrderDto>(
-            new
-            {
-                Id = id,
-                Label = prefix + id,
-            },
+            new { Id = id, Label = prefix + id },
             capture: new { id, prefix }
         );
 

@@ -7,10 +7,34 @@ public sealed class GroupByExprRuntimeTests
 {
     private static readonly List<GroupByExprRecord> Records =
     [
-        new() { Id = 1, Region = "North", Status = "Healthy", Score = 10 },
-        new() { Id = 2, Region = "North", Status = "Healthy", Score = 20 },
-        new() { Id = 3, Region = "South", Status = "Warning", Score = 30 },
-        new() { Id = 4, Region = "South", Status = "Healthy", Score = 40 },
+        new()
+        {
+            Id = 1,
+            Region = "North",
+            Status = "Healthy",
+            Score = 10,
+        },
+        new()
+        {
+            Id = 2,
+            Region = "North",
+            Status = "Healthy",
+            Score = 20,
+        },
+        new()
+        {
+            Id = 3,
+            Region = "South",
+            Status = "Warning",
+            Score = 30,
+        },
+        new()
+        {
+            Id = 4,
+            Region = "South",
+            Status = "Healthy",
+            Score = 40,
+        },
     ];
 
     [Test]

@@ -20,14 +20,7 @@ namespace Linqraft.Tests
                         new ExtensionMethodItem { Name = "Grace" },
                     ],
                 },
-            }
-                .AsTestQueryable()
-                .SelectExpr<ExtensionMethodSource, ExtensionMethodProjectionDto>(x => new
-                {
-                    x.Id,
-                    Names = x.Items.Select(item => item.Name).ToCustomList(),
-                })
-                .ToList();
+            }.AsTestQueryable().SelectExpr<ExtensionMethodSource, ExtensionMethodProjectionDto>(x => new { x.Id, Names = x.Items.Select(item => item.Name).ToCustomList() }).ToList();
 
             result.Count.ShouldBe(1);
             result[0].Id.ShouldBe(1);

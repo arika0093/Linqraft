@@ -52,7 +52,8 @@ internal static class ProjectionModelFinalizer
                 InterceptableLocationVersion = requestTemplate.InterceptableLocationVersion,
                 InterceptableLocationData = requestTemplate.InterceptableLocationData,
                 Captures = requestTemplate.Captures,
-                ProjectionBodyText = requestTemplate.ProjectionBodyTemplate is { } projectionBodyTemplate
+                ProjectionBodyText = requestTemplate.ProjectionBodyTemplate
+                    is { } projectionBodyTemplate
                     ? ProjectionBodyEmitter.ReplaceTokens(projectionBodyTemplate, replacements)
                     : ProjectionBodyEmitter.BuildProjectionBody(
                         requestTemplate.Projection!,
@@ -91,7 +92,10 @@ internal static class ProjectionModelFinalizer
                 ProjectionBodyText = ProjectionBodyEmitter.BuildProjectionBody(
                     template.Request.Projection,
                     ProjectionPattern.PredefinedDto,
-                    ProjectionBodyEmitter.ReplaceTokens(template.Request.ResultTypeTemplate, replacements),
+                    ProjectionBodyEmitter.ReplaceTokens(
+                        template.Request.ResultTypeTemplate,
+                        replacements
+                    ),
                     configuration.ArrayNullabilityRemoval,
                     replacements
                 ),

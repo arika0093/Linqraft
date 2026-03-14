@@ -198,12 +198,8 @@ public sealed class GlobalPropertyConfigurationTests
         );
 
         itemsLineIndex.ShouldBeGreaterThanOrEqualTo(0);
-        lines[itemsLineIndex + 1]
-            .Trim()
-            .ShouldBe("? global::System.Linq.Enumerable.ToList(");
-        lines[itemsLineIndex + 2]
-            .Trim()
-            .ShouldBe("global::System.Linq.Enumerable.Select(");
+        lines[itemsLineIndex + 1].Trim().ShouldBe("? global::System.Linq.Enumerable.ToList(");
+        lines[itemsLineIndex + 2].Trim().ShouldBe("global::System.Linq.Enumerable.Select(");
         lines[itemsLineIndex + 3].Trim().ShouldBe("order.Items,");
         lines[itemsLineIndex + 4]
             .Trim()
@@ -269,9 +265,7 @@ public sealed class GlobalPropertyConfigurationTests
         );
 
         childLineIndex.ShouldBeGreaterThanOrEqualTo(0);
-        lines[childLineIndex + 1]
-            .Trim()
-            .ShouldBe("global::System.Linq.Enumerable.Select(");
+        lines[childLineIndex + 1].Trim().ShouldBe("global::System.Linq.Enumerable.Select(");
         lines[childLineIndex + 2].Trim().ShouldBe("root.Child2,");
         lines[childLineIndex + 3]
             .Trim()
@@ -279,17 +273,13 @@ public sealed class GlobalPropertyConfigurationTests
         lines[childLineIndex + 4].Trim().ShouldBe("Summary = child.Summary,");
         lines[childLineIndex + 5]
             .Trim()
-            .ShouldBe(
-                "GrandChild2Notes = global::System.Linq.Enumerable.Select("
-            );
+            .ShouldBe("GrandChild2Notes = global::System.Linq.Enumerable.Select(");
         lines[childLineIndex + 6].Trim().ShouldBe("child.GrandChilds,");
         lines[childLineIndex + 7].Trim().ShouldBe("grandChild => grandChild.Notes");
         lines[childLineIndex + 8].Trim().ShouldBe("),");
         lines[childLineIndex + 9]
             .Trim()
-            .ShouldBe(
-                "GrandChild2Values = global::System.Linq.Enumerable.Select("
-            );
+            .ShouldBe("GrandChild2Values = global::System.Linq.Enumerable.Select(");
         lines[childLineIndex + 10].Trim().ShouldBe("child.GrandChilds,");
         lines[childLineIndex + 11].Trim().ShouldBe("grandChild => grandChild.Value");
         lines[childLineIndex + 12].Trim().ShouldBe("),");

@@ -35,7 +35,15 @@ public sealed class SelectManyExprRuntimeTests
         {
             Id = 20,
             Name = "ParentB",
-            Children = [new() { Id = 201, Name = "ChildB-1", GrandChildren = [] }],
+            Children =
+            [
+                new()
+                {
+                    Id = 201,
+                    Name = "ChildB-1",
+                    GrandChildren = [],
+                },
+            ],
         },
     ];
 
@@ -72,11 +80,7 @@ public sealed class SelectManyExprRuntimeTests
                 {
                     ParentName = parent.Name,
                     ChildName = child.Name,
-                    GrandChildren = child.GrandChildren.Select(gc => new
-                    {
-                        gc.Id,
-                        gc.Description,
-                    }),
+                    GrandChildren = child.GrandChildren.Select(gc => new { gc.Id, gc.Description }),
                 })
             )
             .OrderBy(x => x.ChildName)
@@ -91,15 +95,16 @@ public sealed class SelectManyExprRuntimeTests
     public void IEnumerable_SelectManyExpr_can_flatten_nested_selectmany()
     {
         var result = Parents.SelectManyExpr<SelectManyExprParent, SelectManyExprGrandChildRowDto>(
-            parent => parent.Children.SelectMany(child =>
-                child.GrandChildren.Select(grandChild => new
-                {
-                    ParentId = parent.Id,
-                    ChildId = child.Id,
-                    GrandChildId = grandChild.Id,
-                    grandChild.Description,
-                })
-            )
+            parent =>
+                parent.Children.SelectMany(child =>
+                    child.GrandChildren.Select(grandChild => new
+                    {
+                        ParentId = parent.Id,
+                        ChildId = child.Id,
+                        GrandChildId = grandChild.Id,
+                        grandChild.Description,
+                    })
+                )
         );
 
         var ordered = result.OrderBy(x => x.GrandChildId).ToList();

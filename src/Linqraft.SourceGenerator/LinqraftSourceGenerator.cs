@@ -156,7 +156,10 @@ public sealed class LinqraftSourceGenerator : IIncrementalGenerator
             queryOwnedSources,
             mappingClassSources.Collect()
         );
-        var ownedSources = MergeCollectedValues(queryAndClassOwnedSources, mappingMethodSources.Collect());
+        var ownedSources = MergeCollectedValues(
+            queryAndClassOwnedSources,
+            mappingMethodSources.Collect()
+        );
         var generatedSources = ownedSources
             .Combine(configuration)
             .Select(
@@ -308,10 +311,15 @@ public sealed class LinqraftSourceGenerator : IIncrementalGenerator
         return invocation.Expression switch
         {
             MemberAccessExpressionSyntax memberAccess
-                when memberAccess.Name.Identifier.ValueText is "SelectExpr" or "SelectManyExpr" or "GroupByExpr" => true,
+                when memberAccess.Name.Identifier.ValueText
+                    is "SelectExpr"
+                        or "SelectManyExpr"
+                        or "GroupByExpr" => true,
             GenericNameSyntax genericName
-                when genericName.Identifier.ValueText is "SelectExpr" or "SelectManyExpr" or "GroupByExpr" =>
-                true,
+                when genericName.Identifier.ValueText
+                    is "SelectExpr"
+                        or "SelectManyExpr"
+                        or "GroupByExpr" => true,
             _ => false,
         };
     }
@@ -322,7 +330,8 @@ public sealed class LinqraftSourceGenerator : IIncrementalGenerator
         {
             MemberAccessExpressionSyntax memberAccess
                 when memberAccess.Name.Identifier.ValueText == "Generate" => true,
-            GenericNameSyntax genericName when genericName.Identifier.ValueText == "Generate" => true,
+            GenericNameSyntax genericName when genericName.Identifier.ValueText == "Generate" =>
+                true,
             _ => false,
         };
     }

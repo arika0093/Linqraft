@@ -267,11 +267,7 @@ public sealed class SourceGeneratorSmokeTests
         var shipmentIndex = FindLineIndex(
             lines,
             questionIndex + 1,
-            line =>
-                line.Contains(
-                    "global::System.Linq.Enumerable.Sum(",
-                    StringComparison.Ordinal
-                )
+            line => line.Contains("global::System.Linq.Enumerable.Sum(", StringComparison.Ordinal)
         );
         var eventsIndex = FindLineIndex(
             lines,
@@ -363,10 +359,16 @@ public sealed class SourceGeneratorSmokeTests
         generateSource.ShouldContain("internal static T Generate_");
         generateSource.ShouldContain("(object x, object capture)");
         generateSource.ShouldContain("var captureType = capture.GetType();");
-        generateSource.ShouldContain("var __linqraft_capture_0_idProperty = captureType.GetProperty(\"id\"");
-        generateSource.ShouldContain("var __linqraft_capture_1_prefixProperty = captureType.GetProperty(\"prefix\"");
+        generateSource.ShouldContain(
+            "var __linqraft_capture_0_idProperty = captureType.GetProperty(\"id\""
+        );
+        generateSource.ShouldContain(
+            "var __linqraft_capture_1_prefixProperty = captureType.GetProperty(\"prefix\""
+        );
         generateSource.ShouldContain("Id = __linqraft_capture_0_id");
-        generateSource.ShouldContain("Label = __linqraft_capture_1_prefix + __linqraft_capture_0_id");
+        generateSource.ShouldContain(
+            "Label = __linqraft_capture_1_prefix + __linqraft_capture_0_id"
+        );
     }
 
     private static GeneratorDriver CreateDriver(bool usePrebuildExpression = true)

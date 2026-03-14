@@ -488,8 +488,7 @@ internal static class ProjectionTemplateBuilder
         {
             var explicitTypeSyntax = typeArguments[1];
             resultTypeTemplate =
-                ResolveNamedType(explicitTypeSyntax, semanticModel, callerNamespace)
-                ?? "TResult";
+                ResolveNamedType(explicitTypeSyntax, semanticModel, callerNamespace) ?? "TResult";
             if (
                 TryFindProjectedAnonymousBody(selectorBody, out var projectedAnonymousBody)
                 && projectedAnonymousBody is not null
@@ -552,7 +551,9 @@ internal static class ProjectionTemplateBuilder
         return new AnalyzedProjection
         {
             Pattern =
-                typeArguments.Count >= 2 ? ProjectionPattern.ExplicitDto : ProjectionPattern.Anonymous,
+                typeArguments.Count >= 2
+                    ? ProjectionPattern.ExplicitDto
+                    : ProjectionPattern.Anonymous,
             ResultTypeTemplate = resultTypeTemplate,
             SelectorParameterName = GetLambdaParameterName(selectorLambda),
             KeySelectorParameterName = null,
@@ -677,7 +678,10 @@ internal static class ProjectionTemplateBuilder
             return false;
         }
 
-        var lambda = invocation.ArgumentList.Arguments.Select(argument => argument.Expression).OfType<LambdaExpressionSyntax>().FirstOrDefault();
+        var lambda = invocation
+            .ArgumentList.Arguments.Select(argument => argument.Expression)
+            .OfType<LambdaExpressionSyntax>()
+            .FirstOrDefault();
         if (lambda is null)
         {
             return false;
@@ -754,7 +758,10 @@ internal static class ProjectionTemplateBuilder
             ownerHintName: ownerHintName
         );
         buildContext.RegisterDto(buildResult.DtoTemplate!);
-        var interceptableLocation = semanticModel.GetInterceptableLocation(invocation, cancellationToken);
+        var interceptableLocation = semanticModel.GetInterceptableLocation(
+            invocation,
+            cancellationToken
+        );
 
         return new ObjectGenerationSourceTemplateModel
         {
@@ -1152,7 +1159,12 @@ internal static class ProjectionTemplateBuilder
                     && namedContext
                 )
                 {
-                    if (replacementTypes.TryGetValue(anonymousBody.Span, out var existingProjectedType))
+                    if (
+                        replacementTypes.TryGetValue(
+                            anonymousBody.Span,
+                            out var existingProjectedType
+                        )
+                    )
                     {
                         projectedTypeTemplate = existingProjectedType;
                         return BuildProjectedResultType(
@@ -1638,7 +1650,9 @@ internal static class ProjectionTemplateBuilder
     private static GeneratedSourceOriginModel CreateOrigin(SyntaxNode node)
     {
         var lineSpan = node.GetLocation().GetLineSpan();
-        var path = string.IsNullOrWhiteSpace(lineSpan.Path) ? node.SyntaxTree.FilePath : lineSpan.Path;
+        var path = string.IsNullOrWhiteSpace(lineSpan.Path)
+            ? node.SyntaxTree.FilePath
+            : lineSpan.Path;
         return new GeneratedSourceOriginModel
         {
             FileName = string.IsNullOrWhiteSpace(path) ? "unknown" : Path.GetFileName(path),
@@ -1750,7 +1764,12 @@ internal static class ProjectionTemplateBuilder
     private static bool IsProjectionInvocation(InvocationExpressionSyntax invocation)
     {
         var name = GetInvocationName(invocation.Expression);
-        return name is "Select" or "SelectMany" or "SelectExpr" or "SelectManyExpr" or "GroupByExpr";
+        return name
+            is "Select"
+                or "SelectMany"
+                or "SelectExpr"
+                or "SelectManyExpr"
+                or "GroupByExpr";
     }
 
     private static ProjectionPattern? ResolveProjectionPattern(
@@ -2168,12 +2187,19 @@ internal static class ProjectionTemplateBuilder
         CancellationToken cancellationToken
     )
     {
-        if (!string.Equals(GetInvocationName(invocation.Expression), "Generate", StringComparison.Ordinal))
+        if (
+            !string.Equals(
+                GetInvocationName(invocation.Expression),
+                "Generate",
+                StringComparison.Ordinal
+            )
+        )
         {
             return false;
         }
 
-        var methodSymbol = semanticModel.GetSymbolInfo(invocation, cancellationToken).Symbol as IMethodSymbol;
+        var methodSymbol =
+            semanticModel.GetSymbolInfo(invocation, cancellationToken).Symbol as IMethodSymbol;
         if (methodSymbol is null)
         {
             return false;
@@ -2184,8 +2210,7 @@ internal static class ProjectionTemplateBuilder
                 targetMethod.ContainingType.ToDisplayString(),
                 "Linqraft.LinqraftKit",
                 StringComparison.Ordinal
-            )
-            && string.Equals(targetMethod.Name, "Generate", StringComparison.Ordinal);
+            ) && string.Equals(targetMethod.Name, "Generate", StringComparison.Ordinal);
     }
 
     private static bool IsSelectExprInvocation(InvocationExpressionSyntax invocation)

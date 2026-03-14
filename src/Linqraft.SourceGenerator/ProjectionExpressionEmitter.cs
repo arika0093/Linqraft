@@ -326,11 +326,25 @@ internal sealed class ProjectionExpressionEmitter
     {
         return expression.Expression switch
         {
-            MemberAccessExpressionSyntax memberAccess => memberAccess.Name.Identifier.ValueText switch
+            MemberAccessExpressionSyntax memberAccess => memberAccess
+                .Name
+                .Identifier
+                .ValueText switch
             {
-                "SelectExpr" => EmitProjectionInvocation(Emit(memberAccess.Expression), expression, "Select"),
-                "SelectManyExpr" => EmitProjectionInvocation(Emit(memberAccess.Expression), expression, "SelectMany"),
-                "GroupByExpr" => EmitGroupByExprInvocation(Emit(memberAccess.Expression), expression),
+                "SelectExpr" => EmitProjectionInvocation(
+                    Emit(memberAccess.Expression),
+                    expression,
+                    "Select"
+                ),
+                "SelectManyExpr" => EmitProjectionInvocation(
+                    Emit(memberAccess.Expression),
+                    expression,
+                    "SelectMany"
+                ),
+                "GroupByExpr" => EmitGroupByExprInvocation(
+                    Emit(memberAccess.Expression),
+                    expression
+                ),
                 _ => EmitMemberInvocation(expression, memberAccess, Emit(memberAccess.Expression)),
             },
             _ => $"{Emit(expression.Expression)}{EmitArgumentList(expression.ArgumentList)}",
@@ -357,7 +371,10 @@ internal sealed class ProjectionExpressionEmitter
 
     private string EmitGroupByExprInvocation(string receiver, InvocationExpressionSyntax expression)
     {
-        var lambdas = expression.ArgumentList.Arguments.Select(argument => argument.Expression).OfType<LambdaExpressionSyntax>().ToArray();
+        var lambdas = expression
+            .ArgumentList.Arguments.Select(argument => argument.Expression)
+            .OfType<LambdaExpressionSyntax>()
+            .ToArray();
         if (lambdas.Length < 2)
         {
             return $"{receiver}.GroupBy{EmitArgumentList(expression.ArgumentList)}";
@@ -372,7 +389,12 @@ internal sealed class ProjectionExpressionEmitter
         string receiver
     )
     {
-        return TryEmitExtensionInvocation(expression, memberAccess.Name, receiver, out var rewritten)
+        return TryEmitExtensionInvocation(
+            expression,
+            memberAccess.Name,
+            receiver,
+            out var rewritten
+        )
             ? rewritten
             : $"{receiver}.{EmitSimpleName(memberAccess.Name)}{EmitArgumentList(expression.ArgumentList)}";
     }
@@ -598,9 +620,10 @@ internal sealed class ProjectionExpressionEmitter
                     && ContainsConditionalAccess(memberInvocation.Expression):
                 return TryBuildConditional(
                     memberInvocation.Expression,
-                    value => applyTail(
-                        EmitInvocationFromReceiver(invocation, memberInvocation.Name, value)
-                    ),
+                    value =>
+                        applyTail(
+                            EmitInvocationFromReceiver(invocation, memberInvocation.Name, value)
+                        ),
                     rootConditionalExpression,
                     out rewritten
                 );
@@ -608,7 +631,8 @@ internal sealed class ProjectionExpressionEmitter
                 when ContainsConditionalAccess(elementAccess.Expression):
                 return TryBuildConditional(
                     elementAccess.Expression,
-                    value => applyTail($"{value}{EmitBracketArguments(elementAccess.ArgumentList)}"),
+                    value =>
+                        applyTail($"{value}{EmitBracketArguments(elementAccess.ArgumentList)}"),
                     rootConditionalExpression,
                     out rewritten
                 );
@@ -666,8 +690,7 @@ internal sealed class ProjectionExpressionEmitter
         rewritten = string.Empty;
         if (
             ContainsReducedExtensionInvocation(expression)
-            ||
-            !TryDecomposeFluentChain(
+            || !TryDecomposeFluentChain(
                 expression,
                 out var root,
                 out var segments,
@@ -795,7 +818,8 @@ internal sealed class ProjectionExpressionEmitter
         }
 
         var symbolInfo = _semanticModel.GetSymbolInfo(invocation);
-        var methodSymbol = symbolInfo.Symbol as IMethodSymbol
+        var methodSymbol =
+            symbolInfo.Symbol as IMethodSymbol
             ?? symbolInfo.CandidateSymbols.OfType<IMethodSymbol>().FirstOrDefault();
         var reducedFrom = methodSymbol?.ReducedFrom;
         if (reducedFrom is null)
@@ -1513,7 +1537,11 @@ internal sealed class ProjectionExpressionEmitter
 
     private bool ContainsReducedExtensionInvocation(ExpressionSyntax expression)
     {
-        foreach (var invocation in expression.DescendantNodesAndSelf().OfType<InvocationExpressionSyntax>())
+        foreach (
+            var invocation in expression
+                .DescendantNodesAndSelf()
+                .OfType<InvocationExpressionSyntax>()
+        )
         {
             if (!BelongsToSemanticModel(invocation))
             {
@@ -1521,7 +1549,8 @@ internal sealed class ProjectionExpressionEmitter
             }
 
             var symbolInfo = _semanticModel.GetSymbolInfo(invocation);
-            var methodSymbol = symbolInfo.Symbol as IMethodSymbol
+            var methodSymbol =
+                symbolInfo.Symbol as IMethodSymbol
                 ?? symbolInfo.CandidateSymbols.OfType<IMethodSymbol>().FirstOrDefault();
             if (methodSymbol?.ReducedFrom is not null)
             {
