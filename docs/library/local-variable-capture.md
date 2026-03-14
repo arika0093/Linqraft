@@ -15,7 +15,7 @@ var converted = dbContext.Entities
 
 ## Solution: Use Capture Parameter
 
-Pass local variables as an anonymous object through the `capture` parameter:
+For new code, prefer a delegate capture so the generated code can stay NativeAOT-safe:
 
 ```csharp
 var threshold = 100;
@@ -30,21 +30,23 @@ var converted = dbContext.Entities
             DoubledValue = x.Value * multiplier,
             Description = x.Name + suffix,
         },
-        capture: new { threshold, multiplier, suffix }
+        capture: () => (threshold, multiplier, suffix)
     );
 ```
+
+Anonymous-object captures such as `capture: new { threshold, multiplier, suffix }` are still supported for existing code, but the delegate form is the recommended option.
 
 ## Generated Code
 
 ```csharp
 public static IQueryable<TResult> SelectExpr_HASH<TIn, TResult>(
-    this IQueryable<TIn> query, Func<TIn, TResult> selector, object captureParam)
+    this IQueryable<TIn> query, Func<TIn, TResult> selector, Func<object> capture)
 {
     var matchedQuery = query as object as IQueryable<Entity>;
-    dynamic captureObj = captureParam;
-    int threshold = captureObj.threshold;
-    int multiplier = captureObj.multiplier;
-    string suffix = captureObj.suffix;
+    var captureValue = ((int, int, string))capture();
+    var threshold = captureValue.Item1;
+    var multiplier = captureValue.Item2;
+    var suffix = captureValue.Item3;
 
     var converted = matchedQuery.Select(x => new EntityDto
     {

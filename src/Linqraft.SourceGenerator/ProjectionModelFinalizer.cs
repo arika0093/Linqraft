@@ -52,6 +52,8 @@ internal static class ProjectionModelFinalizer
                 InterceptableLocationVersion = requestTemplate.InterceptableLocationVersion,
                 InterceptableLocationData = requestTemplate.InterceptableLocationData,
                 Captures = requestTemplate.Captures,
+                CaptureTransportKind = requestTemplate.CaptureTransportKind,
+                CaptureTransportTypeName = requestTemplate.CaptureTransportTypeName,
                 ProjectionBodyText = requestTemplate.ProjectionBodyTemplate
                     is { } projectionBodyTemplate
                     ? ProjectionBodyEmitter.ReplaceTokens(projectionBodyTemplate, replacements)
@@ -100,6 +102,8 @@ internal static class ProjectionModelFinalizer
                     replacements
                 ),
                 Captures = template.Request.Captures,
+                CaptureTransportKind = template.Request.CaptureTransportKind,
+                CaptureTransportTypeName = template.Request.CaptureTransportTypeName,
                 InterceptableLocationVersion = template.Request.InterceptableLocationVersion,
                 InterceptableLocationData = template.Request.InterceptableLocationData,
             },

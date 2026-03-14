@@ -48,14 +48,14 @@ public sealed class LinqraftKitGenerateTest
         dto.Decisions.Select(x => x.IsLarge).ShouldBe([false, true]);
     }
 
-    [Test, SkipOnNativeAot]
+    [Test]
     public void Generate_can_read_captured_values_from_capture_argument()
     {
         var id = 42;
         var prefix = "Order-";
         var dto = LinqraftKit.Generate<GenerateCapturedOrderDto>(
             new { Id = id, Label = prefix + id },
-            capture: new { id, prefix }
+            capture: () => (id, prefix)
         );
 
         dto.Id.ShouldBe(42);

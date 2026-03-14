@@ -36,6 +36,14 @@ internal sealed record CaptureParameterModel
     public required string LocalName { get; init; }
 
     public required string TypeName { get; init; }
+
+    public string? ValueAccessor { get; init; }
+}
+
+internal enum CaptureTransportKind
+{
+    AnonymousObject,
+    Delegate,
 }
 
 internal sealed record ContainingTypeInfo
@@ -159,6 +167,10 @@ internal sealed record ProjectionRequestTemplate
     public required string? InterceptableLocationData { get; init; }
 
     public required EquatableArray<CaptureParameterModel> Captures { get; init; }
+
+    public required CaptureTransportKind CaptureTransportKind { get; init; }
+
+    public string? CaptureTransportTypeName { get; init; }
 
     public ProjectionTemplateModel? Projection { get; init; }
 
@@ -291,6 +303,10 @@ internal sealed record ProjectionRequest
 
     public required EquatableArray<CaptureParameterModel> Captures { get; init; }
 
+    public required CaptureTransportKind CaptureTransportKind { get; init; }
+
+    public string? CaptureTransportTypeName { get; init; }
+
     public required string ProjectionBodyText { get; init; }
 }
 
@@ -307,6 +323,10 @@ internal sealed record ObjectGenerationRequestTemplate
     public required ProjectionTemplateModel Projection { get; init; }
 
     public required EquatableArray<CaptureParameterModel> Captures { get; init; }
+
+    public required CaptureTransportKind CaptureTransportKind { get; init; }
+
+    public string? CaptureTransportTypeName { get; init; }
 
     public required int? InterceptableLocationVersion { get; init; }
 
@@ -333,6 +353,10 @@ internal sealed record ObjectGenerationRequest
     public required string ProjectionBodyText { get; init; }
 
     public required EquatableArray<CaptureParameterModel> Captures { get; init; }
+
+    public required CaptureTransportKind CaptureTransportKind { get; init; }
+
+    public string? CaptureTransportTypeName { get; init; }
 
     public required int? InterceptableLocationVersion { get; init; }
 

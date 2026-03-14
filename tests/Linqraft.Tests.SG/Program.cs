@@ -41,6 +41,8 @@ public sealed class SourceGeneratorSmokeTests
         supportSource.ShouldContain("namespace Linqraft");
         supportSource.ShouldNotContain("namespace System.Linq");
         supportSource.ShouldContain("public static T Generate<T>(object x, object capture)");
+        supportSource.ShouldContain("public static T Generate<T>(object x, global::System.Func<object> capture)");
+        supportSource.ShouldContain("/// Interception stub for queryable sequence projections with NativeAOT-safe delegate captures.");
         var projectionSources = generatedSources
             .Where(pair => pair.Key.Contains("SelectExpr_", StringComparison.Ordinal))
             .ToArray();
@@ -353,18 +355,18 @@ public sealed class SourceGeneratorSmokeTests
         var generatedSources = GetGeneratedSourceMap(driver.GetRunResult());
         var generateSource = generatedSources.Values.Single(source =>
             source.Contains("GeneratedCaptureDto", StringComparison.Ordinal)
-            && source.Contains("captureType.GetProperty(\"id\"", StringComparison.Ordinal)
+            && source.Contains("var captureValueBoxed = capture();", StringComparison.Ordinal)
         );
 
         generateSource.ShouldContain("internal static T Generate_");
-        generateSource.ShouldContain("(object x, object capture)");
-        generateSource.ShouldContain("var captureType = capture.GetType();");
+        generateSource.ShouldContain("(object x, global::System.Func<object> capture)");
+        generateSource.ShouldContain("var captureValueBoxed = capture();");
         generateSource.ShouldContain(
-            "var __linqraft_capture_0_idProperty = captureType.GetProperty(\"id\""
+            "var captureValue = captureValueBoxed is null ? default! : ("
         );
-        generateSource.ShouldContain(
-            "var __linqraft_capture_1_prefixProperty = captureType.GetProperty(\"prefix\""
-        );
+        generateSource.ShouldContain(")captureValueBoxed;");
+        generateSource.ShouldContain("var __linqraft_capture_0_id = captureValue.Item1;");
+        generateSource.ShouldContain("var __linqraft_capture_1_prefix = captureValue.Item2;");
         generateSource.ShouldContain("Id = __linqraft_capture_0_id");
         generateSource.ShouldContain(
             "Label = __linqraft_capture_1_prefix + __linqraft_capture_0_id"
@@ -647,7 +649,7 @@ public sealed class SourceGeneratorSmokeTests
                             Id = id,
                             Label = prefix + id,
                         },
-                        capture: new { id, prefix }
+                        capture: () => (id, prefix)
                     );
                 }
             }

@@ -266,7 +266,8 @@ internal static class ProjectionTemplateBuilder
             return null;
         }
 
-        var captureEntries = AnalyzeCaptures(invocation, semanticModel, cancellationToken);
+        var captureInfo = AnalyzeCaptures(invocation, semanticModel, cancellationToken);
+        var captureEntries = captureInfo.Entries;
         var callerNamespace = ResolveCallerNamespace(invocation, semanticModel);
         var methodHash = HashingHelper.ComputeHash(
             $"{invocation.SyntaxTree.FilePath}|{invocation.SpanStart}|{invocation}",
@@ -355,8 +356,11 @@ internal static class ProjectionTemplateBuilder
                         PropertyName = capture.PropertyName,
                         LocalName = capture.LocalName,
                         TypeName = capture.TypeName,
+                        ValueAccessor = capture.ValueAccessor,
                     })
                     .ToArray(),
+                CaptureTransportKind = captureInfo.TransportKind,
+                CaptureTransportTypeName = captureInfo.TransportTypeName,
                 Projection = analyzedProjection.ProjectionTemplate,
                 ProjectionBodyTemplate = analyzedProjection.ProjectionBodyTemplate,
             },
@@ -735,7 +739,8 @@ internal static class ProjectionTemplateBuilder
             ownerHintName,
             cancellationToken
         );
-        var captureEntries = AnalyzeCaptures(invocation, semanticModel, cancellationToken);
+        var captureInfo = AnalyzeCaptures(invocation, semanticModel, cancellationToken);
+        var captureEntries = captureInfo.Entries;
         var buildContext = new ProjectionBuildContext(
             semanticModel,
             captureEntries,
@@ -778,8 +783,11 @@ internal static class ProjectionTemplateBuilder
                         PropertyName = capture.PropertyName,
                         LocalName = capture.LocalName,
                         TypeName = capture.TypeName,
+                        ValueAccessor = capture.ValueAccessor,
                     })
                     .ToArray(),
+                CaptureTransportKind = captureInfo.TransportKind,
+                CaptureTransportTypeName = captureInfo.TransportTypeName,
                 InterceptableLocationVersion = interceptableLocation?.Version,
                 InterceptableLocationData = interceptableLocation?.Data,
             },
@@ -1540,50 +1548,81 @@ internal static class ProjectionTemplateBuilder
         };
     }
 
-    private static ProjectionExpressionEmitter.CaptureEntry[] AnalyzeCaptures(
+    private static CaptureAnalysisResult AnalyzeCaptures(
         InvocationExpressionSyntax invocation,
         SemanticModel semanticModel,
         CancellationToken cancellationToken
     )
     {
-        var captureArgument = invocation.ArgumentList.Arguments.FirstOrDefault(argument =>
-            argument.NameColon?.Name.Identifier.ValueText == "capture"
-            || (
-                !argument.Equals(invocation.ArgumentList.Arguments.First())
-                && argument.Expression is AnonymousObjectCreationExpressionSyntax
-            )
-        );
-        if (
-            captureArgument?.Expression
-            is not AnonymousObjectCreationExpressionSyntax anonymousCapture
-        )
+        var captureArgument = GetCaptureArgument(invocation);
+        if (captureArgument?.Expression is null)
         {
-            return Array.Empty<ProjectionExpressionEmitter.CaptureEntry>();
+            return CaptureAnalysisResult.None;
         }
 
-        return anonymousCapture
-            .Initializers.Select(
-                (initializer, index) =>
-                {
-                    var propertyName = GetAnonymousMemberName(initializer);
-                    var type = semanticModel
-                        .GetTypeInfo(initializer.Expression, cancellationToken)
-                        .Type;
-                    return new ProjectionExpressionEmitter.CaptureEntry
-                    {
-                        PropertyName = propertyName,
-                        LocalName = CreateCaptureLocalName(propertyName, index),
-                        TypeName = type?.ToFullyQualifiedTypeName() ?? "object",
-                        ExpressionText = NormalizeExpressionText(initializer.Expression),
-                        RootSymbol = GetCaptureRootSymbol(
-                            initializer.Expression,
-                            semanticModel,
-                            cancellationToken
-                        ),
-                    };
-                }
-            )
-            .ToArray();
+        if (captureArgument.Expression is AnonymousObjectCreationExpressionSyntax anonymousCapture)
+        {
+            return new CaptureAnalysisResult
+            {
+                TransportKind = CaptureTransportKind.AnonymousObject,
+                TransportTypeName = null,
+                Entries = anonymousCapture
+                    .Initializers.Select(
+                        (initializer, index) =>
+                            CreateCaptureEntry(
+                                GetAnonymousMemberName(initializer),
+                                initializer.Expression,
+                                index,
+                                semanticModel,
+                                cancellationToken
+                            )
+                    )
+                    .ToArray(),
+            };
+        }
+
+        if (captureArgument.Expression is LambdaExpressionSyntax captureLambda)
+        {
+            var body = GetLambdaBodyExpression(captureLambda);
+            if (body is null)
+            {
+                return CaptureAnalysisResult.None;
+            }
+
+            var entries = body is TupleExpressionSyntax tuple
+                ? tuple
+                    .Arguments.Select(
+                        (argument, index) =>
+                            CreateCaptureEntry(
+                                GetCaptureMemberName(argument.Expression),
+                                argument.Expression,
+                                index,
+                                semanticModel,
+                                cancellationToken,
+                                $"Item{index + 1}"
+                            )
+                    )
+                    .ToArray()
+                : [CreateCaptureEntry(
+                    GetCaptureMemberName(body),
+                    body,
+                    0,
+                    semanticModel,
+                    cancellationToken
+                )];
+            var bodyType =
+                semanticModel.GetTypeInfo(body, cancellationToken).Type
+                ?? semanticModel.GetTypeInfo(body, cancellationToken).ConvertedType;
+
+            return new CaptureAnalysisResult
+            {
+                TransportKind = CaptureTransportKind.Delegate,
+                TransportTypeName = bodyType?.ToFullyQualifiedTypeName() ?? "object",
+                Entries = entries,
+            };
+        }
+
+        return CaptureAnalysisResult.None;
     }
 
     private static GeneratedDtoTemplateModel MergeDtoTemplate(
@@ -1873,6 +1912,78 @@ internal static class ProjectionTemplateBuilder
         return $"__linqraft_capture_{index}_{sanitized}";
     }
 
+    private static bool IsCaptureExpression(ExpressionSyntax expression)
+    {
+        return expression is AnonymousObjectCreationExpressionSyntax or LambdaExpressionSyntax;
+    }
+
+    private static ArgumentSyntax? GetCaptureArgument(InvocationExpressionSyntax invocation)
+    {
+        var namedCapture = invocation.ArgumentList.Arguments.FirstOrDefault(argument =>
+            argument.NameColon?.Name.Identifier.ValueText == "capture"
+        );
+        if (namedCapture is not null)
+        {
+            return namedCapture;
+        }
+
+        var captureIndex = GetPositionalCaptureArgumentIndex(invocation);
+        if (
+            captureIndex is not int index
+            || index < 0
+            || index >= invocation.ArgumentList.Arguments.Count
+        )
+        {
+            return null;
+        }
+
+        var argument = invocation.ArgumentList.Arguments[index];
+        return IsCaptureExpression(argument.Expression) ? argument : null;
+    }
+
+    private static int? GetPositionalCaptureArgumentIndex(InvocationExpressionSyntax invocation)
+    {
+        return GetInvocationName(invocation.Expression) switch
+        {
+            "Generate" => 1,
+            "SelectExpr" => 1,
+            "SelectManyExpr" => 1,
+            "GroupByExpr" => 2,
+            _ => null,
+        };
+    }
+
+    private static string GetCaptureMemberName(ExpressionSyntax expression)
+    {
+        return expression switch
+        {
+            IdentifierNameSyntax identifier => identifier.Identifier.ValueText,
+            MemberAccessExpressionSyntax memberAccess => memberAccess.Name.Identifier.ValueText,
+            _ => NormalizeExpressionText(expression),
+        };
+    }
+
+    private static ProjectionExpressionEmitter.CaptureEntry CreateCaptureEntry(
+        string propertyName,
+        ExpressionSyntax expression,
+        int index,
+        SemanticModel semanticModel,
+        CancellationToken cancellationToken,
+        string? valueAccessor = null
+    )
+    {
+        var type = semanticModel.GetTypeInfo(expression, cancellationToken).Type;
+        return new ProjectionExpressionEmitter.CaptureEntry
+        {
+            PropertyName = propertyName,
+            LocalName = CreateCaptureLocalName(propertyName, index),
+            TypeName = type?.ToFullyQualifiedTypeName() ?? "object",
+            ExpressionText = NormalizeExpressionText(expression),
+            RootSymbol = GetCaptureRootSymbol(expression, semanticModel, cancellationToken),
+            ValueAccessor = valueAccessor,
+        };
+    }
+
     private static string NormalizeExpressionText(ExpressionSyntax expression)
     {
         return expression.WithoutTrivia().ToString();
@@ -1907,6 +2018,23 @@ internal static class ProjectionTemplateBuilder
             InvocationExpressionSyntax invocation => invocation,
             _ => expression,
         };
+    }
+
+    private sealed record CaptureAnalysisResult
+    {
+        public static CaptureAnalysisResult None { get; } =
+            new()
+            {
+                TransportKind = CaptureTransportKind.AnonymousObject,
+                TransportTypeName = null,
+                Entries = Array.Empty<ProjectionExpressionEmitter.CaptureEntry>(),
+            };
+
+        public required CaptureTransportKind TransportKind { get; init; }
+
+        public string? TransportTypeName { get; init; }
+
+        public required ProjectionExpressionEmitter.CaptureEntry[] Entries { get; init; }
     }
 
     private static string BuildCollectionTypeName(
