@@ -324,46 +324,74 @@ internal sealed class ProjectionExpressionEmitter
 
     private string EmitInvocation(InvocationExpressionSyntax expression)
     {
-        if (GetInvocationName(expression.Expression) == "SelectExpr")
+        return expression.Expression switch
         {
-            return EmitSelectExprInvocation(expression);
-        }
-
-        return $"{Emit(expression.Expression)}{EmitArgumentList(expression.ArgumentList)}";
+            MemberAccessExpressionSyntax memberAccess => memberAccess.Name.Identifier.ValueText switch
+            {
+                "SelectExpr" => EmitProjectionInvocation(Emit(memberAccess.Expression), expression, "Select"),
+                "SelectManyExpr" => EmitProjectionInvocation(Emit(memberAccess.Expression), expression, "SelectMany"),
+                "GroupByExpr" => EmitGroupByExprInvocation(Emit(memberAccess.Expression), expression),
+                _ => EmitMemberInvocation(expression, memberAccess, Emit(memberAccess.Expression)),
+            },
+            _ => $"{Emit(expression.Expression)}{EmitArgumentList(expression.ArgumentList)}",
+        };
     }
 
-    private string EmitSelectExprInvocation(InvocationExpressionSyntax expression)
+    private string EmitProjectionInvocation(
+        string receiver,
+        InvocationExpressionSyntax expression,
+        string projectionMethodName
+    )
     {
-        var receiver = expression.Expression switch
-        {
-            MemberAccessExpressionSyntax memberAccess => Emit(memberAccess.Expression),
-            _ => Emit(expression.Expression),
-        };
         var selector = expression
             .ArgumentList.Arguments.Select(argument => argument.Expression)
             .OfType<LambdaExpressionSyntax>()
             .FirstOrDefault();
         if (selector is null)
         {
-            return $"{receiver}.Select{EmitArgumentList(expression.ArgumentList)}";
+            return $"{receiver}.{projectionMethodName}{EmitArgumentList(expression.ArgumentList)}";
         }
 
-        return $"{receiver}.Select({Emit(selector)})";
+        return $"{receiver}.{projectionMethodName}({Emit(selector)})";
+    }
+
+    private string EmitGroupByExprInvocation(string receiver, InvocationExpressionSyntax expression)
+    {
+        var lambdas = expression.ArgumentList.Arguments.Select(argument => argument.Expression).OfType<LambdaExpressionSyntax>().ToArray();
+        if (lambdas.Length < 2)
+        {
+            return $"{receiver}.GroupBy{EmitArgumentList(expression.ArgumentList)}";
+        }
+
+        return $"{receiver}.GroupBy({Emit(lambdas[0])}).Select({Emit(lambdas[1])})";
+    }
+
+    private string EmitMemberInvocation(
+        InvocationExpressionSyntax expression,
+        MemberAccessExpressionSyntax memberAccess,
+        string receiver
+    )
+    {
+        return TryEmitExtensionInvocation(expression, memberAccess.Name, receiver, out var rewritten)
+            ? rewritten
+            : $"{receiver}.{EmitSimpleName(memberAccess.Name)}{EmitArgumentList(expression.ArgumentList)}";
     }
 
     private string EmitArgumentList(ArgumentListSyntax argumentList)
     {
-        var arguments = argumentList.Arguments.Select(argument =>
-        {
-            var prefix = argument.NameColon is null
-                ? string.Empty
-                : $"{argument.NameColon.Name.Identifier.ValueText}: ";
-            var refKind = argument.RefKindKeyword.IsKind(SyntaxKind.None)
-                ? string.Empty
-                : $"{argument.RefKindKeyword.Text} ";
-            return $"{prefix}{refKind}{Emit(argument.Expression)}";
-        });
+        var arguments = argumentList.Arguments.Select(EmitArgument);
         return $"({string.Join(", ", arguments)})";
+    }
+
+    private string EmitArgument(ArgumentSyntax argument)
+    {
+        var prefix = argument.NameColon is null
+            ? string.Empty
+            : $"{argument.NameColon.Name.Identifier.ValueText}: ";
+        var refKind = argument.RefKindKeyword.IsKind(SyntaxKind.None)
+            ? string.Empty
+            : $"{argument.RefKindKeyword.Text} ";
+        return $"{prefix}{refKind}{Emit(argument.Expression)}";
     }
 
     private string EmitBracketArguments(BracketedArgumentListSyntax argumentList)
@@ -471,7 +499,7 @@ internal sealed class ProjectionExpressionEmitter
             return false;
         }
 
-        if (!TryBuildConditional(expression, string.Empty, expression, out var conditional))
+        if (!TryBuildConditional(expression, value => value, expression, out var conditional))
         {
             return false;
         }
@@ -482,7 +510,7 @@ internal sealed class ProjectionExpressionEmitter
 
     private bool TryBuildConditional(
         ExpressionSyntax expression,
-        string tail,
+        global::System.Func<string, string> applyTail,
         ExpressionSyntax rootConditionalExpression,
         out string rewritten
     )
@@ -494,8 +522,6 @@ internal sealed class ProjectionExpressionEmitter
                 var checks = new List<string>();
                 var receiver = Emit(conditionalAccess.Expression);
                 checks.Add(receiver);
-                var access =
-                    BindConditionalReceiver(receiver, conditionalAccess.WhenNotNull, checks) + tail;
                 var expressionType = GetExpressionType(expression);
                 var expressionTypeName = GetExpressionTypeName(
                     expression,
@@ -520,6 +546,9 @@ internal sealed class ProjectionExpressionEmitter
                 var fallback = useEmptyFallback
                     ? CreateEmptyCollectionFallback(rootExpressionTypeName)
                     : "null";
+                var access = applyTail(
+                    BindConditionalReceiver(receiver, conditionalAccess.WhenNotNull, checks)
+                );
 
                 var castPrefix =
                     !useEmptyFallback
@@ -560,7 +589,7 @@ internal sealed class ProjectionExpressionEmitter
                 when ContainsConditionalAccess(memberAccess.Expression):
                 return TryBuildConditional(
                     memberAccess.Expression,
-                    "." + EmitSimpleName(memberAccess.Name) + tail,
+                    value => applyTail($"{value}.{EmitSimpleName(memberAccess.Name)}"),
                     rootConditionalExpression,
                     out rewritten
                 );
@@ -569,10 +598,9 @@ internal sealed class ProjectionExpressionEmitter
                     && ContainsConditionalAccess(memberInvocation.Expression):
                 return TryBuildConditional(
                     memberInvocation.Expression,
-                    "."
-                        + EmitSimpleName(memberInvocation.Name)
-                        + EmitArgumentList(invocation.ArgumentList)
-                        + tail,
+                    value => applyTail(
+                        EmitInvocationFromReceiver(invocation, memberInvocation.Name, value)
+                    ),
                     rootConditionalExpression,
                     out rewritten
                 );
@@ -580,7 +608,7 @@ internal sealed class ProjectionExpressionEmitter
                 when ContainsConditionalAccess(elementAccess.Expression):
                 return TryBuildConditional(
                     elementAccess.Expression,
-                    EmitBracketArguments(elementAccess.ArgumentList) + tail,
+                    value => applyTail($"{value}{EmitBracketArguments(elementAccess.ArgumentList)}"),
                     rootConditionalExpression,
                     out rewritten
                 );
@@ -604,10 +632,14 @@ internal sealed class ProjectionExpressionEmitter
                 return $"{BindConditionalReceiver(receiver, memberAccess.Expression, checks)}.{EmitSimpleName(memberAccess.Name)}";
             case InvocationExpressionSyntax invocation
                 when invocation.Expression is MemberBindingExpressionSyntax memberBinding:
-                return $"{receiver}.{EmitSimpleName(memberBinding.Name)}{EmitArgumentList(invocation.ArgumentList)}";
+                return EmitInvocationFromReceiver(invocation, memberBinding.Name, receiver);
             case InvocationExpressionSyntax invocation
                 when invocation.Expression is MemberAccessExpressionSyntax memberAccess:
-                return $"{BindConditionalReceiver(receiver, memberAccess.Expression, checks)}.{EmitSimpleName(memberAccess.Name)}{EmitArgumentList(invocation.ArgumentList)}";
+                return EmitInvocationFromReceiver(
+                    invocation,
+                    memberAccess.Name,
+                    BindConditionalReceiver(receiver, memberAccess.Expression, checks)
+                );
             case ElementBindingExpressionSyntax elementBinding:
                 return $"{receiver}{EmitBracketArguments(elementBinding.ArgumentList)}";
             case ConditionalAccessExpressionSyntax conditionalAccess:
@@ -633,6 +665,8 @@ internal sealed class ProjectionExpressionEmitter
     {
         rewritten = string.Empty;
         if (
+            ContainsReducedExtensionInvocation(expression)
+            ||
             !TryDecomposeFluentChain(
                 expression,
                 out var root,
@@ -728,6 +762,54 @@ internal sealed class ProjectionExpressionEmitter
         }
 
         return $".{EmitSimpleName(memberAccess.Name)}{EmitArgumentList(invocation.ArgumentList)}";
+    }
+
+    private string EmitInvocationFromReceiver(
+        InvocationExpressionSyntax invocation,
+        SimpleNameSyntax methodName,
+        string receiver
+    )
+    {
+        return methodName.Identifier.ValueText switch
+        {
+            "SelectExpr" => EmitProjectionInvocation(receiver, invocation, "Select"),
+            "SelectManyExpr" => EmitProjectionInvocation(receiver, invocation, "SelectMany"),
+            "GroupByExpr" => EmitGroupByExprInvocation(receiver, invocation),
+            _ => TryEmitExtensionInvocation(invocation, methodName, receiver, out var rewritten)
+                ? rewritten
+                : $"{receiver}.{EmitSimpleName(methodName)}{EmitArgumentList(invocation.ArgumentList)}",
+        };
+    }
+
+    private bool TryEmitExtensionInvocation(
+        InvocationExpressionSyntax invocation,
+        SimpleNameSyntax methodName,
+        string receiver,
+        out string rewritten
+    )
+    {
+        rewritten = string.Empty;
+        if (!BelongsToSemanticModel(invocation))
+        {
+            return false;
+        }
+
+        var symbolInfo = _semanticModel.GetSymbolInfo(invocation);
+        var methodSymbol = symbolInfo.Symbol as IMethodSymbol
+            ?? symbolInfo.CandidateSymbols.OfType<IMethodSymbol>().FirstOrDefault();
+        var reducedFrom = methodSymbol?.ReducedFrom;
+        if (reducedFrom is null)
+        {
+            return false;
+        }
+
+        var arguments = invocation.ArgumentList.Arguments.Select(EmitArgument).ToList();
+        arguments.Insert(0, receiver);
+        rewritten = BuildInvocationExpression(
+            $"{reducedFrom.ContainingType.ToFullyQualifiedTypeName()}.{EmitSimpleName(methodName)}",
+            arguments
+        );
+        return true;
     }
 
     private bool TryEmitCaptureReplacement(ExpressionSyntax expression, out string rewritten)
@@ -1336,6 +1418,36 @@ internal sealed class ProjectionExpressionEmitter
         }
     }
 
+    private static string BuildInvocationExpression(string header, IReadOnlyList<string> arguments)
+    {
+        if (arguments.Count == 0)
+        {
+            return $"{header}()";
+        }
+
+        if (arguments.Count == 1 && !ContainsLineBreak(arguments[0]))
+        {
+            return $"{header}({arguments[0]})";
+        }
+
+        var builder = new IndentedStringBuilder();
+        builder.AppendLine($"{header}(");
+        using (builder.Indent())
+        {
+            for (var index = 0; index < arguments.Count; index++)
+            {
+                AppendMultilineItem(
+                    builder,
+                    arguments[index],
+                    index == arguments.Count - 1 ? string.Empty : ","
+                );
+            }
+        }
+
+        builder.Append(")");
+        return builder.ToString();
+    }
+
     private static string AppendValueWithContinuation(string prefix, string value)
     {
         var lines = SplitLines(value);
@@ -1397,6 +1509,27 @@ internal sealed class ProjectionExpressionEmitter
             GenericNameSyntax genericName => genericName.Identifier.ValueText,
             _ => string.Empty,
         };
+    }
+
+    private bool ContainsReducedExtensionInvocation(ExpressionSyntax expression)
+    {
+        foreach (var invocation in expression.DescendantNodesAndSelf().OfType<InvocationExpressionSyntax>())
+        {
+            if (!BelongsToSemanticModel(invocation))
+            {
+                continue;
+            }
+
+            var symbolInfo = _semanticModel.GetSymbolInfo(invocation);
+            var methodSymbol = symbolInfo.Symbol as IMethodSymbol
+                ?? symbolInfo.CandidateSymbols.OfType<IMethodSymbol>().FirstOrDefault();
+            if (methodSymbol?.ReducedFrom is not null)
+            {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     internal sealed record CaptureEntry

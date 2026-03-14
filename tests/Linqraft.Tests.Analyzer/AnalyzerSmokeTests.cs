@@ -19,6 +19,7 @@ public sealed class AnalyzerSmokeTests
         const string source = """
             using System;
             using System.Linq;
+            using Linqraft;
 
             public class Entity
             {
@@ -28,7 +29,7 @@ public sealed class AnalyzerSmokeTests
 
             public class EntityDto { }
 
-            namespace System.Linq
+            namespace Linqraft
             {
                 public static class SelectExprExtensions
                 {
@@ -60,8 +61,9 @@ public sealed class AnalyzerSmokeTests
         const string source = """
             using System;
             using System.Linq;
+            using Linqraft;
 
-            namespace System.Linq
+            namespace Linqraft
             {
                 public static class SelectExprExtensions
                 {
@@ -101,6 +103,7 @@ public sealed class AnalyzerSmokeTests
     {
         const string source = """
             using System.Linq;
+            using Linqraft;
 
             public class Entity
             {
@@ -128,6 +131,7 @@ public sealed class AnalyzerSmokeTests
     {
         const string source = """
             using System.Linq;
+            using Linqraft;
 
             public class Child
             {
@@ -164,6 +168,7 @@ public sealed class AnalyzerSmokeTests
         const string source = """
             using System.Collections.Generic;
             using System.Linq;
+            using Linqraft;
 
             public class Entity
             {
@@ -226,8 +231,9 @@ public sealed class AnalyzerSmokeTests
         const string source = """
             using System;
             using System.Linq;
+            using Linqraft;
 
-            namespace System.Linq
+            namespace Linqraft
             {
                 public static class SelectExprExtensions
                 {
@@ -262,6 +268,7 @@ public sealed class AnalyzerSmokeTests
     {
         const string source = """
             using System.Linq;
+            using Linqraft;
 
             public class Entity
             {
@@ -297,6 +304,7 @@ public sealed class AnalyzerSmokeTests
     {
         const string source = """
             using System.Linq;
+            using Linqraft;
 
             public class Child
             {
@@ -338,8 +346,9 @@ public sealed class AnalyzerSmokeTests
         const string source = """
             using System;
             using System.Linq;
+            using Linqraft;
 
-            namespace System.Linq
+            namespace Linqraft
             {
                 public static class SelectExprExtensions
                 {
@@ -379,8 +388,9 @@ public sealed class AnalyzerSmokeTests
         const string source = """
             using System;
             using System.Linq;
+            using Linqraft;
 
-            namespace System.Linq
+            namespace Linqraft
             {
                 public static class SelectExprExtensions
                 {
@@ -418,8 +428,9 @@ public sealed class AnalyzerSmokeTests
         const string source = """
             using System;
             using System.Linq;
+            using Linqraft;
 
-            namespace System.Linq
+            namespace Linqraft
             {
                 public static class SelectExprExtensions
                 {
@@ -453,6 +464,7 @@ public sealed class AnalyzerSmokeTests
     {
         const string source = """
             using System.Linq;
+            using Linqraft;
 
             public class Entity
             {
@@ -480,6 +492,7 @@ public sealed class AnalyzerSmokeTests
         const string source = """
             using System;
             using System.Linq;
+            using Linqraft;
 
             namespace Microsoft.AspNetCore.Mvc
             {
@@ -488,7 +501,7 @@ public sealed class AnalyzerSmokeTests
                 public abstract class ControllerBase { }
             }
 
-            namespace System.Linq
+            namespace Linqraft
             {
                 public static class SelectExprExtensions
                 {
@@ -528,6 +541,7 @@ public sealed class AnalyzerSmokeTests
         const string source = """
             using System;
             using System.Linq;
+            using Linqraft;
 
             namespace Microsoft.AspNetCore.Mvc
             {
@@ -540,7 +554,7 @@ public sealed class AnalyzerSmokeTests
                 public abstract class ControllerBase { }
             }
 
-            namespace System.Linq
+            namespace Linqraft
             {
                 public static class SelectExprExtensions
                 {

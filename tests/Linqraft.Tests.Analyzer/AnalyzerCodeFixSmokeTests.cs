@@ -23,8 +23,9 @@ public sealed class AnalyzerCodeFixSmokeTests
         const string source = """
             using System;
             using System.Linq;
+            using Linqraft;
 
-            namespace System.Linq
+            namespace Linqraft
             {
                 public static class SelectExprExtensions
                 {
@@ -65,8 +66,9 @@ public sealed class AnalyzerCodeFixSmokeTests
         const string source = """
             using System;
             using System.Linq;
+            using Linqraft;
 
-            namespace System.Linq
+            namespace Linqraft
             {
                 public static class SelectExprExtensions
                 {
@@ -109,8 +111,9 @@ public sealed class AnalyzerCodeFixSmokeTests
         const string source = """
             using System;
             using System.Linq;
+            using Linqraft;
 
-            namespace System.Linq
+            namespace Linqraft
             {
                 public static class SelectExprExtensions
                 {
@@ -151,8 +154,9 @@ public sealed class AnalyzerCodeFixSmokeTests
         const string source = """
             using System;
             using System.Linq;
+            using Linqraft;
 
-            namespace System.Linq
+            namespace Linqraft
             {
                 public static class SelectExprExtensions
                 {
@@ -197,8 +201,9 @@ public sealed class AnalyzerCodeFixSmokeTests
         const string source = """
             using System;
             using System.Linq;
+            using Linqraft;
 
-            namespace System.Linq
+            namespace Linqraft
             {
                 public static class SelectExprExtensions
                 {
@@ -238,8 +243,9 @@ public sealed class AnalyzerCodeFixSmokeTests
         const string source = """
             using System;
             using System.Linq;
+            using Linqraft;
 
-            namespace System.Linq
+            namespace Linqraft
             {
                 public static class SelectExprExtensions
                 {
@@ -276,8 +282,9 @@ public sealed class AnalyzerCodeFixSmokeTests
         const string source = """
             using System;
             using System.Linq;
+            using Linqraft;
 
-            namespace System.Linq
+            namespace Linqraft
             {
                 public static class SelectExprExtensions
                 {
@@ -322,8 +329,9 @@ public sealed class AnalyzerCodeFixSmokeTests
         const string source = """
             using System;
             using System.Linq;
+            using Linqraft;
 
-            namespace System.Linq
+            namespace Linqraft
             {
                 public static class SelectExprExtensions
                 {
@@ -365,8 +373,9 @@ public sealed class AnalyzerCodeFixSmokeTests
         const string source = """
             using System;
             using System.Linq;
+            using Linqraft;
 
-            namespace System.Linq
+            namespace Linqraft
             {
                 public static class SelectExprExtensions
                 {
@@ -410,8 +419,9 @@ public sealed class AnalyzerCodeFixSmokeTests
         const string source = """
             using System;
             using System.Linq;
+            using Linqraft;
 
-            namespace System.Linq
+            namespace Linqraft
             {
                 public static class SelectExprExtensions
                 {
@@ -463,8 +473,9 @@ public sealed class AnalyzerCodeFixSmokeTests
             using System;
             using System.Collections.Generic;
             using System.Linq;
+            using Linqraft;
 
-            namespace System.Linq
+            namespace Linqraft
             {
                 public static class SelectExprExtensions
                 {
@@ -589,6 +600,7 @@ public sealed class AnalyzerCodeFixSmokeTests
         const string source = """
             using System;
             using System.Linq;
+            using Linqraft;
 
             namespace Microsoft.AspNetCore.Mvc
             {
@@ -605,7 +617,7 @@ public sealed class AnalyzerCodeFixSmokeTests
                 }
             }
 
-            namespace System.Linq
+            namespace Linqraft
             {
                 public static class SelectExprExtensions
                 {
@@ -652,6 +664,7 @@ public sealed class AnalyzerCodeFixSmokeTests
         const string source = """
             using System;
             using System.Linq;
+            using Linqraft;
 
             namespace Microsoft.AspNetCore.Mvc
             {
@@ -668,7 +681,7 @@ public sealed class AnalyzerCodeFixSmokeTests
                 }
             }
 
-            namespace System.Linq
+            namespace Linqraft
             {
                 public static class SelectExprExtensions
                 {
@@ -716,8 +729,9 @@ public sealed class AnalyzerCodeFixSmokeTests
         const string source = """
             using System;
             using System.Linq;
+            using Linqraft;
 
-            namespace System.Linq
+            namespace Linqraft
             {
                 public static class SelectExprExtensions
                 {
@@ -773,8 +787,9 @@ public sealed class AnalyzerCodeFixSmokeTests
         const string source = """
             using System;
             using System.Linq;
+            using Linqraft;
 
-            namespace System.Linq
+            namespace Linqraft
             {
                 public static class SelectExprExtensions
                 {
@@ -823,8 +838,9 @@ public sealed class AnalyzerCodeFixSmokeTests
             using System;
             using System.Collections.Generic;
             using System.Linq;
+            using Linqraft;
 
-            namespace System.Linq
+            namespace Linqraft
             {
                 public static class SelectExprExtensions
                 {
@@ -972,8 +988,9 @@ public sealed class AnalyzerCodeFixSmokeTests
         const string source = """
             using System;
             using System.Linq;
+            using Linqraft;
 
-            namespace System.Linq
+            namespace Linqraft
             {
                 public static class SelectExprExtensions
                 {
@@ -1032,8 +1049,9 @@ public sealed class AnalyzerCodeFixSmokeTests
             using System;
             using System.Collections.Generic;
             using System.Linq;
+            using Linqraft;
 
-            namespace System.Linq
+            namespace Linqraft
             {
                 public static class SelectExprExtensions
                 {
@@ -1101,8 +1119,9 @@ public sealed class AnalyzerCodeFixSmokeTests
         const string source = """
             using System;
             using System.Linq;
+            using Linqraft;
 
-            namespace System.Linq
+            namespace Linqraft
             {
                 public static class SelectExprExtensions
                 {
@@ -1147,8 +1166,9 @@ public sealed class AnalyzerCodeFixSmokeTests
         const string source = """
             using System;
             using System.Linq;
+            using Linqraft;
 
-            namespace System.Linq
+            namespace Linqraft
             {
                 public static class SelectExprExtensions
                 {
@@ -1187,8 +1207,9 @@ public sealed class AnalyzerCodeFixSmokeTests
         const string source = """
             using System;
             using System.Linq;
+            using Linqraft;
 
-            namespace System.Linq
+            namespace Linqraft
             {
                 public static class SelectExprExtensions
                 {

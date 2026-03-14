@@ -19,6 +19,7 @@
     </ProjectReference>
   </ItemGroup>
   <ItemGroup>
+    <Using Include="Linqraft" />
     <CompilerVisibleProperty Include="RootNamespace" />
     <CompilerVisibleProperty Include="LinqraftGlobalNamespace" />
     <CompilerVisibleProperty Include="LinqraftRecordGenerate" />
@@ -28,5 +29,8 @@
     <CompilerVisibleProperty Include="LinqraftArrayNullabilityRemoval" />
     <CompilerVisibleProperty Include="LinqraftNestedDtoUseHashNamespace" />
     <CompilerVisibleProperty Include="LinqraftUsePrebuildExpression" />
+  </ItemGroup>
+  <ItemGroup Condition="'$(EmitCompilerGeneratedFiles)' == 'true' and '$(CompilerGeneratedFilesOutputPath)' != ''">
+    <Compile Remove="$(CompilerGeneratedFilesOutputPath)/**/*.cs" />
   </ItemGroup>
 </Project>

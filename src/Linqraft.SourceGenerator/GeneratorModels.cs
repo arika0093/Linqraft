@@ -16,6 +16,13 @@ internal enum ProjectionPattern
     PredefinedDto,
 }
 
+internal enum ProjectionOperationKind
+{
+    Select,
+    SelectMany,
+    GroupBy,
+}
+
 internal enum GeneratedDtoTemplateKind
 {
     RootExplicit,
@@ -38,6 +45,13 @@ internal sealed record ContainingTypeInfo
     public required string DeclarationKeyword { get; init; }
 
     public required string Name { get; init; }
+}
+
+internal sealed record GeneratedSourceOriginModel
+{
+    public required string FileName { get; init; }
+
+    public required int LineNumber { get; init; }
 }
 
 internal sealed record GeneratedPropertyTemplateModel
@@ -103,6 +117,8 @@ internal sealed record GeneratedDtoTemplateModel
 
     public required string OwnerHintName { get; init; }
 
+    public required EquatableArray<GeneratedSourceOriginModel> Origins { get; init; }
+
     public required string ShapeSignature { get; init; }
 
     public required EquatableArray<ContainingTypeInfo> ContainingTypes { get; init; }
@@ -116,6 +132,10 @@ internal sealed record ProjectionRequestTemplate
 
     public required string MethodName { get; init; }
 
+    public required GeneratedSourceOriginModel Origin { get; init; }
+
+    public required ProjectionOperationKind OperationKind { get; init; }
+
     public required ReceiverKind ReceiverKind { get; init; }
 
     public required ProjectionPattern Pattern { get; init; }
@@ -125,6 +145,10 @@ internal sealed record ProjectionRequestTemplate
     public required string ResultTypeTemplate { get; init; }
 
     public required string SelectorParameterName { get; init; }
+
+    public string? KeySelectorParameterName { get; init; }
+
+    public string? KeySelectorBodyTemplate { get; init; }
 
     public required bool UseObjectSelectorSignature { get; init; }
 
@@ -136,12 +160,16 @@ internal sealed record ProjectionRequestTemplate
 
     public required EquatableArray<CaptureParameterModel> Captures { get; init; }
 
-    public required ProjectionTemplateModel Projection { get; init; }
+    public ProjectionTemplateModel? Projection { get; init; }
+
+    public string? ProjectionBodyTemplate { get; init; }
 }
 
 internal sealed record MappingRequestTemplate
 {
     public required string HintName { get; init; }
+
+    public required GeneratedSourceOriginModel Origin { get; init; }
 
     public required string Namespace { get; init; }
 
@@ -213,6 +241,8 @@ internal sealed record GeneratedDtoModel
 
     public required string OwnerHintName { get; init; }
 
+    public required EquatableArray<GeneratedSourceOriginModel> Origins { get; init; }
+
     public required string ShapeSignature { get; init; }
 
     public required EquatableArray<ContainingTypeInfo> ContainingTypes { get; init; }
@@ -233,6 +263,10 @@ internal sealed record ProjectionRequest
 
     public required string MethodName { get; init; }
 
+    public required GeneratedSourceOriginModel Origin { get; init; }
+
+    public required ProjectionOperationKind OperationKind { get; init; }
+
     public required ReceiverKind ReceiverKind { get; init; }
 
     public required ProjectionPattern Pattern { get; init; }
@@ -242,6 +276,10 @@ internal sealed record ProjectionRequest
     public required string ResultTypeName { get; init; }
 
     public required string SelectorParameterName { get; init; }
+
+    public string? KeySelectorParameterName { get; init; }
+
+    public string? KeySelectorBodyText { get; init; }
 
     public required bool UseObjectSelectorSignature { get; init; }
 
@@ -256,9 +294,63 @@ internal sealed record ProjectionRequest
     public required string ProjectionBodyText { get; init; }
 }
 
+internal sealed record ObjectGenerationRequestTemplate
+{
+    public required string HintName { get; init; }
+
+    public required string MethodName { get; init; }
+
+    public required GeneratedSourceOriginModel Origin { get; init; }
+
+    public required string ResultTypeTemplate { get; init; }
+
+    public required ProjectionTemplateModel Projection { get; init; }
+
+    public required EquatableArray<CaptureParameterModel> Captures { get; init; }
+
+    public required int? InterceptableLocationVersion { get; init; }
+
+    public required string? InterceptableLocationData { get; init; }
+}
+
+internal sealed record ObjectGenerationSourceTemplateModel
+{
+    public required ObjectGenerationRequestTemplate Request { get; init; }
+
+    public required EquatableArray<GeneratedDtoTemplateModel> GeneratedDtos { get; init; }
+}
+
+internal sealed record ObjectGenerationRequest
+{
+    public required string HintName { get; init; }
+
+    public required string MethodName { get; init; }
+
+    public required GeneratedSourceOriginModel Origin { get; init; }
+
+    public required string ResultTypeName { get; init; }
+
+    public required string ProjectionBodyText { get; init; }
+
+    public required EquatableArray<CaptureParameterModel> Captures { get; init; }
+
+    public required int? InterceptableLocationVersion { get; init; }
+
+    public required string? InterceptableLocationData { get; init; }
+}
+
+internal sealed record ObjectGenerationModel
+{
+    public required ObjectGenerationRequest Request { get; init; }
+
+    public required EquatableArray<GeneratedDtoModel> GeneratedDtos { get; init; }
+}
+
 internal sealed record MappingRequest
 {
     public required string HintName { get; init; }
+
+    public required GeneratedSourceOriginModel Origin { get; init; }
 
     public required string Namespace { get; init; }
 

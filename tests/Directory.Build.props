@@ -39,5 +39,9 @@
   </ItemGroup>
   <ItemGroup>
     <Using Include="Shouldly" />
+    <Using Include="Linqraft" />
+  </ItemGroup>
+  <ItemGroup Condition="'$(EmitCompilerGeneratedFiles)' == 'true' and '$(CompilerGeneratedFilesOutputPath)' != ''">
+    <Compile Remove="$(CompilerGeneratedFilesOutputPath)/**/*.cs" />
   </ItemGroup>
 </Project>
