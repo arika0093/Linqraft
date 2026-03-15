@@ -322,7 +322,7 @@ internal static class AnalyzerHelpers
         }
 
         var argument = invocation.ArgumentList.Arguments[index];
-        return IsCaptureExpression(argument.Expression) ? argument : null;
+        return IsCaptureArgumentExpression(argument.Expression) ? argument : null;
     }
 
     public static IReadOnlyList<ExpressionSyntax> GetCaptureExpressions(ArgumentSyntax captureArgument)
@@ -424,7 +424,7 @@ internal static class AnalyzerHelpers
         };
     }
 
-    private static bool IsCaptureExpression(ExpressionSyntax expression)
+    private static bool IsCaptureArgumentExpression(ExpressionSyntax expression)
     {
         return expression is AnonymousObjectCreationExpressionSyntax or LambdaExpressionSyntax;
     }

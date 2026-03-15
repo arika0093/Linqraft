@@ -1307,20 +1307,33 @@ public sealed class LinqraftCompositeCodeFixProvider : CodeFixProvider
     )
     {
         var expressions = captureExpressions
-            .Select(expression => expression.WithoutTrivia().ToString())
-            .Where(expression => !string.IsNullOrWhiteSpace(expression))
+            .Select(expression => expression.WithoutTrivia())
+            .Where(expression => !string.IsNullOrWhiteSpace(expression.ToString()))
             .ToArray();
-        var captureLambda = expressions.Length switch
+        if (expressions.Length == 0)
         {
-            0 => "() => default(object)!",
-            1 => $"() => {expressions[0]}",
-            _ => $"() => ({string.Join(", ", expressions)})",
+            throw new InvalidOperationException(
+                "Capture expressions cannot be empty. This indicates an internal code fix error."
+            );
+        }
+
+        var captureBody = expressions.Length switch
+        {
+            1 => expressions[0],
+            _ => SyntaxFactory.TupleExpression(
+                SyntaxFactory.SeparatedList(
+                    expressions.Select(expression => SyntaxFactory.Argument(expression))
+                )
+            ),
         };
 
         return SyntaxFactory.Argument(
             SyntaxFactory.NameColon(SyntaxFactory.IdentifierName("capture")),
             default,
-            SyntaxFactory.ParseExpression(captureLambda)
+            SyntaxFactory.ParenthesizedLambdaExpression(
+                SyntaxFactory.ParameterList(),
+                captureBody
+            )
         );
     }
 

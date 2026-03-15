@@ -150,10 +150,12 @@ public sealed class GlobalPropertyConfigurationTests
         }
 
         var offset = 5;
+#pragma warning disable CS0618
         var results = Orders
             .AsQueryable()
             .SelectExpr(order => new { order.Id, OffsetId = order.Id + offset }, new { offset })
             .ToList();
+#pragma warning restore CS0618
 
         results.Select(result => result.OffsetId).ShouldBe([6, 7]);
 
@@ -466,6 +468,7 @@ public sealed class GlobalPropertyConfigurationTests
     {
         var val = 2;
         var multiplier = 4;
+#pragma warning disable CS0618
         var result = CaptureFormattingItems
             .AsQueryable()
             .SelectExpr<CaptureFormattingItem, ConfiguredCaptureFormattingDto>(
@@ -478,6 +481,7 @@ public sealed class GlobalPropertyConfigurationTests
                 new { val, multiplier }
             )
             .ToList();
+#pragma warning restore CS0618
 
         result.Count.ShouldBe(2);
         result[0].NewValue.ShouldBe(5);
