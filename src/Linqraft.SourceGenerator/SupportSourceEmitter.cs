@@ -113,6 +113,7 @@ internal static class SupportSourceEmitter
                     /// Generates a DTO of type <typeparamref name="T"/> by evaluating the provided anonymous object initializer
                     /// together with anonymous-object capture data.
                     /// </summary>
+                    [global::System.Obsolete("Anonymous-object capture is obsolete. Use the delegate-based capture pattern instead.", false)]
                     public static T Generate<T>(object x, object capture)
                         => throw ThrowInterceptionRequired;
 

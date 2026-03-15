@@ -39,6 +39,7 @@ public sealed class LinqraftCompositeAnalyzer : DiagnosticAnalyzer
     private static void AnalyzeInvocation(SyntaxNodeAnalysisContext context)
     {
         var invocation = (InvocationExpressionSyntax)context.Node;
+        AnalyzeAnonymousCapturePattern(context, invocation);
 
         if (AnalyzerHelpers.IsSelectExprInvocation(invocation))
         {
@@ -109,6 +110,40 @@ public sealed class LinqraftCompositeAnalyzer : DiagnosticAnalyzer
                 )
             );
         }
+    }
+
+    private static void AnalyzeAnonymousCapturePattern(
+        SyntaxNodeAnalysisContext context,
+        InvocationExpressionSyntax invocation
+    )
+    {
+        var captureArgument = AnalyzerHelpers.GetCaptureArgument(invocation);
+        if (captureArgument?.Expression is not AnonymousObjectCreationExpressionSyntax)
+        {
+            return;
+        }
+
+        var methodSymbol =
+            context.SemanticModel.GetSymbolInfo(invocation, context.CancellationToken).Symbol
+            as IMethodSymbol;
+        var reducedMethod = methodSymbol?.ReducedFrom ?? methodSymbol;
+        if (
+            reducedMethod?.Name is not "SelectExpr"
+                and not "SelectManyExpr"
+                and not "GroupByExpr"
+                and not "Generate"
+            || reducedMethod.ContainingNamespace.ToDisplayString() != "Linqraft"
+        )
+        {
+            return;
+        }
+
+        context.ReportDiagnostic(
+            Diagnostic.Create(
+                DiagnosticDescriptors.AnonymousCaptureDelegatePattern,
+                captureArgument.Expression.GetLocation()
+            )
+        );
     }
 
     private static void AnalyzeSelectExprInvocation(

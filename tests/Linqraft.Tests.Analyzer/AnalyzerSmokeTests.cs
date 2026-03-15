@@ -67,6 +67,49 @@ public sealed class AnalyzerSmokeTests
             {
                 public static class SelectExprExtensions
                 {
+                    public static IQueryable<TResult> SelectExpr<TIn, TResult>(this IQueryable<TIn> query, Func<TIn, object> selector, Func<object> capture)
+                        where TIn : class => throw null!;
+                }
+            }
+
+            public class Entity
+            {
+                public int Id { get; set; }
+                public int Value { get; set; }
+            }
+
+            public class EntityDto { }
+
+            public class QueryHolder
+            {
+                public IQueryable<EntityDto> Project(IQueryable<Entity> source, int threshold)
+                {
+                    return source.SelectExpr<Entity, EntityDto>(entity => new
+                    {
+                        entity.Id,
+                        IsLarge = entity.Value > threshold,
+                    }, capture: () => threshold);
+                }
+            }
+            """;
+
+        var diagnostics = await GetDiagnosticsAsync(source);
+        diagnostics.Select(diagnostic => diagnostic.Id).ShouldNotContain("LQRE001");
+        diagnostics.Select(diagnostic => diagnostic.Id).ShouldNotContain("LQRW003");
+    }
+
+    [Test]
+    public async Task Anonymous_capture_reports_LQRW004()
+    {
+        const string source = """
+            using System;
+            using System.Linq;
+            using Linqraft;
+
+            namespace Linqraft
+            {
+                public static class SelectExprExtensions
+                {
                     public static IQueryable<TResult> SelectExpr<TIn, TResult>(this IQueryable<TIn> query, Func<TIn, object> selector, object capture)
                         where TIn : class => throw null!;
                 }
@@ -94,8 +137,7 @@ public sealed class AnalyzerSmokeTests
             """;
 
         var diagnostics = await GetDiagnosticsAsync(source);
-        diagnostics.Select(diagnostic => diagnostic.Id).ShouldNotContain("LQRE001");
-        diagnostics.Select(diagnostic => diagnostic.Id).ShouldNotContain("LQRW003");
+        diagnostics.Select(diagnostic => diagnostic.Id).ShouldContain("LQRW004");
     }
 
     [Test]

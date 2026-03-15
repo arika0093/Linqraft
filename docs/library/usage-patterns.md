@@ -271,4 +271,4 @@ var dto = LinqraftKit.Generate<OrderLabelDto>(
 );
 ```
 
-The delegate return value is unpacked by generated code without runtime reflection, so it is the recommended capture form for new code. Anonymous-object capture remains available for older call sites when you need source compatibility.
+The delegate return value is unpacked by generated code without runtime reflection, so it is the recommended capture form for new code. Anonymous-object capture remains available for older call sites when you need source compatibility, but it is obsolete and the analyzer can rewrite it to the delegate form.

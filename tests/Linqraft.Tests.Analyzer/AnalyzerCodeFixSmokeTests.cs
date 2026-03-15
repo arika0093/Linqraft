@@ -31,6 +31,9 @@ public sealed class AnalyzerCodeFixSmokeTests
                 {
                     public static IQueryable<TResult> SelectExpr<TIn, TResult>(this IQueryable<TIn> query, Func<TIn, object> selector)
                         where TIn : class => throw null!;
+
+                    public static IQueryable<TResult> SelectExpr<TIn, TResult>(this IQueryable<TIn> query, Func<TIn, object> selector, Func<object> capture)
+                        where TIn : class => throw null!;
                 }
             }
 
@@ -57,7 +60,7 @@ public sealed class AnalyzerCodeFixSmokeTests
 
         var fixedText = (await ApplyFixAsync(source, "LQRE001", "Add capture")).PrimaryDocumentText;
 
-        fixedText.ShouldContain("capture: new { threshold }");
+        fixedText.ShouldContain("capture: () => threshold");
     }
 
     [Test]
@@ -73,6 +76,9 @@ public sealed class AnalyzerCodeFixSmokeTests
                 public static class SelectExprExtensions
                 {
                     public static IQueryable<TResult> SelectExpr<TIn, TResult>(this IQueryable<TIn> query, Func<TIn, object> selector, object capture)
+                        where TIn : class => throw null!;
+
+                    public static IQueryable<TResult> SelectExpr<TIn, TResult>(this IQueryable<TIn> query, Func<TIn, object> selector, Func<object> capture)
                         where TIn : class => throw null!;
                 }
             }
@@ -102,7 +108,7 @@ public sealed class AnalyzerCodeFixSmokeTests
             await ApplyFixAsync(source, "LQRE001", "Add capture 'threshold'")
         ).PrimaryDocumentText;
 
-        fixedText.ShouldContain("capture: new { offset, threshold }");
+        fixedText.ShouldContain("capture: () => (offset, threshold)");
     }
 
     [Test]
@@ -118,6 +124,9 @@ public sealed class AnalyzerCodeFixSmokeTests
                 public static class SelectExprExtensions
                 {
                     public static IQueryable<TResult> SelectExpr<TIn, TResult>(this IQueryable<TIn> query, Func<TIn, object> selector, object capture)
+                        where TIn : class => throw null!;
+
+                    public static IQueryable<TResult> SelectExpr<TIn, TResult>(this IQueryable<TIn> query, Func<TIn, object> selector, Func<object> capture)
                         where TIn : class => throw null!;
                 }
             }
@@ -190,9 +199,58 @@ public sealed class AnalyzerCodeFixSmokeTests
             await ApplyFixAsync(source, "LQRW003", "Remove capture 'offset'")
         ).PrimaryDocumentText;
 
-        fixedText.ShouldContain("capture: new");
+        fixedText.ShouldContain("capture: () => threshold");
         fixedText.ShouldContain("threshold");
         fixedText.ShouldNotContain("capture: new { threshold, offset }");
+    }
+
+    [Test]
+    public async Task Anonymous_capture_code_fix_converts_to_delegate_pattern()
+    {
+        const string source = """
+            using System;
+            using System.Linq;
+            using Linqraft;
+
+            namespace Linqraft
+            {
+                public static class SelectExprExtensions
+                {
+                    public static IQueryable<TResult> SelectExpr<TIn, TResult>(this IQueryable<TIn> query, Func<TIn, object> selector, object capture)
+                        where TIn : class => throw null!;
+
+                    public static IQueryable<TResult> SelectExpr<TIn, TResult>(this IQueryable<TIn> query, Func<TIn, object> selector, Func<object> capture)
+                        where TIn : class => throw null!;
+                }
+            }
+
+            public class Entity
+            {
+                public int Id { get; set; }
+                public int Value { get; set; }
+            }
+
+            public class EntityDto { }
+
+            public class QueryHolder
+            {
+                public IQueryable<EntityDto> Project(IQueryable<Entity> source, int threshold, int offset)
+                {
+                    return source.SelectExpr<Entity, EntityDto>(entity => new
+                    {
+                        entity.Id,
+                        IsLarge = entity.Value + offset > threshold,
+                    }, capture: new { threshold, offset });
+                }
+            }
+            """;
+
+        var fixedText = (
+            await ApplyFixAsync(source, "LQRW004", "Convert capture to delegate pattern")
+        ).PrimaryDocumentText;
+
+        fixedText.ShouldContain("capture: () => (threshold, offset)");
+        fixedText.ShouldNotContain("capture: new");
     }
 
     [Test]
@@ -337,6 +395,9 @@ public sealed class AnalyzerCodeFixSmokeTests
                 {
                     public static IQueryable<TResult> SelectExpr<TIn, TResult>(this IQueryable<TIn> query, Func<TIn, TResult> selector, object capture)
                         where TIn : class => throw null!;
+
+                    public static IQueryable<TResult> SelectExpr<TIn, TResult>(this IQueryable<TIn> query, Func<TIn, TResult> selector, Func<object> capture)
+                        where TIn : class => throw null!;
                 }
             }
 
@@ -364,7 +425,7 @@ public sealed class AnalyzerCodeFixSmokeTests
         var compilationErrors = await GetCompilationErrorsAsync(result.ChangedSolution);
 
         compilationErrors.ShouldBeEmpty();
-        fixedText.ShouldContain("capture: new { threshold }");
+        fixedText.ShouldContain("capture: () => threshold");
     }
 
     [Test]
@@ -795,6 +856,9 @@ public sealed class AnalyzerCodeFixSmokeTests
                 {
                     public static IQueryable<TResult> SelectExpr<TIn, TResult>(this IQueryable<TIn> query, Func<TIn, object> selector, object capture)
                         where TIn : class => throw null!;
+
+                    public static IQueryable<TResult> SelectExpr<TIn, TResult>(this IQueryable<TIn> query, Func<TIn, object> selector, Func<object> capture)
+                        where TIn : class => throw null!;
                 }
             }
 
@@ -828,7 +892,7 @@ public sealed class AnalyzerCodeFixSmokeTests
         var compilationErrors = await GetCompilationErrorsAsync(result.ChangedSolution);
 
         compilationErrors.ShouldBeEmpty();
-        fixedText.ShouldContain("capture: new { threshold }");
+        fixedText.ShouldContain("capture: () => threshold");
     }
 
     [Test]
