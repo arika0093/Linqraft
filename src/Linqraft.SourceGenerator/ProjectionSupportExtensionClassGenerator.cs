@@ -24,10 +24,7 @@ internal abstract class ProjectionSupportExtensionClassGenerator
 
     public static string CreateAllDeclarations()
     {
-        return string.Join(
-            "\n\n",
-            Generators.Select(generator => generator.CreateDeclaration())
-        );
+        return string.Join("\n\n", Generators.Select(generator => generator.CreateDeclaration()));
     }
 
     private string CreateDeclaration()
@@ -79,24 +76,37 @@ internal abstract class ProjectionSupportExtensionClassGenerator
         bool hasKeySelector = false
     )
     {
-        foreach (var receiver in new[]
-        {
-            (
-                TypeName: "global::System.Linq.IQueryable",
-                Kind: "queryable sequence"
-            ),
-            (
-                TypeName: "global::System.Collections.Generic.IEnumerable",
-                Kind: "enumerable sequence"
-            ),
-        })
-        {
-            foreach (var capture in new[]
+        foreach (
+            var receiver in new[]
             {
-                new { Parameter = (string?)null, Summary = $"Interception stub for {receiver.Kind} projections without captures." },
-                new { Parameter = (string?)"object capture", Summary = $"Interception stub for {receiver.Kind} projections with anonymous-object captures." },
-                new { Parameter = (string?)"global::System.Func<object> capture", Summary = $"Interception stub for {receiver.Kind} projections with NativeAOT-safe delegate captures." },
-            })
+                (TypeName: "global::System.Linq.IQueryable", Kind: "queryable sequence"),
+                (
+                    TypeName: "global::System.Collections.Generic.IEnumerable",
+                    Kind: "enumerable sequence"
+                ),
+            }
+        )
+        {
+            foreach (
+                var capture in new[]
+                {
+                    new
+                    {
+                        Parameter = (string?)null,
+                        Summary = $"Interception stub for {receiver.Kind} projections without captures.",
+                    },
+                    new
+                    {
+                        Parameter = (string?)"object capture",
+                        Summary = $"Interception stub for {receiver.Kind} projections with anonymous-object captures.",
+                    },
+                    new
+                    {
+                        Parameter = (string?)"global::System.Func<object> capture",
+                        Summary = $"Interception stub for {receiver.Kind} projections with NativeAOT-safe delegate captures.",
+                    },
+                }
+            )
             {
                 yield return new SupportMethodSignature
                 {

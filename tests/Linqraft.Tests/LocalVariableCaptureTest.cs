@@ -100,10 +100,7 @@ public class LocalVariableCaptureTest
         var val = 100;
         var converted = TestData
             .AsTestQueryable()
-            .SelectExpr(
-                x => new PredefinedDto1 { Id = x.Id, NewValue = x.Value + val },
-                () => val
-            )
+            .SelectExpr(x => new PredefinedDto1 { Id = x.Id, NewValue = x.Value + val }, () => val)
             .ToList();
 
         converted.Count.ShouldBe(2);

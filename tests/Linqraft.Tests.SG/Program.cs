@@ -41,8 +41,12 @@ public sealed class SourceGeneratorSmokeTests
         supportSource.ShouldContain("namespace Linqraft");
         supportSource.ShouldNotContain("namespace System.Linq");
         supportSource.ShouldContain("public static T Generate<T>(object x, object capture)");
-        supportSource.ShouldContain("public static T Generate<T>(object x, global::System.Func<object> capture)");
-        supportSource.ShouldContain("/// Interception stub for queryable sequence projections with NativeAOT-safe delegate captures.");
+        supportSource.ShouldContain(
+            "public static T Generate<T>(object x, global::System.Func<object> capture)"
+        );
+        supportSource.ShouldContain(
+            "/// Interception stub for queryable sequence projections with NativeAOT-safe delegate captures."
+        );
         var projectionSources = generatedSources
             .Where(pair => pair.Key.Contains("SelectExpr_", StringComparison.Ordinal))
             .ToArray();
@@ -363,9 +367,7 @@ public sealed class SourceGeneratorSmokeTests
         generateSource.ShouldContain("var captureValueBoxed = capture();");
         generateSource.ShouldNotContain("selector.Target");
         generateSource.ShouldNotContain("GetFields(");
-        generateSource.ShouldContain(
-            "var captureValue = captureValueBoxed is null ? default! : ("
-        );
+        generateSource.ShouldContain("var captureValue = captureValueBoxed is null ? default! : (");
         generateSource.ShouldContain(")captureValueBoxed;");
         generateSource.ShouldContain("var __linqraft_capture_0_id = captureValue.Item1;");
         generateSource.ShouldContain("var __linqraft_capture_1_prefix = captureValue.Item2;");

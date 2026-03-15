@@ -162,9 +162,10 @@ internal static class SourceWriters
 
                 var receiverType = GetReceiverTypeName(request.ReceiverKind);
                 var selectorResultType = GetSelectorResultType(request);
-                var captureParameter = request.CaptureTransportKind == CaptureTransportKind.Delegate
-                    ? "global::System.Func<object> capture"
-                    : "object capture";
+                var captureParameter =
+                    request.CaptureTransportKind == CaptureTransportKind.Delegate
+                        ? "global::System.Func<object> capture"
+                        : "object capture";
                 var signature = request.OperationKind switch
                 {
                     ProjectionOperationKind.Select => request.Captures.Length == 0
@@ -284,9 +285,9 @@ internal static class SourceWriters
                 builder.AppendLine(
                     request.Captures.Length == 0
                         ? $"internal static T {request.MethodName}<T>(object x)"
-                        : request.CaptureTransportKind == CaptureTransportKind.Delegate
-                            ? $"internal static T {request.MethodName}<T>(object x, global::System.Func<object> capture)"
-                            : $"internal static T {request.MethodName}<T>(object x, object capture)"
+                    : request.CaptureTransportKind == CaptureTransportKind.Delegate
+                        ? $"internal static T {request.MethodName}<T>(object x, global::System.Func<object> capture)"
+                    : $"internal static T {request.MethodName}<T>(object x, object capture)"
                 );
                 builder.AppendLine("{");
                 using (builder.Indent())

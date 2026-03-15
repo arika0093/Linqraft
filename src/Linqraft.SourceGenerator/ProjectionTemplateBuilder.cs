@@ -1603,13 +1603,16 @@ internal static class ProjectionTemplateBuilder
                             )
                     )
                     .ToArray()
-                : [CreateCaptureEntry(
-                    GetCaptureMemberName(body),
-                    body,
-                    0,
-                    semanticModel,
-                    cancellationToken
-                )];
+                :
+                [
+                    CreateCaptureEntry(
+                        GetCaptureMemberName(body),
+                        body,
+                        0,
+                        semanticModel,
+                        cancellationToken
+                    ),
+                ];
             var bodyType =
                 semanticModel.GetTypeInfo(body, cancellationToken).Type
                 ?? semanticModel.GetTypeInfo(body, cancellationToken).ConvertedType;
