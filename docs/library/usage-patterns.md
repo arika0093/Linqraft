@@ -241,3 +241,34 @@ var rows = dbContext.Orders
 ### LinqraftKit.Generate
 
 For non-`IEnumerable` / non-`IQueryable` anonymous objects, Linqraft also provides the internal helper `LinqraftKit.Generate<T>(object)` to convert a runtime anonymous object into a DTO-shaped object using the same naming conventions as Linqraft projections.
+
+This is useful when you want Linqraft's DTO generation rules without going through a query provider. Nested anonymous objects, arrays, lists, and values returned from `SelectExpr` can all be combined into one generated DTO.
+
+```csharp
+var dto = LinqraftKit.Generate<OrderBundleDto>(
+    new
+    {
+        Id = 42,
+        Customer = new { Name = "Ada" },
+        ItemNames = new[] { "Keyboard", "Mouse" },
+    }
+);
+```
+
+When the initializer depends on local values, prefer the delegate-based `capture:` overload so the generated code stays compatible with NativeAOT:
+
+```csharp
+var id = 42;
+var prefix = "Order-";
+
+var dto = LinqraftKit.Generate<OrderLabelDto>(
+    new
+    {
+        Id = id,
+        Label = prefix + id,
+    },
+    capture: () => (id, prefix)
+);
+```
+
+The delegate return value is unpacked by generated code without runtime reflection, so it is the recommended capture form for new code. Anonymous-object capture remains available for older call sites when you need source compatibility.

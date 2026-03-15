@@ -162,7 +162,9 @@ internal static class SourceWriters
 
                 var receiverType = GetReceiverTypeName(request.ReceiverKind);
                 var selectorResultType = GetSelectorResultType(request);
-                var captureParameter = "object capture";
+                var captureParameter = request.CaptureTransportKind == CaptureTransportKind.Delegate
+                    ? "global::System.Func<object> capture"
+                    : "object capture";
                 var signature = request.OperationKind switch
                 {
                     ProjectionOperationKind.Select => request.Captures.Length == 0
@@ -188,7 +190,10 @@ internal static class SourceWriters
                         $"[global::System.Runtime.CompilerServices.InterceptsLocationAttribute({interceptableLocationVersion}, \"{EscapeStringLiteral(interceptableLocationData)}\")]"
                     );
                 }
-                if (request.Captures.Length != 0)
+                if (
+                    request.Captures.Length != 0
+                    && request.CaptureTransportKind == CaptureTransportKind.AnonymousObject
+                )
                 {
                     builder.AppendLine(
                         "[global::System.Diagnostics.CodeAnalysis.UnconditionalSuppressMessage(\"Trimming\", \"IL2075\", Justification = \"Capture reflection inspects runtime-generated anonymous objects.\")]"
@@ -203,7 +208,12 @@ internal static class SourceWriters
 
                     if (request.Captures.Length != 0)
                     {
-                        WriteCaptureExtraction(builder, request.Captures);
+                        WriteCaptureExtraction(
+                            builder,
+                            request.Captures,
+                            request.CaptureTransportKind,
+                            request.CaptureTransportTypeName
+                        );
                     }
 
                     var selectArgument =
@@ -261,7 +271,10 @@ internal static class SourceWriters
                     );
                 }
 
-                if (request.Captures.Length != 0)
+                if (
+                    request.Captures.Length != 0
+                    && request.CaptureTransportKind == CaptureTransportKind.AnonymousObject
+                )
                 {
                     builder.AppendLine(
                         "[global::System.Diagnostics.CodeAnalysis.UnconditionalSuppressMessage(\"Trimming\", \"IL2075\", Justification = \"Capture reflection inspects runtime-generated anonymous objects.\")]"
@@ -271,14 +284,21 @@ internal static class SourceWriters
                 builder.AppendLine(
                     request.Captures.Length == 0
                         ? $"internal static T {request.MethodName}<T>(object x)"
-                        : $"internal static T {request.MethodName}<T>(object x, object capture)"
+                        : request.CaptureTransportKind == CaptureTransportKind.Delegate
+                            ? $"internal static T {request.MethodName}<T>(object x, global::System.Func<object> capture)"
+                            : $"internal static T {request.MethodName}<T>(object x, object capture)"
                 );
                 builder.AppendLine("{");
                 using (builder.Indent())
                 {
                     if (request.Captures.Length != 0)
                     {
-                        WriteCaptureExtraction(builder, request.Captures);
+                        WriteCaptureExtraction(
+                            builder,
+                            request.Captures,
+                            request.CaptureTransportKind,
+                            request.CaptureTransportTypeName
+                        );
                     }
 
                     AppendMultilineLine(
@@ -420,9 +440,17 @@ internal static class SourceWriters
 
     private static void WriteCaptureExtraction(
         IndentedStringBuilder builder,
-        IEnumerable<CaptureParameterModel> captures
+        IEnumerable<CaptureParameterModel> captures,
+        CaptureTransportKind transportKind,
+        string? transportTypeName
     )
     {
+        if (transportKind == CaptureTransportKind.Delegate)
+        {
+            WriteDelegateCaptureExtraction(builder, captures, transportTypeName);
+            return;
+        }
+
         builder.AppendLine("var captureType = capture.GetType();");
         foreach (var capture in captures)
         {
@@ -445,6 +473,31 @@ internal static class SourceWriters
             builder.AppendLine(
                 $"var {capture.LocalName} = {capture.LocalName}Value is null ? default! : ({capture.TypeName}){capture.LocalName}Value;"
             );
+        }
+    }
+
+    private static void WriteDelegateCaptureExtraction(
+        IndentedStringBuilder builder,
+        IEnumerable<CaptureParameterModel> captures,
+        string? transportTypeName
+    )
+    {
+        if (string.IsNullOrWhiteSpace(transportTypeName))
+        {
+            throw new InvalidOperationException("Delegate captures require a transport type.");
+        }
+
+        var captureArray = captures.ToArray();
+        builder.AppendLine("var captureValueBoxed = capture();");
+        builder.AppendLine(
+            $"var captureValue = captureValueBoxed is null ? default! : ({transportTypeName})captureValueBoxed;"
+        );
+        foreach (var capture in captureArray)
+        {
+            var valueExpression = capture.ValueAccessor is null
+                ? "captureValue"
+                : $"captureValue.{capture.ValueAccessor}";
+            builder.AppendLine($"var {capture.LocalName} = {valueExpression};");
         }
     }
 

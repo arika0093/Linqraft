@@ -1572,5 +1572,7 @@ internal sealed class ProjectionExpressionEmitter
         public required string ExpressionText { get; init; }
 
         public required ISymbol? RootSymbol { get; init; }
+
+        public string? ValueAccessor { get; init; }
     }
 }

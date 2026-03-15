@@ -7,6 +7,11 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <ProjectReference Include="..\Linqraft.Tests.Utility\Linqraft.Tests.Utility.csproj" />
     <ProjectReference Include="..\Linqraft.Tests.ProjectReferenceDependency\Linqraft.Tests.ProjectReferenceDependency.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Using Include="Linqraft.Tests.Utility" />
   </ItemGroup>
 </Project>
