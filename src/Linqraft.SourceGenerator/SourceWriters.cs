@@ -498,7 +498,6 @@ internal static class SourceWriters
         }
     }
 
-
     private static string GetAccessor(LinqraftConfiguration configuration, bool isRecord)
     {
         return configuration.PropertyAccessor switch
