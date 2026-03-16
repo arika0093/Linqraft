@@ -135,6 +135,7 @@ public sealed class GeneratedProjectionRuntimeTests
         SkipIfNativeAotCapture();
         const decimal threshold = 50m;
 
+#pragma warning disable CS0618
         var result = Invoices
             .AsTestQueryable()
             .SelectExpr<ProjectionInvoice, ProjectionDecisionDto>(
@@ -142,6 +143,7 @@ public sealed class GeneratedProjectionRuntimeTests
                 new { threshold }
             )
             .ToList();
+#pragma warning restore CS0618
 
         result.Count.ShouldBe(2);
         result[0].IsLarge.ShouldBeFalse();
@@ -155,10 +157,12 @@ public sealed class GeneratedProjectionRuntimeTests
         const decimal threshold = 50m;
         var source = TrackingQueryable.Create<ProjectionInvoice>();
 
+#pragma warning disable CS0618
         var result = source.SelectExpr<ProjectionInvoice, ProjectionDecisionDto>(
             invoice => new { invoice.Id, IsLarge = invoice.Total >= threshold },
             new { threshold }
         );
+#pragma warning restore CS0618
 
         result.Provider.ShouldBe(source.Provider);
         result.Expression.ToString().ShouldContain("Select");

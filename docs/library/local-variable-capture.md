@@ -34,7 +34,7 @@ var converted = dbContext.Entities
     );
 ```
 
-Anonymous-object captures such as `capture: new { threshold, multiplier, suffix }` are still supported for existing code, but the delegate form is the recommended option.
+Anonymous-object captures such as `capture: new { threshold, multiplier, suffix }` are still supported for existing code, but they are now obsolete. Use the delegate form for new code and let the analyzer/code fix migrate older call sites.
 
 Linqraft intentionally keeps capture transport separate from the selector delegate itself. While captured locals are visible through `selector.Target` on a normal JIT runtime, NativeAOT trimming can remove the compiler-generated closure fields, so relying on reflection over the selector delegate is not stable enough for generated code.
 
@@ -63,8 +63,8 @@ public static IQueryable<TResult> SelectExpr_HASH<TIn, TResult>(
 
 ## Analyzer Support
 
-Linqraft provides an analyzer that automatically detects uncaptured local variables and suggests a code fix:
+Linqraft provides analyzers that automatically detect uncaptured local variables and legacy anonymous-object captures:
 
 ![Local variable capture error](../../assets/local-variable-capture-err.png)
 
-Simply apply the suggested fix to add the capture parameter automatically.
+Simply apply the suggested fix to add the capture parameter automatically. If you already have `capture: new { ... }`, the warning fixer rewrites it to `capture: () => (...)`.

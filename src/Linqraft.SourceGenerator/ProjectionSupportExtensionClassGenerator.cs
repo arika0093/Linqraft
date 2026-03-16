@@ -59,6 +59,12 @@ internal abstract class ProjectionSupportExtensionClassGenerator
         builder.AppendLine("/// <summary>");
         builder.AppendLine($"/// {signature.Summary}");
         builder.AppendLine("/// </summary>");
+        if (signature.ObsoleteMessage is not null)
+        {
+            builder.AppendLine(
+                $"[global::System.Obsolete(\"{signature.ObsoleteMessage}\", false)]"
+            );
+        }
         if (signature.IsLowPriority)
         {
             builder.AppendLine(OverloadResolutionLowPriority);
@@ -94,16 +100,19 @@ internal abstract class ProjectionSupportExtensionClassGenerator
                     {
                         Parameter = (string?)null,
                         Summary = $"Interception stub for {receiver.Kind} projections without captures.",
+                        ObsoleteMessage = (string?)null,
                     },
                     new
                     {
                         Parameter = (string?)"object capture",
                         Summary = $"Interception stub for {receiver.Kind} projections with anonymous-object captures.",
+                        ObsoleteMessage = (string?)"Anonymous-object capture is obsolete. Use the delegate-based capture pattern instead.",
                     },
                     new
                     {
                         Parameter = (string?)"global::System.Func<object> capture",
                         Summary = $"Interception stub for {receiver.Kind} projections with NativeAOT-safe delegate captures.",
+                        ObsoleteMessage = (string?)null,
                     },
                 }
             )
@@ -118,6 +127,7 @@ internal abstract class ProjectionSupportExtensionClassGenerator
                         capture.Parameter,
                         hasKeySelector
                     ),
+                    ObsoleteMessage = capture.ObsoleteMessage,
                     IsLowPriority = false,
                 };
 
@@ -131,6 +141,7 @@ internal abstract class ProjectionSupportExtensionClassGenerator
                         capture.Parameter,
                         hasKeySelector
                     ),
+                    ObsoleteMessage = capture.ObsoleteMessage,
                     IsLowPriority = true,
                 };
             }
@@ -170,6 +181,8 @@ internal abstract class ProjectionSupportExtensionClassGenerator
         public required string Summary { get; init; }
 
         public required string Signature { get; init; }
+
+        public string? ObsoleteMessage { get; init; }
 
         public required bool IsLowPriority { get; init; }
     }

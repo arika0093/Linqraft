@@ -40,6 +40,9 @@ public sealed class SourceGeneratorSmokeTests
         supportSource.ShouldNotContain("global using Linqraft;");
         supportSource.ShouldContain("namespace Linqraft");
         supportSource.ShouldNotContain("namespace System.Linq");
+        supportSource.ShouldContain(
+            "[global::System.Obsolete(\"Anonymous-object capture is obsolete. Use the delegate-based capture pattern instead.\", false)]"
+        );
         supportSource.ShouldContain("public static T Generate<T>(object x, object capture)");
         supportSource.ShouldContain(
             "public static T Generate<T>(object x, global::System.Func<object> capture)"

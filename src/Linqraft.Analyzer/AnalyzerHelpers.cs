@@ -267,23 +267,13 @@ internal static class AnalyzerHelpers
 
     public static IEnumerable<string> GetCaptureNames(InvocationExpressionSyntax invocation)
     {
-        var capture =
-            invocation
-                .ArgumentList.Arguments.FirstOrDefault(argument =>
-                    argument.NameColon?.Name.Identifier.ValueText == "capture"
-                    || (
-                        !argument.Equals(invocation.ArgumentList.Arguments.First())
-                        && argument.Expression is AnonymousObjectCreationExpressionSyntax
-                    )
-                )
-                ?.Expression as AnonymousObjectCreationExpressionSyntax;
-
-        if (capture is null)
+        var captureArgument = GetCaptureArgument(invocation);
+        if (captureArgument is null)
         {
-            return Enumerable.Empty<string>();
+            return [];
         }
 
-        return capture.Initializers.Select(GetAnonymousMemberName);
+        return GetCaptureExpressions(captureArgument).Select(GetCaptureMemberName);
     }
 
     public static string GetAnonymousMemberName(AnonymousObjectMemberDeclaratorSyntax initializer)
@@ -298,6 +288,52 @@ internal static class AnalyzerHelpers
             IdentifierNameSyntax identifier => identifier.Identifier.ValueText,
             MemberAccessExpressionSyntax memberAccess => memberAccess.Name.Identifier.ValueText,
             _ => initializer.Expression.ToString(),
+        };
+    }
+
+    public static string GetCaptureMemberName(ExpressionSyntax expression)
+    {
+        return expression switch
+        {
+            IdentifierNameSyntax identifier => identifier.Identifier.ValueText,
+            MemberAccessExpressionSyntax memberAccess => memberAccess.Name.Identifier.ValueText,
+            _ => expression.WithoutTrivia().ToString(),
+        };
+    }
+
+    public static ArgumentSyntax? GetCaptureArgument(InvocationExpressionSyntax invocation)
+    {
+        var namedCapture = invocation.ArgumentList.Arguments.FirstOrDefault(argument =>
+            argument.NameColon?.Name.Identifier.ValueText == "capture"
+        );
+        if (namedCapture is not null)
+        {
+            return namedCapture;
+        }
+
+        var captureIndex = GetPositionalCaptureArgumentIndex(invocation);
+        if (
+            captureIndex is not int index
+            || index < 0
+            || index >= invocation.ArgumentList.Arguments.Count
+        )
+        {
+            return null;
+        }
+
+        var argument = invocation.ArgumentList.Arguments[index];
+        return IsCaptureArgumentExpression(argument.Expression) ? argument : null;
+    }
+
+    public static IReadOnlyList<ExpressionSyntax> GetCaptureExpressions(ArgumentSyntax captureArgument)
+    {
+        return captureArgument.Expression switch
+        {
+            AnonymousObjectCreationExpressionSyntax anonymousCapture => anonymousCapture
+                .Initializers.Select(initializer => initializer.Expression)
+                .ToArray(),
+            LambdaExpressionSyntax captureLambda => GetCaptureExpressions(captureLambda),
+            _ => [],
         };
     }
 
@@ -359,6 +395,38 @@ internal static class AnalyzerHelpers
         }
 
         return char.ToUpperInvariant(value[0]) + value[1..];
+    }
+
+    private static IReadOnlyList<ExpressionSyntax> GetCaptureExpressions(
+        LambdaExpressionSyntax captureLambda
+    )
+    {
+        var body = GetLambdaExpressionBody(captureLambda);
+        if (body is null)
+        {
+            return [];
+        }
+
+        return body is TupleExpressionSyntax tuple
+            ? tuple.Arguments.Select(argument => argument.Expression).ToArray()
+            : [body];
+    }
+
+    private static int? GetPositionalCaptureArgumentIndex(InvocationExpressionSyntax invocation)
+    {
+        return GetInvocationName(invocation.Expression) switch
+        {
+            "Generate" => 1,
+            "SelectExpr" => 1,
+            "SelectManyExpr" => 1,
+            "GroupByExpr" => 2,
+            _ => null,
+        };
+    }
+
+    private static bool IsCaptureArgumentExpression(ExpressionSyntax expression)
+    {
+        return expression is AnonymousObjectCreationExpressionSyntax or LambdaExpressionSyntax;
     }
 
     private static bool IsSimplifiableNullCheckTernary(

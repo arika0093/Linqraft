@@ -23,7 +23,7 @@ When a `SelectExpr(...)` invocation's lambda body references any of the above el
 ## Code Fix Behavior
 `LocalVariableCaptureCodeFixProvider` will:
 - Compute the full set of required capture names (including already-captured ones).
-- Create or update the `capture:` anonymous object argument with the missing names.
+- Create or update the `capture:` delegate argument with the missing names.
 - For member-access expressions that require a local alias (e.g. `this.Member` or complex expressions), it creates local declarations (e.g. `var captured_X = this.Member;`) and inserts them before the invocation.
 
 ## Example
@@ -44,5 +44,5 @@ var result = query.SelectExpr(x => new
 {
     x.Id,
     AdjustedPrice = x.Price * multiplier
-}, capture: new { multiplier });
+}, capture: () => multiplier);
 ```
