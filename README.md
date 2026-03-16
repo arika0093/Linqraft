@@ -149,8 +149,6 @@ namespace Tutorial.LinqraftGenerated_67EDED21
 
 [Analyzers](./docs/analyzers/README.md) are provided to replace existing Select code with Linqraft. The replacement is completed in an instant.
 
-![](./assets/replace-codefix-sample.gif)
-
 ## Quick Start
 ### Prerequisites
 Linqraft works out of the box with **.NET 8 and later**. For .NET 7(C# 11) and below, additional setup is required.  
