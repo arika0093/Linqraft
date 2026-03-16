@@ -150,6 +150,127 @@ namespace Tutorial.LinqraftGenerated_67EDED21
 [Analyzers](./docs/analyzers/README.md) are provided to replace existing Select code with Linqraft. The replacement is completed in an instant.
 
 ## Quick Start
+### Single File Example
+
+For .NET 10 and later, simply create the following code as `sample.cs` and run `dotnet sample.cs`.
+
+<details>
+<summary>Sample code (sample.cs)</summary>
+
+```csharp
+#:package Linqraft@*
+#:property NoWarn=$(NoWarn);IL2026;IL3050
+
+using Linqraft;
+
+var result = SampleData
+    .Orders.SelectExpr<SampleOrder, SampleOrderRowDto>(order => new
+    {
+        order.Id,
+        CustomerName = order.Customer?.Name,
+        CustomerCountry = order.Customer?.Address?.Country,
+        TotalQuantity = order.Items.Sum(item => item.Quantity),
+        Items = order.Items.Select(item => new
+        {
+            item.ProductName,
+            item.Quantity,
+            IsRecent = item.ShipDate >= new DateOnly(2026, 2, 15),
+        }),
+    })
+    .ToList();
+
+foreach (var row in result)
+{
+    Console.WriteLine($"Order {row.Id} for {row.CustomerName} from {row.CustomerCountry}");
+    foreach (var item in row.Items)
+    {
+        Console.WriteLine(
+            $"  - {item.ProductName}: Quantity = {item.Quantity}, IsRecent = {item.IsRecent}"
+        );
+    }
+}
+
+// -- declaration of sample data classes --
+public sealed class SampleOrder
+{
+    public int Id { get; set; }
+    public SampleCustomer? Customer { get; set; }
+    public List<SampleOrderItem> Items { get; set; } = [];
+}
+
+public sealed class SampleCustomer
+{
+    public string Name { get; set; } = string.Empty;
+    public SampleAddress? Address { get; set; }
+}
+
+public sealed class SampleAddress
+{
+    public string Country { get; set; } = string.Empty;
+    public string City { get; set; } = string.Empty;
+}
+
+public sealed class SampleOrderItem
+{
+    public string ProductName { get; set; } = string.Empty;
+    public int Quantity { get; set; }
+    public DateOnly ShipDate { get; set; }
+}
+
+public static class SampleData
+{
+    public static IQueryable<SampleOrder> Orders => _orders.AsQueryable();
+    private static List<SampleOrder> _orders =>
+        [
+            new()
+            {
+                Id = 1001,
+                Customer = new SampleCustomer
+                {
+                    Name = "Ada",
+                    Address = new SampleAddress { Country = "UK", City = "London" },
+                },
+                Items =
+                [
+                    new()
+                    {
+                        ProductName = "Keyboard",
+                        Quantity = 1,
+                        ShipDate = new DateOnly(2026, 3, 15),
+                    },
+                    new()
+                    {
+                        ProductName = "Mouse",
+                        Quantity = 2,
+                        ShipDate = new DateOnly(2026, 2, 25),
+                    },
+                ],
+            },
+            new()
+            {
+                Id = 1002,
+                Customer = new SampleCustomer
+                {
+                    Name = "Grace",
+                    Address = new SampleAddress { Country = "US", City = "New York" },
+                },
+                Items =
+                [
+                    new()
+                    {
+                        ProductName = "Monitor",
+                        Quantity = 1,
+                        ShipDate = new DateOnly(2026, 1, 20),
+                    },
+                ],
+            },
+        ];
+}
+```
+
+</details>
+
+
 ### Prerequisites
 Linqraft works out of the box with **.NET 8 and later**. For .NET 7(C# 11) and below, additional setup is required.  
 For detailed installation instructions, see the [Installation Guide](./docs/library/installation.md).
