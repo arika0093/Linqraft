@@ -3,3 +3,8 @@ root = true
 [*]
 end_of_line = lf
 charset = utf-8
+
+# C# code style rules
+[*.cs]
+dotnet_diagnostic.IDE0055.severity = none
+dotnet_diagnostic.IDE0320.severity = none
