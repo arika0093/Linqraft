@@ -35,7 +35,7 @@ internal class CustomMethodNameMappingDeclare : LinqraftMappingDeclare<MappingDe
 [LinqraftMappingGenerate("ProjectToMappingDeclareWithCapture")]
 internal class CaptureMappingDeclare : LinqraftMappingDeclare<MappingDeclareSourceClass>
 {
-    private int offset;
+    private int offset = default;
     private string suffix = string.Empty;
 
     protected override void DefineMapping()

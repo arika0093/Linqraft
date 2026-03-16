@@ -56,6 +56,7 @@ public sealed class EfCoreBasicProjectionTests
     [Test]
     public async Task SelectExpr_honors_AsLeftJoin_hint_over_sqlite()
     {
+#pragma warning disable CS8602
         await using var database = await SqliteTestDatabase.CreateAsync();
 
         var query = database
@@ -75,6 +76,7 @@ public sealed class EfCoreBasicProjectionTests
         result[0].CarrierName.ShouldBe("Carrier-1");
         result[1].CarrierName.ShouldBeNull();
         sql.ShouldContain("LEFT JOIN");
+#pragma warning restore CS8602
     }
 
     [Test]
