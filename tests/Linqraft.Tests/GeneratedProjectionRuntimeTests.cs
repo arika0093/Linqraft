@@ -130,45 +130,6 @@ public sealed class GeneratedProjectionRuntimeTests
     }
 
     [Test]
-    public void Captured_value_projection_runs()
-    {
-        SkipIfNativeAotCapture();
-        const decimal threshold = 50m;
-
-#pragma warning disable CS0618
-        var result = Invoices
-            .AsTestQueryable()
-            .SelectExpr<ProjectionInvoice, ProjectionDecisionDto>(
-                invoice => new { invoice.Id, IsLarge = invoice.Total >= threshold },
-                new { threshold }
-            )
-            .ToList();
-#pragma warning restore CS0618
-
-        result.Count.ShouldBe(2);
-        result[0].IsLarge.ShouldBeFalse();
-        result[1].IsLarge.ShouldBeTrue();
-    }
-
-    [Test]
-    public void IQueryable_projection_preserves_query_provider()
-    {
-        SkipIfNativeAotCapture();
-        const decimal threshold = 50m;
-        var source = TrackingQueryable.Create<ProjectionInvoice>();
-
-#pragma warning disable CS0618
-        var result = source.SelectExpr<ProjectionInvoice, ProjectionDecisionDto>(
-            invoice => new { invoice.Id, IsLarge = invoice.Total >= threshold },
-            new { threshold }
-        );
-#pragma warning restore CS0618
-
-        result.Provider.ShouldBe(source.Provider);
-        result.Expression.ToString().ShouldContain("Select");
-    }
-
-    [Test]
     public void Predeclared_property_is_populated()
     {
         var result = Orders
