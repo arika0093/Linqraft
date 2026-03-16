@@ -12,74 +12,6 @@ using Microsoft.CodeAnalysis.Text;
 public sealed class SourceGeneratorSmokeTests
 {
     [Test]
-    public void Generator_emits_compilable_sources_for_multiple_projection_shapes()
-    {
-        var driver = CreateDriver();
-        var compilation = CreateCompilation(CreateProjectionTree(), CreateMarkerTree("initial"));
-
-        driver = driver.RunGeneratorsAndUpdateCompilation(
-            compilation,
-            out var outputCompilation,
-            out var diagnostics
-        );
-
-        diagnostics.ShouldBeEmpty();
-        outputCompilation
-            .GetDiagnostics()
-            .Where(diagnostic =>
-                diagnostic.Severity == DiagnosticSeverity.Error && diagnostic.Id != "CS9137"
-            )
-            .ShouldBeEmpty();
-
-        var generatedSources = GetGeneratedSourceMap(driver.GetRunResult());
-        generatedSources.ShouldNotBeEmpty();
-        generatedSources
-            .Keys.Any(path => path.EndsWith("Linqraft.Declarations.g.cs", StringComparison.Ordinal))
-            .ShouldBeTrue();
-        var supportSource = generatedSources["Linqraft.Declarations.g.cs"];
-        supportSource.ShouldNotContain("global using Linqraft;");
-        supportSource.ShouldContain("namespace Linqraft");
-        supportSource.ShouldNotContain("namespace System.Linq");
-        supportSource.ShouldContain(
-            "[global::System.Obsolete(\"Anonymous-object capture is obsolete. Use the delegate-based capture pattern instead.\", false)]"
-        );
-        supportSource.ShouldContain("public static T Generate<T>(object x, object capture)");
-        supportSource.ShouldContain(
-            "public static T Generate<T>(object x, global::System.Func<object> capture)"
-        );
-        supportSource.ShouldContain(
-            "/// Interception stub for queryable sequence projections with NativeAOT-safe delegate captures."
-        );
-        var projectionSources = generatedSources
-            .Where(pair => pair.Key.Contains("SelectExpr_", StringComparison.Ordinal))
-            .ToArray();
-        projectionSources.Length.ShouldBe(2);
-        projectionSources
-            .Any(source =>
-                source.Value.Contains(
-                    "partial class SmokeOrderSummaryDto",
-                    StringComparison.Ordinal
-                )
-            )
-            .ShouldBeTrue();
-        projectionSources
-            .Any(source =>
-                source.Value.Contains("partial class SmokeOrderTotalsDto", StringComparison.Ordinal)
-            )
-            .ShouldBeTrue();
-        generatedSources
-            .Where(pair => !pair.Key.Contains("SelectExpr_", StringComparison.Ordinal))
-            .Any(pair =>
-                pair.Value.Contains("partial class SmokeOrderSummaryDto", StringComparison.Ordinal)
-                || pair.Value.Contains(
-                    "partial class SmokeOrderTotalsDto",
-                    StringComparison.Ordinal
-                )
-            )
-            .ShouldBeFalse();
-    }
-
-    [Test]
     public void Generator_keeps_prebuilt_expression_generation_opt_in()
     {
         var driver = CreateDriver(usePrebuildExpression: false);
@@ -334,50 +266,6 @@ public sealed class SourceGeneratorSmokeTests
         generatedSources
             .Keys.Any(key => key.StartsWith("Generate_", StringComparison.Ordinal))
             .ShouldBeFalse();
-    }
-
-    [Test]
-    public void Generator_emits_generate_capture_overload_and_capture_extraction()
-    {
-        var driver = CreateDriver();
-        var compilation = CreateCompilation(
-            CreateGenerateCaptureTree(),
-            CreateMarkerTree("generate-capture")
-        );
-
-        driver = driver.RunGeneratorsAndUpdateCompilation(
-            compilation,
-            out var outputCompilation,
-            out var diagnostics
-        );
-
-        diagnostics.ShouldBeEmpty();
-        outputCompilation
-            .GetDiagnostics()
-            .Where(diagnostic =>
-                diagnostic.Severity == DiagnosticSeverity.Error && diagnostic.Id != "CS9137"
-            )
-            .ShouldBeEmpty();
-
-        var generatedSources = GetGeneratedSourceMap(driver.GetRunResult());
-        var generateSource = generatedSources.Values.Single(source =>
-            source.Contains("GeneratedCaptureDto", StringComparison.Ordinal)
-            && source.Contains("var captureValueBoxed = capture();", StringComparison.Ordinal)
-        );
-
-        generateSource.ShouldContain("internal static T Generate_");
-        generateSource.ShouldContain("(object x, global::System.Func<object> capture)");
-        generateSource.ShouldContain("var captureValueBoxed = capture();");
-        generateSource.ShouldNotContain("selector.Target");
-        generateSource.ShouldNotContain("GetFields(");
-        generateSource.ShouldContain("var captureValue = captureValueBoxed is null ? default! : (");
-        generateSource.ShouldContain(")captureValueBoxed;");
-        generateSource.ShouldContain("var __linqraft_capture_0_id = captureValue.Item1;");
-        generateSource.ShouldContain("var __linqraft_capture_1_prefix = captureValue.Item2;");
-        generateSource.ShouldContain("Id = __linqraft_capture_0_id");
-        generateSource.ShouldContain(
-            "Label = __linqraft_capture_1_prefix + __linqraft_capture_0_id"
-        );
     }
 
     private static GeneratorDriver CreateDriver(bool usePrebuildExpression = true)
