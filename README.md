@@ -1,6 +1,6 @@
 
 <div align="center">
-  <img src="./assets/linqraft.png" />
+  <img width="150px" src="./assets/linqraft_512.png" />
 
   # Linqraft
 
