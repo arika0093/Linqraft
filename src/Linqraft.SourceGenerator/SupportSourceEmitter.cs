@@ -138,6 +138,37 @@ internal static class SupportSourceEmitter
             builder.AppendLines(extensionDeclarations);
         }
         builder.AppendLine("}");
+        builder.AppendLine();
+        builder.AppendLines(
+            """
+            namespace Linqraft.Utility
+            {
+                /// <summary>
+                /// Provides dummy join-hint markers that Linqraft rewrites before execution.
+                /// </summary>
+                [global::Microsoft.CodeAnalysis.EmbeddedAttribute]
+                internal static partial class LinqraftJoinHintExtensions
+                {
+                    private static global::System.InvalidOperationException ThrowInterceptionRequired
+                        => new global::System.InvalidOperationException("Linqraft source generator should replace AsLeftJoin invocations before execution.");
+
+                    /// <summary>
+                    /// Marks a navigation access so that Linqraft rewrites the following member access using left-join semantics.
+                    /// </summary>
+                    public static T? AsLeftJoin<T>(this T? value)
+                        where T : class
+                        => throw ThrowInterceptionRequired;
+
+                    /// <summary>
+                    /// Marks a queryable navigation access so that Linqraft rewrites the following query using left-join semantics.
+                    /// </summary>
+                    public static global::System.Linq.IQueryable<T> AsLeftJoin<T>(this global::System.Linq.IQueryable<T> query)
+                        where T : class
+                        => throw ThrowInterceptionRequired;
+                }
+            }
+            """
+        );
 
         return builder.ToString();
     }

@@ -348,7 +348,7 @@ internal static class SourceWriters
             }
 
             builder.AppendLine(
-                $"{request.MethodAccessibilityKeyword} static {receiverType}<{request.ResultTypeName}> {request.MethodName}(this {receiverType}<{request.SourceTypeName}> source)"
+                $"{request.MethodAccessibilityKeyword} static {receiverType}<{request.ResultTypeName}> {request.MethodName}(this {receiverType}<{request.SourceTypeName}> source{string.Concat(request.Captures.Select(capture => $", {capture.TypeName} {capture.LocalName}"))})"
             );
             builder.AppendLine("{");
             using (builder.Indent())

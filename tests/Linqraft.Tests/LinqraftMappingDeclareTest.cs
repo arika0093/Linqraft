@@ -32,6 +32,26 @@ internal class CustomMethodNameMappingDeclare : LinqraftMappingDeclare<MappingDe
     }
 }
 
+[LinqraftMappingGenerate("ProjectToMappingDeclareWithCapture")]
+internal class CaptureMappingDeclare : LinqraftMappingDeclare<MappingDeclareSourceClass>
+{
+    private int offset;
+    private string suffix = string.Empty;
+
+    protected override void DefineMapping()
+    {
+        Source.SelectExpr<MappingDeclareSourceClass, MappingDeclareCaptureDto>(
+            x => new
+            {
+                x.Id,
+                AdjustedValue = x.Value + offset,
+                Description = x.Name + suffix,
+            },
+            () => (offset, suffix)
+        );
+    }
+}
+
 // bug: in old .NET versions, this test is not working correctly
 #if NET9_0_OR_GREATER
 
@@ -129,6 +149,24 @@ public class LinqraftMappingDeclareTest
         result[1].Description.ShouldBe("Description2");
     }
 
+    [Test]
+    public void MappingDeclare_WithCaptureParameters_Test()
+    {
+        var data = new[]
+        {
+            new MappingDeclareSourceClass { Id = 1, Value = 10, Name = "Test1" },
+            new MappingDeclareSourceClass { Id = 2, Value = 20, Name = "Test2" },
+        }.AsTestQueryable();
+
+        var result = data.ProjectToMappingDeclareWithCapture(100, " units").ToList();
+
+        result.Count.ShouldBe(2);
+        result[0].AdjustedValue.ShouldBe(110);
+        result[0].Description.ShouldBe("Test1 units");
+        result[1].AdjustedValue.ShouldBe(120);
+        result[1].Description.ShouldBe("Test2 units");
+    }
+
 #if NET9_0_OR_GREATER
     [Test]
     public void MappingDeclare_NestedCollection_Test()
@@ -178,6 +216,7 @@ public class LinqraftMappingDeclareTest
 public class MappingDeclareSourceClass
 {
     public int Id { get; set; }
+    public int Value { get; set; }
     public string Name { get; set; } = "";
     public string? Description { get; set; }
     public MappingDeclareChildClass? Child { get; set; }
@@ -195,3 +234,5 @@ public class MappingDeclareParentClass
     public string Title { get; set; } = "";
     public List<MappingDeclareChildClass> Children { get; set; } = new();
 }
+
+public partial class MappingDeclareCaptureDto;

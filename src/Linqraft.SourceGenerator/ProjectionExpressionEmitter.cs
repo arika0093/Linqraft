@@ -79,6 +79,11 @@ internal sealed class ProjectionExpressionEmitter
             return captureReplacement;
         }
 
+        if (TryEmitLeftJoinHint(expression, out var leftJoinHint))
+        {
+            return leftJoinHint;
+        }
+
         if (TryEmitConditionalChain(expression, out var conditionalText))
         {
             return conditionalText;
@@ -530,6 +535,108 @@ internal sealed class ProjectionExpressionEmitter
         return true;
     }
 
+    private bool TryEmitLeftJoinHint(ExpressionSyntax expression, out string rewritten)
+    {
+        return TryBuildLeftJoinConditional(expression, value => value, expression, out rewritten);
+    }
+
+    private bool TryBuildLeftJoinConditional(
+        ExpressionSyntax expression,
+        global::System.Func<string, string> applyTail,
+        ExpressionSyntax rootLeftJoinExpression,
+        out string rewritten
+    )
+    {
+        switch (expression)
+        {
+            case InvocationExpressionSyntax invocation when IsAsLeftJoinInvocation(invocation):
+            {
+                var receiverSyntax = GetInvocationReceiver(invocation);
+                if (receiverSyntax is null)
+                {
+                    rewritten = string.Empty;
+                    return false;
+                }
+
+                var receiver = Emit(receiverSyntax);
+                var expressionType = GetExpressionType(expression);
+                var rootExpressionType = ReferenceEquals(rootLeftJoinExpression, expression)
+                    ? expressionType
+                    : GetExpressionType(rootLeftJoinExpression);
+                var rootExpressionTypeName = GetExpressionTypeName(
+                    rootLeftJoinExpression,
+                    rootExpressionType,
+                    out _
+                );
+                var useEmptyFallback =
+                    ReferenceEquals(rootLeftJoinExpression, _rootExpression)
+                    && (
+                        _useEmptyCollectionFallback
+                        || ShouldUseCollectionFallback(
+                            rootLeftJoinExpression,
+                            rootExpressionType
+                        )
+                    );
+                var fallback = useEmptyFallback
+                    ? CreateEmptyCollectionFallback(rootExpressionTypeName)
+                    : "null";
+                var access = applyTail(receiver);
+
+                var formattedAccess = access;
+                if (TryFormatFluentAccess(receiver, access, out var multilineAccess))
+                {
+                    formattedAccess = multilineAccess;
+                }
+
+                if (ContainsLineBreak(formattedAccess) || ContainsLineBreak(fallback))
+                {
+                    rewritten = string.Join(
+                        "\n",
+                        [
+                            $"{receiver} != null",
+                            IndentAllLines(AppendValueWithContinuation("? ", formattedAccess)),
+                            IndentAllLines(AppendValueWithContinuation(": ", fallback)),
+                        ]
+                    );
+                }
+                else
+                {
+                    rewritten = $"{receiver} != null ? {formattedAccess} : {fallback}";
+                }
+
+                return true;
+            }
+            case MemberAccessExpressionSyntax memberAccess:
+                return TryBuildLeftJoinConditional(
+                    memberAccess.Expression,
+                    value => applyTail($"{value}.{EmitSimpleName(memberAccess.Name)}"),
+                    rootLeftJoinExpression,
+                    out rewritten
+                );
+            case InvocationExpressionSyntax invocation
+                when invocation.Expression is MemberAccessExpressionSyntax memberInvocation:
+                return TryBuildLeftJoinConditional(
+                    memberInvocation.Expression,
+                    value =>
+                        applyTail(
+                            EmitInvocationFromReceiver(invocation, memberInvocation.Name, value)
+                        ),
+                    rootLeftJoinExpression,
+                    out rewritten
+                );
+            case ElementAccessExpressionSyntax elementAccess:
+                return TryBuildLeftJoinConditional(
+                    elementAccess.Expression,
+                    value => applyTail($"{value}{EmitBracketArguments(elementAccess.ArgumentList)}"),
+                    rootLeftJoinExpression,
+                    out rewritten
+                );
+            default:
+                rewritten = string.Empty;
+                return false;
+        }
+    }
+
     private bool TryBuildConditional(
         ExpressionSyntax expression,
         global::System.Func<string, string> applyTail,
@@ -683,6 +790,20 @@ internal sealed class ProjectionExpressionEmitter
             .DescendantNodesAndSelf()
             .OfType<ConditionalAccessExpressionSyntax>()
             .Any();
+    }
+
+    private static bool IsAsLeftJoinInvocation(InvocationExpressionSyntax invocation)
+    {
+        return invocation.ArgumentList.Arguments.Count == 0
+            && invocation.Expression is MemberAccessExpressionSyntax memberAccess
+            && memberAccess.Name.Identifier.ValueText == "AsLeftJoin";
+    }
+
+    private static ExpressionSyntax? GetInvocationReceiver(InvocationExpressionSyntax invocation)
+    {
+        return invocation.Expression is MemberAccessExpressionSyntax memberAccess
+            ? memberAccess.Expression
+            : null;
     }
 
     private bool TryEmitFluentChain(ExpressionSyntax expression, out string rewritten)

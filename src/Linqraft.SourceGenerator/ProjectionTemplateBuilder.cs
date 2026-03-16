@@ -90,7 +90,7 @@ internal static class ProjectionTemplateBuilder
             allowInterceptor: false,
             ownerHintName: mappingHintName
         );
-        if (projection is null || projection.Request.Captures.Length != 0)
+        if (projection is null)
         {
             return null;
         }
@@ -121,6 +121,7 @@ internal static class ProjectionTemplateBuilder
                 SourceTypeName = projection.Request.SourceTypeName,
                 ResultTypeTemplate = projection.Request.ResultTypeTemplate,
                 SelectorParameterName = projection.Request.SelectorParameterName,
+                Captures = projection.Request.Captures,
                 CanUsePrebuiltExpressionWhenConfigured = projection
                     .Request
                     .CanUsePrebuiltExpressionWhenConfigured,
@@ -170,7 +171,7 @@ internal static class ProjectionTemplateBuilder
             allowInterceptor: false,
             ownerHintName: mappingHintName
         );
-        if (projection is null || projection.Request.Captures.Length != 0)
+        if (projection is null)
         {
             return null;
         }
@@ -201,6 +202,7 @@ internal static class ProjectionTemplateBuilder
                 SourceTypeName = projection.Request.SourceTypeName,
                 ResultTypeTemplate = projection.Request.ResultTypeTemplate,
                 SelectorParameterName = projection.Request.SelectorParameterName,
+                Captures = projection.Request.Captures,
                 CanUsePrebuiltExpressionWhenConfigured = projection
                     .Request
                     .CanUsePrebuiltExpressionWhenConfigured,
@@ -1017,6 +1019,14 @@ internal static class ProjectionTemplateBuilder
             if (replacementTypes.TryGetValue(expression.Span, out var existingReplacement))
             {
                 return existingReplacement;
+            }
+
+            if (TryStripAsLeftJoinHint(expression, out _))
+            {
+                var leftJoinType =
+                    _semanticModel.GetTypeInfo(expression, _cancellationToken).ConvertedType
+                    ?? _semanticModel.GetTypeInfo(expression, _cancellationToken).Type;
+                return MakeNullable(leftJoinType?.ToFullyQualifiedTypeName() ?? "object");
             }
 
             if (
@@ -2353,6 +2363,33 @@ internal static class ProjectionTemplateBuilder
         );
     }
 
+    private static bool IsAsLeftJoinInvocation(InvocationExpressionSyntax invocation)
+    {
+        return invocation.ArgumentList.Arguments.Count == 0
+            && string.Equals(
+                GetInvocationName(invocation.Expression),
+                "AsLeftJoin",
+                StringComparison.Ordinal
+            );
+    }
+
+    private static bool TryStripAsLeftJoinHint(
+        ExpressionSyntax expression,
+        out ExpressionSyntax strippedExpression
+    )
+    {
+        var rewriter = new AsLeftJoinHintRemovalRewriter();
+        var rewritten = rewriter.Visit(expression) as ExpressionSyntax;
+        if (!rewriter.Rewritten || rewritten is null)
+        {
+            strippedExpression = null!;
+            return false;
+        }
+
+        strippedExpression = rewritten;
+        return true;
+    }
+
     private static bool IsInsideMappingDeclaration(SyntaxNode node)
     {
         return node.Ancestors()
@@ -2522,5 +2559,21 @@ internal static class ProjectionTemplateBuilder
         public required GeneratedDtoTemplateModel? DtoTemplate { get; init; }
 
         public required IReadOnlyDictionary<TextSpan, string> ReplacementTypes { get; init; }
+    }
+
+    private sealed class AsLeftJoinHintRemovalRewriter : CSharpSyntaxRewriter
+    {
+        public bool Rewritten { get; private set; }
+
+        public override SyntaxNode? VisitInvocationExpression(InvocationExpressionSyntax node)
+        {
+            if (IsAsLeftJoinInvocation(node) && node.Expression is MemberAccessExpressionSyntax member)
+            {
+                Rewritten = true;
+                return Visit(member.Expression);
+            }
+
+            return base.VisitInvocationExpression(node);
+        }
     }
 }
