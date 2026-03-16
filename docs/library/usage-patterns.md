@@ -1,6 +1,6 @@
 # Usage Patterns
 
-Linqraft provides three main usage patterns for different scenarios. This guide explains when and how to use each pattern.
+Linqraft provides several usage patterns for different scenarios. This guide explains when and how to use each pattern, including `SelectExpr`-based projections and `LinqraftKit.Generate` for non-query object generation.
 
 ## Overview
 
@@ -9,7 +9,8 @@ Linqraft provides three main usage patterns for different scenarios. This guide 
 | [Anonymous](#anonymous-pattern) | Anonymous type | Quick queries, one-off projections |
 | [Explicit DTO](#explicit-dto-pattern) | Auto-generated DTO | Reusable DTOs, API responses, type-safe code |
 | [Pre-existing DTO](#pre-existing-dto-pattern) | Your DTO class | Using existing DTOs, shared types |
-| [Aggregation & Flattening](#aggregation--flattening-helpers) | Named or anonymous projections | GroupBy / SelectMany pipelines without manual intermediate IGrouping handling |
+| [Aggregation & Flattening](#aggregation--flattening-helpers) | Named or anonymous projections | GroupBy / SelectMany pipelines without manual intermediate `IGrouping` handling |
+| [LinqraftKit.Generate](#linqraftkitgenerate) | Auto-generated DTO | Building generated DTOs from runtime objects outside `IEnumerable` / `IQueryable` pipelines |
 
 ## Anonymous Pattern
 
@@ -240,7 +241,7 @@ var rows = dbContext.Orders
 
 ### LinqraftKit.Generate
 
-For non-`IEnumerable` / non-`IQueryable` anonymous objects, Linqraft also provides the internal helper `LinqraftKit.Generate<T>(object)` to convert a runtime anonymous object into a DTO-shaped object using the same naming conventions as Linqraft projections.
+Use `LinqraftKit.Generate<T>(...)` when you want Linqraft to generate and populate a DTO from a runtime object instead of from an `IEnumerable` / `IQueryable` projection.
 
 This is useful when you want Linqraft's DTO generation rules without going through a query provider. Nested anonymous objects, arrays, lists, and values returned from `SelectExpr` can all be combined into one generated DTO.
 
@@ -254,6 +255,11 @@ var dto = LinqraftKit.Generate<OrderBundleDto>(
     }
 );
 ```
+
+This pattern works well for:
+* 1:1 DTO generation from anonymous objects
+* Combining multiple projection results into one response DTO
+* Reusing Linqraft's nested DTO naming and collection handling outside query pipelines
 
 When the initializer depends on local values, prefer the delegate-based `capture:` overload so the generated code stays compatible with NativeAOT:
 

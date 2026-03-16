@@ -61,4 +61,4 @@ The `PrivateAssets` attribute might look unfamiliar, but it indicates that this 
 
 ## Next Steps
 
-* [Usage Patterns](./usage-patterns.md) - Learn how to use SelectExpr with different patterns
+* [Usage Patterns](./usage-patterns.md) - Learn how to use `SelectExpr`, `GroupByExpr`, `SelectManyExpr`, and `LinqraftKit.Generate`
