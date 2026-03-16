@@ -566,9 +566,7 @@ public sealed class LinqraftCompositeCodeFixProvider : CodeFixProvider
         }
 
         var remaining = captureExpressions
-            .Where(expression =>
-                AnalyzerHelpers.GetCaptureMemberName(expression) != captureName
-            )
+            .Where(expression => AnalyzerHelpers.GetCaptureMemberName(expression) != captureName)
             .ToList();
 
         if (remaining.Count == 0)
@@ -577,7 +575,10 @@ public sealed class LinqraftCompositeCodeFixProvider : CodeFixProvider
             var updatedInvocation = invocation.WithArgumentList(
                 invocation.ArgumentList.WithArguments(newArguments)
             );
-            return WithFormattedSyntaxRoot(document, root.ReplaceNode(invocation, updatedInvocation));
+            return WithFormattedSyntaxRoot(
+                document,
+                root.ReplaceNode(invocation, updatedInvocation)
+            );
         }
 
         var updatedInvocationWithCapture = invocation.ReplaceNode(
@@ -1292,13 +1293,17 @@ public sealed class LinqraftCompositeCodeFixProvider : CodeFixProvider
         ArgumentSyntax? captureArgument
     )
     {
-        return captureArgument is null ? [] : AnalyzerHelpers.GetCaptureExpressions(captureArgument);
+        return captureArgument is null
+            ? []
+            : AnalyzerHelpers.GetCaptureExpressions(captureArgument);
     }
 
     private static ArgumentSyntax CreateCaptureArgument(IEnumerable<string> captureNames)
     {
         return CreateCaptureArgument(
-            captureNames.Select(captureName => (ExpressionSyntax)SyntaxFactory.IdentifierName(captureName))
+            captureNames.Select(captureName =>
+                (ExpressionSyntax)SyntaxFactory.IdentifierName(captureName)
+            )
         );
     }
 
@@ -1330,10 +1335,7 @@ public sealed class LinqraftCompositeCodeFixProvider : CodeFixProvider
         return SyntaxFactory.Argument(
             SyntaxFactory.NameColon(SyntaxFactory.IdentifierName("capture")),
             default,
-            SyntaxFactory.ParenthesizedLambdaExpression(
-                SyntaxFactory.ParameterList(),
-                captureBody
-            )
+            SyntaxFactory.ParenthesizedLambdaExpression(SyntaxFactory.ParameterList(), captureBody)
         );
     }
 

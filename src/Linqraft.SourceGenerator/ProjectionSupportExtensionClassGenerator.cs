@@ -106,7 +106,8 @@ internal abstract class ProjectionSupportExtensionClassGenerator
                     {
                         Parameter = (string?)"object capture",
                         Summary = $"Interception stub for {receiver.Kind} projections with anonymous-object captures.",
-                        ObsoleteMessage = (string?)"Anonymous-object capture is obsolete. Use the delegate-based capture pattern instead.",
+                        ObsoleteMessage = (string?)
+                            "Anonymous-object capture is obsolete. Use the delegate-based capture pattern instead.",
                     },
                     new
                     {

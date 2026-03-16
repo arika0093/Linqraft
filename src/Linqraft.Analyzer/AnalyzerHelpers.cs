@@ -325,7 +325,9 @@ internal static class AnalyzerHelpers
         return IsCaptureArgumentExpression(argument.Expression) ? argument : null;
     }
 
-    public static IReadOnlyList<ExpressionSyntax> GetCaptureExpressions(ArgumentSyntax captureArgument)
+    public static IReadOnlyList<ExpressionSyntax> GetCaptureExpressions(
+        ArgumentSyntax captureArgument
+    )
     {
         return captureArgument.Expression switch
         {

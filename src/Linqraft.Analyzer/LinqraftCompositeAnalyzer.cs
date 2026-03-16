@@ -128,10 +128,11 @@ public sealed class LinqraftCompositeAnalyzer : DiagnosticAnalyzer
             as IMethodSymbol;
         var reducedMethod = methodSymbol?.ReducedFrom ?? methodSymbol;
         if (
-            reducedMethod?.Name is not "SelectExpr"
-                and not "SelectManyExpr"
-                and not "GroupByExpr"
-                and not "Generate"
+            reducedMethod?.Name
+                is not "SelectExpr"
+                    and not "SelectManyExpr"
+                    and not "GroupByExpr"
+                    and not "Generate"
             || reducedMethod.ContainingNamespace.ToDisplayString() != "Linqraft"
         )
         {
