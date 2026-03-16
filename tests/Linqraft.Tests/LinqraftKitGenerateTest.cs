@@ -30,7 +30,7 @@ public sealed class LinqraftKitGenerateTest
             new
             {
                 Orders = GenerateProjectionData
-                    .Orders.AsQueryable()
+                    .Orders.AsTestQueryable()
                     .SelectExpr<GenerateSourceOrder, GenerateProjectionOrderRowDto>(order => new
                     {
                         order.Id,
@@ -38,7 +38,7 @@ public sealed class LinqraftKitGenerateTest
                     })
                     .ToList(),
                 Decisions = GenerateProjectionData
-                    .Invoices.AsQueryable()
+                    .Invoices.AsTestQueryable()
                     .Select(invoice => new { invoice.Id, IsLarge = invoice.Total >= 100m })
                     .ToList(),
             }

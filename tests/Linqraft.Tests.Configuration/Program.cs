@@ -4,6 +4,7 @@ using System.IO;
 using System.Linq;
 using System.Runtime.CompilerServices;
 using GlobalGenerated;
+using Linqraft.Tests.Utility;
 
 public sealed class GlobalPropertyConfigurationTests
 {
@@ -53,7 +54,7 @@ public sealed class GlobalPropertyConfigurationTests
     public void Project_wide_properties_are_applied_to_generated_types()
     {
         var results = Orders
-            .AsQueryable()
+            .AsTestQueryable()
             .SelectExpr<Order, ConfiguredOrderDto>(order => new
             {
                 order.Id,
@@ -152,7 +153,7 @@ public sealed class GlobalPropertyConfigurationTests
         var offset = 5;
 #pragma warning disable CS0618
         var results = Orders
-            .AsQueryable()
+            .AsTestQueryable()
             .SelectExpr(order => new { order.Id, OffsetId = order.Id + offset }, new { offset })
             .ToList();
 #pragma warning restore CS0618
@@ -232,7 +233,7 @@ public sealed class GlobalPropertyConfigurationTests
     public void Generated_projection_source_indents_nested_object_initializers()
     {
         var result = FormattingRoots
-            .AsQueryable()
+            .AsTestQueryable()
             .SelectExpr<FormattingRoot, ConfiguredNestedFormattingDto>(root => new
             {
                 root.Id,
@@ -311,7 +312,7 @@ public sealed class GlobalPropertyConfigurationTests
     public void Generated_prebuilt_expression_source_dedents_after_nested_select_projection()
     {
         var result = FormattingRoots
-            .AsQueryable()
+            .AsTestQueryable()
             .SelectExpr<FormattingRoot, ConfiguredSelectChainFormattingDto>(root => new
             {
                 root.Id,
@@ -376,7 +377,7 @@ public sealed class GlobalPropertyConfigurationTests
     public void Generated_projection_source_simplifies_null_coalescing_collection_fallbacks()
     {
         var result = Orders
-            .AsQueryable()
+            .AsTestQueryable()
             .SelectExpr<Order, ConfiguredOrderWithFallbackDto>(order => new
             {
                 order.Id,
@@ -405,7 +406,7 @@ public sealed class GlobalPropertyConfigurationTests
     public void Generated_projection_source_omits_runtime_query_guards()
     {
         var result = Orders
-            .AsQueryable()
+            .AsTestQueryable()
             .SelectExpr<Order, ConfiguredOrderDto>(order => new
             {
                 order.Id,
@@ -470,7 +471,7 @@ public sealed class GlobalPropertyConfigurationTests
         var multiplier = 4;
 #pragma warning disable CS0618
         var result = CaptureFormattingItems
-            .AsQueryable()
+            .AsTestQueryable()
             .SelectExpr<CaptureFormattingItem, ConfiguredCaptureFormattingDto>(
                 item => new
                 {

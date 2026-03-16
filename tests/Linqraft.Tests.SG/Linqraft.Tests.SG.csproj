@@ -1,1 +1,5 @@
-<Project Sdk="Microsoft.NET.Sdk"></Project>
+<Project Sdk="Microsoft.NET.Sdk">
+  <ItemGroup>
+    <ProjectReference Include="..\Linqraft.Tests.Utility\Linqraft.Tests.Utility.csproj" />
+  </ItemGroup>
+</Project>
