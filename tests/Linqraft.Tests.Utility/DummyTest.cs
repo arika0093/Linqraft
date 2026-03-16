@@ -6,6 +6,6 @@ namespace Linqraft.Tests.Utility;
 
 public class DummyTest
 {
-	[Test]
-	public void Dummy() { }
+    [Test]
+    public void Dummy() { }
 }
