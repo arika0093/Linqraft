@@ -7,11 +7,11 @@
 ## Description
 Detects capture variables passed to `SelectExpr` that are not referenced inside the selector lambda and suggests removing them. Unnecessary captured variables add visual noise and may be misleading about which outer values are actually used by the projection.
 
-This analyzer looks for `SelectExpr` invocations that include a `capture:` argument (or a positional capture argument) expressed as an anonymous object (for example `capture: new { foo, bar }`) and reports each captured member that does not appear (as an identifier or relevant member access) inside the selector lambda.
+This analyzer looks for `SelectExpr` invocations that include a `capture:` argument (or a positional capture argument) expressed as an anonymous object (for example `capture: () => (foo, bar)`) and reports each captured member that does not appear (as an identifier or relevant member access) inside the selector lambda.
 
 ## When It Triggers
 - The invocation is a `SelectExpr(...)` call.
-- The call provides captures via a `capture:` named argument or a second positional argument that is an anonymous object (e.g. `new { a, b }`).
+- The call provides captures via a `capture:` named argument or a second positional argument that is an anonymous object (e.g. `() => (a, b)`).
 - One or more properties listed in that anonymous capture object are never referenced from within the selector lambda body.
 
 ## Code Fix
@@ -30,7 +30,7 @@ var result = query.SelectExpr(
         x.Id,
         x.Timestamp
     },
-    capture: new { now } // LQRW003 reported for 'now'
+    capture: () => (now) // LQRW003 reported for 'now'
 );
 ```
 
@@ -52,8 +52,8 @@ string userName = GetUserName();
 int unusedCounter = 0;
 
 var items = db.Items.SelectExpr(
-    i => new { i.Id, Owner = userName },
-    capture: new { userName, unusedCounter }
+    i => () => (i.Id, Owner = userName),
+    capture: () => (userName, unusedCounter)
 );
 // LQRW003 will report 'unusedCounter' as unnecessary
 ```
@@ -64,8 +64,8 @@ string userName = GetUserName();
 int unusedCounter = 0;
 
 var items = db.Items.SelectExpr(
-    i => new { i.Id, Owner = userName },
-    capture: new { userName }
+    i => () => (i.Id, Owner = userName),
+    capture: () => (userName)
 );
 ```
 
