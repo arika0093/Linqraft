@@ -254,7 +254,7 @@ public sealed class AnalyzerCodeFixSmokeTests
     }
 
     [Test]
-    public async Task Groupby_key_code_fix_creates_named_key_type()
+    public async Task Groupby_key_code_fix_converts_to_groupbyexpr()
     {
         const string source = """
             using System;
@@ -267,6 +267,12 @@ public sealed class AnalyzerCodeFixSmokeTests
                 {
                     public static IQueryable<TResult> SelectExpr<TIn, TResult>(this IQueryable<TIn> query, Func<TIn, TResult> selector)
                         where TIn : class => throw null!;
+                }
+
+                public static class GroupByExprExtensions
+                {
+                    public static IQueryable<TResult> GroupByExpr<TIn, TKey, TResult>(this IQueryable<TIn> query, Func<TIn, TKey> keySelector, Func<System.Linq.IGrouping<TKey, TIn>, TResult> resultSelector)
+                        => throw null!;
                 }
             }
 
@@ -286,13 +292,14 @@ public sealed class AnalyzerCodeFixSmokeTests
             }
             """;
 
-        var result = await ApplyFixAsync(source, "LQRE002", "named type");
+        var result = await ApplyFixAsync(source, "LQRE002", "GroupByExpr");
         var fixedText = result.PrimaryDocumentText;
         var compilationErrors = await GetCompilationErrorsAsync(result.ChangedSolution);
 
         compilationErrors.ShouldBeEmpty();
-        fixedText.ShouldContain("new EntityGroupKey");
-        fixedText.ShouldContain("class EntityGroupKey");
+        fixedText.ShouldContain("GroupByExpr(");
+        fixedText.ShouldNotContain("GroupBy(");
+        fixedText.ShouldNotContain("SelectExpr(");
     }
 
     [Test]
