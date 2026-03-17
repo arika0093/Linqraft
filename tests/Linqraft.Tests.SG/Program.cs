@@ -599,7 +599,7 @@ public sealed class SourceGeneratorSmokeTests
 
     private static SyntaxTree CreateRegisteredLeftJoinExtensionTree()
     {
-        const string source = """
+        const string source = """"
             using System.Linq;
             using Linqraft;
             using Linqraft.Utility;
@@ -625,11 +625,13 @@ public sealed class SourceGeneratorSmokeTests
                 public override string Namespace => "Linqraft.Utility";
                 public override string ExtensionClassName => "SmokeJoinHintExtensions";
                 public override string BehaviorKey => "AsLeftJoin";
-                public override string MethodDeclarations =>
-                    "summary: Marks a navigation access so that Linqraft rewrites the following member access using left-join semantics.\n"
-                    + "signature: public static T? HintLeftJoin<T>(this T? value) where T : class\n\n"
-                    + "summary: Marks a queryable navigation access so that Linqraft rewrites the following query using left-join semantics.\n"
-                    + "signature: public static global::System.Linq.IQueryable<T> HintLeftJoin<T>(this global::System.Linq.IQueryable<T> query) where T : class";
+                public override string MethodDeclarations => """
+                    summary: Marks a navigation access so that Linqraft rewrites the following member access using left-join semantics.
+                    signature: public static T? HintLeftJoin<T>(this T? value) where T : class
+
+                    summary: Marks a queryable navigation access so that Linqraft rewrites the following query using left-join semantics.
+                    signature: public static global::System.Linq.IQueryable<T> HintLeftJoin<T>(this global::System.Linq.IQueryable<T> query) where T : class
+                    """;
             }
 
             public sealed class SmokeOrder
@@ -641,7 +643,7 @@ public sealed class SourceGeneratorSmokeTests
             {
                 public string? CarrierName { get; set; }
             }
-            """;
+            """";
 
         return CSharpSyntaxTree.ParseText(
             SourceText.From(source),
