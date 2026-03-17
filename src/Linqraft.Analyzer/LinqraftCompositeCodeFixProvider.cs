@@ -321,7 +321,11 @@ public sealed class LinqraftCompositeCodeFixProvider : CodeFixProvider
             CodeAction.Create(
                 "Use GroupByExpr",
                 cancellationToken =>
-                    ConvertGroupByToGroupByExprAsync(context.Document, invocation, cancellationToken),
+                    ConvertGroupByToGroupByExprAsync(
+                        context.Document,
+                        invocation,
+                        cancellationToken
+                    ),
                 "LQRE002"
             ),
             context.Diagnostics
@@ -649,25 +653,20 @@ public sealed class LinqraftCompositeCodeFixProvider : CodeFixProvider
             return document;
         }
 
-        if (
-            selectExprInvocation.Expression
-            is not MemberAccessExpressionSyntax selectExprAccess
-        )
+        if (selectExprInvocation.Expression is not MemberAccessExpressionSyntax selectExprAccess)
         {
             return document;
         }
 
         if (
-            selectExprAccess.Expression
-            is not InvocationExpressionSyntax groupByInvocation
+            selectExprAccess.Expression is not InvocationExpressionSyntax groupByInvocation
             || AnalyzerHelpers.GetInvocationName(groupByInvocation.Expression) != "GroupBy"
         )
         {
             return document;
         }
 
-        var receiver =
-            (groupByInvocation.Expression as MemberAccessExpressionSyntax)?.Expression;
+        var receiver = (groupByInvocation.Expression as MemberAccessExpressionSyntax)?.Expression;
         if (receiver is null)
         {
             return document;
@@ -702,7 +701,10 @@ public sealed class LinqraftCompositeCodeFixProvider : CodeFixProvider
             )
         );
 
-        return WithFormattedSyntaxRoot(document, root.ReplaceNode(selectExprInvocation, newInvocation));
+        return WithFormattedSyntaxRoot(
+            document,
+            root.ReplaceNode(selectExprInvocation, newInvocation)
+        );
     }
 
     private static async Task<Document> AddProducesResponseTypeAsync(
