@@ -36,6 +36,7 @@
     <CompilerVisibleProperty Include="LinqraftArrayNullabilityRemoval" />
     <CompilerVisibleProperty Include="LinqraftNestedDtoUseHashNamespace" />
     <CompilerVisibleProperty Include="LinqraftUsePrebuildExpression" />
+    <CompilerVisibleProperty Include="LinqraftGlobalUsing" />
   </ItemGroup>
   <ItemGroup>
     <Using Include="Shouldly" />

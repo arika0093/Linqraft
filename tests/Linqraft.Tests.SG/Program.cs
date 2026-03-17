@@ -44,6 +44,46 @@ public sealed class SourceGeneratorSmokeTests
     }
 
     [Test]
+    public void Generator_emits_global_using_by_default_and_can_opt_out()
+    {
+        var defaultDriver = CreateDriver();
+        var defaultCompilation = CreateCompilation(
+            CreateProjectionTree(),
+            CreateMarkerTree("global-using-default")
+        );
+
+        defaultDriver = defaultDriver.RunGeneratorsAndUpdateCompilation(
+            defaultCompilation,
+            out _,
+            out var defaultDiagnostics
+        );
+
+        defaultDiagnostics.ShouldBeEmpty();
+
+        var defaultGeneratedSources = GetGeneratedSourceMap(defaultDriver.GetRunResult());
+        defaultGeneratedSources.TryGetValue("Linqraft.GlobalUsings.g.cs", out var defaultGlobalUsing);
+        defaultGlobalUsing.ShouldNotBeNull();
+        defaultGlobalUsing.ShouldContain("global using Linqraft;");
+
+        var optOutDriver = CreateDriver(useGlobalUsing: false);
+        var optOutCompilation = CreateCompilation(
+            CreateProjectionTree(),
+            CreateMarkerTree("global-using-opt-out")
+        );
+
+        optOutDriver = optOutDriver.RunGeneratorsAndUpdateCompilation(
+            optOutCompilation,
+            out _,
+            out var optOutDiagnostics
+        );
+
+        optOutDiagnostics.ShouldBeEmpty();
+
+        var optOutGeneratedSources = GetGeneratedSourceMap(optOutDriver.GetRunResult());
+        optOutGeneratedSources.ContainsKey("Linqraft.GlobalUsings.g.cs").ShouldBeFalse();
+    }
+
+    [Test]
     public void Unrelated_syntax_changes_reuse_cached_incremental_outputs()
     {
         var driver = CreateDriver();
@@ -268,7 +308,10 @@ public sealed class SourceGeneratorSmokeTests
             .ShouldBeFalse();
     }
 
-    private static GeneratorDriver CreateDriver(bool usePrebuildExpression = true)
+    private static GeneratorDriver CreateDriver(
+        bool usePrebuildExpression = true,
+        bool useGlobalUsing = true
+    )
     {
         var parseOptions = new CSharpParseOptions(LanguageVersion.Preview);
         var generator = new LinqraftSourceGenerator().AsSourceGenerator();
@@ -276,7 +319,10 @@ public sealed class SourceGeneratorSmokeTests
             new[] { generator },
             additionalTexts: Array.Empty<AdditionalText>(),
             parseOptions: parseOptions,
-            optionsProvider: new TestAnalyzerConfigOptionsProvider(usePrebuildExpression),
+            optionsProvider: new TestAnalyzerConfigOptionsProvider(
+                usePrebuildExpression,
+                useGlobalUsing
+            ),
             driverOptions: new GeneratorDriverOptions(
                 IncrementalGeneratorOutputKind.None,
                 trackIncrementalGeneratorSteps: true
@@ -639,7 +685,10 @@ public sealed class SourceGeneratorSmokeTests
             .DistinctBy(reference => reference.Display, StringComparer.Ordinal);
     }
 
-    private sealed class TestAnalyzerConfigOptionsProvider(bool usePrebuildExpression)
+    private sealed class TestAnalyzerConfigOptionsProvider(
+        bool usePrebuildExpression,
+        bool useGlobalUsing
+    )
         : AnalyzerConfigOptionsProvider
     {
         private readonly AnalyzerConfigOptions _empty = new TestAnalyzerConfigOptions(
@@ -656,6 +705,7 @@ public sealed class SourceGeneratorSmokeTests
                 ["build_property.LinqraftUsePrebuildExpression"] = usePrebuildExpression
                     ? "true"
                     : "false",
+                ["build_property.LinqraftGlobalUsing"] = useGlobalUsing ? "true" : "false",
             }
         );
 

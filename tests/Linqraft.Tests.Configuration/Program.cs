@@ -141,6 +141,24 @@ public sealed class GlobalPropertyConfigurationTests
     }
 
     [Test]
+    public void Generated_files_include_global_using_by_default()
+    {
+        var generatedRoot = Path.Combine(
+            GetRepositoryRoot(),
+            "tests",
+            "Linqraft.Tests.Configuration",
+            ".generated"
+        );
+
+        var globalUsingSource = Directory
+            .GetFiles(generatedRoot, "Linqraft.GlobalUsings.g.cs", SearchOption.AllDirectories)
+            .Select(File.ReadAllText)
+            .Single();
+
+        globalUsingSource.ShouldContain("global using Linqraft;");
+    }
+
+    [Test]
     public void Captured_values_are_inlined_without_runtime_helper()
     {
         if (!RuntimeFeature.IsDynamicCodeSupported)

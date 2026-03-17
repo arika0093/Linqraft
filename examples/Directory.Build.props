@@ -29,6 +29,7 @@
     <CompilerVisibleProperty Include="LinqraftArrayNullabilityRemoval" />
     <CompilerVisibleProperty Include="LinqraftNestedDtoUseHashNamespace" />
     <CompilerVisibleProperty Include="LinqraftUsePrebuildExpression" />
+    <CompilerVisibleProperty Include="LinqraftGlobalUsing" />
   </ItemGroup>
   <ItemGroup Condition="'$(EmitCompilerGeneratedFiles)' == 'true' and '$(CompilerGeneratedFilesOutputPath)' != ''">
     <Compile Remove="$(CompilerGeneratedFilesOutputPath)/**/*.cs" />
