@@ -84,6 +84,35 @@ public sealed class SourceGeneratorSmokeTests
     }
 
     [Test]
+    public void Generator_suppresses_duplicate_global_using_warning_when_warnings_are_errors()
+    {
+        var driver = CreateDriver();
+        var compilation = CreateCompilation(
+            [CreateProjectionTree(), CreateMarkerTree("global-using-duplicate"), CreateGlobalUsingTree()],
+            treatWarningsAsErrors: true
+        );
+
+        driver = driver.RunGeneratorsAndUpdateCompilation(
+            compilation,
+            out var outputCompilation,
+            out var diagnostics
+        );
+
+        diagnostics.ShouldBeEmpty();
+        outputCompilation
+            .GetDiagnostics()
+            .Where(diagnostic =>
+                diagnostic.Severity == DiagnosticSeverity.Error && diagnostic.Id != "CS9137"
+            )
+            .ShouldBeEmpty();
+
+        var generatedSources = GetGeneratedSourceMap(driver.GetRunResult());
+        generatedSources["Linqraft.GlobalUsings.g.cs"].ShouldContain(
+            "#pragma warning disable CS8933"
+        );
+    }
+
+    [Test]
     public void Unrelated_syntax_changes_reuse_cached_incremental_outputs()
     {
         var driver = CreateDriver();
@@ -330,7 +359,10 @@ public sealed class SourceGeneratorSmokeTests
         );
     }
 
-    private static CSharpCompilation CreateCompilation(params SyntaxTree[] syntaxTrees)
+    private static CSharpCompilation CreateCompilation(
+        IReadOnlyList<SyntaxTree> syntaxTrees,
+        bool treatWarningsAsErrors = false
+    )
     {
         return CSharpCompilation.Create(
             assemblyName: "Linqraft.Tests.SG.SmokeFixture",
@@ -338,9 +370,17 @@ public sealed class SourceGeneratorSmokeTests
             references: GetMetadataReferences(),
             options: new CSharpCompilationOptions(
                 OutputKind.DynamicallyLinkedLibrary,
-                nullableContextOptions: NullableContextOptions.Enable
+                nullableContextOptions: NullableContextOptions.Enable,
+                generalDiagnosticOption: treatWarningsAsErrors
+                    ? ReportDiagnostic.Error
+                    : ReportDiagnostic.Default
             )
         );
+    }
+
+    private static CSharpCompilation CreateCompilation(params SyntaxTree[] syntaxTrees)
+    {
+        return CreateCompilation((IReadOnlyList<SyntaxTree>)syntaxTrees);
     }
 
     private static SyntaxTree CreateProjectionTree()
@@ -433,6 +473,19 @@ public sealed class SourceGeneratorSmokeTests
             SourceText.From(source),
             new CSharpParseOptions(LanguageVersion.Preview),
             path: "BuildMarker.cs"
+        );
+    }
+
+    private static SyntaxTree CreateGlobalUsingTree()
+    {
+        const string source = """
+            global using Linqraft;
+            """;
+
+        return CSharpSyntaxTree.ParseText(
+            SourceText.From(source),
+            new CSharpParseOptions(LanguageVersion.Preview),
+            path: "ManualGlobalUsing.cs"
         );
     }
 
