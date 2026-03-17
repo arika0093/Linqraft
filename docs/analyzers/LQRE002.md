@@ -42,13 +42,12 @@ Since anonymous types cannot be referenced by name in code, this results in a co
 
 ## Code Fix
 `GroupByAnonymousKeyCodeFixProvider` provides a fix that:
-1. Converts the anonymous type in the `GroupBy` key selector to a named class
-2. Generates the DTO class definition and adds it to the current file
+1. Replaces `GroupBy(...).SelectExpr(...)` with `GroupByExpr(...)` in a single call
 
 The code fix automatically:
-- Infers a meaningful class name based on the source entity type (e.g., `EntitiesGroupKey`)
-- Creates a partial class with all the properties from the anonymous type
-- Replaces the anonymous type instantiation with the named type
+- Extracts the key selector from the `GroupBy` call
+- Extracts the result selector from the `SelectExpr` call
+- Combines them into a single `GroupByExpr(keySelector, resultSelector)` call
 
 ## Example
 Before:
@@ -67,20 +66,15 @@ var result = dbContext.Entities
 After applying the code fix:
 ```csharp
 var result = dbContext.Entities
-    .GroupBy(e => new EntitiesGroupKey { CategoryId = e.CategoryId, CategoryType = e.CategoryType })
-    .SelectExpr(g => new
-    {
-        CategoryId = g.Key.CategoryId,
-        CategoryType = g.Key.CategoryType,
-        Count = g.Count(),
-    })
+    .GroupByExpr(
+        e => new { e.CategoryId, e.CategoryType },
+        g => new
+        {
+            CategoryId = g.Key.CategoryId,
+            CategoryType = g.Key.CategoryType,
+            Count = g.Count(),
+        })
     .ToList();
-
-public partial class EntitiesGroupKey
-{
-    public required int CategoryId { get; set; }
-    public required string CategoryType { get; set; }
-}
 ```
 
 ## Related

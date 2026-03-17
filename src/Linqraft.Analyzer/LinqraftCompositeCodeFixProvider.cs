@@ -319,9 +319,9 @@ public sealed class LinqraftCompositeCodeFixProvider : CodeFixProvider
 
         context.RegisterCodeFix(
             CodeAction.Create(
-                "Convert GroupBy key to named type",
+                "Use GroupByExpr",
                 cancellationToken =>
-                    ConvertGroupByKeyAsync(context.Document, invocation, cancellationToken),
+                    ConvertGroupByToGroupByExprAsync(context.Document, invocation, cancellationToken),
                 "LQRE002"
             ),
             context.Diagnostics
@@ -637,56 +637,72 @@ public sealed class LinqraftCompositeCodeFixProvider : CodeFixProvider
         return WithFormattedSyntaxRoot(document, root.ReplaceNode(invocation, updatedInvocation));
     }
 
-    private static async Task<Document> ConvertGroupByKeyAsync(
+    private static async Task<Document> ConvertGroupByToGroupByExprAsync(
         Document document,
         InvocationExpressionSyntax selectExprInvocation,
         CancellationToken cancellationToken
     )
     {
         var root = await document.GetSyntaxRootAsync(cancellationToken).ConfigureAwait(false);
-        var semanticModel = await document
-            .GetSemanticModelAsync(cancellationToken)
-            .ConfigureAwait(false);
-        if (root is null || semanticModel is null)
+        if (root is null)
         {
             return document;
         }
 
-        var groupByInvocation = selectExprInvocation
-            .DescendantNodesAndSelf()
-            .OfType<InvocationExpressionSyntax>()
-            .FirstOrDefault(invocation =>
-                AnalyzerHelpers.GetInvocationName(invocation.Expression) == "GroupBy"
-            );
-        if (groupByInvocation is null)
-        {
-            return document;
-        }
-
-        var lambda = AnalyzerHelpers.GetSelectorLambda(groupByInvocation);
         if (
-            lambda is null
-            || AnalyzerHelpers.GetLambdaExpressionBody(lambda)
-                is not AnonymousObjectCreationExpressionSyntax anonymousKey
+            selectExprInvocation.Expression
+            is not MemberAccessExpressionSyntax selectExprAccess
         )
         {
             return document;
         }
 
-        var receiver = (groupByInvocation.Expression as MemberAccessExpressionSyntax)?.Expression;
+        if (
+            selectExprAccess.Expression
+            is not InvocationExpressionSyntax groupByInvocation
+            || AnalyzerHelpers.GetInvocationName(groupByInvocation.Expression) != "GroupBy"
+        )
+        {
+            return document;
+        }
+
+        var receiver =
+            (groupByInvocation.Expression as MemberAccessExpressionSyntax)?.Expression;
         if (receiver is null)
         {
             return document;
         }
 
-        var sourceType = semanticModel.GetTypeInfo(receiver, cancellationToken).Type;
-        var typeName =
-            $"{GetSequenceElementName(sourceType) ?? sourceType?.Name ?? "Group"}GroupKey";
-        var replacement = CreateObjectCreationFromAnonymous(anonymousKey, typeName);
-        var updatedRoot = root.ReplaceNode(anonymousKey, replacement);
-        var classText = CreateDtoClassText(typeName, anonymousKey);
-        updatedRoot = AppendTypeDeclaration(updatedRoot, classText);
-        return document.WithSyntaxRoot(updatedRoot);
+        var keyLambda = AnalyzerHelpers.GetSelectorLambda(groupByInvocation);
+        if (keyLambda is null)
+        {
+            return document;
+        }
+
+        var projLambda = AnalyzerHelpers.GetSelectorLambda(selectExprInvocation);
+        if (projLambda is null)
+        {
+            return document;
+        }
+
+        var newInvocation = SyntaxFactory.InvocationExpression(
+            SyntaxFactory.MemberAccessExpression(
+                SyntaxKind.SimpleMemberAccessExpression,
+                receiver,
+                SyntaxFactory.IdentifierName("GroupByExpr")
+            ),
+            SyntaxFactory.ArgumentList(
+                SyntaxFactory.SeparatedList(
+                    new[]
+                    {
+                        SyntaxFactory.Argument(keyLambda.WithoutTrivia()),
+                        SyntaxFactory.Argument(projLambda.WithoutTrivia()),
+                    }
+                )
+            )
+        );
+
+        return WithFormattedSyntaxRoot(document, root.ReplaceNode(selectExprInvocation, newInvocation));
     }
 
     private static async Task<Document> AddProducesResponseTypeAsync(
@@ -1405,24 +1421,6 @@ public sealed class LinqraftCompositeCodeFixProvider : CodeFixProvider
         return AnalyzerHelpers.GenerateDtoName(invocation);
     }
 
-    private static string? GetSequenceElementName(ITypeSymbol? sequenceType)
-    {
-        if (sequenceType is not INamedTypeSymbol namedType)
-        {
-            return null;
-        }
-
-        if (namedType.TypeArguments.Length == 1)
-        {
-            return namedType.TypeArguments[0].Name;
-        }
-
-        return namedType
-            .AllInterfaces.FirstOrDefault(interfaceType => interfaceType.TypeArguments.Length == 1)
-            ?.TypeArguments[0]
-            .Name;
-    }
-
     private static ExpressionSyntax ConvertObjectCreationToAnonymous(
         ObjectCreationExpressionSyntax objectCreation,
         INamedTypeSymbol? targetType,
@@ -1939,58 +1937,6 @@ public sealed class LinqraftCompositeCodeFixProvider : CodeFixProvider
                 node.SpanStart
             );
         }
-    }
-
-    private static ObjectCreationExpressionSyntax CreateObjectCreationFromAnonymous(
-        AnonymousObjectCreationExpressionSyntax anonymousObject,
-        string dtoName
-    )
-    {
-        var members = anonymousObject.Initializers.Select(initializer =>
-            $"{AnalyzerHelpers.GetAnonymousMemberName(initializer)} = {initializer.Expression}"
-        );
-        return (ObjectCreationExpressionSyntax)
-            SyntaxFactory.ParseExpression($"new {dtoName} {{ {string.Join(", ", members)} }}");
-    }
-
-    private static string CreateDtoClassText(
-        string dtoName,
-        AnonymousObjectCreationExpressionSyntax anonymousObject
-    )
-    {
-        var members = string.Join(
-            "\r\n",
-            anonymousObject.Initializers.Select(initializer =>
-            {
-                var typeName =
-                    initializer.Expression is LiteralExpressionSyntax literalExpression
-                    && literalExpression.IsKind(SyntaxKind.StringLiteralExpression)
-                        ? "string"
-                        : "object";
-                return $"    public {typeName} {AnalyzerHelpers.GetAnonymousMemberName(initializer)} {{ get; set; }}";
-            })
-        );
-
-        return $$"""
-            public partial class {{dtoName}}
-            {
-            {{members}}
-            }
-            """;
-    }
-
-    private static SyntaxNode AppendTypeDeclaration(SyntaxNode root, string declarationText)
-    {
-        if (root is CompilationUnitSyntax compilationUnit)
-        {
-            var declaration = SyntaxFactory.ParseMemberDeclaration(declarationText);
-            if (declaration is not null)
-            {
-                return compilationUnit.AddMembers(declaration);
-            }
-        }
-
-        return root;
     }
 
     private static SyntaxNode EnsureUsings(SyntaxNode root, params string[] namespaces)
