@@ -19,6 +19,22 @@ public static partial class MappingTestQueries
             ChildName = x.Child?.ChildName,
         });
 
+    [LinqraftMappingGenerate("ProjectToDtoWithCapture")]
+    internal static IQueryable<MappingTestCapturedDto> DummyWithCapture(
+        this IQueryable<MappingTestSampleClass> source,
+        int offset,
+        string suffix
+    ) =>
+        source.SelectExpr<MappingTestSampleClass, MappingTestCapturedDto>(
+            x => new
+            {
+                x.Id,
+                AdjustedValue = x.Value + offset,
+                Description = x.Name + suffix,
+            },
+            () => (offset, suffix)
+        );
+
 #if NET9_0_OR_GREATER
     [LinqraftMappingGenerate("ProjectToDtoWithChildren")]
     internal static IQueryable<MappingTestParentDto> DummyWithChildren(
@@ -46,6 +62,7 @@ public class LinqraftMappingGenerateTest
             new MappingTestSampleClass
             {
                 Id = 1,
+                Value = 10,
                 Name = "Test1",
                 Description = "Description1",
                 Child = new MappingTestChildClass { ChildId = 10, ChildName = "Child1" },
@@ -53,6 +70,7 @@ public class LinqraftMappingGenerateTest
             new MappingTestSampleClass
             {
                 Id = 2,
+                Value = 20,
                 Name = "Test2",
                 Description = null,
                 Child = null,
@@ -75,6 +93,26 @@ public class LinqraftMappingGenerateTest
         result[1].Description.ShouldBeNull();
         result[1].ChildId.ShouldBeNull();
         result[1].ChildName.ShouldBeNull();
+    }
+
+    [Test]
+    public void MappingGenerate_WithCaptureParameters_Test()
+    {
+        var data = new[]
+        {
+            new MappingTestSampleClass { Id = 1, Value = 10, Name = "Test1" },
+            new MappingTestSampleClass { Id = 2, Value = 20, Name = "Test2" },
+        }.AsTestQueryable();
+
+        var result = MappingTestQueries
+            .ProjectToDtoWithCapture(data, offset: 100, suffix: " units")
+            .ToList();
+
+        result.Count.ShouldBe(2);
+        result[0].AdjustedValue.ShouldBe(110);
+        result[0].Description.ShouldBe("Test1 units");
+        result[1].AdjustedValue.ShouldBe(120);
+        result[1].Description.ShouldBe("Test2 units");
     }
 
 #if NET9_0_OR_GREATER
@@ -126,6 +164,7 @@ public class LinqraftMappingGenerateTest
 public class MappingTestSampleClass
 {
     public int Id { get; set; }
+    public int Value { get; set; }
     public string Name { get; set; } = "";
     public string? Description { get; set; }
     public MappingTestChildClass? Child { get; set; }
@@ -143,3 +182,5 @@ public class MappingTestParentClass
     public string Title { get; set; } = "";
     public List<MappingTestChildClass> Children { get; set; } = new();
 }
+
+public partial class MappingTestCapturedDto;

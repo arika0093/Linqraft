@@ -90,7 +90,7 @@ internal static class ProjectionTemplateBuilder
             allowInterceptor: false,
             ownerHintName: mappingHintName
         );
-        if (projection is null || projection.Request.Captures.Length != 0)
+        if (projection is null)
         {
             return null;
         }
@@ -121,6 +121,7 @@ internal static class ProjectionTemplateBuilder
                 SourceTypeName = projection.Request.SourceTypeName,
                 ResultTypeTemplate = projection.Request.ResultTypeTemplate,
                 SelectorParameterName = projection.Request.SelectorParameterName,
+                Captures = projection.Request.Captures,
                 CanUsePrebuiltExpressionWhenConfigured = projection
                     .Request
                     .CanUsePrebuiltExpressionWhenConfigured,
@@ -170,7 +171,7 @@ internal static class ProjectionTemplateBuilder
             allowInterceptor: false,
             ownerHintName: mappingHintName
         );
-        if (projection is null || projection.Request.Captures.Length != 0)
+        if (projection is null)
         {
             return null;
         }
@@ -201,6 +202,7 @@ internal static class ProjectionTemplateBuilder
                 SourceTypeName = projection.Request.SourceTypeName,
                 ResultTypeTemplate = projection.Request.ResultTypeTemplate,
                 SelectorParameterName = projection.Request.SelectorParameterName,
+                Captures = projection.Request.Captures,
                 CanUsePrebuiltExpressionWhenConfigured = projection
                     .Request
                     .CanUsePrebuiltExpressionWhenConfigured,

@@ -201,6 +201,8 @@ internal sealed record MappingRequestTemplate
 
     public required string SelectorParameterName { get; init; }
 
+    public required EquatableArray<CaptureParameterModel> Captures { get; init; }
+
     public required bool CanUsePrebuiltExpressionWhenConfigured { get; init; }
 
     public required ProjectionTemplateModel Projection { get; init; }
@@ -393,6 +395,8 @@ internal sealed record MappingRequest
     public required string ResultTypeName { get; init; }
 
     public required string SelectorParameterName { get; init; }
+
+    public required EquatableArray<CaptureParameterModel> Captures { get; init; }
 
     public required bool CanUsePrebuiltExpression { get; init; }
 

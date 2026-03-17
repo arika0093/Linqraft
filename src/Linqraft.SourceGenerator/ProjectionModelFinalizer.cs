@@ -143,6 +143,7 @@ internal static class ProjectionModelFinalizer
                 SourceTypeName = requestTemplate.SourceTypeName,
                 ResultTypeName = resultTypeName,
                 SelectorParameterName = requestTemplate.SelectorParameterName,
+                Captures = requestTemplate.Captures,
                 CanUsePrebuiltExpression =
                     requestTemplate.CanUsePrebuiltExpressionWhenConfigured
                     && configuration.UsePrebuildExpression,
