@@ -100,8 +100,18 @@ public class LinqraftMappingGenerateTest
     {
         var data = new[]
         {
-            new MappingTestSampleClass { Id = 1, Value = 10, Name = "Test1" },
-            new MappingTestSampleClass { Id = 2, Value = 20, Name = "Test2" },
+            new MappingTestSampleClass
+            {
+                Id = 1,
+                Value = 10,
+                Name = "Test1",
+            },
+            new MappingTestSampleClass
+            {
+                Id = 2,
+                Value = 20,
+                Name = "Test2",
+            },
         }.AsTestQueryable();
 
         var result = MappingTestQueries

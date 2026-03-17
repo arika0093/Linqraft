@@ -154,8 +154,18 @@ public class LinqraftMappingDeclareTest
     {
         var data = new[]
         {
-            new MappingDeclareSourceClass { Id = 1, Value = 10, Name = "Test1" },
-            new MappingDeclareSourceClass { Id = 2, Value = 20, Name = "Test2" },
+            new MappingDeclareSourceClass
+            {
+                Id = 1,
+                Value = 10,
+                Name = "Test1",
+            },
+            new MappingDeclareSourceClass
+            {
+                Id = 2,
+                Value = 20,
+                Name = "Test2",
+            },
         }.AsTestQueryable();
 
         var result = data.ProjectToMappingDeclareWithCapture(100, " units").ToList();

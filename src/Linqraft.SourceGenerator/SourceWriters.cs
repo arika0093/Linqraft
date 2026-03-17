@@ -353,7 +353,11 @@ internal static class SourceWriters
             builder.AppendLine("{");
             using (builder.Indent())
             {
-                foreach (var capture in request.Captures.Where(capture => capture.LocalName != capture.PropertyName))
+                foreach (
+                    var capture in request.Captures.Where(capture =>
+                        capture.LocalName != capture.PropertyName
+                    )
+                )
                 {
                     builder.AppendLine($"var {capture.LocalName} = {capture.PropertyName};");
                 }
