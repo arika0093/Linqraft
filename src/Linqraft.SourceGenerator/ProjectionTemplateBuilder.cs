@@ -2216,12 +2216,19 @@ internal static class ProjectionTemplateBuilder
     {
         var typeInfo = semanticModel.GetTypeInfo(typeSyntax);
         var type = typeInfo.Type ?? typeInfo.ConvertedType;
+        if (type is IErrorTypeSymbol)
+        {
+            type = null;
+        }
+
         if (type is null)
         {
             type = semanticModel.GetSymbolInfo(typeSyntax).Symbol switch
             {
-                ITypeSymbol typeSymbol => typeSymbol,
-                IAliasSymbol aliasSymbol => aliasSymbol.Target as ITypeSymbol,
+                ITypeSymbol typeSymbol when typeSymbol is not IErrorTypeSymbol => typeSymbol,
+                IAliasSymbol aliasSymbol
+                    when aliasSymbol.Target is ITypeSymbol typeSymbol
+                        && typeSymbol is not IErrorTypeSymbol => typeSymbol,
                 _ => null,
             };
         }
@@ -2234,6 +2241,7 @@ internal static class ProjectionTemplateBuilder
                     name: identifierName.Identifier.ValueText
                 )
                 .OfType<ITypeSymbol>()
+                .Where(candidate => candidate is not IErrorTypeSymbol)
                 .FirstOrDefault();
         }
 
@@ -2242,10 +2250,41 @@ internal static class ProjectionTemplateBuilder
             return type.ToFullyQualifiedTypeName();
         }
 
+        if (TryResolveSyntacticallyQualifiedTypeName(typeSyntax, out var qualifiedTypeName))
+        {
+            return qualifiedTypeName;
+        }
+
         var name = GetUnqualifiedTypeName(typeSyntax);
         return string.IsNullOrWhiteSpace(fallbackNamespace)
             ? $"global::{name}"
             : $"global::{fallbackNamespace}.{name}";
+    }
+
+    private static bool TryResolveSyntacticallyQualifiedTypeName(
+        TypeSyntax typeSyntax,
+        out string qualifiedTypeName
+    )
+    {
+        qualifiedTypeName = typeSyntax.WithoutTrivia().ToString();
+        if (string.IsNullOrWhiteSpace(qualifiedTypeName))
+        {
+            return false;
+        }
+
+        if (qualifiedTypeName.StartsWith("global::", StringComparison.Ordinal))
+        {
+            return true;
+        }
+
+        if (typeSyntax is QualifiedNameSyntax or AliasQualifiedNameSyntax)
+        {
+            qualifiedTypeName = $"global::{qualifiedTypeName}";
+            return true;
+        }
+
+        qualifiedTypeName = string.Empty;
+        return false;
     }
 
     private static string GetNullableSuffix(NullableAnnotation nullableAnnotation)

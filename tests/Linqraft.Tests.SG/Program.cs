@@ -337,6 +337,28 @@ public sealed class SourceGeneratorSmokeTests
             .ShouldBeFalse();
     }
 
+    [Test]
+    public void Generator_preserves_qualified_external_type_syntax_when_binding_fails()
+    {
+        var driver = CreateDriver();
+        var compilation = CreateCompilation(
+            CreateProjectionWithUnresolvedQualifiedExternalTypeTree(),
+            CreateMarkerTree("unresolved-qualified-external")
+        );
+
+        driver = driver.RunGeneratorsAndUpdateCompilation(compilation, out _, out _);
+
+        var generatedSourceText = string.Join(
+            "\n",
+            GetGeneratedSourceMap(driver.GetRunResult()).Values
+        );
+
+        generatedSourceText.ShouldContain(
+            "public global::ExternalFixture.ExternalCustomer Customer { get; set; }"
+        );
+        generatedSourceText.ShouldNotContain("global::SmokeFixture.ExternalCustomer");
+    }
+
     private static GeneratorDriver CreateDriver(
         bool usePrebuildExpression = true,
         bool useGlobalUsing = true
@@ -655,6 +677,43 @@ public sealed class SourceGeneratorSmokeTests
             SourceText.From(source),
             new CSharpParseOptions(LanguageVersion.Preview),
             path: "SmokeGenerate.Capture.cs"
+        );
+    }
+
+    private static SyntaxTree CreateProjectionWithUnresolvedQualifiedExternalTypeTree()
+    {
+        const string source = """
+            using System.Linq;
+            using Linqraft;
+
+            namespace SmokeFixture;
+
+            public static class Consumer
+            {
+                public static void Run(IQueryable<UnresolvedQualifiedExternalTypeOrder> orders)
+                {
+                    _ = orders.SelectExpr<UnresolvedQualifiedExternalTypeOrder, UnresolvedQualifiedExternalTypeOrderDto>(order => new
+                    {
+                        Customer = new ExternalFixture.ExternalCustomer
+                        {
+                            Name = order.CustomerName,
+                        },
+                    });
+                }
+            }
+
+            public sealed class UnresolvedQualifiedExternalTypeOrder
+            {
+                public required string CustomerName { get; set; }
+            }
+
+            public partial class UnresolvedQualifiedExternalTypeOrderDto;
+            """;
+
+        return CSharpSyntaxTree.ParseText(
+            SourceText.From(source),
+            new CSharpParseOptions(LanguageVersion.Preview),
+            path: "SmokeProjection.UnresolvedQualifiedExternalType.cs"
         );
     }
 
