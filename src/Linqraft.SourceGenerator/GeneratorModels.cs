@@ -222,33 +222,6 @@ internal sealed record MappingSourceTemplateModel
     public required EquatableArray<GeneratedDtoTemplateModel> GeneratedDtos { get; init; }
 }
 
-internal sealed record QueryExtensionMethodDeclarationModel
-{
-    public required string Summary { get; init; }
-
-    public required string Signature { get; init; }
-}
-
-internal sealed record QueryExtensionRegistrationModel
-{
-    public required string MethodName { get; init; }
-
-    public required string Namespace { get; init; }
-
-    public required string ExtensionClassName { get; init; }
-
-    public required string BehaviorKey { get; init; }
-
-    public required EquatableArray<QueryExtensionMethodDeclarationModel> Methods { get; init; }
-}
-
-internal sealed record QueryExtensionRegistryModel
-{
-    public required EquatableArray<QueryExtensionRegistrationModel> Registrations { get; init; }
-
-    public required EquatableArray<string> LeftJoinMethodNames { get; init; }
-}
-
 internal sealed record GeneratedPropertyModel
 {
     public required string Name { get; init; }

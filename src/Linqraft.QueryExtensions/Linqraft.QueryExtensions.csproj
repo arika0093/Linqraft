@@ -1,5 +1,0 @@
-<Project Sdk="Microsoft.NET.Sdk">
-  <PropertyGroup>
-    <PackageDescription>Provides reusable Linqraft query extension registrations such as AsLeftJoin.</PackageDescription>
-  </PropertyGroup>
-</Project>

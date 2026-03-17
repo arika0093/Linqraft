@@ -17,45 +17,48 @@ namespace Linqraft.SourceGenerator;
 internal static class ProjectionTemplateBuilder
 {
     public static ProjectionSourceTemplateModel? AnalyzeProjectionInvocation(
-        InvocationExpressionSyntax invocation,
-        SemanticModel semanticModel,
-        QueryExtensionRegistryModel queryExtensions,
+        GeneratorSyntaxContext syntaxContext,
         CancellationToken cancellationToken
     )
     {
-        return AnalyzeQueryProjectionInvocation(
-            invocation,
-            semanticModel,
-            queryExtensions,
-            cancellationToken,
-            allowInterceptor: true,
-            ownerHintName: null
-        );
+        return syntaxContext.Node is InvocationExpressionSyntax invocation
+            ? AnalyzeQueryProjectionInvocation(
+                invocation,
+                syntaxContext.SemanticModel,
+                cancellationToken,
+                allowInterceptor: true,
+                ownerHintName: null
+            )
+            : null;
     }
 
     public static ObjectGenerationSourceTemplateModel? AnalyzeObjectGenerationInvocation(
-        InvocationExpressionSyntax invocation,
-        SemanticModel semanticModel,
-        QueryExtensionRegistryModel queryExtensions,
+        GeneratorSyntaxContext syntaxContext,
         CancellationToken cancellationToken
     )
     {
-        return AnalyzeObjectGenerationInvocationCore(
-            invocation,
-            semanticModel,
-            queryExtensions,
-            cancellationToken
-        );
+        return syntaxContext.Node is InvocationExpressionSyntax invocation
+            ? AnalyzeObjectGenerationInvocationCore(
+                invocation,
+                syntaxContext.SemanticModel,
+                cancellationToken
+            )
+            : null;
     }
 
     public static MappingSourceTemplateModel? AnalyzeMappingClass(
-        ClassDeclarationSyntax declaration,
-        INamedTypeSymbol classSymbol,
-        SemanticModel semanticModel,
-        QueryExtensionRegistryModel queryExtensions,
+        GeneratorAttributeSyntaxContext attributeContext,
         CancellationToken cancellationToken
     )
     {
+        if (
+            attributeContext.TargetNode is not ClassDeclarationSyntax declaration
+            || attributeContext.TargetSymbol is not INamedTypeSymbol classSymbol
+        )
+        {
+            return null;
+        }
+
         if (!InheritsFromMappingDeclare(classSymbol))
         {
             return null;
@@ -82,8 +85,7 @@ internal static class ProjectionTemplateBuilder
             $"Mapping_{HashingHelper.ComputeHash(classSymbol.ToDisplayString(), 16)}";
         var projection = AnalyzeQueryProjectionInvocation(
             selectExpr,
-            semanticModel,
-            queryExtensions,
+            attributeContext.SemanticModel,
             cancellationToken,
             allowInterceptor: false,
             ownerHintName: mappingHintName
@@ -98,7 +100,7 @@ internal static class ProjectionTemplateBuilder
         var accessibilityKeyword = GetMappingGeneratedAccessibilityKeyword(
             classSymbol.DeclaredAccessibility,
             selectExpr,
-            semanticModel,
+            attributeContext.SemanticModel,
             GetMappingVisibilityKeyword(mappingAttribute)
         );
         return new MappingSourceTemplateModel
@@ -130,14 +132,15 @@ internal static class ProjectionTemplateBuilder
     }
 
     public static MappingSourceTemplateModel? AnalyzeMappingMethod(
-        MethodDeclarationSyntax declaration,
-        IMethodSymbol methodSymbol,
-        SemanticModel semanticModel,
-        QueryExtensionRegistryModel queryExtensions,
+        GeneratorAttributeSyntaxContext attributeContext,
         CancellationToken cancellationToken
     )
     {
-        if (methodSymbol.ContainingType is null)
+        if (
+            attributeContext.TargetNode is not MethodDeclarationSyntax declaration
+            || attributeContext.TargetSymbol is not IMethodSymbol methodSymbol
+            || methodSymbol.ContainingType is null
+        )
         {
             return null;
         }
@@ -163,8 +166,7 @@ internal static class ProjectionTemplateBuilder
             $"Mapping_{HashingHelper.ComputeHash(methodSymbol.ToDisplayString(), 16)}";
         var projection = AnalyzeQueryProjectionInvocation(
             selectExpr,
-            semanticModel,
-            queryExtensions,
+            attributeContext.SemanticModel,
             cancellationToken,
             allowInterceptor: false,
             ownerHintName: mappingHintName
@@ -191,7 +193,7 @@ internal static class ProjectionTemplateBuilder
                 MethodAccessibilityKeyword = GetMappingGeneratedAccessibilityKeyword(
                     methodSymbol.DeclaredAccessibility,
                     selectExpr,
-                    semanticModel,
+                    attributeContext.SemanticModel,
                     GetMappingVisibilityKeyword(mappingAttribute)
                 ),
                 MethodName =
@@ -213,7 +215,6 @@ internal static class ProjectionTemplateBuilder
     private static ProjectionSourceTemplateModel? AnalyzeQueryProjectionInvocation(
         InvocationExpressionSyntax invocation,
         SemanticModel semanticModel,
-        QueryExtensionRegistryModel queryExtensions,
         CancellationToken cancellationToken,
         bool allowInterceptor,
         string? ownerHintName
@@ -279,7 +280,6 @@ internal static class ProjectionTemplateBuilder
         var buildContext = new ProjectionBuildContext(
             semanticModel,
             captureEntries,
-            queryExtensions,
             cancellationToken
         );
         var analyzedProjection = operationKind.Value switch
@@ -706,7 +706,6 @@ internal static class ProjectionTemplateBuilder
     private static ObjectGenerationSourceTemplateModel? AnalyzeObjectGenerationInvocationCore(
         InvocationExpressionSyntax invocation,
         SemanticModel semanticModel,
-        QueryExtensionRegistryModel queryExtensions,
         CancellationToken cancellationToken
     )
     {
@@ -747,7 +746,6 @@ internal static class ProjectionTemplateBuilder
         var buildContext = new ProjectionBuildContext(
             semanticModel,
             captureEntries,
-            queryExtensions,
             cancellationToken
         );
         var existingProperties = new HashSet<string>(
@@ -822,7 +820,6 @@ internal static class ProjectionTemplateBuilder
     {
         private readonly SemanticModel _semanticModel;
         private readonly IReadOnlyList<ProjectionExpressionEmitter.CaptureEntry> _captureEntries;
-        private readonly QueryExtensionRegistryModel _queryExtensions;
         private readonly CancellationToken _cancellationToken;
         private readonly Dictionary<string, GeneratedDtoTemplateModel> _generatedDtos = new(
             StringComparer.Ordinal
@@ -831,13 +828,11 @@ internal static class ProjectionTemplateBuilder
         public ProjectionBuildContext(
             SemanticModel semanticModel,
             IReadOnlyList<ProjectionExpressionEmitter.CaptureEntry> captureEntries,
-            QueryExtensionRegistryModel queryExtensions,
             CancellationToken cancellationToken
         )
         {
             _semanticModel = semanticModel;
             _captureEntries = captureEntries;
-            _queryExtensions = queryExtensions;
             _cancellationToken = cancellationToken;
         }
 
@@ -1024,14 +1019,6 @@ internal static class ProjectionTemplateBuilder
             if (replacementTypes.TryGetValue(expression.Span, out var existingReplacement))
             {
                 return existingReplacement;
-            }
-
-            if (TryStripLeftJoinHint(expression, _queryExtensions.LeftJoinMethodNames, out _))
-            {
-                var leftJoinType =
-                    _semanticModel.GetTypeInfo(expression, _cancellationToken).ConvertedType
-                    ?? _semanticModel.GetTypeInfo(expression, _cancellationToken).Type;
-                return MakeNullable(leftJoinType?.ToFullyQualifiedTypeName() ?? "object");
             }
 
             if (
@@ -1297,8 +1284,7 @@ internal static class ProjectionTemplateBuilder
                 rootTypeName,
                 useEmptyCollectionFallback,
                 replacementTypes,
-                _captureEntries,
-                _queryExtensions.LeftJoinMethodNames
+                _captureEntries
             );
             return emitter.Emit(expression);
         }
@@ -1365,8 +1351,7 @@ internal static class ProjectionTemplateBuilder
                 _semanticModel,
                 syntax,
                 rootTypeName,
-                useEmptyCollectionFallback: false,
-                leftJoinMethodNames: _queryExtensions.LeftJoinMethodNames
+                useEmptyCollectionFallback: false
             );
             return emitter.Emit(syntax);
         }
@@ -2370,33 +2355,6 @@ internal static class ProjectionTemplateBuilder
         );
     }
 
-    private static bool IsLeftJoinInvocation(
-        InvocationExpressionSyntax invocation,
-        IEnumerable<string> leftJoinMethodNames
-    )
-    {
-        return invocation.ArgumentList.Arguments.Count == 0
-            && leftJoinMethodNames.Contains(GetInvocationName(invocation.Expression));
-    }
-
-    private static bool TryStripLeftJoinHint(
-        ExpressionSyntax expression,
-        IEnumerable<string> leftJoinMethodNames,
-        out ExpressionSyntax strippedExpression
-    )
-    {
-        var rewriter = new LeftJoinHintRemovalRewriter(leftJoinMethodNames);
-        var rewritten = rewriter.Visit(expression) as ExpressionSyntax;
-        if (!rewriter.Rewritten || rewritten is null)
-        {
-            strippedExpression = null!;
-            return false;
-        }
-
-        strippedExpression = rewritten;
-        return true;
-    }
-
     private static bool IsInsideMappingDeclaration(SyntaxNode node)
     {
         return node.Ancestors()
@@ -2566,34 +2524,5 @@ internal static class ProjectionTemplateBuilder
         public required GeneratedDtoTemplateModel? DtoTemplate { get; init; }
 
         public required IReadOnlyDictionary<TextSpan, string> ReplacementTypes { get; init; }
-    }
-
-    private sealed class LeftJoinHintRemovalRewriter : CSharpSyntaxRewriter
-    {
-        private readonly HashSet<string> _leftJoinMethodNames;
-
-        public LeftJoinHintRemovalRewriter(IEnumerable<string> leftJoinMethodNames)
-        {
-            _leftJoinMethodNames = new HashSet<string>(
-                leftJoinMethodNames,
-                StringComparer.Ordinal
-            );
-        }
-
-        public bool Rewritten { get; private set; }
-
-        public override SyntaxNode? VisitInvocationExpression(InvocationExpressionSyntax node)
-        {
-            if (
-                IsLeftJoinInvocation(node, _leftJoinMethodNames)
-                && node.Expression is MemberAccessExpressionSyntax member
-            )
-            {
-                Rewritten = true;
-                return Visit(member.Expression);
-            }
-
-            return base.VisitInvocationExpression(node);
-        }
     }
 }

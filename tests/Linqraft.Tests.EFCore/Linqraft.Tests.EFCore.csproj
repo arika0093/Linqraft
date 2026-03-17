@@ -5,7 +5,6 @@
     <EnforceCodeStyleInBuild>true</EnforceCodeStyleInBuild>
   </PropertyGroup>
   <ItemGroup>
-    <ProjectReference Include="..\..\src\Linqraft.QueryExtensions\Linqraft.QueryExtensions.csproj" />
     <PackageReference
       Include="Microsoft.EntityFrameworkCore.Sqlite"
       Version="10.*"

@@ -54,7 +54,6 @@ internal sealed class ProjectionExpressionEmitter
     private readonly bool _useEmptyCollectionFallback;
     private readonly IReadOnlyDictionary<TextSpan, string> _replacementTypes;
     private readonly IReadOnlyList<CaptureEntry> _captureEntries;
-    private readonly ISet<string> _leftJoinMethodNames;
 
     public ProjectionExpressionEmitter(
         SemanticModel semanticModel,
@@ -62,8 +61,7 @@ internal sealed class ProjectionExpressionEmitter
         string rootTypeName,
         bool useEmptyCollectionFallback,
         IReadOnlyDictionary<TextSpan, string>? replacementTypes = null,
-        IReadOnlyList<CaptureEntry>? captureEntries = null,
-        IEnumerable<string>? leftJoinMethodNames = null
+        IReadOnlyList<CaptureEntry>? captureEntries = null
     )
     {
         _semanticModel = semanticModel;
@@ -72,10 +70,6 @@ internal sealed class ProjectionExpressionEmitter
         _useEmptyCollectionFallback = useEmptyCollectionFallback;
         _replacementTypes = replacementTypes ?? new Dictionary<TextSpan, string>();
         _captureEntries = captureEntries ?? global::System.Array.Empty<CaptureEntry>();
-        _leftJoinMethodNames = new HashSet<string>(
-            leftJoinMethodNames ?? global::System.Array.Empty<string>(),
-            System.StringComparer.Ordinal
-        );
     }
 
     public string Emit(ExpressionSyntax expression)
@@ -83,11 +77,6 @@ internal sealed class ProjectionExpressionEmitter
         if (TryEmitCaptureReplacement(expression, out var captureReplacement))
         {
             return captureReplacement;
-        }
-
-        if (TryEmitLeftJoinHint(expression, out var leftJoinHint))
-        {
-            return leftJoinHint;
         }
 
         if (TryEmitConditionalChain(expression, out var conditionalText))
@@ -327,8 +316,7 @@ internal sealed class ProjectionExpressionEmitter
             rootTypeName,
             useEmptyCollectionFallback: true,
             _replacementTypes,
-            _captureEntries,
-            _leftJoinMethodNames
+            _captureEntries
         );
         rewritten = nestedEmitter.Emit(expression.Left);
         return true;
@@ -503,8 +491,7 @@ internal sealed class ProjectionExpressionEmitter
             rootTypeName,
             ShouldUseCollectionFallback(expression, expressionType),
             _replacementTypes,
-            _captureEntries,
-            _leftJoinMethodNames
+            _captureEntries
         );
         return nestedEmitter.Emit(expression);
     }
@@ -541,108 +528,6 @@ internal sealed class ProjectionExpressionEmitter
 
         rewritten = conditional;
         return true;
-    }
-
-    private bool TryEmitLeftJoinHint(ExpressionSyntax expression, out string rewritten)
-    {
-        return TryBuildLeftJoinConditional(expression, value => value, expression, out rewritten);
-    }
-
-    private bool TryBuildLeftJoinConditional(
-        ExpressionSyntax expression,
-        global::System.Func<string, string> applyTail,
-        ExpressionSyntax rootLeftJoinExpression,
-        out string rewritten
-    )
-    {
-        switch (expression)
-        {
-            case InvocationExpressionSyntax invocation when IsLeftJoinInvocation(invocation):
-            {
-                var receiverSyntax = GetInvocationReceiver(invocation);
-                if (receiverSyntax is null)
-                {
-                    rewritten = string.Empty;
-                    return false;
-                }
-
-                var receiver = Emit(receiverSyntax);
-                var expressionType = GetExpressionType(expression);
-                var rootExpressionType = ReferenceEquals(rootLeftJoinExpression, expression)
-                    ? expressionType
-                    : GetExpressionType(rootLeftJoinExpression);
-                var rootExpressionTypeName = GetExpressionTypeName(
-                    rootLeftJoinExpression,
-                    rootExpressionType,
-                    out _
-                );
-                var useEmptyFallback =
-                    ReferenceEquals(rootLeftJoinExpression, _rootExpression)
-                    && (
-                        _useEmptyCollectionFallback
-                        || ShouldUseCollectionFallback(
-                            rootLeftJoinExpression,
-                            rootExpressionType
-                        )
-                    );
-                var fallback = useEmptyFallback
-                    ? CreateEmptyCollectionFallback(rootExpressionTypeName)
-                    : "null";
-                var access = applyTail(receiver);
-
-                var formattedAccess = access;
-                if (TryFormatFluentAccess(receiver, access, out var multilineAccess))
-                {
-                    formattedAccess = multilineAccess;
-                }
-
-                if (ContainsLineBreak(formattedAccess) || ContainsLineBreak(fallback))
-                {
-                    rewritten = string.Join(
-                        "\n",
-                        [
-                            $"{receiver} != null",
-                            IndentAllLines(AppendValueWithContinuation("? ", formattedAccess)),
-                            IndentAllLines(AppendValueWithContinuation(": ", fallback)),
-                        ]
-                    );
-                }
-                else
-                {
-                    rewritten = $"{receiver} != null ? {formattedAccess} : {fallback}";
-                }
-
-                return true;
-            }
-            case MemberAccessExpressionSyntax memberAccess:
-                return TryBuildLeftJoinConditional(
-                    memberAccess.Expression,
-                    value => applyTail($"{value}.{EmitSimpleName(memberAccess.Name)}"),
-                    rootLeftJoinExpression,
-                    out rewritten
-                );
-            case InvocationExpressionSyntax invocation
-                when invocation.Expression is MemberAccessExpressionSyntax memberInvocation:
-                return TryBuildLeftJoinConditional(
-                    memberInvocation.Expression,
-                    value =>
-                        applyTail(
-                            EmitInvocationFromReceiver(invocation, memberInvocation.Name, value)
-                        ),
-                    rootLeftJoinExpression,
-                    out rewritten
-                );
-            case ElementAccessExpressionSyntax elementAccess:
-                return TryBuildLeftJoinConditional(
-                    elementAccess.Expression,
-                    value => applyTail($"{value}{EmitBracketArguments(elementAccess.ArgumentList)}"),
-                    rootLeftJoinExpression,
-                    out rewritten
-                );
-            default:
-                rewritten = string.Empty;
-                return false;
-        }
     }
 
     private bool TryBuildConditional(
@@ -798,20 +683,6 @@ internal sealed class ProjectionExpressionEmitter
             .DescendantNodesAndSelf()
             .OfType<ConditionalAccessExpressionSyntax>()
             .Any();
-    }
-
-    private bool IsLeftJoinInvocation(InvocationExpressionSyntax invocation)
-    {
-        return invocation.ArgumentList.Arguments.Count == 0
-            && invocation.Expression is MemberAccessExpressionSyntax memberAccess
-            && _leftJoinMethodNames.Contains(memberAccess.Name.Identifier.ValueText);
-    }
-
-    private static ExpressionSyntax? GetInvocationReceiver(InvocationExpressionSyntax invocation)
-    {
-        return invocation.Expression is MemberAccessExpressionSyntax memberAccess
-            ? memberAccess.Expression
-            : null;
     }
 
     private bool TryEmitFluentChain(ExpressionSyntax expression, out string rewritten)

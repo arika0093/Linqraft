@@ -1,6 +1,5 @@
 using System.Linq;
 using System.Threading.Tasks;
-using Linqraft.Utility;
 using Microsoft.EntityFrameworkCore;
 
 namespace Linqraft.Tests.EFCore;
@@ -51,32 +50,6 @@ public sealed class EfCoreBasicProjectionTests
         result[0].TotalAmount.ShouldBe(25);
         result[1].OrderNumber.ShouldBe("ORD-002");
         result[1].TotalAmount.ShouldBe(21);
-    }
-
-    [Test]
-    public async Task SelectExpr_honors_AsLeftJoin_hint_over_sqlite()
-    {
-#pragma warning disable CS8602
-        await using var database = await SqliteTestDatabase.CreateAsync();
-
-        var query = database
-            .Context.Orders.AsNoTracking()
-            .Where(order => order.OrderNumber == "ORD-001" || order.OrderNumber == "ORD-002")
-            .OrderBy(order => order.OrderNumber)
-            .SelectExpr(order => new
-            {
-                order.OrderNumber,
-                CarrierName = order.Shipment.AsLeftJoin().CarrierName,
-            });
-
-        var sql = query.ToQueryString();
-        var result = await query.ToListAsync();
-
-        result.Count.ShouldBe(2);
-        result[0].CarrierName.ShouldBe("Carrier-1");
-        result[1].CarrierName.ShouldBeNull();
-        sql.ShouldContain("LEFT JOIN");
-#pragma warning restore CS8602
     }
 
     [Test]
