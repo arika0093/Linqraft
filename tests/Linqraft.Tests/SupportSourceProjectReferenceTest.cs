@@ -65,12 +65,12 @@ public sealed class SupportSourceProjectReferenceTest
         projection[0].Items.Count.ShouldBe(2);
 
         var dtoType = typeof(ReferencedOrderWithExternalTypesDto);
-        dtoType.GetProperty(nameof(ReferencedOrderWithExternalTypesDto.Customer))!.PropertyType.ShouldBe(
-            typeof(ReferencedCustomer)
-        );
-        dtoType.GetProperty(nameof(ReferencedOrderWithExternalTypesDto.Items))!.PropertyType.ShouldBe(
-            typeof(List<ReferencedOrderItem>)
-        );
+        dtoType
+            .GetProperty(nameof(ReferencedOrderWithExternalTypesDto.Customer))!
+            .PropertyType.ShouldBe(typeof(ReferencedCustomer));
+        dtoType
+            .GetProperty(nameof(ReferencedOrderWithExternalTypesDto.Items))!
+            .PropertyType.ShouldBe(typeof(List<ReferencedOrderItem>));
     }
 
     [Test]
@@ -78,14 +78,16 @@ public sealed class SupportSourceProjectReferenceTest
     {
         var projection = Orders
             .AsTestQueryable()
-            .SelectExpr<ReferencedOrder, ReferencedOrderWithConstructedExternalTypesDto>(order => new
-            {
-                ClonedCustomer = new ReferencedCustomer { Name = order.Customer.Name },
-                ClonedItems = order.Items.Select(item => new ReferencedOrderItem
+            .SelectExpr<ReferencedOrder, ReferencedOrderWithConstructedExternalTypesDto>(
+                order => new
                 {
-                    Quantity = item.Quantity,
-                }),
-            })
+                    ClonedCustomer = new ReferencedCustomer { Name = order.Customer.Name },
+                    ClonedItems = order.Items.Select(item => new ReferencedOrderItem
+                    {
+                        Quantity = item.Quantity,
+                    }),
+                }
+            )
             .ToList();
 
         projection.Count.ShouldBe(1);
@@ -93,12 +95,13 @@ public sealed class SupportSourceProjectReferenceTest
         projection[0].ClonedItems.Select(item => item.Quantity).ShouldBe([2, 3]);
 
         var dtoType = typeof(ReferencedOrderWithConstructedExternalTypesDto);
-        dtoType.GetProperty(nameof(ReferencedOrderWithConstructedExternalTypesDto.ClonedCustomer))!
+        dtoType
+            .GetProperty(nameof(ReferencedOrderWithConstructedExternalTypesDto.ClonedCustomer))!
             .PropertyType.ShouldBe(typeof(ReferencedCustomer));
-        dtoType.GetProperty(nameof(ReferencedOrderWithConstructedExternalTypesDto.ClonedItems))!
+        dtoType
+            .GetProperty(nameof(ReferencedOrderWithConstructedExternalTypesDto.ClonedItems))!
             .PropertyType.ShouldBe(typeof(IEnumerable<ReferencedOrderItem>));
     }
-
 }
 
 public partial class ReferencedOrderFromCurrentProjectDto;

@@ -2226,8 +2226,9 @@ internal static class ProjectionTemplateBuilder
             type = semanticModel.GetSymbolInfo(typeSyntax).Symbol switch
             {
                 ITypeSymbol typeSymbol when typeSymbol is not IErrorTypeSymbol => typeSymbol,
-                IAliasSymbol aliasSymbol when aliasSymbol.Target is ITypeSymbol typeSymbol
-                    && typeSymbol is not IErrorTypeSymbol => typeSymbol,
+                IAliasSymbol aliasSymbol
+                    when aliasSymbol.Target is ITypeSymbol typeSymbol
+                        && typeSymbol is not IErrorTypeSymbol => typeSymbol,
                 _ => null,
             };
         }

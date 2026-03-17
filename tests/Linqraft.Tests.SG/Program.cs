@@ -277,11 +277,7 @@ public sealed class SourceGeneratorSmokeTests
             CreateMarkerTree("unresolved-qualified-external")
         );
 
-        driver = driver.RunGeneratorsAndUpdateCompilation(
-            compilation,
-            out _,
-            out _
-        );
+        driver = driver.RunGeneratorsAndUpdateCompilation(compilation, out _, out _);
 
         var generatedSourceText = string.Join(
             "\n",
