@@ -80,6 +80,30 @@ public sealed class LinqraftSourceGenerator : IIncrementalGenerator
             .Where(static template => template is not null)
             .Select(static (template, _) => template!);
 
+        // Collect user-defined Linqraft extensions (annotated with [LinqraftExtension])
+        // and register stub source output for each.
+        var extensionModels = context
+            .SyntaxProvider.ForAttributeWithMetadataName(
+                "Linqraft.LinqraftExtensionAttribute",
+                static (node, _) => node is ClassDeclarationSyntax,
+                static (attributeContext, _) =>
+                    LinqraftSourceGenerator.BuildExtensionInfo(attributeContext)
+            )
+            .Where(static info => info is not null)
+            .Select(static (info, _) => info!);
+
+        context.RegisterSourceOutput(
+            extensionModels,
+            static (output, extensionInfo) =>
+            {
+                var (hintName, source) = (
+                    $"LinqraftExtensionStub_{extensionInfo.MethodName}.g.cs",
+                    LinqraftExtensionStubEmitter.EmitExtensionStubSource(extensionInfo)
+                );
+                output.AddSource(hintName, source);
+            }
+        );
+
         var projectionModels = projectionTemplates
             .Combine(configuration)
             .Select(
@@ -333,6 +357,50 @@ public sealed class LinqraftSourceGenerator : IIncrementalGenerator
             GenericNameSyntax genericName when genericName.Identifier.ValueText == "Generate" =>
                 true,
             _ => false,
+        };
+    }
+
+    private static LinqraftExtensionMethodInfo? BuildExtensionInfo(
+        GeneratorAttributeSyntaxContext attributeContext
+    )
+    {
+        if (
+            attributeContext.TargetSymbol is not INamedTypeSymbol classSymbol
+            || attributeContext.Attributes.IsEmpty
+        )
+        {
+            return null;
+        }
+
+        var attr = attributeContext.Attributes[0];
+        var methodName =
+            attr.ConstructorArguments.Length > 0
+                ? attr.ConstructorArguments[0].Value as string
+                : null;
+        if (methodName is null)
+        {
+            return null;
+        }
+
+        var generateNamespace = attr
+            .NamedArguments.FirstOrDefault(na =>
+                string.Equals(na.Key, "GenerateNamespace", StringComparison.Ordinal)
+            )
+            .Value.Value as string;
+        var behaviorRaw = attr
+            .NamedArguments.FirstOrDefault(na =>
+                string.Equals(na.Key, "Behavior", StringComparison.Ordinal)
+            )
+            .Value.Value;
+        var behavior = behaviorRaw is null
+            ? LinqraftExtensionBehaviorKind.PassThrough
+            : (LinqraftExtensionBehaviorKind)Convert.ToInt32(behaviorRaw);
+
+        return new LinqraftExtensionMethodInfo
+        {
+            MethodName = methodName,
+            GenerateNamespace = generateNamespace,
+            Behavior = behavior,
         };
     }
 }

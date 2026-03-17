@@ -277,10 +277,12 @@ internal static class ProjectionTemplateBuilder
         );
         var effectiveOwnerHintName =
             ownerHintName ?? $"{GetInvocationName(invocation.Expression)}_{methodHash}";
+        var extensions = GetExtensionsFromCompilation(semanticModel.Compilation);
         var buildContext = new ProjectionBuildContext(
             semanticModel,
             captureEntries,
-            cancellationToken
+            cancellationToken,
+            extensions
         );
         var analyzedProjection = operationKind.Value switch
         {
@@ -743,10 +745,12 @@ internal static class ProjectionTemplateBuilder
         );
         var captureInfo = AnalyzeCaptures(invocation, semanticModel, cancellationToken);
         var captureEntries = captureInfo.Entries;
+        var extensions = GetExtensionsFromCompilation(semanticModel.Compilation);
         var buildContext = new ProjectionBuildContext(
             semanticModel,
             captureEntries,
-            cancellationToken
+            cancellationToken,
+            extensions
         );
         var existingProperties = new HashSet<string>(
             rootDto
@@ -821,6 +825,7 @@ internal static class ProjectionTemplateBuilder
         private readonly SemanticModel _semanticModel;
         private readonly IReadOnlyList<ProjectionExpressionEmitter.CaptureEntry> _captureEntries;
         private readonly CancellationToken _cancellationToken;
+        private readonly IReadOnlyList<LinqraftExtensionMethodInfo> _extensions;
         private readonly Dictionary<string, GeneratedDtoTemplateModel> _generatedDtos = new(
             StringComparer.Ordinal
         );
@@ -828,12 +833,14 @@ internal static class ProjectionTemplateBuilder
         public ProjectionBuildContext(
             SemanticModel semanticModel,
             IReadOnlyList<ProjectionExpressionEmitter.CaptureEntry> captureEntries,
-            CancellationToken cancellationToken
+            CancellationToken cancellationToken,
+            IReadOnlyList<LinqraftExtensionMethodInfo>? extensions = null
         )
         {
             _semanticModel = semanticModel;
             _captureEntries = captureEntries;
             _cancellationToken = cancellationToken;
+            _extensions = extensions ?? System.Array.Empty<LinqraftExtensionMethodInfo>();
         }
 
         public ProjectionBuildResult BuildProjectionTemplate(
@@ -1268,7 +1275,50 @@ internal static class ProjectionTemplateBuilder
             var type =
                 _semanticModel.GetTypeInfo(expression, _cancellationToken).ConvertedType
                 ?? _semanticModel.GetTypeInfo(expression, _cancellationToken).Type;
-            return type?.ToFullyQualifiedTypeName() ?? "object";
+            var typeName = type?.ToFullyQualifiedTypeName() ?? "object";
+
+            // If the expression contains a NullConditionalNavigation extension call (e.g., AsLeftJoin()),
+            // the generated code will use null-conditional access, so the property type must be nullable.
+            if (type != null && HasNullConditionalExtensionInChain(expression))
+            {
+                return MakeNullable(typeName);
+            }
+
+            return typeName;
+        }
+
+        /// <summary>
+        /// Returns <c>true</c> if <paramref name="expression"/> contains an invocation of a
+        /// <see cref="LinqraftExtensionBehaviorKind.NullConditionalNavigation"/> extension method.
+        /// </summary>
+        private bool HasNullConditionalExtensionInChain(ExpressionSyntax expression)
+        {
+            if (_extensions.Count == 0)
+            {
+                return false;
+            }
+
+            foreach (var invocation in expression.DescendantNodesAndSelf().OfType<InvocationExpressionSyntax>())
+            {
+                if (invocation.Expression is not MemberAccessExpressionSyntax memberAccess)
+                {
+                    continue;
+                }
+
+                var methodName = memberAccess.Name.Identifier.ValueText;
+                foreach (var ext in _extensions)
+                {
+                    if (
+                        ext.Behavior == LinqraftExtensionBehaviorKind.NullConditionalNavigation
+                        && string.Equals(ext.MethodName, methodName, StringComparison.Ordinal)
+                    )
+                    {
+                        return true;
+                    }
+                }
+            }
+
+            return false;
         }
 
         private string CreateValueTemplate(
@@ -1284,7 +1334,8 @@ internal static class ProjectionTemplateBuilder
                 rootTypeName,
                 useEmptyCollectionFallback,
                 replacementTypes,
-                _captureEntries
+                _captureEntries,
+                _extensions
             );
             return emitter.Emit(expression);
         }
@@ -1351,7 +1402,8 @@ internal static class ProjectionTemplateBuilder
                 _semanticModel,
                 syntax,
                 rootTypeName,
-                useEmptyCollectionFallback: false
+                useEmptyCollectionFallback: false,
+                extensions: _extensions
             );
             return emitter.Emit(syntax);
         }
@@ -2417,6 +2469,95 @@ internal static class ProjectionTemplateBuilder
         }
 
         return false;
+    }
+
+    /// <summary>
+    /// Scans the compilation for all types annotated with <c>[LinqraftExtension]</c>
+    /// and returns the collected extension definitions.
+    /// </summary>
+    private static IReadOnlyList<LinqraftExtensionMethodInfo> GetExtensionsFromCompilation(
+        Compilation compilation
+    )
+    {
+        var attributeSymbol = compilation.GetTypeByMetadataName(
+            "Linqraft.LinqraftExtensionAttribute"
+        );
+        if (attributeSymbol is null)
+        {
+            return System.Array.Empty<LinqraftExtensionMethodInfo>();
+        }
+
+        var extensions = new List<LinqraftExtensionMethodInfo>();
+        CollectExtensionsFromNamespace(compilation.Assembly.GlobalNamespace, attributeSymbol, extensions);
+        return extensions;
+    }
+
+    private static void CollectExtensionsFromNamespace(
+        INamespaceSymbol ns,
+        INamedTypeSymbol extensionAttributeSymbol,
+        List<LinqraftExtensionMethodInfo> extensions
+    )
+    {
+        foreach (var type in ns.GetTypeMembers())
+        {
+            CollectExtensionFromType(type, extensionAttributeSymbol, extensions);
+        }
+
+        foreach (var childNs in ns.GetNamespaceMembers())
+        {
+            CollectExtensionsFromNamespace(childNs, extensionAttributeSymbol, extensions);
+        }
+    }
+
+    private static void CollectExtensionFromType(
+        INamedTypeSymbol type,
+        INamedTypeSymbol extensionAttributeSymbol,
+        List<LinqraftExtensionMethodInfo> extensions
+    )
+    {
+        var attr = type
+            .GetAttributes()
+            .FirstOrDefault(a =>
+                SymbolEqualityComparer.Default.Equals(a.AttributeClass, extensionAttributeSymbol)
+            );
+
+        if (attr is not null)
+        {
+            var methodName =
+                attr.ConstructorArguments.Length > 0
+                    ? attr.ConstructorArguments[0].Value as string
+                    : null;
+            if (methodName is not null)
+            {
+                var generateNamespace = attr
+                    .NamedArguments.FirstOrDefault(na =>
+                        string.Equals(na.Key, "GenerateNamespace", StringComparison.Ordinal)
+                    )
+                    .Value.Value as string;
+                var behaviorRaw = attr
+                    .NamedArguments.FirstOrDefault(na =>
+                        string.Equals(na.Key, "Behavior", StringComparison.Ordinal)
+                    )
+                    .Value.Value;
+                var behavior = behaviorRaw is null
+                    ? LinqraftExtensionBehaviorKind.PassThrough
+                    : (LinqraftExtensionBehaviorKind)System.Convert.ToInt32(behaviorRaw);
+                extensions.Add(
+                    new LinqraftExtensionMethodInfo
+                    {
+                        MethodName = methodName,
+                        GenerateNamespace = generateNamespace,
+                        Behavior = behavior,
+                    }
+                );
+            }
+        }
+
+        // Also check nested types
+        foreach (var nested in type.GetTypeMembers())
+        {
+            CollectExtensionFromType(nested, extensionAttributeSymbol, extensions);
+        }
     }
 
     private static AttributeData? GetMappingGenerateAttribute(

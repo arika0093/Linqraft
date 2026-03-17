@@ -47,6 +47,66 @@ internal static class SupportSourceEmitter
             namespace Linqraft
             {
                 /// <summary>
+                /// Defines how a Linqraft extension method transforms the expression when encountered inside a SelectExpr projection.
+                /// </summary>
+                [global::Microsoft.CodeAnalysis.EmbeddedAttribute]
+                internal enum LinqraftExtensionBehavior
+                {
+                    /// <summary>
+                    /// Strips the extension call from the expression chain; the receiver expression is passed through unchanged.
+                    /// </summary>
+                    PassThrough = 0,
+
+                    /// <summary>
+                    /// Strips the extension call and makes the preceding navigation property access null-conditional,
+                    /// which causes EF Core to generate a LEFT JOIN instead of an INNER JOIN.
+                    /// </summary>
+                    NullConditionalNavigation = 1,
+
+                    /// <summary>
+                    /// Strips the extension call and casts the receiver to the first generic type argument.
+                    /// </summary>
+                    CastToFirstTypeArgument = 2,
+                }
+
+                /// <summary>
+                /// Marks a class as a Linqraft extension that can be used within SelectExpr projections.
+                /// The source generator will generate a stub method and intercept its usage during projection generation.
+                /// </summary>
+                [global::Microsoft.CodeAnalysis.EmbeddedAttribute]
+                [global::System.AttributeUsage(global::System.AttributeTargets.Class, AllowMultiple = false, Inherited = false)]
+                internal sealed partial class LinqraftExtensionAttribute : global::System.Attribute
+                {
+                    public LinqraftExtensionAttribute(string methodName)
+                    {
+                        MethodName = methodName;
+                    }
+
+                    /// <summary>
+                    /// The name of the extension method to generate and intercept.
+                    /// </summary>
+                    public string MethodName { get; }
+
+                    /// <summary>
+                    /// The namespace in which the stub extension method will be generated.
+                    /// If null or empty, the stub will be placed in the <c>Linqraft</c> namespace.
+                    /// </summary>
+                    public string? GenerateNamespace { get; init; }
+
+                    /// <summary>
+                    /// Defines how the extension method transforms the expression in the generated projection.
+                    /// </summary>
+                    public LinqraftExtensionBehavior Behavior { get; init; }
+                }
+
+                /// <summary>
+                /// Base class for Linqraft extension implementations.
+                /// Inherit from this class and apply <see cref="LinqraftExtensionAttribute"/> to define a custom SelectExpr extension.
+                /// </summary>
+                [global::Microsoft.CodeAnalysis.EmbeddedAttribute]
+                internal abstract partial class LinqraftExtensionBase { }
+
+                /// <summary>
                 /// Controls the accessibility of generated mapping helpers.
                 /// </summary>
                 [global::Microsoft.CodeAnalysis.EmbeddedAttribute]

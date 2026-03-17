@@ -54,6 +54,7 @@ internal sealed class ProjectionExpressionEmitter
     private readonly bool _useEmptyCollectionFallback;
     private readonly IReadOnlyDictionary<TextSpan, string> _replacementTypes;
     private readonly IReadOnlyList<CaptureEntry> _captureEntries;
+    private readonly IReadOnlyList<LinqraftExtensionMethodInfo> _extensions;
 
     public ProjectionExpressionEmitter(
         SemanticModel semanticModel,
@@ -61,7 +62,8 @@ internal sealed class ProjectionExpressionEmitter
         string rootTypeName,
         bool useEmptyCollectionFallback,
         IReadOnlyDictionary<TextSpan, string>? replacementTypes = null,
-        IReadOnlyList<CaptureEntry>? captureEntries = null
+        IReadOnlyList<CaptureEntry>? captureEntries = null,
+        IReadOnlyList<LinqraftExtensionMethodInfo>? extensions = null
     )
     {
         _semanticModel = semanticModel;
@@ -70,6 +72,7 @@ internal sealed class ProjectionExpressionEmitter
         _useEmptyCollectionFallback = useEmptyCollectionFallback;
         _replacementTypes = replacementTypes ?? new Dictionary<TextSpan, string>();
         _captureEntries = captureEntries ?? global::System.Array.Empty<CaptureEntry>();
+        _extensions = extensions ?? global::System.Array.Empty<LinqraftExtensionMethodInfo>();
     }
 
     public string Emit(ExpressionSyntax expression)
@@ -99,6 +102,11 @@ internal sealed class ProjectionExpressionEmitter
                 collectionExpression
             ),
             InvocationExpressionSyntax invocation => EmitInvocation(invocation),
+            MemberAccessExpressionSyntax memberAccess
+                when TryGetNullConditionalExtensionReceiver(
+                    memberAccess.Expression,
+                    out var nullCondReceiver
+                ) => EmitNullConditionalAccessFromExtension(nullCondReceiver, memberAccess.Name),
             MemberAccessExpressionSyntax memberAccess =>
                 $"{Emit(memberAccess.Expression)}.{EmitSimpleName(memberAccess.Name)}",
             ElementAccessExpressionSyntax elementAccess =>
@@ -316,7 +324,8 @@ internal sealed class ProjectionExpressionEmitter
             rootTypeName,
             useEmptyCollectionFallback: true,
             _replacementTypes,
-            _captureEntries
+            _captureEntries,
+            _extensions
         );
         rewritten = nestedEmitter.Emit(expression.Left);
         return true;
@@ -324,28 +333,59 @@ internal sealed class ProjectionExpressionEmitter
 
     private string EmitInvocation(InvocationExpressionSyntax expression)
     {
+        if (
+            expression.Expression is MemberAccessExpressionSyntax memberAccess
+            && TryGetLinqraftExtensionInfo(expression, out var extensionInfo)
+        )
+        {
+            var receiver = Emit(memberAccess.Expression);
+            switch (extensionInfo.Behavior)
+            {
+                case LinqraftExtensionBehaviorKind.PassThrough:
+                case LinqraftExtensionBehaviorKind.NullConditionalNavigation:
+                    // Strip the extension call — just return the receiver.
+                    // For NullConditionalNavigation, the null-conditional semantics are applied
+                    // in the parent MemberAccessExpression case.
+                    return receiver;
+                case LinqraftExtensionBehaviorKind.CastToFirstTypeArgument:
+                    if (
+                        memberAccess.Name is GenericNameSyntax genericName
+                        && genericName.TypeArgumentList.Arguments.Count > 0
+                    )
+                    {
+                        var typeArg = QualifyType(genericName.TypeArgumentList.Arguments[0]);
+                        return $"({typeArg}){receiver}";
+                    }
+                    return receiver;
+            }
+        }
+
         return expression.Expression switch
         {
-            MemberAccessExpressionSyntax memberAccess => memberAccess
+            MemberAccessExpressionSyntax memberAccess2 => memberAccess2
                 .Name
                 .Identifier
                 .ValueText switch
             {
                 "SelectExpr" => EmitProjectionInvocation(
-                    Emit(memberAccess.Expression),
+                    Emit(memberAccess2.Expression),
                     expression,
                     "Select"
                 ),
                 "SelectManyExpr" => EmitProjectionInvocation(
-                    Emit(memberAccess.Expression),
+                    Emit(memberAccess2.Expression),
                     expression,
                     "SelectMany"
                 ),
                 "GroupByExpr" => EmitGroupByExprInvocation(
-                    Emit(memberAccess.Expression),
+                    Emit(memberAccess2.Expression),
                     expression
                 ),
-                _ => EmitMemberInvocation(expression, memberAccess, Emit(memberAccess.Expression)),
+                _ => EmitMemberInvocation(
+                    expression,
+                    memberAccess2,
+                    Emit(memberAccess2.Expression)
+                ),
             },
             _ => $"{Emit(expression.Expression)}{EmitArgumentList(expression.ArgumentList)}",
         };
@@ -397,6 +437,91 @@ internal sealed class ProjectionExpressionEmitter
         )
             ? rewritten
             : $"{receiver}.{EmitSimpleName(memberAccess.Name)}{EmitArgumentList(expression.ArgumentList)}";
+    }
+
+    /// <summary>
+    /// Checks if the given expression is an invocation of a NullConditionalNavigation extension method,
+    /// and if so, outputs the receiver expression (before the extension call).
+    /// </summary>
+    private bool TryGetNullConditionalExtensionReceiver(
+        ExpressionSyntax expression,
+        out ExpressionSyntax receiver
+    )
+    {
+        receiver = null!;
+        if (
+            expression is not InvocationExpressionSyntax invocation
+            || invocation.Expression is not MemberAccessExpressionSyntax memberAccess
+        )
+        {
+            return false;
+        }
+
+        if (!TryGetLinqraftExtensionInfo(invocation, out var extInfo))
+        {
+            return false;
+        }
+
+        if (extInfo.Behavior != LinqraftExtensionBehaviorKind.NullConditionalNavigation)
+        {
+            return false;
+        }
+
+        receiver = memberAccess.Expression;
+        return true;
+    }
+
+    /// <summary>
+    /// Emits a null-conditional member access of the form:
+    /// <c>receiver != null ? receiver.Member : null</c>
+    /// to simulate left-join behavior.
+    /// </summary>
+    private string EmitNullConditionalAccessFromExtension(
+        ExpressionSyntax receiver,
+        SimpleNameSyntax memberName
+    )
+    {
+        var receiverText = Emit(receiver);
+        var memberText = EmitSimpleName(memberName);
+        return $"{receiverText} != null ? {receiverText}.{memberText} : null";
+    }
+
+    /// <summary>
+    /// Tries to resolve extension info for an invocation by checking the method name
+    /// against the list of known Linqraft extensions.
+    /// </summary>
+    private bool TryGetLinqraftExtensionInfo(
+        InvocationExpressionSyntax invocation,
+        out LinqraftExtensionMethodInfo extensionInfo
+    )
+    {
+        extensionInfo = null!;
+        if (_extensions.Count == 0)
+        {
+            return false;
+        }
+
+        string? methodName = null;
+        if (invocation.Expression is MemberAccessExpressionSyntax memberAccess)
+        {
+            methodName = memberAccess.Name.Identifier.ValueText;
+        }
+
+        if (methodName is null)
+        {
+            return false;
+        }
+
+        foreach (var ext in _extensions)
+        {
+            if (string.Equals(ext.MethodName, methodName, System.StringComparison.Ordinal))
+            {
+                extensionInfo = ext;
+                return true;
+            }
+        }
+
+        return false;
     }
 
     private string EmitArgumentList(ArgumentListSyntax argumentList)
@@ -491,7 +616,8 @@ internal sealed class ProjectionExpressionEmitter
             rootTypeName,
             ShouldUseCollectionFallback(expression, expressionType),
             _replacementTypes,
-            _captureEntries
+            _captureEntries,
+            _extensions
         );
         return nestedEmitter.Emit(expression);
     }
