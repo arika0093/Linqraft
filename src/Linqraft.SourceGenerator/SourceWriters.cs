@@ -348,11 +348,16 @@ internal static class SourceWriters
             }
 
             builder.AppendLine(
-                $"{request.MethodAccessibilityKeyword} static {receiverType}<{request.ResultTypeName}> {request.MethodName}(this {receiverType}<{request.SourceTypeName}> source{string.Concat(request.Captures.Select(capture => $", {capture.TypeName} {capture.LocalName}"))})"
+                $"{request.MethodAccessibilityKeyword} static {receiverType}<{request.ResultTypeName}> {request.MethodName}(this {receiverType}<{request.SourceTypeName}> source{string.Concat(request.Captures.Select(capture => $", {capture.TypeName} {capture.PropertyName}"))})"
             );
             builder.AppendLine("{");
             using (builder.Indent())
             {
+                foreach (var capture in request.Captures.Where(capture => capture.LocalName != capture.PropertyName))
+                {
+                    builder.AppendLine($"var {capture.LocalName} = {capture.PropertyName};");
+                }
+
                 if (
                     request.CanUsePrebuiltExpression
                     && request.ReceiverKind == ReceiverKind.IQueryable

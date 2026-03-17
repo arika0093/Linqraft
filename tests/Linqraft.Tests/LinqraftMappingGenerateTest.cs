@@ -104,7 +104,9 @@ public class LinqraftMappingGenerateTest
             new MappingTestSampleClass { Id = 2, Value = 20, Name = "Test2" },
         }.AsTestQueryable();
 
-        var result = MappingTestQueries.ProjectToDtoWithCapture(data, 100, " units").ToList();
+        var result = MappingTestQueries
+            .ProjectToDtoWithCapture(data, offset: 100, suffix: " units")
+            .ToList();
 
         result.Count.ShouldBe(2);
         result[0].AdjustedValue.ShouldBe(110);
