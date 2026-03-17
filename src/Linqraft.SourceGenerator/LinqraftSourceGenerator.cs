@@ -81,7 +81,7 @@ public sealed class LinqraftSourceGenerator : IIncrementalGenerator
             .Select(static (template, _) => template!);
 
         // Collect user-defined Linqraft extensions (annotated with [LinqraftExtension])
-        // and register stub source output for each.
+        // and register stub source output for each that doesn't already provide its own stub.
         var extensionModels = context
             .SyntaxProvider.ForAttributeWithMetadataName(
                 "Linqraft.LinqraftExtensionAttribute",
@@ -96,6 +96,12 @@ public sealed class LinqraftSourceGenerator : IIncrementalGenerator
             extensionModels,
             static (output, extensionInfo) =>
             {
+                // Skip stub generation if the package already provides the stub.
+                if (extensionInfo.StubAlreadyProvided)
+                {
+                    return;
+                }
+
                 var (hintName, source) = (
                     $"LinqraftExtensionStub_{extensionInfo.MethodName}.g.cs",
                     LinqraftExtensionStubEmitter.EmitExtensionStubSource(extensionInfo)
@@ -395,12 +401,18 @@ public sealed class LinqraftSourceGenerator : IIncrementalGenerator
         var behavior = behaviorRaw is null
             ? LinqraftExtensionBehaviorKind.PassThrough
             : (LinqraftExtensionBehaviorKind)Convert.ToInt32(behaviorRaw);
+        var stubAlreadyProvided = attr
+            .NamedArguments.FirstOrDefault(na =>
+                string.Equals(na.Key, "StubAlreadyProvided", StringComparison.Ordinal)
+            )
+            .Value.Value is true;
 
         return new LinqraftExtensionMethodInfo
         {
             MethodName = methodName,
             GenerateNamespace = generateNamespace,
             Behavior = behavior,
+            StubAlreadyProvided = stubAlreadyProvided,
         };
     }
 }

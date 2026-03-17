@@ -1278,7 +1278,8 @@ internal static class ProjectionTemplateBuilder
             var typeName = type?.ToFullyQualifiedTypeName() ?? "object";
 
             // If the expression contains a NullConditionalNavigation extension call (e.g., AsLeftJoin()),
-            // the generated code will use null-conditional access, so the property type must be nullable.
+            // the generated code will use a null-guard ternary expression (e.g. <c>receiver != null ? receiver.Member : null</c>),
+            // so the property type must be nullable.
             if (type != null && HasNullConditionalExtensionInChain(expression))
             {
                 return MakeNullable(typeName);
@@ -2542,12 +2543,18 @@ internal static class ProjectionTemplateBuilder
                 var behavior = behaviorRaw is null
                     ? LinqraftExtensionBehaviorKind.PassThrough
                     : (LinqraftExtensionBehaviorKind)System.Convert.ToInt32(behaviorRaw);
+                var stubAlreadyProvided = attr
+                    .NamedArguments.FirstOrDefault(na =>
+                        string.Equals(na.Key, "StubAlreadyProvided", StringComparison.Ordinal)
+                    )
+                    .Value.Value is true;
                 extensions.Add(
                     new LinqraftExtensionMethodInfo
                     {
                         MethodName = methodName,
                         GenerateNamespace = generateNamespace,
                         Behavior = behavior,
+                        StubAlreadyProvided = stubAlreadyProvided,
                     }
                 );
             }

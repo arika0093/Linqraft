@@ -50,7 +50,8 @@ public sealed class LinqraftQueryExtensionsGenerator : IIncrementalGenerator
             [global::Linqraft.LinqraftExtension(
                 "AsLeftJoin",
                 GenerateNamespace = "{{ExtensionsNamespace}}",
-                Behavior = global::Linqraft.LinqraftExtensionBehavior.NullConditionalNavigation)]
+                Behavior = global::Linqraft.LinqraftExtensionBehavior.NullConditionalNavigation,
+                StubAlreadyProvided = true)]
             internal sealed class LinqraftAsLeftJoinExtension : global::Linqraft.LinqraftExtensionBase { }
 
             /// <summary>
@@ -67,7 +68,7 @@ public sealed class LinqraftQueryExtensionsGenerator : IIncrementalGenerator
                 /// <code>query.SelectExpr(x =&gt; new { Name = x.Child.AsLeftJoin().Name })</code>
                 /// </summary>
                 [global::System.ComponentModel.EditorBrowsable(global::System.ComponentModel.EditorBrowsableState.Never)]
-                public static T AsLeftJoin<T>(this T source) where T : class => source;
+                public static T AsLeftJoin<T>(this T source) => source;
             }
         }
         """;
@@ -92,7 +93,8 @@ public sealed class LinqraftQueryExtensionsGenerator : IIncrementalGenerator
             [global::Linqraft.LinqraftExtension(
                 "MappingAs",
                 GenerateNamespace = "{{ExtensionsNamespace}}",
-                Behavior = global::Linqraft.LinqraftExtensionBehavior.CastToFirstTypeArgument)]
+                Behavior = global::Linqraft.LinqraftExtensionBehavior.CastToFirstTypeArgument,
+                StubAlreadyProvided = true)]
             internal sealed class LinqraftMappingAsExtension : global::Linqraft.LinqraftExtensionBase { }
 
             /// <summary>

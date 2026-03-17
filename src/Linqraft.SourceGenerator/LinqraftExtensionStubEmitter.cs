@@ -29,7 +29,7 @@ internal static class LinqraftExtensionStubEmitter
         {
             builder.AppendLine("/// <summary>");
             builder.AppendLine(
-                $"/// Linqraft extension stub for <c>{extension.MethodName}</c>. This method is intercepted by the Linqraft source generator and is never executed directly."
+                $"/// Linqraft extension stub for <c>{extension.MethodName}</c>. When used inside a <c>SelectExpr</c> projection, this method is intercepted by the Linqraft source generator. Calling it outside a projection context will execute the stub body."
             );
             builder.AppendLine("/// </summary>");
             builder.AppendLine(
@@ -67,7 +67,7 @@ internal static class LinqraftExtensionStubEmitter
             LinqraftExtensionBehaviorKind.CastToFirstTypeArgument =>
                 $"public static TResult {extension.MethodName}<TResult>(this object source)",
             _ =>
-                $"public static T {extension.MethodName}<T>(this T source) where T : class",
+                $"public static T {extension.MethodName}<T>(this T source)",
         };
     }
 

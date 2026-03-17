@@ -472,9 +472,9 @@ internal sealed class ProjectionExpressionEmitter
     }
 
     /// <summary>
-    /// Emits a null-conditional member access of the form:
+    /// Emits a null-safe member access of the form:
     /// <c>receiver != null ? receiver.Member : null</c>
-    /// to simulate left-join behavior.
+    /// which EF Core translates to LEFT JOIN behavior in database queries.
     /// </summary>
     private string EmitNullConditionalAccessFromExtension(
         ExpressionSyntax receiver,

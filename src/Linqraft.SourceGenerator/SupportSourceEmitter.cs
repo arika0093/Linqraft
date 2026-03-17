@@ -97,6 +97,13 @@ internal static class SupportSourceEmitter
                     /// Defines how the extension method transforms the expression in the generated projection.
                     /// </summary>
                     public LinqraftExtensionBehavior Behavior { get; init; }
+
+                    /// <summary>
+                    /// When <c>true</c>, indicates that the stub extension method is already provided
+                    /// by the library or package that declares this extension class.
+                    /// The Linqraft source generator will skip generating a duplicate stub.
+                    /// </summary>
+                    public bool StubAlreadyProvided { get; init; }
                 }
 
                 /// <summary>
