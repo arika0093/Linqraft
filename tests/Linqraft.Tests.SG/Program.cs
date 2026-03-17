@@ -268,6 +268,76 @@ public sealed class SourceGeneratorSmokeTests
             .ShouldBeFalse();
     }
 
+    [Test]
+    public void Registered_query_extensions_emit_dummy_methods_and_enable_left_join_rewrite()
+    {
+        var driver = CreateDriver();
+        var compilation = CreateCompilation(
+            CreateRegisteredLeftJoinExtensionTree(),
+            CreateMarkerTree("query-extension-registered")
+        );
+
+        driver = driver.RunGeneratorsAndUpdateCompilation(
+            compilation,
+            out var outputCompilation,
+            out var diagnostics
+        );
+
+        diagnostics.ShouldBeEmpty();
+        outputCompilation
+            .GetDiagnostics()
+            .Where(diagnostic =>
+                diagnostic.Severity == DiagnosticSeverity.Error && diagnostic.Id != "CS9137"
+            )
+            .ShouldBeEmpty();
+
+        var generatedSources = GetGeneratedSourceMap(driver.GetRunResult());
+        generatedSources.ContainsKey("Linqraft.QueryExtensions.g.cs").ShouldBeTrue();
+        generatedSources["Linqraft.QueryExtensions.g.cs"].ShouldContain(
+            "internal static partial class SmokeJoinHintExtensions"
+        );
+        generatedSources["Linqraft.QueryExtensions.g.cs"].ShouldContain(
+            "public static T? HintLeftJoin<T>(this T? value) where T : class"
+        );
+        generatedSources
+            .Values.Any(source =>
+                source.Contains("order.Shipment != null", StringComparison.Ordinal)
+                && source.Contains("order.Shipment.CarrierName", StringComparison.Ordinal)
+            )
+            .ShouldBeTrue();
+    }
+
+    [Test]
+    public void Unregistered_query_extensions_do_not_emit_dummy_methods()
+    {
+        var driver = CreateDriver();
+        var compilation = CreateCompilation(
+            CreateUnregisteredLeftJoinUsageTree(),
+            CreateMarkerTree("query-extension-unregistered")
+        );
+
+        driver = driver.RunGeneratorsAndUpdateCompilation(
+            compilation,
+            out var outputCompilation,
+            out var diagnostics
+        );
+
+        diagnostics.ShouldBeEmpty();
+
+        var generatedSources = GetGeneratedSourceMap(driver.GetRunResult());
+        generatedSources
+            .GetValueOrDefault("Linqraft.QueryExtensions.g.cs", string.Empty)
+            .Contains("HintLeftJoin", StringComparison.Ordinal)
+            .ShouldBeFalse();
+        outputCompilation
+            .GetDiagnostics()
+            .Any(diagnostic =>
+                diagnostic.Severity == DiagnosticSeverity.Error
+                && diagnostic.GetMessage().Contains("HintLeftJoin", StringComparison.Ordinal)
+            )
+            .ShouldBeTrue();
+    }
+
     private static GeneratorDriver CreateDriver(bool usePrebuildExpression = true)
     {
         var parseOptions = new CSharpParseOptions(LanguageVersion.Preview);
@@ -527,6 +597,99 @@ public sealed class SourceGeneratorSmokeTests
         );
     }
 
+    private static SyntaxTree CreateRegisteredLeftJoinExtensionTree()
+    {
+        const string source = """
+            using System.Linq;
+            using Linqraft;
+            using Linqraft.Utility;
+
+            namespace SmokeFixture;
+
+            public static class JoinQueries
+            {
+                public static void Run(IQueryable<SmokeOrder> orders)
+                {
+            #pragma warning disable CS8602
+                    var _ = orders.SelectExpr(order => new
+                    {
+                        CarrierName = order.Shipment.HintLeftJoin().CarrierName,
+                    });
+            #pragma warning restore CS8602
+                }
+            }
+
+            [LinqraftExtensions("HintLeftJoin")]
+            internal sealed class CustomLeftJoinRegistration : LinqraftExtensionDeclaration
+            {
+                public override string Namespace => "Linqraft.Utility";
+                public override string ExtensionClassName => "SmokeJoinHintExtensions";
+                public override string BehaviorKey => "AsLeftJoin";
+                public override string MethodDeclarations =>
+                    "summary: Marks a navigation access so that Linqraft rewrites the following member access using left-join semantics.\n"
+                    + "signature: public static T? HintLeftJoin<T>(this T? value) where T : class\n\n"
+                    + "summary: Marks a queryable navigation access so that Linqraft rewrites the following query using left-join semantics.\n"
+                    + "signature: public static global::System.Linq.IQueryable<T> HintLeftJoin<T>(this global::System.Linq.IQueryable<T> query) where T : class";
+            }
+
+            public sealed class SmokeOrder
+            {
+                public SmokeShipment? Shipment { get; set; }
+            }
+
+            public sealed class SmokeShipment
+            {
+                public string? CarrierName { get; set; }
+            }
+            """;
+
+        return CSharpSyntaxTree.ParseText(
+            SourceText.From(source),
+            new CSharpParseOptions(LanguageVersion.Preview),
+            path: "SmokeQueryExtensions.Registered.cs"
+        );
+    }
+
+    private static SyntaxTree CreateUnregisteredLeftJoinUsageTree()
+    {
+        const string source = """
+            using System.Linq;
+            using Linqraft;
+            using Linqraft.Utility;
+
+            namespace SmokeFixture;
+
+            public static class JoinQueries
+            {
+                public static void Run(IQueryable<SmokeOrder> orders)
+                {
+            #pragma warning disable CS8602
+                    var _ = orders.SelectExpr(order => new
+                    {
+                        CarrierName = order.Shipment.HintLeftJoin().CarrierName,
+                    });
+            #pragma warning restore CS8602
+                }
+            }
+
+            public sealed class SmokeOrder
+            {
+                public SmokeShipment? Shipment { get; set; }
+            }
+
+            public sealed class SmokeShipment
+            {
+                public string? CarrierName { get; set; }
+            }
+            """;
+
+        return CSharpSyntaxTree.ParseText(
+            SourceText.From(source),
+            new CSharpParseOptions(LanguageVersion.Preview),
+            path: "SmokeQueryExtensions.Unregistered.cs"
+        );
+    }
+
     private static SyntaxTree CreateGenerateCaptureTree()
     {
         const string source = """
@@ -604,6 +767,7 @@ public sealed class SourceGeneratorSmokeTests
             typeof(Queryable).Assembly,
             typeof(List<>).Assembly,
             typeof(System.Runtime.CompilerServices.DynamicAttribute).Assembly,
+            typeof(Linqraft.LinqraftExtensionDeclaration).Assembly,
         };
 
         foreach (
@@ -633,7 +797,8 @@ public sealed class SourceGeneratorSmokeTests
             .Where(assembly =>
             {
                 var name = assembly.GetName().Name ?? string.Empty;
-                return !name.StartsWith("Linqraft", StringComparison.Ordinal);
+                return !name.StartsWith("Linqraft", StringComparison.Ordinal)
+                    || string.Equals(name, "Linqraft.QueryExtensions", StringComparison.Ordinal);
             })
             .Select(assembly => MetadataReference.CreateFromFile(assembly.Location))
             .DistinctBy(reference => reference.Display, StringComparer.Ordinal);

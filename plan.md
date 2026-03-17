@@ -18,36 +18,33 @@
   - `AsInnerJoin()` → 明示的に通常展開
   - `AsServerOnly()` → 特定メソッドだけクライアント評価禁止
 
-### 2. 登録単位は `IMethodSymbol` ベースにする
-- 単なるメソッド名一致ではなく、`ContainingType + MethodName + Arity + ParameterTypes` の組み合わせで識別する。
-- これによりユーザー側が同名メソッドを持っていても衝突を避けやすい。
+### 2. 登録単位は string ベースにする
+- `IMethodSymbol` ベースにするとユーザー拡張側が Roslyn 参照を持つ必要が出るため、公開 API は string ベースで完結させる。
+- 1 拡張につき 1 クラスを作り、クラス側に `[LinqraftExtensions(メソッド名)]` を付けて、内部の abstract class override で generator 用の設定値を書く。
+- generator 側ではその宣言を事前収集し、登録されたメソッド名だけを特別扱いする。
 
-### 3. generator には「式変換ルール」インターフェースを設ける
+### 3. generator には「式変換ルール」キーを設ける
 - 内部実装として、たとえば以下の責務を持つルールを用意する。
-  - `CanHandle(InvocationExpressionSyntax, SemanticModel)`
-  - `RewriteType(...)`
-  - `RewriteValue(...)`
-- `AsLeftJoin` はこの最初の標準実装として入れる。
-- 将来的に `ProjectionTemplateBuilder` と `ProjectionExpressionEmitter` の if 文を増やす代わりに、登録済みルールへ順番に問い合わせる。
+  - `BehaviorKey` の文字列で標準変換を選ぶ
+  - `MethodDeclarations` の文字列定義からダミー拡張メソッドを自動生成する
+- `AsLeftJoin` はこの最初の標準実装として `BehaviorKey = "AsLeftJoin"` で扱う。
+- 将来的に `ProjectionTemplateBuilder` と `ProjectionExpressionEmitter` の if 文を増やす代わりに、登録済み拡張情報から適用対象を判定する。
 
-### 4. ユーザー向けの登録方法は「属性ベース + 部分クラス」で始める
-- 初期案:
-  - アセンブリ属性または partial class で「このメソッドはこのルールで扱う」と宣言する。
-- 例イメージ:
-  - `[assembly: LinqraftProjectionRewrite(typeof(MyLeftJoinLikeRuleRegistrar))]`
-  - もしくは `partial class LinqraftCustomization { static partial void Register(ProjectionRuleRegistry registry); }`
-- source generator はコンパイル対象からその登録情報を拾う。
+### 4. ユーザー向けの登録方法は `Linqraft.QueryExtensions` パッケージで始める
+- `Linqraft.QueryExtensions` に `LinqraftExtensionsAttribute` / `LinqraftExtensionDeclaration` / 標準の `AsLeftJoin` 宣言を置く。
+- source generator はコンパイル対象と参照アセンブリから `[LinqraftExtensions]` を拾い、`MethodDeclarations` をもとにダミー拡張メソッドを自動生成する。
+- これによりユーザーは runtime 実装を持たずに「generator だけが解釈する拡張メソッド」を定義できる。
 
 ## 段階導入案
 
 ### Phase 1
-- generator 内部にルールレジストリを作る。
-- 標準ルールとして `AsLeftJoin` だけ載せる。
-- 外部公開 API はまだ増やさず、内部構造だけ差し替える。
+- generator 内部に string ベースの拡張レジストリを作る。
+- `Linqraft.QueryExtensions` パッケージを作り、標準登録として `AsLeftJoin` を載せる。
+- 登録された拡張だけダミーメソッドを生成する。
 
 ### Phase 2
-- 登録用 attribute / partial hook を公開する。
-- ユーザー定義のダミー拡張メソッドを解決できるようにする。
+- 登録用 attribute / base class を公開する。
+- ユーザー定義のダミー拡張メソッドを string ベース設定で解決できるようにする。
 
 ### Phase 3
 - 型変換ルールと値変換ルールを分離する。
@@ -64,4 +61,4 @@
 
 ## まとめ
 - 今回の `AsLeftJoin()` は「ダミー API を見つけたら generator が式を正規化する」方式の最小例として扱う。
-- 将来拡張を考えると、個別ハードコードを増やすよりも「ルール登録型アーキテクチャ」に寄せるのが保守しやすい。
+- 将来拡張を考えると、個別ハードコードを増やすよりも「`[LinqraftExtensions]` で登録された string ベース定義を読む」方向に寄せるのが保守しやすい。

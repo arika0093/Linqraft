@@ -1,5 +1,6 @@
 <Project Sdk="Microsoft.NET.Sdk">
   <ItemGroup>
+    <ProjectReference Include="..\..\src\Linqraft.QueryExtensions\Linqraft.QueryExtensions.csproj" />
     <ProjectReference Include="..\Linqraft.Tests.Utility\Linqraft.Tests.Utility.csproj" />
   </ItemGroup>
 </Project>

@@ -95,6 +95,39 @@ internal class OrderMappingDeclare : LinqraftMappingDeclare<Order>
 var orders = await dbContext.Orders.CustomProjection().ToListAsync();
 ```
 
+### Capture Parameters
+
+Generated mapping methods can also expose captured local values as additional parameters. Use the delegate-based `capture:` pattern inside `DefineMapping()` and Linqraft will append the captured values to the generated method signature in a NativeAOT-safe form:
+
+```csharp
+[LinqraftMappingGenerate("ProjectToSummaryWithOffset")]
+internal sealed class OrderSummaryMapping : LinqraftMappingDeclare<Order>
+{
+    private int offset = default;
+    private string suffix = string.Empty;
+
+    protected override void DefineMapping()
+    {
+        Source.SelectExpr<Order, OrderSummaryDto>(
+            order => new
+            {
+                order.Id,
+                DisplayName = order.CustomerName + suffix,
+                AdjustedTotal = order.Total + offset,
+            },
+            capture: () => (offset, suffix)
+        );
+    }
+}
+
+// Usage:
+var orders = await dbContext.Orders
+    .ProjectToSummaryWithOffset(10, " (priority)")
+    .ToListAsync();
+```
+
+The generated method receives `offset` and `suffix` as normal parameters, and Linqraft unpacks them in generated code without relying on runtime reflection.
+
 ### Controlling Generated Visibility
 
 `LinqraftMappingDeclare<T>` itself is emitted as an internal base type, so declaration classes that inherit from it also stay internal. If you need the generated extension method to be public, set the attribute's `Visibility` named argument explicitly:
@@ -191,6 +224,37 @@ public static partial class OrderQueries
 
 For this approach, `Visibility` changes the generated method accessibility only. The containing static partial class still controls the maximum effective visibility, so make the class `public` if you want a public extension method.
 
+### Capture Parameters
+
+Static partial mappings support the same capture flow. Any values passed through `capture: () => ...` are surfaced as additional parameters on the generated method:
+
+```csharp
+public static partial class OrderQueries
+{
+    [LinqraftMappingGenerate("ProjectToDtoWithCapture")]
+    internal static IQueryable<OrderSummaryDto> Template(
+        this IQueryable<Order> source,
+        int offset,
+        string suffix) => source
+        .SelectExpr<Order, OrderSummaryDto>(
+            order => new
+            {
+                order.Id,
+                DisplayName = order.CustomerName + suffix,
+                AdjustedTotal = order.Total + offset,
+            },
+            capture: () => (offset, suffix)
+        );
+}
+
+// Usage:
+var orders = await dbContext.Orders
+    .ProjectToDtoWithCapture(10, " (priority)")
+    .ToListAsync();
+```
+
+For new code, prefer the delegate capture form shown above. Legacy anonymous-object captures still compile, but they are obsolete and the analyzer can migrate them automatically.
+
 ## Using with EF Core
 
 ### Compiled Queries
@@ -262,6 +326,7 @@ The same works with the static partial class approach - simply use the generated
 4. **Override `DefineMapping()`**: Implement the abstract method with your mapping logic
 5. **Use `Source` property**: Use the `Source` property to access the queryable
 6. **SelectExpr Inside**: The `DefineMapping()` method must contain exactly one `SelectExpr` call
+7. **Capture Pattern**: If you reference outer values, pass them via `capture: () => ...` so Linqraft can generate matching method parameters safely
 
 ### Static Partial Class Requirements:
 1. **Static Partial Class**: The containing class must be `static` and `partial`
@@ -269,6 +334,7 @@ The same works with the static partial class approach - simply use the generated
 3. **Optional `Visibility` override**: Use `Visibility = LinqraftMappingVisibility.Public` or `.Internal` to override the generated method accessibility
 4. **Top-Level Class**: Extension methods must be in a non-nested class
 5. **SelectExpr Inside**: The template method must contain at least one `SelectExpr` call
+6. **Capture Pattern**: If the selector depends on local values, use `capture: () => ...` so the generated method exposes those values explicitly
 
 ## Further Reading
 

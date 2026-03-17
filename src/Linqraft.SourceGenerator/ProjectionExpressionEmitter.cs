@@ -54,6 +54,7 @@ internal sealed class ProjectionExpressionEmitter
     private readonly bool _useEmptyCollectionFallback;
     private readonly IReadOnlyDictionary<TextSpan, string> _replacementTypes;
     private readonly IReadOnlyList<CaptureEntry> _captureEntries;
+    private readonly ISet<string> _leftJoinMethodNames;
 
     public ProjectionExpressionEmitter(
         SemanticModel semanticModel,
@@ -61,7 +62,8 @@ internal sealed class ProjectionExpressionEmitter
         string rootTypeName,
         bool useEmptyCollectionFallback,
         IReadOnlyDictionary<TextSpan, string>? replacementTypes = null,
-        IReadOnlyList<CaptureEntry>? captureEntries = null
+        IReadOnlyList<CaptureEntry>? captureEntries = null,
+        IEnumerable<string>? leftJoinMethodNames = null
     )
     {
         _semanticModel = semanticModel;
@@ -70,6 +72,10 @@ internal sealed class ProjectionExpressionEmitter
         _useEmptyCollectionFallback = useEmptyCollectionFallback;
         _replacementTypes = replacementTypes ?? new Dictionary<TextSpan, string>();
         _captureEntries = captureEntries ?? global::System.Array.Empty<CaptureEntry>();
+        _leftJoinMethodNames = new HashSet<string>(
+            leftJoinMethodNames ?? global::System.Array.Empty<string>(),
+            System.StringComparer.Ordinal
+        );
     }
 
     public string Emit(ExpressionSyntax expression)
@@ -321,7 +327,8 @@ internal sealed class ProjectionExpressionEmitter
             rootTypeName,
             useEmptyCollectionFallback: true,
             _replacementTypes,
-            _captureEntries
+            _captureEntries,
+            _leftJoinMethodNames
         );
         rewritten = nestedEmitter.Emit(expression.Left);
         return true;
@@ -496,7 +503,8 @@ internal sealed class ProjectionExpressionEmitter
             rootTypeName,
             ShouldUseCollectionFallback(expression, expressionType),
             _replacementTypes,
-            _captureEntries
+            _captureEntries,
+            _leftJoinMethodNames
         );
         return nestedEmitter.Emit(expression);
     }
@@ -549,7 +557,7 @@ internal sealed class ProjectionExpressionEmitter
     {
         switch (expression)
         {
-            case InvocationExpressionSyntax invocation when IsAsLeftJoinInvocation(invocation):
+            case InvocationExpressionSyntax invocation when IsLeftJoinInvocation(invocation):
             {
                 var receiverSyntax = GetInvocationReceiver(invocation);
                 if (receiverSyntax is null)
@@ -792,11 +800,11 @@ internal sealed class ProjectionExpressionEmitter
             .Any();
     }
 
-    private static bool IsAsLeftJoinInvocation(InvocationExpressionSyntax invocation)
+    private bool IsLeftJoinInvocation(InvocationExpressionSyntax invocation)
     {
         return invocation.ArgumentList.Arguments.Count == 0
             && invocation.Expression is MemberAccessExpressionSyntax memberAccess
-            && memberAccess.Name.Identifier.ValueText == "AsLeftJoin";
+            && _leftJoinMethodNames.Contains(memberAccess.Name.Identifier.ValueText);
     }
 
     private static ExpressionSyntax? GetInvocationReceiver(InvocationExpressionSyntax invocation)

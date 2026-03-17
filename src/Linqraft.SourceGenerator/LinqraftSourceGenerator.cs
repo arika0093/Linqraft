@@ -25,55 +25,125 @@ public sealed class LinqraftSourceGenerator : IIncrementalGenerator
         var configuration = context.AnalyzerConfigOptionsProvider.Select(
             static (provider, _) => LinqraftConfiguration.Parse(provider.GlobalOptions)
         );
+        var queryExtensions = context.CompilationProvider.Select(
+            static (compilation, cancellationToken) =>
+                QueryExtensionRegistryBuilder.Build(compilation, cancellationToken)
+        );
 
-        var projectionTemplates = context
+        var projectionCandidates = context
             .SyntaxProvider.CreateSyntaxProvider(
                 static (node, _) =>
                     node is InvocationExpressionSyntax invocation
                     && IsPotentialProjectionInvocation(invocation),
                 static (syntaxContext, cancellationToken) =>
+                    syntaxContext.Node is InvocationExpressionSyntax invocation
+                        ? new ProjectionInvocationCandidate(
+                            invocation,
+                            syntaxContext.SemanticModel
+                        )
+                        : null
+            )
+            .Where(static candidate => candidate is not null)
+            .Select(static (candidate, _) => candidate!);
+        var projectionTemplates = projectionCandidates
+            .Combine(queryExtensions)
+            .Select(
+                static (data, cancellationToken) =>
                     ProjectionTemplateBuilder.AnalyzeProjectionInvocation(
-                        syntaxContext,
+                        data.Left.Invocation,
+                        data.Left.SemanticModel,
+                        data.Right,
                         cancellationToken
                     )
             )
             .Where(static template => template is not null)
             .Select(static (template, _) => template!);
 
-        var objectGenerationTemplates = context
+        var objectGenerationCandidates = context
             .SyntaxProvider.CreateSyntaxProvider(
                 static (node, _) =>
                     node is InvocationExpressionSyntax invocation
                     && IsPotentialObjectGenerationInvocation(invocation),
                 static (syntaxContext, cancellationToken) =>
+                    syntaxContext.Node is InvocationExpressionSyntax invocation
+                        ? new ProjectionInvocationCandidate(
+                            invocation,
+                            syntaxContext.SemanticModel
+                        )
+                        : null
+            )
+            .Where(static candidate => candidate is not null)
+            .Select(static (candidate, _) => candidate!);
+        var objectGenerationTemplates = objectGenerationCandidates
+            .Combine(queryExtensions)
+            .Select(
+                static (data, cancellationToken) =>
                     ProjectionTemplateBuilder.AnalyzeObjectGenerationInvocation(
-                        syntaxContext,
+                        data.Left.Invocation,
+                        data.Left.SemanticModel,
+                        data.Right,
                         cancellationToken
                     )
             )
             .Where(static template => template is not null)
             .Select(static (template, _) => template!);
 
-        var mappingClassTemplates = context
+        var mappingClassCandidates = context
             .SyntaxProvider.ForAttributeWithMetadataName(
                 "Linqraft.LinqraftMappingGenerateAttribute",
                 static (node, _) => node is ClassDeclarationSyntax,
                 static (attributeContext, cancellationToken) =>
+                    attributeContext.TargetNode is ClassDeclarationSyntax declaration
+                    && attributeContext.TargetSymbol is INamedTypeSymbol symbol
+                        ? new MappingClassCandidate(
+                            declaration,
+                            symbol,
+                            attributeContext.SemanticModel
+                        )
+                        : null
+            )
+            .Where(static candidate => candidate is not null)
+            .Select(static (candidate, _) => candidate!);
+        var mappingClassTemplates = mappingClassCandidates
+            .Combine(queryExtensions)
+            .Select(
+                static (data, cancellationToken) =>
                     ProjectionTemplateBuilder.AnalyzeMappingClass(
-                        attributeContext,
+                        data.Left.Declaration,
+                        data.Left.Symbol,
+                        data.Left.SemanticModel,
+                        data.Right,
                         cancellationToken
                     )
             )
             .Where(static template => template is not null)
             .Select(static (template, _) => template!);
 
-        var mappingMethodTemplates = context
+        var mappingMethodCandidates = context
             .SyntaxProvider.ForAttributeWithMetadataName(
                 "Linqraft.LinqraftMappingGenerateAttribute",
                 static (node, _) => node is MethodDeclarationSyntax,
                 static (attributeContext, cancellationToken) =>
+                    attributeContext.TargetNode is MethodDeclarationSyntax declaration
+                    && attributeContext.TargetSymbol is IMethodSymbol symbol
+                        ? new MappingMethodCandidate(
+                            declaration,
+                            symbol,
+                            attributeContext.SemanticModel
+                        )
+                        : null
+            )
+            .Where(static candidate => candidate is not null)
+            .Select(static (candidate, _) => candidate!);
+        var mappingMethodTemplates = mappingMethodCandidates
+            .Combine(queryExtensions)
+            .Select(
+                static (data, cancellationToken) =>
                     ProjectionTemplateBuilder.AnalyzeMappingMethod(
-                        attributeContext,
+                        data.Left.Declaration,
+                        data.Left.Symbol,
+                        data.Left.SemanticModel,
+                        data.Right,
                         cancellationToken
                     )
             )
@@ -176,6 +246,21 @@ public sealed class LinqraftSourceGenerator : IIncrementalGenerator
             generatedSources,
             static (output, sourceSet) =>
                 LinqraftSourceGenerator.AddGeneratedSources(output, sourceSet)
+        );
+        context.RegisterSourceOutput(
+            queryExtensions,
+            static (output, registry) =>
+            {
+                if (registry.Registrations.Length == 0)
+                {
+                    return;
+                }
+
+                output.AddSource(
+                    "Linqraft.QueryExtensions.g.cs",
+                    SupportSourceEmitter.CreateQueryExtensionsSource(registry)
+                );
+            }
         );
     }
 
@@ -335,4 +420,21 @@ public sealed class LinqraftSourceGenerator : IIncrementalGenerator
             _ => false,
         };
     }
+
+    private sealed record ProjectionInvocationCandidate(
+        InvocationExpressionSyntax Invocation,
+        SemanticModel SemanticModel
+    );
+
+    private sealed record MappingClassCandidate(
+        ClassDeclarationSyntax Declaration,
+        INamedTypeSymbol Symbol,
+        SemanticModel SemanticModel
+    );
+
+    private sealed record MappingMethodCandidate(
+        MethodDeclarationSyntax Declaration,
+        IMethodSymbol Symbol,
+        SemanticModel SemanticModel
+    );
 }
