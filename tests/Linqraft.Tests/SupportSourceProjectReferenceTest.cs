@@ -45,6 +45,64 @@ public sealed class SupportSourceProjectReferenceTest
         localProjection[0].CustomerName.ShouldBe("Ada");
         localProjection[0].QuantityTotal.ShouldBe(5);
     }
+
+    [Test]
+    public void Project_reference_dependency_preserves_external_property_types()
+    {
+        var projection = Orders
+            .AsTestQueryable()
+            .SelectExpr<ReferencedOrder, ReferencedOrderWithExternalTypesDto>(order => new
+            {
+                order.Id,
+                order.Customer,
+                order.Items,
+            })
+            .ToList();
+
+        projection.Count.ShouldBe(1);
+        projection[0].Id.ShouldBe(1);
+        projection[0].Customer.Name.ShouldBe("Ada");
+        projection[0].Items.Count.ShouldBe(2);
+
+        var dtoType = typeof(ReferencedOrderWithExternalTypesDto);
+        dtoType.GetProperty(nameof(ReferencedOrderWithExternalTypesDto.Customer))!.PropertyType.ShouldBe(
+            typeof(ReferencedCustomer)
+        );
+        dtoType.GetProperty(nameof(ReferencedOrderWithExternalTypesDto.Items))!.PropertyType.ShouldBe(
+            typeof(List<ReferencedOrderItem>)
+        );
+    }
+
+    [Test]
+    public void Project_reference_dependency_preserves_external_object_creation_types()
+    {
+        var projection = Orders
+            .AsTestQueryable()
+            .SelectExpr<ReferencedOrder, ReferencedOrderWithConstructedExternalTypesDto>(order => new
+            {
+                ClonedCustomer = new ReferencedCustomer { Name = order.Customer.Name },
+                ClonedItems = order.Items.Select(item => new ReferencedOrderItem
+                {
+                    Quantity = item.Quantity,
+                }),
+            })
+            .ToList();
+
+        projection.Count.ShouldBe(1);
+        projection[0].ClonedCustomer.Name.ShouldBe("Ada");
+        projection[0].ClonedItems.Select(item => item.Quantity).ShouldBe([2, 3]);
+
+        var dtoType = typeof(ReferencedOrderWithConstructedExternalTypesDto);
+        dtoType.GetProperty(nameof(ReferencedOrderWithConstructedExternalTypesDto.ClonedCustomer))!
+            .PropertyType.ShouldBe(typeof(ReferencedCustomer));
+        dtoType.GetProperty(nameof(ReferencedOrderWithConstructedExternalTypesDto.ClonedItems))!
+            .PropertyType.ShouldBe(typeof(IEnumerable<ReferencedOrderItem>));
+    }
+
 }
 
 public partial class ReferencedOrderFromCurrentProjectDto;
+
+public partial class ReferencedOrderWithExternalTypesDto;
+
+public partial class ReferencedOrderWithConstructedExternalTypesDto;
