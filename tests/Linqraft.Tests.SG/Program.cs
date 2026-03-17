@@ -61,7 +61,10 @@ public sealed class SourceGeneratorSmokeTests
         defaultDiagnostics.ShouldBeEmpty();
 
         var defaultGeneratedSources = GetGeneratedSourceMap(defaultDriver.GetRunResult());
-        defaultGeneratedSources.TryGetValue("Linqraft.GlobalUsings.g.cs", out var defaultGlobalUsing);
+        defaultGeneratedSources.TryGetValue(
+            "Linqraft.GlobalUsings.g.cs",
+            out var defaultGlobalUsing
+        );
         defaultGlobalUsing.ShouldNotBeNull();
         defaultGlobalUsing.ShouldContain("global using Linqraft;");
 
@@ -88,7 +91,11 @@ public sealed class SourceGeneratorSmokeTests
     {
         var driver = CreateDriver();
         var compilation = CreateCompilation(
-            [CreateProjectionTree(), CreateMarkerTree("global-using-duplicate"), CreateGlobalUsingTree()],
+            [
+                CreateProjectionTree(),
+                CreateMarkerTree("global-using-duplicate"),
+                CreateGlobalUsingTree(),
+            ],
             treatWarningsAsErrors: true
         );
 
@@ -107,9 +114,8 @@ public sealed class SourceGeneratorSmokeTests
             .ShouldBeEmpty();
 
         var generatedSources = GetGeneratedSourceMap(driver.GetRunResult());
-        generatedSources["Linqraft.GlobalUsings.g.cs"].ShouldContain(
-            "#pragma warning disable CS8933"
-        );
+        generatedSources["Linqraft.GlobalUsings.g.cs"]
+            .ShouldContain("#pragma warning disable CS8933");
     }
 
     [Test]
@@ -800,8 +806,7 @@ public sealed class SourceGeneratorSmokeTests
     private sealed class TestAnalyzerConfigOptionsProvider(
         bool usePrebuildExpression,
         bool useGlobalUsing
-    )
-        : AnalyzerConfigOptionsProvider
+    ) : AnalyzerConfigOptionsProvider
     {
         private readonly AnalyzerConfigOptions _empty = new TestAnalyzerConfigOptions(
             new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
