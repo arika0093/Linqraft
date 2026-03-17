@@ -237,6 +237,17 @@ public sealed class LinqraftSourceGenerator : IIncrementalGenerator
             );
         }
 
+        if (context.Configuration.GlobalUsing)
+        {
+            generatedSources.Add(
+                new GeneratedSourceFileModel
+                {
+                    HintName = "Linqraft.GlobalUsings.g.cs",
+                    SourceText = SourceWriters.WriteGlobalUsingsUnit(),
+                }
+            );
+        }
+
         return new GeneratedSourceSetModel
         {
             Sources = generatedSources

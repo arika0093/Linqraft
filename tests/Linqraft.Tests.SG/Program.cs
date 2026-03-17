@@ -44,6 +44,75 @@ public sealed class SourceGeneratorSmokeTests
     }
 
     [Test]
+    public void Generator_emits_global_using_by_default_and_can_opt_out()
+    {
+        var defaultDriver = CreateDriver();
+        var defaultCompilation = CreateCompilation(
+            CreateProjectionTree(),
+            CreateMarkerTree("global-using-default")
+        );
+
+        defaultDriver = defaultDriver.RunGeneratorsAndUpdateCompilation(
+            defaultCompilation,
+            out _,
+            out var defaultDiagnostics
+        );
+
+        defaultDiagnostics.ShouldBeEmpty();
+
+        var defaultGeneratedSources = GetGeneratedSourceMap(defaultDriver.GetRunResult());
+        defaultGeneratedSources.TryGetValue("Linqraft.GlobalUsings.g.cs", out var defaultGlobalUsing);
+        defaultGlobalUsing.ShouldNotBeNull();
+        defaultGlobalUsing.ShouldContain("global using Linqraft;");
+
+        var optOutDriver = CreateDriver(useGlobalUsing: false);
+        var optOutCompilation = CreateCompilation(
+            CreateProjectionTree(),
+            CreateMarkerTree("global-using-opt-out")
+        );
+
+        optOutDriver = optOutDriver.RunGeneratorsAndUpdateCompilation(
+            optOutCompilation,
+            out _,
+            out var optOutDiagnostics
+        );
+
+        optOutDiagnostics.ShouldBeEmpty();
+
+        var optOutGeneratedSources = GetGeneratedSourceMap(optOutDriver.GetRunResult());
+        optOutGeneratedSources.ContainsKey("Linqraft.GlobalUsings.g.cs").ShouldBeFalse();
+    }
+
+    [Test]
+    public void Generator_suppresses_duplicate_global_using_warning_when_warnings_are_errors()
+    {
+        var driver = CreateDriver();
+        var compilation = CreateCompilation(
+            [CreateProjectionTree(), CreateMarkerTree("global-using-duplicate"), CreateGlobalUsingTree()],
+            treatWarningsAsErrors: true
+        );
+
+        driver = driver.RunGeneratorsAndUpdateCompilation(
+            compilation,
+            out var outputCompilation,
+            out var diagnostics
+        );
+
+        diagnostics.ShouldBeEmpty();
+        outputCompilation
+            .GetDiagnostics()
+            .Where(diagnostic =>
+                diagnostic.Severity == DiagnosticSeverity.Error && diagnostic.Id != "CS9137"
+            )
+            .ShouldBeEmpty();
+
+        var generatedSources = GetGeneratedSourceMap(driver.GetRunResult());
+        generatedSources["Linqraft.GlobalUsings.g.cs"].ShouldContain(
+            "#pragma warning disable CS8933"
+        );
+    }
+
+    [Test]
     public void Unrelated_syntax_changes_reuse_cached_incremental_outputs()
     {
         var driver = CreateDriver();
@@ -290,7 +359,10 @@ public sealed class SourceGeneratorSmokeTests
         generatedSourceText.ShouldNotContain("global::SmokeFixture.ExternalCustomer");
     }
 
-    private static GeneratorDriver CreateDriver(bool usePrebuildExpression = true)
+    private static GeneratorDriver CreateDriver(
+        bool usePrebuildExpression = true,
+        bool useGlobalUsing = true
+    )
     {
         var parseOptions = new CSharpParseOptions(LanguageVersion.Preview);
         var generator = new LinqraftSourceGenerator().AsSourceGenerator();
@@ -298,7 +370,10 @@ public sealed class SourceGeneratorSmokeTests
             new[] { generator },
             additionalTexts: Array.Empty<AdditionalText>(),
             parseOptions: parseOptions,
-            optionsProvider: new TestAnalyzerConfigOptionsProvider(usePrebuildExpression),
+            optionsProvider: new TestAnalyzerConfigOptionsProvider(
+                usePrebuildExpression,
+                useGlobalUsing
+            ),
             driverOptions: new GeneratorDriverOptions(
                 IncrementalGeneratorOutputKind.None,
                 trackIncrementalGeneratorSteps: true
@@ -306,7 +381,10 @@ public sealed class SourceGeneratorSmokeTests
         );
     }
 
-    private static CSharpCompilation CreateCompilation(params SyntaxTree[] syntaxTrees)
+    private static CSharpCompilation CreateCompilation(
+        IReadOnlyList<SyntaxTree> syntaxTrees,
+        bool treatWarningsAsErrors = false
+    )
     {
         return CSharpCompilation.Create(
             assemblyName: "Linqraft.Tests.SG.SmokeFixture",
@@ -314,9 +392,17 @@ public sealed class SourceGeneratorSmokeTests
             references: GetMetadataReferences(),
             options: new CSharpCompilationOptions(
                 OutputKind.DynamicallyLinkedLibrary,
-                nullableContextOptions: NullableContextOptions.Enable
+                nullableContextOptions: NullableContextOptions.Enable,
+                generalDiagnosticOption: treatWarningsAsErrors
+                    ? ReportDiagnostic.Error
+                    : ReportDiagnostic.Default
             )
         );
+    }
+
+    private static CSharpCompilation CreateCompilation(params SyntaxTree[] syntaxTrees)
+    {
+        return CreateCompilation((IReadOnlyList<SyntaxTree>)syntaxTrees);
     }
 
     private static SyntaxTree CreateProjectionTree()
@@ -409,6 +495,19 @@ public sealed class SourceGeneratorSmokeTests
             SourceText.From(source),
             new CSharpParseOptions(LanguageVersion.Preview),
             path: "BuildMarker.cs"
+        );
+    }
+
+    private static SyntaxTree CreateGlobalUsingTree()
+    {
+        const string source = """
+            global using Linqraft;
+            """;
+
+        return CSharpSyntaxTree.ParseText(
+            SourceText.From(source),
+            new CSharpParseOptions(LanguageVersion.Preview),
+            path: "ManualGlobalUsing.cs"
         );
     }
 
@@ -698,7 +797,10 @@ public sealed class SourceGeneratorSmokeTests
             .DistinctBy(reference => reference.Display, StringComparer.Ordinal);
     }
 
-    private sealed class TestAnalyzerConfigOptionsProvider(bool usePrebuildExpression)
+    private sealed class TestAnalyzerConfigOptionsProvider(
+        bool usePrebuildExpression,
+        bool useGlobalUsing
+    )
         : AnalyzerConfigOptionsProvider
     {
         private readonly AnalyzerConfigOptions _empty = new TestAnalyzerConfigOptions(
@@ -715,6 +817,7 @@ public sealed class SourceGeneratorSmokeTests
                 ["build_property.LinqraftUsePrebuildExpression"] = usePrebuildExpression
                     ? "true"
                     : "false",
+                ["build_property.LinqraftGlobalUsing"] = useGlobalUsing ? "true" : "false",
             }
         );
 

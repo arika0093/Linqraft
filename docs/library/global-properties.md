@@ -35,6 +35,9 @@ Linqraft supports several MSBuild properties to customize code generation global
     <!-- Improves performance by avoiding repeated lambda-to-expression-tree conversion -->
     <!-- Only applies to IQueryable with named/predefined/explicit DTO types (not anonymous types) -->
     <LinqraftUsePrebuildExpression>false</LinqraftUsePrebuildExpression>
+
+    <!-- Add 'global using Linqraft;' to generated code for compatibility with v0.8.1 and earlier -->
+    <LinqraftGlobalUsing>true</LinqraftGlobalUsing>
   </PropertyGroup>
 </Project>
 ```
@@ -153,6 +156,20 @@ var results = dbContext.Orders
 **Performance Benefit:**
 
 Eliminates the runtime overhead of converting lambda expressions to expression trees for IQueryable operations. The expression tree is built once at the field declaration and reused for all invocations.
+
+### LinqraftGlobalUsing
+
+Controls whether generated code includes `global using Linqraft;`.
+
+```xml
+<!-- Add the global using (default) -->
+<LinqraftGlobalUsing>true</LinqraftGlobalUsing>
+
+<!-- Opt out when you want to manage imports yourself -->
+<LinqraftGlobalUsing>false</LinqraftGlobalUsing>
+```
+
+This is enabled by default to preserve compatibility with Linqraft v0.8.1 and earlier.
 
 ## Viewing Generated Code
 

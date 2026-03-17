@@ -36,6 +36,8 @@ internal sealed record LinqraftConfiguration
 
     public bool UsePrebuildExpression { get; init; }
 
+    public bool GlobalUsing { get; init; } = true;
+
     public static LinqraftConfiguration Parse(AnalyzerConfigOptions options)
     {
         return new LinqraftConfiguration
@@ -72,6 +74,7 @@ internal sealed record LinqraftConfiguration
                 "build_property.LinqraftUsePrebuildExpression",
                 false
             ),
+            GlobalUsing = GetBool(options, "build_property.LinqraftGlobalUsing", true),
         };
     }
 
