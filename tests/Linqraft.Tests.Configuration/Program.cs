@@ -150,12 +150,13 @@ public sealed class GlobalPropertyConfigurationTests
             ".generated"
         );
 
-        var globalUsingSource = Directory
+        var globalUsingSources = Directory
             .GetFiles(generatedRoot, "Linqraft.GlobalUsings.g.cs", SearchOption.AllDirectories)
             .Select(File.ReadAllText)
-            .Single();
+            .ToArray();
 
-        globalUsingSource.ShouldContain("global using Linqraft;");
+        globalUsingSources.ShouldNotBeEmpty();
+        globalUsingSources.ShouldAllBe(source => source.Contains("global using Linqraft;"));
     }
 
     [Test]
