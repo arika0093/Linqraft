@@ -1,4 +1,7 @@
 <Project>
+  <PropertyGroup>
+    <NoWarn>$(NoWarn);RSEXPERIMENTAL002</NoWarn>
+  </PropertyGroup>
   <ItemGroup>
     <Compile Include="$(MSBuildThisFileDirectory)..\contentFiles\cs\netstandard2.0\Linqraft.Core\**\*.cs" />
     <Compile Update="@(Compile)">

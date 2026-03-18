@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.IO;
 using System.Linq;
 using System.Runtime.CompilerServices;
@@ -138,6 +139,131 @@ public sealed class GlobalPropertyConfigurationTests
         Directory
             .GetFiles(generatedRoot, "Linqraft.Declarations.g.cs", SearchOption.AllDirectories)
             .ShouldNotBeEmpty();
+    }
+
+    [Test]
+    public void Source_only_Linqraft_Core_package_can_be_consumed_by_another_generator_project()
+    {
+        var repositoryRoot = GetRepositoryRoot();
+        var tempRoot = Path.Combine(
+            Path.GetTempPath(),
+            "linqraft-core-package-test",
+            Guid.NewGuid().ToString("N")
+        );
+        Directory.CreateDirectory(tempRoot);
+
+        try
+        {
+            var packageRoot = Path.Combine(tempRoot, "packages");
+            var globalPackagesRoot = Path.Combine(tempRoot, "global-packages");
+            var projectRoot = Path.Combine(tempRoot, "src", "ConsumerGenerator");
+            Directory.CreateDirectory(packageRoot);
+            Directory.CreateDirectory(globalPackagesRoot);
+            Directory.CreateDirectory(projectRoot);
+
+            RunDotNetCommand(
+                [
+                    "pack",
+                    Path.Combine(repositoryRoot, "src", "Linqraft.Core", "Linqraft.Core.csproj"),
+                    "-c",
+                    "Debug",
+                    "-o",
+                    packageRoot,
+                ],
+                repositoryRoot
+            );
+
+            var packagePath = Directory.GetFiles(packageRoot, "Linqraft.Core.*.nupkg").Single();
+            var packageVersion = Path
+                .GetFileNameWithoutExtension(packagePath)["Linqraft.Core.".Length..];
+
+            var nuGetConfigPath = Path.Combine(tempRoot, "NuGet.Config");
+            File.WriteAllText(
+                nuGetConfigPath,
+                $$"""
+                <?xml version="1.0" encoding="utf-8"?>
+                <configuration>
+                  <packageSources>
+                    <clear />
+                    <add key="local" value="{{packageRoot}}" />
+                    <add key="nuget.org" value="https://api.nuget.org/v3/index.json" />
+                  </packageSources>
+                </configuration>
+                """
+            );
+
+            File.WriteAllText(
+                Path.Combine(projectRoot, "ConsumerGenerator.csproj"),
+                $$"""
+                <Project Sdk="Microsoft.NET.Sdk">
+                  <PropertyGroup>
+                    <TargetFramework>netstandard2.0</TargetFramework>
+                    <LangVersion>latest</LangVersion>
+                    <Nullable>enable</Nullable>
+                    <IsRoslynComponent>true</IsRoslynComponent>
+                    <AnalyzerLanguage>cs</AnalyzerLanguage>
+                    <EnforceExtendedAnalyzerRules>true</EnforceExtendedAnalyzerRules>
+                  </PropertyGroup>
+                  <ItemGroup>
+                    <PackageReference Include="Linqraft.Core" Version="[{{packageVersion}}]" />
+                  </ItemGroup>
+                </Project>
+                """
+            );
+
+            File.WriteAllText(
+                Path.Combine(projectRoot, "MyGenerator.cs"),
+                """
+                using Linqraft.Core;
+                using Linqraft.Core.Configuration;
+                using Microsoft.CodeAnalysis;
+
+                namespace ConsumerGenerator;
+
+                [Generator(LanguageNames.CSharp)]
+                public sealed class MyGenerator : LinqraftGeneratorCore<MyGeneratorOptions>;
+
+                public sealed class MyGeneratorOptions : LinqraftGeneratorOptionsCore
+                {
+                    public override string SupportNamespace => "ConsumerSupport";
+                }
+                """
+            );
+
+            RunDotNetCommand(
+                [
+                    "build",
+                    Path.Combine(projectRoot, "ConsumerGenerator.csproj"),
+                    "--configfile",
+                    nuGetConfigPath,
+                    "--verbosity",
+                    "minimal",
+                ],
+                projectRoot,
+                ("NUGET_PACKAGES", globalPackagesRoot)
+            );
+
+            File.Exists(
+                    Path.Combine(projectRoot, "bin", "Debug", "netstandard2.0", "ConsumerGenerator.dll")
+                )
+                .ShouldBeTrue();
+
+            var assetsJsonPath = Path.Combine(projectRoot, "obj", "project.assets.json");
+            File.Exists(assetsJsonPath).ShouldBeTrue();
+            var assetsJson = File.ReadAllText(assetsJsonPath);
+            assetsJson.Contains($"\"Linqraft.Core/{packageVersion}\"", StringComparison.Ordinal)
+                .ShouldBeTrue();
+            assetsJson.Contains("\"PolySharp/", StringComparison.Ordinal).ShouldBeTrue();
+            assetsJson.Contains("\"Microsoft.CodeAnalysis.CSharp/", StringComparison.Ordinal)
+                .ShouldBeTrue();
+        }
+        finally
+        {
+            if (Directory.Exists(tempRoot))
+            {
+                Directory.Delete(tempRoot, recursive: true);
+            }
+        }
     }
 
     [Test]
@@ -611,6 +737,46 @@ public sealed class GlobalPropertyConfigurationTests
         }
 
         throw new DirectoryNotFoundException("Could not find the repository root for Linqraft.");
+    }
+
+    private static void RunDotNetCommand(
+        IReadOnlyList<string> arguments,
+        string workingDirectory,
+        params (string Key, string Value)[] environmentVariables
+    )
+    {
+        using var process = new Process
+        {
+            StartInfo = new ProcessStartInfo
+            {
+                FileName = "dotnet",
+                WorkingDirectory = workingDirectory,
+                RedirectStandardOutput = true,
+                RedirectStandardError = true,
+            },
+        };
+
+        foreach (var (key, value) in environmentVariables)
+        {
+            process.StartInfo.Environment[key] = value;
+        }
+
+        foreach (var argument in arguments)
+        {
+            process.StartInfo.ArgumentList.Add(argument);
+        }
+
+        process.Start();
+        var standardOutput = process.StandardOutput.ReadToEnd();
+        var standardError = process.StandardError.ReadToEnd();
+        process.WaitForExit();
+
+        if (process.ExitCode != 0)
+        {
+            throw new InvalidOperationException(
+                $"dotnet {string.Join(" ", arguments)} failed with exit code {process.ExitCode}.{Environment.NewLine}{standardOutput}{Environment.NewLine}{standardError}"
+            );
+        }
     }
 
     private static int CountLeadingSpaces(string value)

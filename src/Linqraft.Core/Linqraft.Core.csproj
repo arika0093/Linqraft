@@ -3,17 +3,15 @@
     <TargetFramework>netstandard2.0</TargetFramework>
     <LangVersion>latest</LangVersion>
     <Nullable>enable</Nullable>
-    <NoWarn>$(NoWarn);RSEXPERIMENTAL002</NoWarn>
+    <NoWarn>$(NoWarn);RSEXPERIMENTAL002;NU5128</NoWarn>
     <IncludeBuildOutput>false</IncludeBuildOutput>
     <DevelopmentDependency>true</DevelopmentDependency>
     <GeneratePackageOnBuild>true</GeneratePackageOnBuild>
-    <SuppressDependenciesWhenPacking>true</SuppressDependenciesWhenPacking>
   </PropertyGroup>
 
   <ItemGroup>
     <PackageReference Include="Microsoft.CodeAnalysis.CSharp" Version="4.11.0" />
     <PackageReference Include="PolySharp" Version="1.*" Condition="!Exists('packages.config')">
-      <PrivateAssets>all</PrivateAssets>
       <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
     </PackageReference>
   </ItemGroup>
@@ -28,4 +26,67 @@
       Visible="false"
     />
   </ItemGroup>
+
+  <UsingTask
+    TaskName="RewritePackedNuspec"
+    TaskFactory="RoslynCodeTaskFactory"
+    AssemblyFile="$(MSBuildToolsPath)/Microsoft.Build.Tasks.Core.dll"
+  >
+    <ParameterGroup>
+      <PackagePath ParameterType="System.String" Required="true" />
+      <TemplatePath ParameterType="System.String" Required="true" />
+    </ParameterGroup>
+    <Task>
+      <Using Namespace="System" />
+      <Using Namespace="System.IO" />
+      <Using Namespace="System.IO.Compression" />
+      <Using Namespace="System.Linq" />
+      <Using Namespace="System.Text.RegularExpressions" />
+      <Code Type="Fragment" Language="cs"><![CDATA[
+        var template = File.ReadAllText(TemplatePath);
+        using var stream = new FileStream(PackagePath, FileMode.Open, FileAccess.ReadWrite, FileShare.None);
+        using var archive = new ZipArchive(stream, ZipArchiveMode.Update);
+        var nuspecEntry = archive.Entries.FirstOrDefault(entry =>
+            entry.FullName.EndsWith(".nuspec", StringComparison.OrdinalIgnoreCase));
+
+        if (nuspecEntry is null)
+        {
+            throw new InvalidOperationException($"Could not find a .nuspec entry in '{PackagePath}'.");
+        }
+
+        string currentNuspec;
+        using (var reader = new StreamReader(nuspecEntry.Open()))
+        {
+            currentNuspec = reader.ReadToEnd();
+        }
+
+        var versionMatch = Regex.Match(
+            currentNuspec,
+            @"<version>(?<value>[^<]+)</version>",
+            RegexOptions.CultureInvariant);
+        var version = versionMatch.Success ? versionMatch.Groups["value"].Value : null;
+
+        if (string.IsNullOrEmpty(version))
+        {
+            throw new InvalidOperationException($"Could not determine the package version from '{PackagePath}'.");
+        }
+
+        var updatedNuspec = template.Replace("$version$", version);
+        var nuspecPath = nuspecEntry.FullName;
+        nuspecEntry.Delete();
+
+        var replacementEntry = archive.CreateEntry(nuspecPath, CompressionLevel.Optimal);
+        using var writer = new StreamWriter(replacementEntry.Open());
+        writer.Write(updatedNuspec);
+      ]]></Code>
+    </Task>
+  </UsingTask>
+
+  <Target Name="RewritePackedLinqraftCoreNuspec" AfterTargets="Pack">
+    <RewritePackedNuspec
+      PackagePath="%(NuGetPackOutput.Identity)"
+      TemplatePath="$(MSBuildProjectDirectory)/Linqraft.Core.nuspec"
+      Condition="'%(NuGetPackOutput.Extension)' == '.nupkg'"
+    />
+  </Target>
 </Project>
