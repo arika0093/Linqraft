@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Linq;
 
 namespace Linqraft.Tests.EFCore;
 
@@ -20,6 +21,12 @@ public sealed class EfOrder
     public List<EfPaymentBase> Payments { get; set; } = [];
 
     public EfShipment? Shipment { get; set; }
+
+    public string? FirstLargeItemProductName => this
+        .Items.Where(item => item.Quantity >= 2)
+        .OrderBy(item => item.Id)
+        .Select(item => item.ProductName)
+        .FirstOrDefault();
 }
 
 public sealed class EfCustomer

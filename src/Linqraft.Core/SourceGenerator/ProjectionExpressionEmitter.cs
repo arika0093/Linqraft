@@ -83,6 +83,11 @@ internal sealed class ProjectionExpressionEmitter
             return captureReplacement;
         }
 
+        if (TryEmitProjectionHook(expression, out var hookText))
+        {
+            return hookText;
+        }
+
         if (TryEmitConditionalChain(expression, out var conditionalText))
         {
             return conditionalText;
@@ -329,6 +334,11 @@ internal sealed class ProjectionExpressionEmitter
 
     private string EmitInvocation(InvocationExpressionSyntax expression)
     {
+        if (TryEmitProjectableHook(expression, out var projectable))
+        {
+            return projectable;
+        }
+
         return expression.Expression switch
         {
             MemberAccessExpressionSyntax memberAccess => memberAccess
@@ -795,6 +805,11 @@ internal sealed class ProjectionExpressionEmitter
         string receiver
     )
     {
+        if (TryEmitProjectableHook(invocation, receiver, out var projectable))
+        {
+            return projectable;
+        }
+
         return methodName.Identifier.ValueText switch
         {
             var name when name == _generatorOptions.SelectExprMethodName =>
@@ -807,6 +822,152 @@ internal sealed class ProjectionExpressionEmitter
                 ? rewritten
                 : $"{receiver}.{EmitSimpleName(methodName)}{EmitArgumentList(invocation.ArgumentList)}",
         };
+    }
+
+    private bool TryEmitProjectionHook(ExpressionSyntax expression, out string rewritten)
+    {
+        return TryEmitLeftJoinHook(expression, out rewritten)
+            || TryEmitProjectableHook(expression, out rewritten);
+    }
+
+    private bool TryEmitLeftJoinHook(ExpressionSyntax expression, out string rewritten)
+    {
+        rewritten = string.Empty;
+        if (!ContainsProjectionHook(expression, LinqraftProjectionHookKind.LeftJoin))
+        {
+            return false;
+        }
+
+        return TryBuildLeftJoinConditional(expression, value => value, expression, out rewritten);
+    }
+
+    private bool TryBuildLeftJoinConditional(
+        ExpressionSyntax expression,
+        global::System.Func<string, string> applyTail,
+        ExpressionSyntax rootLeftJoinExpression,
+        out string rewritten
+    )
+    {
+        switch (expression)
+        {
+            case InvocationExpressionSyntax invocation when IsProjectionHookInvocation(
+                invocation,
+                LinqraftProjectionHookKind.LeftJoin
+            ):
+            {
+                var receiverExpression = GetHookReceiverExpression(invocation);
+                if (receiverExpression is null)
+                {
+                    rewritten = string.Empty;
+                    return false;
+                }
+
+                var receiver = Emit(receiverExpression);
+                var access = applyTail(receiver);
+                var expressionType = GetExpressionType(rootLeftJoinExpression);
+                var expressionTypeName = GetExpressionTypeName(
+                    rootLeftJoinExpression,
+                    expressionType,
+                    out _
+                );
+                var fallback = CreateLeftJoinFallback(rootLeftJoinExpression, expressionTypeName);
+                if (ContainsLineBreak(access) || ContainsLineBreak(fallback))
+                {
+                    rewritten = string.Join(
+                        "\n",
+                        [
+                            $"{receiver} != null",
+                            IndentAllLines(AppendValueWithContinuation("? ", access)),
+                            IndentAllLines(AppendValueWithContinuation(": ", fallback)),
+                        ]
+                    );
+                }
+                else
+                {
+                    rewritten = $"{receiver} != null ? {access} : {fallback}";
+                }
+
+                return true;
+            }
+            case MemberAccessExpressionSyntax memberAccess
+                when ContainsProjectionHook(memberAccess.Expression, LinqraftProjectionHookKind.LeftJoin):
+                return TryBuildLeftJoinConditional(
+                    memberAccess.Expression,
+                    value => applyTail($"{value}.{EmitSimpleName(memberAccess.Name)}"),
+                    rootLeftJoinExpression,
+                    out rewritten
+                );
+            case InvocationExpressionSyntax invocation
+                when invocation.Expression is MemberAccessExpressionSyntax memberInvocation
+                    && ContainsProjectionHook(
+                        memberInvocation.Expression,
+                        LinqraftProjectionHookKind.LeftJoin
+                    ):
+                return TryBuildLeftJoinConditional(
+                    memberInvocation.Expression,
+                    value =>
+                        applyTail(
+                            EmitInvocationFromReceiver(invocation, memberInvocation.Name, value)
+                        ),
+                    rootLeftJoinExpression,
+                    out rewritten
+                );
+            case ElementAccessExpressionSyntax elementAccess
+                when ContainsProjectionHook(
+                    elementAccess.Expression,
+                    LinqraftProjectionHookKind.LeftJoin
+                ):
+                return TryBuildLeftJoinConditional(
+                    elementAccess.Expression,
+                    value => applyTail($"{value}{EmitBracketArguments(elementAccess.ArgumentList)}"),
+                    rootLeftJoinExpression,
+                    out rewritten
+                );
+            default:
+                rewritten = string.Empty;
+                return false;
+        }
+    }
+
+    private string CreateLeftJoinFallback(ExpressionSyntax expression, string expressionTypeName)
+    {
+        var expressionType = GetExpressionType(expression);
+        if (ShouldUseCollectionFallback(expression, expressionType))
+        {
+            return CreateEmptyCollectionFallback(expressionTypeName);
+        }
+
+        return expressionType?.IsReferenceType == true || expressionType?.NullableAnnotation == NullableAnnotation.Annotated
+            ? "null"
+            : $"default({expressionTypeName})";
+    }
+
+    private bool TryEmitProjectableHook(ExpressionSyntax expression, out string rewritten)
+    {
+        rewritten = string.Empty;
+        return expression is InvocationExpressionSyntax invocation
+            && TryEmitProjectableHook(invocation, overrideReceiver: null, out rewritten);
+    }
+
+    private bool TryEmitProjectableHook(
+        InvocationExpressionSyntax invocation,
+        string? overrideReceiver,
+        out string rewritten
+    )
+    {
+        rewritten = string.Empty;
+        if (!IsProjectionHookInvocation(invocation, LinqraftProjectionHookKind.Projectable))
+        {
+            return false;
+        }
+
+        if (!TryExpandProjectableInvocation(invocation, overrideReceiver, out var expanded))
+        {
+            return false;
+        }
+
+        rewritten = Emit(expanded);
+        return true;
     }
 
     private bool TryEmitExtensionInvocation(
@@ -839,6 +1000,268 @@ internal sealed class ProjectionExpressionEmitter
             arguments
         );
         return true;
+    }
+
+    private bool TryExpandProjectableInvocation(
+        InvocationExpressionSyntax invocation,
+        string? overrideReceiver,
+        out ExpressionSyntax expanded
+    )
+    {
+        var targetExpression = GetHookReceiverExpression(invocation);
+        if (targetExpression is null)
+        {
+            expanded = invocation;
+            return false;
+        }
+
+        if (TryExpandProjectableProperty(targetExpression, overrideReceiver, out expanded))
+        {
+            return true;
+        }
+
+        if (targetExpression is InvocationExpressionSyntax targetInvocation)
+        {
+            return TryExpandProjectableMethod(targetInvocation, overrideReceiver, out expanded);
+        }
+
+        expanded = invocation;
+        return false;
+    }
+
+    private bool TryExpandProjectableProperty(
+        ExpressionSyntax targetExpression,
+        string? overrideReceiver,
+        out ExpressionSyntax expanded
+    )
+    {
+        if (!BelongsToSemanticModel(targetExpression))
+        {
+            expanded = targetExpression;
+            return false;
+        }
+
+        var propertySymbol =
+            _semanticModel.GetSymbolInfo(targetExpression).Symbol as IPropertySymbol
+            ?? _semanticModel.GetSymbolInfo(targetExpression).CandidateSymbols.OfType<IPropertySymbol>()
+                .FirstOrDefault();
+        if (propertySymbol?.IsStatic == true)
+        {
+            expanded = targetExpression;
+            return false;
+        }
+
+        var propertySyntax = propertySymbol?.DeclaringSyntaxReferences.FirstOrDefault()?.GetSyntax()
+            as PropertyDeclarationSyntax;
+        var bodyExpression = GetProjectableBodyExpression(propertySyntax);
+        if (bodyExpression is null)
+        {
+            expanded = targetExpression;
+            return false;
+        }
+
+        var declarationModel = _semanticModel.Compilation.GetSemanticModel(bodyExpression.SyntaxTree);
+        var receiverExpression =
+            overrideReceiver is null
+                ? GetProjectableReceiverExpression(targetExpression)
+                : SyntaxFactory.ParseExpression(overrideReceiver);
+        var rewriter = new ProjectableInliningRewriter(
+            declarationModel,
+            propertySymbol!.ContainingType,
+            receiverExpression,
+            parameterBindings: null
+        );
+        expanded =
+            (ExpressionSyntax?)rewriter.Visit(bodyExpression.WithoutTrivia()) ?? bodyExpression;
+        return true;
+    }
+
+    private bool TryExpandProjectableMethod(
+        InvocationExpressionSyntax targetInvocation,
+        string? overrideReceiver,
+        out ExpressionSyntax expanded
+    )
+    {
+        if (!BelongsToSemanticModel(targetInvocation))
+        {
+            expanded = targetInvocation;
+            return false;
+        }
+
+        var methodSymbol =
+            _semanticModel.GetSymbolInfo(targetInvocation).Symbol as IMethodSymbol
+            ?? _semanticModel.GetSymbolInfo(targetInvocation).CandidateSymbols.OfType<IMethodSymbol>()
+                .FirstOrDefault();
+        if (methodSymbol is null || methodSymbol.IsStatic)
+        {
+            expanded = targetInvocation;
+            return false;
+        }
+
+        var methodSyntax = methodSymbol.DeclaringSyntaxReferences.FirstOrDefault()?.GetSyntax()
+            as MethodDeclarationSyntax;
+        var bodyExpression = GetProjectableBodyExpression(methodSyntax);
+        if (bodyExpression is null)
+        {
+            expanded = targetInvocation;
+            return false;
+        }
+
+        var declarationModel = _semanticModel.Compilation.GetSemanticModel(bodyExpression.SyntaxTree);
+        var receiverExpression =
+            overrideReceiver is null
+                ? GetProjectableReceiverExpression(targetInvocation)
+                : SyntaxFactory.ParseExpression(overrideReceiver);
+        var parameterBindings = BuildProjectableParameterBindings(
+            targetInvocation,
+            methodSymbol,
+            declarationModel
+        );
+        var rewriter = new ProjectableInliningRewriter(
+            declarationModel,
+            methodSymbol.ContainingType,
+            receiverExpression,
+            parameterBindings
+        );
+        expanded =
+            (ExpressionSyntax?)rewriter.Visit(bodyExpression.WithoutTrivia()) ?? bodyExpression;
+        return true;
+    }
+
+    private static ExpressionSyntax? GetProjectableBodyExpression(PropertyDeclarationSyntax? property)
+    {
+        if (property is null)
+        {
+            return null;
+        }
+
+        if (property.ExpressionBody is not null)
+        {
+            return property.ExpressionBody.Expression;
+        }
+
+        var getter = property.AccessorList?.Accessors.FirstOrDefault(accessor =>
+            accessor.IsKind(SyntaxKind.GetAccessorDeclaration)
+        );
+        return GetProjectableBodyExpression(getter);
+    }
+
+    private static ExpressionSyntax? GetProjectableBodyExpression(MethodDeclarationSyntax? method)
+    {
+        if (method is null)
+        {
+            return null;
+        }
+
+        if (method.ExpressionBody is not null)
+        {
+            return method.ExpressionBody.Expression;
+        }
+
+        return method.Body?.Statements.OfType<ReturnStatementSyntax>().Select(statement => statement.Expression)
+            .FirstOrDefault(expression => expression is not null);
+    }
+
+    private static ExpressionSyntax? GetProjectableBodyExpression(AccessorDeclarationSyntax? accessor)
+    {
+        if (accessor is null)
+        {
+            return null;
+        }
+
+        if (accessor.ExpressionBody is not null)
+        {
+            return accessor.ExpressionBody.Expression;
+        }
+
+        return accessor.Body?.Statements.OfType<ReturnStatementSyntax>().Select(statement => statement.Expression)
+            .FirstOrDefault(expression => expression is not null);
+    }
+
+    private Dictionary<ISymbol, ExpressionSyntax> BuildProjectableParameterBindings(
+        InvocationExpressionSyntax invocation,
+        IMethodSymbol methodSymbol,
+        SemanticModel declarationModel
+    )
+    {
+        var bindings = new Dictionary<ISymbol, ExpressionSyntax>(SymbolEqualityComparer.Default);
+        Dictionary<string, ISymbol> parameterSyntaxByName;
+        if (
+            methodSymbol.DeclaringSyntaxReferences.FirstOrDefault()?.GetSyntax()
+            is MethodDeclarationSyntax methodSyntax
+        )
+        {
+            parameterSyntaxByName = methodSyntax.ParameterList.Parameters.ToDictionary(
+                parameter => parameter.Identifier.ValueText,
+                parameter => (ISymbol)declarationModel.GetDeclaredSymbol(parameter)!,
+                global::System.StringComparer.Ordinal
+            );
+        }
+        else
+        {
+            parameterSyntaxByName = new Dictionary<string, ISymbol>(
+                global::System.StringComparer.Ordinal
+            );
+        }
+
+        for (var index = 0; index < invocation.ArgumentList.Arguments.Count; index++)
+        {
+            var argument = invocation.ArgumentList.Arguments[index];
+            var parameterName =
+                argument.NameColon?.Name.Identifier.ValueText
+                ?? (index < methodSymbol.Parameters.Length ? methodSymbol.Parameters[index].Name : null);
+            if (
+                parameterName is null
+                || !parameterSyntaxByName.TryGetValue(parameterName, out var parameterSymbol)
+            )
+            {
+                continue;
+            }
+
+            bindings[parameterSymbol] = argument.Expression.WithoutTrivia();
+        }
+
+        return bindings;
+    }
+
+    private static ExpressionSyntax? GetProjectableReceiverExpression(ExpressionSyntax expression)
+    {
+        return expression switch
+        {
+            MemberAccessExpressionSyntax memberAccess => memberAccess.Expression.WithoutTrivia(),
+            InvocationExpressionSyntax invocation
+                when invocation.Expression is MemberAccessExpressionSyntax memberAccess =>
+                memberAccess.Expression.WithoutTrivia(),
+            _ => null,
+        };
+    }
+
+    private bool IsProjectionHookInvocation(
+        InvocationExpressionSyntax invocation,
+        LinqraftProjectionHookKind kind
+    )
+    {
+        var hook = _generatorOptions.FindProjectionHook(GetInvocationName(invocation.Expression));
+        return hook?.Kind == kind;
+    }
+
+    private bool ContainsProjectionHook(
+        ExpressionSyntax expression,
+        LinqraftProjectionHookKind kind
+    )
+    {
+        return expression.DescendantNodesAndSelf().OfType<InvocationExpressionSyntax>().Any(invocation =>
+            IsProjectionHookInvocation(invocation, kind)
+        );
+    }
+
+    private static ExpressionSyntax? GetHookReceiverExpression(InvocationExpressionSyntax invocation)
+    {
+        return invocation.Expression switch
+        {
+            MemberAccessExpressionSyntax memberAccess => memberAccess.Expression,
+            _ => null,
+        };
     }
 
     private bool TryEmitCaptureReplacement(ExpressionSyntax expression, out string rewritten)
@@ -1564,6 +1987,92 @@ internal sealed class ProjectionExpressionEmitter
         }
 
         return false;
+    }
+
+    private sealed class ProjectableInliningRewriter : CSharpSyntaxRewriter
+    {
+        private readonly SemanticModel _semanticModel;
+        private readonly INamedTypeSymbol _declaringType;
+        private readonly ExpressionSyntax? _receiverExpression;
+        private readonly IReadOnlyDictionary<ISymbol, ExpressionSyntax> _parameterBindings;
+
+        public ProjectableInliningRewriter(
+            SemanticModel semanticModel,
+            INamedTypeSymbol declaringType,
+            ExpressionSyntax? receiverExpression,
+            IReadOnlyDictionary<ISymbol, ExpressionSyntax>? parameterBindings
+        )
+        {
+            _semanticModel = semanticModel;
+            _declaringType = declaringType;
+            _receiverExpression = receiverExpression;
+            _parameterBindings =
+                parameterBindings
+                ?? new Dictionary<ISymbol, ExpressionSyntax>(SymbolEqualityComparer.Default);
+        }
+
+        public override SyntaxNode? VisitThisExpression(ThisExpressionSyntax node)
+        {
+            return _receiverExpression is null
+                ? base.VisitThisExpression(node)
+                : Parenthesize(_receiverExpression).WithTriviaFrom(node);
+        }
+
+        public override SyntaxNode? VisitIdentifierName(IdentifierNameSyntax node)
+        {
+            if (node.SyntaxTree != _semanticModel.SyntaxTree)
+            {
+                return base.VisitIdentifierName(node);
+            }
+
+            var symbol = _semanticModel.GetSymbolInfo(node).Symbol;
+            if (symbol is not null && _parameterBindings.TryGetValue(symbol, out var replacement))
+            {
+                return Parenthesize(replacement).WithTriviaFrom(node);
+            }
+
+            if (
+                _receiverExpression is not null
+                && symbol is IPropertySymbol or IFieldSymbol
+                && !symbol.IsStatic
+                && SymbolEqualityComparer.Default.Equals(symbol.ContainingType, _declaringType)
+            )
+            {
+                return SyntaxFactory
+                    .MemberAccessExpression(
+                        SyntaxKind.SimpleMemberAccessExpression,
+                        Parenthesize(_receiverExpression),
+                        SyntaxFactory.IdentifierName(node.Identifier)
+                    )
+                    .WithTriviaFrom(node);
+            }
+
+            return base.VisitIdentifierName(node);
+        }
+
+        public override SyntaxNode? VisitMemberAccessExpression(MemberAccessExpressionSyntax node)
+        {
+            if (node.Expression is ThisExpressionSyntax && _receiverExpression is not null)
+            {
+                var rewrittenName = (SimpleNameSyntax)(Visit(node.Name) ?? node.Name);
+                return SyntaxFactory
+                    .MemberAccessExpression(
+                        SyntaxKind.SimpleMemberAccessExpression,
+                        Parenthesize(_receiverExpression),
+                        rewrittenName
+                    )
+                    .WithTriviaFrom(node);
+            }
+
+            return base.VisitMemberAccessExpression(node);
+        }
+
+        private static ParenthesizedExpressionSyntax Parenthesize(ExpressionSyntax expression)
+        {
+            return expression is ParenthesizedExpressionSyntax parenthesized
+                ? parenthesized
+                : SyntaxFactory.ParenthesizedExpression(expression.WithoutTrivia());
+        }
     }
 
     internal sealed record CaptureEntry

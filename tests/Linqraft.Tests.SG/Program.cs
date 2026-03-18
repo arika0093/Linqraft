@@ -121,6 +121,40 @@ public sealed class SourceGeneratorSmokeTests
     }
 
     [Test]
+    public void Generator_emits_default_projection_hook_support_declarations()
+    {
+        var driver = CreateDriver();
+        var compilation = CreateCompilation(
+            CreateHookProjectionTree(),
+            CreateMarkerTree("default-hooks")
+        );
+
+        driver = driver.RunGeneratorsAndUpdateCompilation(
+            compilation,
+            out var outputCompilation,
+            out var diagnostics
+        );
+
+        diagnostics.ShouldBeEmpty();
+        outputCompilation
+            .GetDiagnostics()
+            .Where(diagnostic =>
+                diagnostic.Severity == DiagnosticSeverity.Error && diagnostic.Id != "CS9137"
+            )
+            .ShouldBeEmpty();
+
+        var generatedSources = GetGeneratedSourceMap(driver.GetRunResult());
+        generatedSources["Linqraft.Declarations.g.cs"]
+            .ShouldContain("internal static partial class AsLeftJoinExtensions");
+        generatedSources["Linqraft.Declarations.g.cs"]
+            .ShouldContain("public static T AsLeftJoin<T>(this T value) => value;");
+        generatedSources["Linqraft.Declarations.g.cs"]
+            .ShouldContain("internal static partial class AsProjectableExtensions");
+        generatedSources["Linqraft.Declarations.g.cs"]
+            .ShouldContain("public static T AsProjectable<T>(this T value) => value;");
+    }
+
+    [Test]
     public void Generator_core_allows_overriding_linqraft_specific_options()
     {
         var driver = CreateDriver(
@@ -175,6 +209,44 @@ public sealed class SourceGeneratorSmokeTests
         generatedSources["Custom.Declarations.g.cs"]
             .ShouldContain("internal static partial class ProjectExprExtensions");
         generatedSources["Custom.GlobalUsings.g.cs"].ShouldContain("global using CustomSupport;");
+    }
+
+    [Test]
+    public void Generator_core_allows_overriding_projection_hooks()
+    {
+        var driver = CreateDriver(
+            new CustomHookGenerator(),
+            new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
+            {
+                ["build_property.RootNamespace"] = "CustomHookFixture",
+                ["build_property.InterceptorsNamespaces"] = "CustomHookSupport",
+                ["build_property.InterceptorsPreviewNamespaces"] = "CustomHookSupport",
+            }
+        );
+        var compilation = CreateCompilation(
+            CreateCustomHookProjectionTree(),
+            CreateMarkerTree("custom-hooks")
+        );
+
+        driver = driver.RunGeneratorsAndUpdateCompilation(
+            compilation,
+            out var outputCompilation,
+            out var diagnostics
+        );
+
+        diagnostics.ShouldBeEmpty();
+        outputCompilation
+            .GetDiagnostics()
+            .Where(diagnostic =>
+                diagnostic.Severity == DiagnosticSeverity.Error && diagnostic.Id != "CS9137"
+            )
+            .ShouldBeEmpty();
+
+        var generatedSources = GetGeneratedSourceMap(driver.GetRunResult());
+        generatedSources["CustomHook.Declarations.g.cs"]
+            .ShouldContain("internal static partial class CustomProjectionHooks");
+        generatedSources["CustomHook.Declarations.g.cs"]
+            .ShouldContain("public static T InlineProjectable<T>(this T value) => value;");
     }
 
     [Test]
@@ -650,6 +722,43 @@ public sealed class SourceGeneratorSmokeTests
         );
     }
 
+    private static SyntaxTree CreateHookProjectionTree()
+    {
+        const string source = """
+            using System.Linq;
+            using Linqraft;
+
+            namespace HookFixture;
+
+            public sealed class HookChild
+            {
+                public string? Name { get; set; }
+            }
+
+            public sealed class HookEntity
+            {
+                public HookChild? Child { get; set; }
+            }
+
+            public partial class HookDto;
+
+            public static class HookQueries
+            {
+                public static IQueryable<HookDto> Run(IQueryable<HookEntity> query)
+                    => query.SelectExpr<HookEntity, HookDto>(x => new
+                    {
+                        ChildName = x.Child!.Name,
+                    });
+            }
+            """;
+
+        return CSharpSyntaxTree.ParseText(
+            source,
+            new CSharpParseOptions(LanguageVersion.Preview),
+            path: "HookProjection.cs"
+        );
+    }
+
     private static SyntaxTree CreateMinimalProjectionTree()
     {
         const string source = """
@@ -674,6 +783,38 @@ public sealed class SourceGeneratorSmokeTests
             source,
             new CSharpParseOptions(LanguageVersion.Preview),
             path: "MinimalProjection.cs"
+        );
+    }
+
+    private static SyntaxTree CreateCustomHookProjectionTree()
+    {
+        const string source = """
+            using System.Linq;
+            using CustomHookSupport;
+
+            namespace CustomHookFixture;
+
+            public sealed class CustomHookEntity
+            {
+                public int Value { get; set; }
+            }
+
+            public partial class CustomHookDto;
+
+            public static class CustomHookQueries
+            {
+                public static IQueryable<CustomHookDto> Run(IQueryable<CustomHookEntity> query)
+                    => query.ProjectExpr<CustomHookEntity, CustomHookDto>(x => new
+                    {
+                        Value = x.Value,
+                    });
+            }
+            """;
+
+        return CSharpSyntaxTree.ParseText(
+            source,
+            new CSharpParseOptions(LanguageVersion.Preview),
+            path: "CustomHookProjection.cs"
         );
     }
 
@@ -1036,6 +1177,8 @@ public sealed class SourceGeneratorSmokeTests
 
     private sealed class CustomGenerator : LinqraftGeneratorCore<CustomGeneratorOptions>;
 
+    private sealed class CustomHookGenerator : LinqraftGeneratorCore<CustomHookGeneratorOptions>;
+
     private sealed class CustomGeneratorOptions : LinqraftGeneratorOptionsCore
     {
         public override string GeneratorDisplayName => "CustomTest";
@@ -1072,6 +1215,30 @@ public sealed class SourceGeneratorSmokeTests
         public override string MappingHintNamePrefix => "CustomMapping";
 
         public override string ObjectGenerationHintNamePrefix => "CustomGenerate";
+    }
+
+    private sealed class CustomHookGeneratorOptions : LinqraftGeneratorOptionsCore
+    {
+        public override string GeneratorDisplayName => "CustomHookTest";
+
+        public override string SupportNamespace => "CustomHookSupport";
+
+        public override string GlobalUsingNamespace => "CustomHookSupport";
+
+        public override string DeclarationSourceHintName => "CustomHook.Declarations.g.cs";
+
+        public override string GlobalUsingsSourceHintName => "CustomHook.GlobalUsings.g.cs";
+
+        public override string SelectExprMethodName => "ProjectExpr";
+
+        public override IReadOnlyList<LinqraftProjectionHookDefinition> ProjectionHooks =>
+        [
+            new(
+                "InlineProjectable",
+                LinqraftProjectionHookKind.Projectable,
+                "CustomProjectionHooks"
+            ),
+        ];
     }
 
     private sealed class OmittedSupportGenerator : LinqraftGeneratorCore<OmittedSupportOptions>;

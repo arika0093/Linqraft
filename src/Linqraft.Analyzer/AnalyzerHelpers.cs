@@ -11,6 +11,12 @@ namespace Linqraft.Analyzer;
 
 internal static class AnalyzerHelpers
 {
+    private static readonly HashSet<string> ProjectionHookNames = new(StringComparer.Ordinal)
+    {
+        "AsLeftJoin",
+        "AsProjectable",
+    };
+
     private static readonly Regex HashNamespacePattern = new(
         @"(^|\.)(LinqraftGenerated_[A-Za-z0-9]{8,})($|\.)",
         RegexOptions.Compiled
@@ -23,6 +29,30 @@ internal static class AnalyzerHelpers
             "SelectExpr",
             StringComparison.Ordinal
         );
+    }
+
+    public static bool IsProjectionExprInvocation(InvocationExpressionSyntax invocation)
+    {
+        return GetInvocationName(invocation.Expression) is "SelectExpr" or "SelectManyExpr" or "GroupByExpr";
+    }
+
+    public static bool IsProjectionHookInvocation(InvocationExpressionSyntax invocation)
+    {
+        return ProjectionHookNames.Contains(GetInvocationName(invocation.Expression));
+    }
+
+    public static bool IsInsideProjectionHookContext(SyntaxNode node)
+    {
+        return node.AncestorsAndSelf()
+            .OfType<InvocationExpressionSyntax>()
+            .Any(invocation =>
+                IsProjectionExprInvocation(invocation)
+                || string.Equals(
+                    GetInvocationName(invocation.Expression),
+                    "Generate",
+                    StringComparison.Ordinal
+                )
+            );
     }
 
     public static bool IsQueryableSelectInvocation(

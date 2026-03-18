@@ -28,8 +28,49 @@ internal abstract class ProjectionSupportExtensionClassGenerator
     {
         return string.Join(
             "\n\n",
-            Generators.Select(generator => generator.CreateDeclaration(generatorOptions))
+            Generators
+                .Select(generator => generator.CreateDeclaration(generatorOptions))
+                .Concat(CreateHookDeclarations(generatorOptions))
         );
+    }
+
+    private static IEnumerable<string> CreateHookDeclarations(
+        LinqraftGeneratorOptionsCore generatorOptions
+    )
+    {
+        foreach (
+            var hook in generatorOptions
+                .ProjectionHooks.GroupBy(
+                    hook => hook.MethodName,
+                    global::System.StringComparer.Ordinal
+                )
+                .Select(group => group.First())
+        )
+        {
+            var builder = new IndentedStringBuilder();
+            builder.AppendLine("/// <summary>");
+            builder.AppendLine(
+                $"/// Provides the {hook.MethodName} projection hook that {generatorOptions.GeneratorDisplayName} rewrites inside generated projections."
+            );
+            builder.AppendLine("/// </summary>");
+            builder.AppendLine("[global::Microsoft.CodeAnalysis.EmbeddedAttribute]");
+            builder.AppendLine(
+                $"internal static partial class {generatorOptions.GetProjectionHookClassName(hook)}"
+            );
+            builder.AppendLine("{");
+            using (builder.Indent())
+            {
+                builder.AppendLine("/// <summary>");
+                builder.AppendLine(
+                    $"/// No-op marker used by generated projections to trigger the {hook.Kind} rewrite behavior."
+                );
+                builder.AppendLine("/// </summary>");
+                builder.AppendLine($"public static T {hook.MethodName}<T>(this T value) => value;");
+            }
+
+            builder.AppendLine("}");
+            yield return builder.ToString().TrimEnd();
+        }
     }
 
     private string CreateDeclaration(LinqraftGeneratorOptionsCore generatorOptions)

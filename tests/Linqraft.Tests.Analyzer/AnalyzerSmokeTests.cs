@@ -348,6 +348,14 @@ public sealed class AnalyzerSmokeTests
             using System.Linq;
             using Linqraft;
 
+            namespace Linqraft
+            {
+                public static class AsLeftJoinExtensions
+                {
+                    public static T AsLeftJoin<T>(this T value) => value;
+                }
+            }
+
             public class Child
             {
                 public string? Name { get; set; }
@@ -380,6 +388,84 @@ public sealed class AnalyzerSmokeTests
 
         diagnostic.Severity.ShouldBe(DiagnosticSeverity.Info);
         diagnostics.Select(current => current.Id).ShouldNotContain("LQRS003");
+    }
+
+    [Test]
+    public async Task Projection_hook_outside_selectexpr_reports_LQRE003()
+    {
+        const string source = """
+            using System.Linq;
+            using Linqraft;
+
+            public class Child
+            {
+                public string? Name { get; set; }
+            }
+
+            public class Entity
+            {
+                public Child? Child { get; set; }
+            }
+
+            public class QueryHolder
+            {
+                public IQueryable<string?> Project(IQueryable<Entity> source)
+                {
+                    return source.Select(entity => entity.Child.AsLeftJoin().Name);
+                }
+            }
+            """;
+
+        var diagnostics = await GetDiagnosticsAsync(source);
+        diagnostics.Select(diagnostic => diagnostic.Id).ShouldContain("LQRE003");
+    }
+
+    [Test]
+    public async Task Projection_hook_inside_selectexpr_does_not_report_LQRE003()
+    {
+        const string source = """
+            using System;
+            using System.Linq;
+            using Linqraft;
+
+            namespace Linqraft
+            {
+                public static class SelectExprExtensions
+                {
+                    public static IQueryable<TResult> SelectExpr<TIn, TResult>(this IQueryable<TIn> query, Func<TIn, object> selector)
+                        where TIn : class => throw null!;
+                }
+
+                public static class AsLeftJoinExtensions
+                {
+                    public static T AsLeftJoin<T>(this T value) => value;
+                }
+            }
+
+            public class Child
+            {
+                public string? Name { get; set; }
+            }
+
+            public class Entity
+            {
+                public Child? Child { get; set; }
+            }
+
+            public class QueryHolder
+            {
+                public IQueryable<object> Project(IQueryable<Entity> source)
+                {
+                    return source.SelectExpr<Entity, object>(entity => new
+                    {
+                        Name = entity.Child.AsLeftJoin().Name,
+                    });
+                }
+            }
+            """;
+
+        var diagnostics = await GetDiagnosticsAsync(source);
+        diagnostics.Select(diagnostic => diagnostic.Id).ShouldNotContain("LQRE003");
     }
 
     [Test]
