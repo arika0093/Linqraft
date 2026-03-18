@@ -1,5 +1,7 @@
+using System;
 using System.Collections.Generic;
 using System.Linq;
+using Linqraft.Core.Configuration;
 using Linqraft.Core.Formatting;
 using static Linqraft.Core.Generation.CodeTemplateContents;
 
@@ -14,38 +16,45 @@ internal abstract class ProjectionSupportExtensionClassGenerator
         new GroupByExprSupportExtensionClassGenerator(),
     ];
 
-    protected abstract string ClassName { get; }
+    protected abstract string GetClassName(LinqraftGeneratorOptionsCore generatorOptions);
 
-    protected abstract string MethodName { get; }
+    protected abstract string GetMethodName(LinqraftGeneratorOptionsCore generatorOptions);
 
-    protected abstract string ClassSummary { get; }
+    protected abstract string GetClassSummary(LinqraftGeneratorOptionsCore generatorOptions);
 
     protected abstract IEnumerable<SupportMethodSignature> GetMethodSignatures();
 
-    public static string CreateAllDeclarations()
+    public static string CreateAllDeclarations(LinqraftGeneratorOptionsCore generatorOptions)
     {
-        return string.Join("\n\n", Generators.Select(generator => generator.CreateDeclaration()));
+        return string.Join(
+            "\n\n",
+            Generators.Select(generator => generator.CreateDeclaration(generatorOptions))
+        );
     }
 
-    private string CreateDeclaration()
+    private string CreateDeclaration(LinqraftGeneratorOptionsCore generatorOptions)
     {
         var builder = new IndentedStringBuilder();
         builder.AppendLine("/// <summary>");
-        builder.AppendLine($"/// {ClassSummary}");
+        builder.AppendLine($"/// {GetClassSummary(generatorOptions)}");
         builder.AppendLine("/// </summary>");
-        builder.AppendLine("[global::Microsoft.CodeAnalysis.EmbeddedAttribute]");
-        builder.AppendLine($"internal static partial class {ClassName}");
+        builder.AppendLine(
+            $"[global::{generatorOptions.EmbeddedAttributeNamespace}.EmbeddedAttribute]"
+        );
+        builder.AppendLine(
+            $"internal static partial class {GetClassName(generatorOptions)}"
+        );
         builder.AppendLine("{");
         using (builder.Indent())
         {
             builder.AppendLine(
-                $"private static global::System.InvalidOperationException ThrowInterceptionRequired => new global::System.InvalidOperationException(\"Linqraft source generator should replace {MethodName} invocations before execution.\");"
+                $"private static global::System.InvalidOperationException ThrowInterceptionRequired => new global::System.InvalidOperationException(\"{generatorOptions.GeneratorDisplayName} source generator should replace {GetMethodName(generatorOptions)} invocations before execution.\");"
             );
             builder.AppendLine();
 
             foreach (var signature in GetMethodSignatures())
             {
-                WriteMethod(builder, signature);
+                WriteMethod(builder, signature, generatorOptions);
                 builder.AppendLine();
             }
         }
@@ -54,23 +63,25 @@ internal abstract class ProjectionSupportExtensionClassGenerator
         return builder.ToString().TrimEnd();
     }
 
-    private void WriteMethod(IndentedStringBuilder builder, SupportMethodSignature signature)
+    private void WriteMethod(
+        IndentedStringBuilder builder,
+        SupportMethodSignature signature,
+        LinqraftGeneratorOptionsCore generatorOptions
+    )
     {
         builder.AppendLine("/// <summary>");
-        builder.AppendLine($"/// {signature.Summary}");
+        builder.AppendLine($"/// {signature.CreateSummary(generatorOptions)}");
         builder.AppendLine("/// </summary>");
-        if (signature.ObsoleteMessage is not null)
+        if (signature.CreateObsoleteMessage(generatorOptions) is { } obsoleteMessage)
         {
-            builder.AppendLine(
-                $"[global::System.Obsolete(\"{signature.ObsoleteMessage}\", false)]"
-            );
+            builder.AppendLine($"[global::System.Obsolete(\"{obsoleteMessage}\", false)]");
         }
         if (signature.IsLowPriority)
         {
             builder.AppendLine(OverloadResolutionLowPriority);
         }
 
-        builder.AppendLine(signature.Signature);
+        builder.AppendLine(signature.CreateSignature(generatorOptions));
         using (builder.Indent())
         {
             builder.AppendLine("=> throw ThrowInterceptionRequired;");
@@ -78,7 +89,7 @@ internal abstract class ProjectionSupportExtensionClassGenerator
     }
 
     protected IEnumerable<SupportMethodSignature> CreateQueryOverloads(
-        string resultType,
+        Func<LinqraftGeneratorOptionsCore, string> resultTypeFactory,
         bool hasKeySelector = false
     )
     {
@@ -120,29 +131,33 @@ internal abstract class ProjectionSupportExtensionClassGenerator
             {
                 yield return new SupportMethodSignature
                 {
-                    Summary = capture.Summary,
-                    Signature = CreateMethodSignature(
-                        receiver.TypeName,
-                        resultType,
-                        selectorUsesObjectResult: false,
-                        capture.Parameter,
-                        hasKeySelector
-                    ),
-                    ObsoleteMessage = capture.ObsoleteMessage,
+                    CreateSummary = _ => capture.Summary,
+                    CreateSignature = generatorOptions =>
+                        CreateMethodSignature(
+                            receiver.TypeName,
+                            resultTypeFactory(generatorOptions),
+                            selectorUsesObjectResult: false,
+                            capture.Parameter,
+                            hasKeySelector,
+                            generatorOptions
+                        ),
+                    CreateObsoleteMessage = _ => capture.ObsoleteMessage,
                     IsLowPriority = false,
                 };
 
                 yield return new SupportMethodSignature
                 {
-                    Summary = capture.Summary,
-                    Signature = CreateMethodSignature(
-                        receiver.TypeName,
-                        resultType,
-                        selectorUsesObjectResult: true,
-                        capture.Parameter,
-                        hasKeySelector
-                    ),
-                    ObsoleteMessage = capture.ObsoleteMessage,
+                    CreateSummary = _ => capture.Summary,
+                    CreateSignature = generatorOptions =>
+                        CreateMethodSignature(
+                            receiver.TypeName,
+                            resultTypeFactory(generatorOptions),
+                            selectorUsesObjectResult: true,
+                            capture.Parameter,
+                            hasKeySelector,
+                            generatorOptions
+                        ),
+                    CreateObsoleteMessage = _ => capture.ObsoleteMessage,
                     IsLowPriority = true,
                 };
             }
@@ -154,7 +169,8 @@ internal abstract class ProjectionSupportExtensionClassGenerator
         string resultType,
         bool selectorUsesObjectResult,
         string? captureParameter,
-        bool hasKeySelector
+        bool hasKeySelector,
+        LinqraftGeneratorOptionsCore generatorOptions
     )
     {
         var selectorReturnType = selectorUsesObjectResult ? "object" : resultType;
@@ -174,16 +190,18 @@ internal abstract class ProjectionSupportExtensionClassGenerator
             };
         var filteredParameters = parameters.Where(parameter => parameter is not null);
         var typeParameters = hasKeySelector ? "<TIn, TKey, TResult>" : "<TIn, TResult>";
-        return $"public static {receiverType}<TResult> {MethodName}{typeParameters}({string.Join(", ", filteredParameters)}) where TIn : class";
+        return
+            $"public static {receiverType}<TResult> {GetMethodName(generatorOptions)}{typeParameters}({string.Join(", ", filteredParameters)}) where TIn : class";
     }
 
     protected sealed record SupportMethodSignature
     {
-        public required string Summary { get; init; }
+        public required Func<LinqraftGeneratorOptionsCore, string> CreateSummary { get; init; }
 
-        public required string Signature { get; init; }
+        public required Func<LinqraftGeneratorOptionsCore, string> CreateSignature { get; init; }
 
-        public string? ObsoleteMessage { get; init; }
+        public Func<LinqraftGeneratorOptionsCore, string?> CreateObsoleteMessage { get; init; } =
+            _ => null;
 
         public required bool IsLowPriority { get; init; }
     }
@@ -191,42 +209,48 @@ internal abstract class ProjectionSupportExtensionClassGenerator
     private sealed class SelectExprSupportExtensionClassGenerator
         : ProjectionSupportExtensionClassGenerator
     {
-        protected override string ClassName => "SelectExprExtensions";
+        protected override string GetClassName(LinqraftGeneratorOptionsCore generatorOptions) =>
+            generatorOptions.SelectExprClassName;
 
-        protected override string MethodName => "SelectExpr";
+        protected override string GetMethodName(LinqraftGeneratorOptionsCore generatorOptions) =>
+            generatorOptions.SelectExprMethodName;
 
-        protected override string ClassSummary =>
-            "Provides the SelectExpr entry points that Linqraft intercepts ahead of time.";
+        protected override string GetClassSummary(LinqraftGeneratorOptionsCore generatorOptions) =>
+            $"Provides the {generatorOptions.SelectExprMethodName} entry points that {generatorOptions.GeneratorDisplayName} intercepts ahead of time.";
 
         protected override IEnumerable<SupportMethodSignature> GetMethodSignatures() =>
-            CreateQueryOverloads("TResult");
+            CreateQueryOverloads(_ => "TResult");
     }
 
     private sealed class SelectManyExprSupportExtensionClassGenerator
         : ProjectionSupportExtensionClassGenerator
     {
-        protected override string ClassName => "SelectManyExprExtensions";
+        protected override string GetClassName(LinqraftGeneratorOptionsCore generatorOptions) =>
+            generatorOptions.SelectManyExprClassName;
 
-        protected override string MethodName => "SelectManyExpr";
+        protected override string GetMethodName(LinqraftGeneratorOptionsCore generatorOptions) =>
+            generatorOptions.SelectManyExprMethodName;
 
-        protected override string ClassSummary =>
-            "Provides the SelectManyExpr entry points that Linqraft intercepts ahead of time.";
+        protected override string GetClassSummary(LinqraftGeneratorOptionsCore generatorOptions) =>
+            $"Provides the {generatorOptions.SelectManyExprMethodName} entry points that {generatorOptions.GeneratorDisplayName} intercepts ahead of time.";
 
         protected override IEnumerable<SupportMethodSignature> GetMethodSignatures() =>
-            CreateQueryOverloads("global::System.Collections.Generic.IEnumerable<TResult>");
+            CreateQueryOverloads(_ => "global::System.Collections.Generic.IEnumerable<TResult>");
     }
 
     private sealed class GroupByExprSupportExtensionClassGenerator
         : ProjectionSupportExtensionClassGenerator
     {
-        protected override string ClassName => "GroupByExprExtensions";
+        protected override string GetClassName(LinqraftGeneratorOptionsCore generatorOptions) =>
+            generatorOptions.GroupByExprClassName;
 
-        protected override string MethodName => "GroupByExpr";
+        protected override string GetMethodName(LinqraftGeneratorOptionsCore generatorOptions) =>
+            generatorOptions.GroupByExprMethodName;
 
-        protected override string ClassSummary =>
-            "Provides the GroupByExpr entry points that Linqraft intercepts ahead of time.";
+        protected override string GetClassSummary(LinqraftGeneratorOptionsCore generatorOptions) =>
+            $"Provides the {generatorOptions.GroupByExprMethodName} entry points that {generatorOptions.GeneratorDisplayName} intercepts ahead of time.";
 
         protected override IEnumerable<SupportMethodSignature> GetMethodSignatures() =>
-            CreateQueryOverloads("TResult", hasKeySelector: true);
+            CreateQueryOverloads(_ => "TResult", hasKeySelector: true);
     }
 }

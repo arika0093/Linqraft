@@ -19,6 +19,8 @@ internal enum LinqraftCommentOutput
 
 internal sealed record LinqraftConfiguration
 {
+    public required LinqraftGeneratorOptionsCore GeneratorOptions { get; init; }
+
     public string GlobalNamespace { get; init; } = string.Empty;
 
     public bool RecordGenerate { get; init; }
@@ -38,43 +40,47 @@ internal sealed record LinqraftConfiguration
 
     public bool GlobalUsing { get; init; } = true;
 
-    public static LinqraftConfiguration Parse(AnalyzerConfigOptions options)
+    public static LinqraftConfiguration Parse(
+        AnalyzerConfigOptions options,
+        LinqraftGeneratorOptionsCore generatorOptions
+    )
     {
         return new LinqraftConfiguration
         {
+            GeneratorOptions = generatorOptions,
             GlobalNamespace = GetOption(
                 options,
-                "build_property.LinqraftGlobalNamespace",
+                generatorOptions.GlobalNamespacePropertyName,
                 string.Empty
             ),
-            RecordGenerate = GetBool(options, "build_property.LinqraftRecordGenerate", false),
+            RecordGenerate = GetBool(options, generatorOptions.RecordGeneratePropertyName, false),
             PropertyAccessor = GetEnum(
                 options,
-                "build_property.LinqraftPropertyAccessor",
+                generatorOptions.PropertyAccessorPropertyName,
                 LinqraftPropertyAccessor.Default
             ),
-            HasRequired = GetBool(options, "build_property.LinqraftHasRequired", true),
+            HasRequired = GetBool(options, generatorOptions.HasRequiredPropertyName, true),
             CommentOutput = GetEnum(
                 options,
-                "build_property.LinqraftCommentOutput",
+                generatorOptions.CommentOutputPropertyName,
                 LinqraftCommentOutput.All
             ),
             ArrayNullabilityRemoval = GetBool(
                 options,
-                "build_property.LinqraftArrayNullabilityRemoval",
+                generatorOptions.ArrayNullabilityRemovalPropertyName,
                 true
             ),
             NestedDtoUseHashNamespace = GetBool(
                 options,
-                "build_property.LinqraftNestedDtoUseHashNamespace",
+                generatorOptions.NestedDtoUseHashNamespacePropertyName,
                 true
             ),
             UsePrebuildExpression = GetBool(
                 options,
-                "build_property.LinqraftUsePrebuildExpression",
+                generatorOptions.UsePrebuildExpressionPropertyName,
                 false
             ),
-            GlobalUsing = GetBool(options, "build_property.LinqraftGlobalUsing", true),
+            GlobalUsing = GetBool(options, generatorOptions.GlobalUsingPropertyName, true),
         };
     }
 

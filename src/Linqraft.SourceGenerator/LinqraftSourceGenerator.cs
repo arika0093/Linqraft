@@ -10,31 +10,34 @@ using Microsoft.CodeAnalysis.CSharp.Syntax;
 
 namespace Linqraft.SourceGenerator;
 
-[Generator(LanguageNames.CSharp)]
-public sealed class LinqraftSourceGenerator : IIncrementalGenerator
+internal static class LinqraftGeneratorPipeline
 {
-    public void Initialize(IncrementalGeneratorInitializationContext context)
+    public static void Initialize(
+        IncrementalGeneratorInitializationContext context,
+        LinqraftGeneratorOptionsCore generatorOptions
+    )
     {
-        context.RegisterPostInitializationOutput(static output =>
+        context.RegisterPostInitializationOutput(output =>
             output.AddSource(
-                "Linqraft.Declarations.g.cs",
-                SupportSourceEmitter.CreateSupportSource()
+                generatorOptions.DeclarationSourceHintName,
+                SupportSourceEmitter.CreateSupportSource(generatorOptions)
             )
         );
 
         var configuration = context.AnalyzerConfigOptionsProvider.Select(
-            static (provider, _) => LinqraftConfiguration.Parse(provider.GlobalOptions)
+            (provider, _) => LinqraftConfiguration.Parse(provider.GlobalOptions, generatorOptions)
         );
 
         var projectionTemplates = context
             .SyntaxProvider.CreateSyntaxProvider(
-                static (node, _) =>
+                (node, _) =>
                     node is InvocationExpressionSyntax invocation
-                    && IsPotentialProjectionInvocation(invocation),
-                static (syntaxContext, cancellationToken) =>
+                    && IsPotentialProjectionInvocation(invocation, generatorOptions),
+                (syntaxContext, cancellationToken) =>
                     ProjectionTemplateBuilder.AnalyzeProjectionInvocation(
                         syntaxContext,
-                        cancellationToken
+                        cancellationToken,
+                        generatorOptions
                     )
             )
             .Where(static template => template is not null)
@@ -42,13 +45,14 @@ public sealed class LinqraftSourceGenerator : IIncrementalGenerator
 
         var objectGenerationTemplates = context
             .SyntaxProvider.CreateSyntaxProvider(
-                static (node, _) =>
+                (node, _) =>
                     node is InvocationExpressionSyntax invocation
-                    && IsPotentialObjectGenerationInvocation(invocation),
-                static (syntaxContext, cancellationToken) =>
+                    && IsPotentialObjectGenerationInvocation(invocation, generatorOptions),
+                (syntaxContext, cancellationToken) =>
                     ProjectionTemplateBuilder.AnalyzeObjectGenerationInvocation(
                         syntaxContext,
-                        cancellationToken
+                        cancellationToken,
+                        generatorOptions
                     )
             )
             .Where(static template => template is not null)
@@ -56,12 +60,13 @@ public sealed class LinqraftSourceGenerator : IIncrementalGenerator
 
         var mappingClassTemplates = context
             .SyntaxProvider.ForAttributeWithMetadataName(
-                "Linqraft.LinqraftMappingGenerateAttribute",
+                generatorOptions.MappingGenerateAttributeMetadataName,
                 static (node, _) => node is ClassDeclarationSyntax,
-                static (attributeContext, cancellationToken) =>
+                (attributeContext, cancellationToken) =>
                     ProjectionTemplateBuilder.AnalyzeMappingClass(
                         attributeContext,
-                        cancellationToken
+                        cancellationToken,
+                        generatorOptions
                     )
             )
             .Where(static template => template is not null)
@@ -69,12 +74,13 @@ public sealed class LinqraftSourceGenerator : IIncrementalGenerator
 
         var mappingMethodTemplates = context
             .SyntaxProvider.ForAttributeWithMetadataName(
-                "Linqraft.LinqraftMappingGenerateAttribute",
+                generatorOptions.MappingGenerateAttributeMetadataName,
                 static (node, _) => node is MethodDeclarationSyntax,
-                static (attributeContext, cancellationToken) =>
+                (attributeContext, cancellationToken) =>
                     ProjectionTemplateBuilder.AnalyzeMappingMethod(
                         attributeContext,
-                        cancellationToken
+                        cancellationToken,
+                        generatorOptions
                     )
             )
             .Where(static template => template is not null)
@@ -82,25 +88,22 @@ public sealed class LinqraftSourceGenerator : IIncrementalGenerator
 
         var projectionModels = projectionTemplates
             .Combine(configuration)
-            .Select(
-                static (data, _) =>
-                    ProjectionModelFinalizer.FinalizeProjection(data.Left, data.Right)
-            );
+            .Select((data, _) => ProjectionModelFinalizer.FinalizeProjection(data.Left, data.Right));
         var objectGenerationModels = objectGenerationTemplates
             .Combine(configuration)
             .Select(
-                static (data, _) =>
+                (data, _) =>
                     ProjectionModelFinalizer.FinalizeObjectGeneration(data.Left, data.Right)
             );
         var mappingClassModels = mappingClassTemplates
             .Combine(configuration)
             .Select(
-                static (data, _) => ProjectionModelFinalizer.FinalizeMapping(data.Left, data.Right)
+                (data, _) => ProjectionModelFinalizer.FinalizeMapping(data.Left, data.Right)
             );
         var mappingMethodModels = mappingMethodTemplates
             .Combine(configuration)
             .Select(
-                static (data, _) => ProjectionModelFinalizer.FinalizeMapping(data.Left, data.Right)
+                (data, _) => ProjectionModelFinalizer.FinalizeMapping(data.Left, data.Right)
             );
 
         var projectionSources = projectionModels.Select(
@@ -163,19 +166,18 @@ public sealed class LinqraftSourceGenerator : IIncrementalGenerator
         var generatedSources = ownedSources
             .Combine(configuration)
             .Select(
-                static (data, _) =>
+                (data, _) =>
                     new GeneratedSourceBuildContextModel
                     {
                         OwnedSources = data.Left,
                         Configuration = data.Right,
                     }
             )
-            .Select(static (context, _) => LinqraftSourceGenerator.BuildGeneratedSources(context));
+            .Select((buildContext, _) => BuildGeneratedSources(buildContext));
 
         context.RegisterSourceOutput(
             generatedSources,
-            static (output, sourceSet) =>
-                LinqraftSourceGenerator.AddGeneratedSources(output, sourceSet)
+            (output, sourceSet) => AddGeneratedSources(output, sourceSet)
         );
     }
 
@@ -231,7 +233,7 @@ public sealed class LinqraftSourceGenerator : IIncrementalGenerator
             generatedSources.Add(
                 new GeneratedSourceFileModel
                 {
-                    HintName = GetStandaloneDtoHintName(dto),
+                    HintName = GetStandaloneDtoHintName(dto, context.Configuration.GeneratorOptions),
                     SourceText = SourceWriters.WriteDtoUnit(dto.Dto, context.Configuration),
                 }
             );
@@ -242,8 +244,8 @@ public sealed class LinqraftSourceGenerator : IIncrementalGenerator
             generatedSources.Add(
                 new GeneratedSourceFileModel
                 {
-                    HintName = "Linqraft.GlobalUsings.g.cs",
-                    SourceText = SourceWriters.WriteGlobalUsingsUnit(),
+                    HintName = context.Configuration.GeneratorOptions.GlobalUsingsSourceHintName,
+                    SourceText = SourceWriters.WriteGlobalUsingsUnit(context.Configuration),
                 }
             );
         }
@@ -264,14 +266,18 @@ public sealed class LinqraftSourceGenerator : IIncrementalGenerator
         return dto.OwnerHintNames.Length != 1 || !ownedSourceHints.Contains(dto.OwnerHintNames[0]);
     }
 
-    private static string GetStandaloneDtoHintName(GeneratedDtoEmissionModel dto)
+    private static string GetStandaloneDtoHintName(
+        GeneratedDtoEmissionModel dto,
+        LinqraftGeneratorOptionsCore generatorOptions
+    )
     {
         if (dto.OwnerHintNames.Length == 1)
         {
             return $"{dto.OwnerHintNames[0]}.g.cs";
         }
 
-        return $"Model_{HashingHelper.ComputeHash(dto.Dto.Key, 16)}.g.cs";
+        return
+            $"{generatorOptions.StandaloneDtoHintNamePrefix}_{HashingHelper.ComputeHash(dto.Dto.Key, 16)}.g.cs";
     }
 
     private static void AddGeneratedSources(
@@ -317,31 +323,44 @@ public sealed class LinqraftSourceGenerator : IIncrementalGenerator
         return MergeCollectedValues(MergeCollectedValues(first, second), third);
     }
 
-    private static bool IsPotentialProjectionInvocation(InvocationExpressionSyntax invocation)
+    private static bool IsPotentialProjectionInvocation(
+        InvocationExpressionSyntax invocation,
+        LinqraftGeneratorOptionsCore generatorOptions
+    )
     {
         return invocation.Expression switch
         {
             MemberAccessExpressionSyntax memberAccess
                 when memberAccess.Name.Identifier.ValueText
-                    is "SelectExpr"
-                        or "SelectManyExpr"
-                        or "GroupByExpr" => true,
+                    is var methodName
+                        && (
+                            methodName == generatorOptions.SelectExprMethodName
+                            || methodName == generatorOptions.SelectManyExprMethodName
+                            || methodName == generatorOptions.GroupByExprMethodName
+                        ) => true,
             GenericNameSyntax genericName
-                when genericName.Identifier.ValueText
-                    is "SelectExpr"
-                        or "SelectManyExpr"
-                        or "GroupByExpr" => true,
+                when genericName.Identifier.ValueText is var methodName
+                    && (
+                        methodName == generatorOptions.SelectExprMethodName
+                        || methodName == generatorOptions.SelectManyExprMethodName
+                        || methodName == generatorOptions.GroupByExprMethodName
+                    ) => true,
             _ => false,
         };
     }
 
-    private static bool IsPotentialObjectGenerationInvocation(InvocationExpressionSyntax invocation)
+    private static bool IsPotentialObjectGenerationInvocation(
+        InvocationExpressionSyntax invocation,
+        LinqraftGeneratorOptionsCore generatorOptions
+    )
     {
         return invocation.Expression switch
         {
             MemberAccessExpressionSyntax memberAccess
-                when memberAccess.Name.Identifier.ValueText == "Generate" => true,
-            GenericNameSyntax genericName when genericName.Identifier.ValueText == "Generate" =>
+                when memberAccess.Name.Identifier.ValueText
+                    == generatorOptions.ObjectGenerationMethodName => true,
+            GenericNameSyntax genericName
+                when genericName.Identifier.ValueText == generatorOptions.ObjectGenerationMethodName =>
                 true,
             _ => false,
         };

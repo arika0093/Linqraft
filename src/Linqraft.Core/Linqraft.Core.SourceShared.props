@@ -5,5 +5,10 @@
       Exclude="$(MSBuildThisFileDirectory)InternalsVisibleTo.cs;$(MSBuildThisFileDirectory)bin/**/*.cs;$(MSBuildThisFileDirectory)obj/**/*.cs"
       Link="Linqraft.Core/%(RecursiveDir)%(Filename)%(Extension)"
     />
+    <Compile
+      Include="$(MSBuildThisFileDirectory)..\Linqraft.SourceGenerator\**\*.cs"
+      Exclude="$(MSBuildThisFileDirectory)..\Linqraft.SourceGenerator\bin\**\*.cs;$(MSBuildThisFileDirectory)..\Linqraft.SourceGenerator\obj\**\*.cs"
+      Link="Linqraft.Core/SourceGenerator/%(RecursiveDir)%(Filename)%(Extension)"
+    />
   </ItemGroup>
 </Project>
