@@ -177,8 +177,9 @@ public sealed class GlobalPropertyConfigurationTests
             );
 
             var packagePath = Directory.GetFiles(packageRoot, "Linqraft.Core.*.nupkg").Single();
-            var packageVersion = Path
-                .GetFileNameWithoutExtension(packagePath)["Linqraft.Core.".Length..];
+            var packageVersion = Path.GetFileNameWithoutExtension(packagePath)[
+                "Linqraft.Core.".Length..
+            ];
 
             var nuGetConfigPath = Path.Combine(tempRoot, "NuGet.Config");
             File.WriteAllText(
@@ -247,17 +248,25 @@ public sealed class GlobalPropertyConfigurationTests
             );
 
             File.Exists(
-                    Path.Combine(projectRoot, "bin", "Debug", "netstandard2.0", "ConsumerGenerator.dll")
+                    Path.Combine(
+                        projectRoot,
+                        "bin",
+                        "Debug",
+                        "netstandard2.0",
+                        "ConsumerGenerator.dll"
+                    )
                 )
                 .ShouldBeTrue();
 
             var assetsJsonPath = Path.Combine(projectRoot, "obj", "project.assets.json");
             File.Exists(assetsJsonPath).ShouldBeTrue();
             var assetsJson = File.ReadAllText(assetsJsonPath);
-            assetsJson.Contains($"\"Linqraft.Core/{packageVersion}\"", StringComparison.Ordinal)
+            assetsJson
+                .Contains($"\"Linqraft.Core/{packageVersion}\"", StringComparison.Ordinal)
                 .ShouldBeTrue();
             assetsJson.Contains("\"PolySharp/", StringComparison.Ordinal).ShouldBeTrue();
-            assetsJson.Contains("\"Microsoft.CodeAnalysis.CSharp/", StringComparison.Ordinal)
+            assetsJson
+                .Contains("\"Microsoft.CodeAnalysis.CSharp/", StringComparison.Ordinal)
                 .ShouldBeTrue();
         }
         finally

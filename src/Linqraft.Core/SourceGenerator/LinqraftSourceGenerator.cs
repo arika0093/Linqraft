@@ -58,43 +58,45 @@ internal static class LinqraftGeneratorPipeline
             .Where(static template => template is not null)
             .Select(static (template, _) => template!);
 
-        var mappingClassTemplates =
-            generatorOptions.MappingGenerateAttributeMetadataName is { } mappingAttributeMetadataName
-                ? context
-                    .SyntaxProvider.ForAttributeWithMetadataName(
-                        mappingAttributeMetadataName,
-                        static (node, _) => node is ClassDeclarationSyntax,
-                        (attributeContext, cancellationToken) =>
-                            ProjectionTemplateBuilder.AnalyzeMappingClass(
-                                attributeContext,
-                                cancellationToken,
-                                generatorOptions
-                            )
-                    )
-                    .Where(static template => template is not null)
-                    .Select(static (template, _) => template!)
-                : CreateEmptyTemplates<MappingSourceTemplateModel>(context);
+        var mappingClassTemplates = generatorOptions.MappingGenerateAttributeMetadataName
+            is { } mappingAttributeMetadataName
+            ? context
+                .SyntaxProvider.ForAttributeWithMetadataName(
+                    mappingAttributeMetadataName,
+                    static (node, _) => node is ClassDeclarationSyntax,
+                    (attributeContext, cancellationToken) =>
+                        ProjectionTemplateBuilder.AnalyzeMappingClass(
+                            attributeContext,
+                            cancellationToken,
+                            generatorOptions
+                        )
+                )
+                .Where(static template => template is not null)
+                .Select(static (template, _) => template!)
+            : CreateEmptyTemplates<MappingSourceTemplateModel>(context);
 
-        var mappingMethodTemplates =
-            generatorOptions.MappingGenerateAttributeMetadataName is { } mappingMethodMetadataName
-                ? context
-                    .SyntaxProvider.ForAttributeWithMetadataName(
-                        mappingMethodMetadataName,
-                        static (node, _) => node is MethodDeclarationSyntax,
-                        (attributeContext, cancellationToken) =>
-                            ProjectionTemplateBuilder.AnalyzeMappingMethod(
-                                attributeContext,
-                                cancellationToken,
-                                generatorOptions
-                            )
-                    )
-                    .Where(static template => template is not null)
-                    .Select(static (template, _) => template!)
-                : CreateEmptyTemplates<MappingSourceTemplateModel>(context);
+        var mappingMethodTemplates = generatorOptions.MappingGenerateAttributeMetadataName
+            is { } mappingMethodMetadataName
+            ? context
+                .SyntaxProvider.ForAttributeWithMetadataName(
+                    mappingMethodMetadataName,
+                    static (node, _) => node is MethodDeclarationSyntax,
+                    (attributeContext, cancellationToken) =>
+                        ProjectionTemplateBuilder.AnalyzeMappingMethod(
+                            attributeContext,
+                            cancellationToken,
+                            generatorOptions
+                        )
+                )
+                .Where(static template => template is not null)
+                .Select(static (template, _) => template!)
+            : CreateEmptyTemplates<MappingSourceTemplateModel>(context);
 
         var projectionModels = projectionTemplates
             .Combine(configuration)
-            .Select((data, _) => ProjectionModelFinalizer.FinalizeProjection(data.Left, data.Right));
+            .Select(
+                (data, _) => ProjectionModelFinalizer.FinalizeProjection(data.Left, data.Right)
+            );
         var objectGenerationModels = objectGenerationTemplates
             .Combine(configuration)
             .Select(
@@ -103,14 +105,10 @@ internal static class LinqraftGeneratorPipeline
             );
         var mappingClassModels = mappingClassTemplates
             .Combine(configuration)
-            .Select(
-                (data, _) => ProjectionModelFinalizer.FinalizeMapping(data.Left, data.Right)
-            );
+            .Select((data, _) => ProjectionModelFinalizer.FinalizeMapping(data.Left, data.Right));
         var mappingMethodModels = mappingMethodTemplates
             .Combine(configuration)
-            .Select(
-                (data, _) => ProjectionModelFinalizer.FinalizeMapping(data.Left, data.Right)
-            );
+            .Select((data, _) => ProjectionModelFinalizer.FinalizeMapping(data.Left, data.Right));
 
         var projectionSources = projectionModels.Select(
             static (model, _) =>
@@ -239,7 +237,10 @@ internal static class LinqraftGeneratorPipeline
             generatedSources.Add(
                 new GeneratedSourceFileModel
                 {
-                    HintName = GetStandaloneDtoHintName(dto, context.Configuration.GeneratorOptions),
+                    HintName = GetStandaloneDtoHintName(
+                        dto,
+                        context.Configuration.GeneratorOptions
+                    ),
                     SourceText = SourceWriters.WriteDtoUnit(dto.Dto, context.Configuration),
                 }
             );
@@ -282,8 +283,7 @@ internal static class LinqraftGeneratorPipeline
             return $"{dto.OwnerHintNames[0]}.g.cs";
         }
 
-        return
-            $"{generatorOptions.StandaloneDtoHintNamePrefix}_{HashingHelper.ComputeHash(dto.Dto.Key, 16)}.g.cs";
+        return $"{generatorOptions.StandaloneDtoHintNamePrefix}_{HashingHelper.ComputeHash(dto.Dto.Key, 16)}.g.cs";
     }
 
     private static void AddGeneratedSources(
@@ -337,13 +337,12 @@ internal static class LinqraftGeneratorPipeline
         return invocation.Expression switch
         {
             MemberAccessExpressionSyntax memberAccess
-                when memberAccess.Name.Identifier.ValueText
-                    is var methodName
-                        && (
-                            methodName == generatorOptions.SelectExprMethodName
-                            || methodName == generatorOptions.SelectManyExprMethodName
-                            || methodName == generatorOptions.GroupByExprMethodName
-                        ) => true,
+                when memberAccess.Name.Identifier.ValueText is var methodName
+                    && (
+                        methodName == generatorOptions.SelectExprMethodName
+                        || methodName == generatorOptions.SelectManyExprMethodName
+                        || methodName == generatorOptions.GroupByExprMethodName
+                    ) => true,
             GenericNameSyntax genericName
                 when genericName.Identifier.ValueText is var methodName
                     && (
@@ -371,8 +370,8 @@ internal static class LinqraftGeneratorPipeline
                 when memberAccess.Name.Identifier.ValueText
                     == generatorOptions.ObjectGenerationMethodName => true,
             GenericNameSyntax genericName
-                when genericName.Identifier.ValueText == generatorOptions.ObjectGenerationMethodName =>
-                true,
+                when genericName.Identifier.ValueText
+                    == generatorOptions.ObjectGenerationMethodName => true,
             _ => false,
         };
     }

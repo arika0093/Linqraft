@@ -15,14 +15,26 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <PackageReference Include="Microsoft.CodeAnalysis.CSharp" Version="$(MicrosoftCodeAnalysisCSharpPackageVersion)" />
-    <PackageReference Include="PolySharp" Version="$(PolySharpPackageVersion)" Condition="!Exists('packages.config')">
+    <PackageReference
+      Include="Microsoft.CodeAnalysis.CSharp"
+      Version="$(MicrosoftCodeAnalysisCSharpPackageVersion)"
+    />
+    <PackageReference
+      Include="PolySharp"
+      Version="$(PolySharpPackageVersion)"
+      Condition="!Exists('packages.config')"
+    >
       <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
     </PackageReference>
   </ItemGroup>
 
   <ItemGroup>
-    <None Include="Linqraft.Core.targets" Pack="true" PackagePath="build/Linqraft.Core.targets" Visible="false" />
+    <None
+      Include="Linqraft.Core.targets"
+      Pack="true"
+      PackagePath="build/Linqraft.Core.targets"
+      Visible="false"
+    />
     <None
       Include="**\*.cs"
       Exclude="bin\**\*.cs;obj\**\*.cs;InternalsVisibleTo.cs"
@@ -49,7 +61,8 @@
       <Using Namespace="System.IO.Compression" />
       <Using Namespace="System.Linq" />
       <Using Namespace="System.Text.RegularExpressions" />
-      <Code Type="Fragment" Language="cs"><![CDATA[
+      <Code Type="Fragment" Language="cs">
+        <![CDATA[
         try
         {
             var template = File.ReadAllText(TemplatePath);
@@ -100,7 +113,8 @@
                 $"Failed to rewrite the packed nuspec for '{PackagePath}' using template '{TemplatePath}'.",
                 ex);
         }
-      ]]></Code>
+      ]]>
+      </Code>
     </Task>
   </UsingTask>
 

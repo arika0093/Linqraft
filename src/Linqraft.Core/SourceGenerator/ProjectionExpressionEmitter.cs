@@ -336,20 +336,16 @@ internal sealed class ProjectionExpressionEmitter
                 .Identifier
                 .ValueText switch
             {
-                var methodName when methodName == _generatorOptions.SelectExprMethodName => EmitProjectionInvocation(
-                    Emit(memberAccess.Expression),
-                    expression,
-                    "Select"
-                ),
-                var methodName when methodName == _generatorOptions.SelectManyExprMethodName => EmitProjectionInvocation(
-                    Emit(memberAccess.Expression),
-                    expression,
-                    "SelectMany"
-                ),
-                var methodName when methodName == _generatorOptions.GroupByExprMethodName => EmitGroupByExprInvocation(
-                    Emit(memberAccess.Expression),
-                    expression
-                ),
+                var methodName when methodName == _generatorOptions.SelectExprMethodName =>
+                    EmitProjectionInvocation(Emit(memberAccess.Expression), expression, "Select"),
+                var methodName when methodName == _generatorOptions.SelectManyExprMethodName =>
+                    EmitProjectionInvocation(
+                        Emit(memberAccess.Expression),
+                        expression,
+                        "SelectMany"
+                    ),
+                var methodName when methodName == _generatorOptions.GroupByExprMethodName =>
+                    EmitGroupByExprInvocation(Emit(memberAccess.Expression), expression),
                 _ => EmitMemberInvocation(expression, memberAccess, Emit(memberAccess.Expression)),
             },
             _ => $"{Emit(expression.Expression)}{EmitArgumentList(expression.ArgumentList)}",
@@ -801,9 +797,12 @@ internal sealed class ProjectionExpressionEmitter
     {
         return methodName.Identifier.ValueText switch
         {
-            var name when name == _generatorOptions.SelectExprMethodName => EmitProjectionInvocation(receiver, invocation, "Select"),
-            var name when name == _generatorOptions.SelectManyExprMethodName => EmitProjectionInvocation(receiver, invocation, "SelectMany"),
-            var name when name == _generatorOptions.GroupByExprMethodName => EmitGroupByExprInvocation(receiver, invocation),
+            var name when name == _generatorOptions.SelectExprMethodName =>
+                EmitProjectionInvocation(receiver, invocation, "Select"),
+            var name when name == _generatorOptions.SelectManyExprMethodName =>
+                EmitProjectionInvocation(receiver, invocation, "SelectMany"),
+            var name when name == _generatorOptions.GroupByExprMethodName =>
+                EmitGroupByExprInvocation(receiver, invocation),
             _ => TryEmitExtensionInvocation(invocation, methodName, receiver, out var rewritten)
                 ? rewritten
                 : $"{receiver}.{EmitSimpleName(methodName)}{EmitArgumentList(invocation.ArgumentList)}",

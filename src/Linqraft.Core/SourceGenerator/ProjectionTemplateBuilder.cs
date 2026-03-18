@@ -101,7 +101,10 @@ internal static class ProjectionTemplateBuilder
             return null;
         }
 
-        var mappingAttribute = GetMappingGenerateAttribute(classSymbol.GetAttributes(), generatorOptions);
+        var mappingAttribute = GetMappingGenerateAttribute(
+            classSymbol.GetAttributes(),
+            generatorOptions
+        );
         var methodName = GetMappingMethodName(mappingAttribute);
         var accessibilityKeyword = GetMappingGeneratedAccessibilityKeyword(
             classSymbol.DeclaredAccessibility,
@@ -184,7 +187,10 @@ internal static class ProjectionTemplateBuilder
             return null;
         }
 
-        var mappingAttribute = GetMappingGenerateAttribute(methodSymbol.GetAttributes(), generatorOptions);
+        var mappingAttribute = GetMappingGenerateAttribute(
+            methodSymbol.GetAttributes(),
+            generatorOptions
+        );
         return new MappingSourceTemplateModel
         {
             Request = new MappingRequestTemplate
@@ -277,7 +283,12 @@ internal static class ProjectionTemplateBuilder
             return null;
         }
 
-        var captureInfo = AnalyzeCaptures(invocation, semanticModel, cancellationToken, generatorOptions);
+        var captureInfo = AnalyzeCaptures(
+            invocation,
+            semanticModel,
+            cancellationToken,
+            generatorOptions
+        );
         var captureEntries = captureInfo.Entries;
         var callerNamespace = ResolveCallerNamespace(invocation, semanticModel);
         var methodHash = HashingHelper.ComputeHash(
@@ -510,8 +521,7 @@ internal static class ProjectionTemplateBuilder
                     selectorBody,
                     buildContext.GeneratorOptions,
                     out var projectedAnonymousBody
-                )
-                && projectedAnonymousBody is not null
+                ) && projectedAnonymousBody is not null
             )
             {
                 useObjectSelectorSignature = true;
@@ -761,7 +771,12 @@ internal static class ProjectionTemplateBuilder
             cancellationToken,
             generatorOptions
         );
-        var captureInfo = AnalyzeCaptures(invocation, semanticModel, cancellationToken, generatorOptions);
+        var captureInfo = AnalyzeCaptures(
+            invocation,
+            semanticModel,
+            cancellationToken,
+            generatorOptions
+        );
         var captureEntries = captureInfo.Entries;
         var buildContext = new ProjectionBuildContext(
             semanticModel,
@@ -1794,29 +1809,57 @@ internal static class ProjectionTemplateBuilder
         switch (expression)
         {
             case ConditionalExpressionSyntax conditionalExpression:
-                if (TryFindProjectionInvocation(conditionalExpression.WhenTrue, generatorOptions, out invocation))
+                if (
+                    TryFindProjectionInvocation(
+                        conditionalExpression.WhenTrue,
+                        generatorOptions,
+                        out invocation
+                    )
+                )
                 {
                     return true;
                 }
 
-                return TryFindProjectionInvocation(conditionalExpression.WhenFalse, generatorOptions, out invocation);
+                return TryFindProjectionInvocation(
+                    conditionalExpression.WhenFalse,
+                    generatorOptions,
+                    out invocation
+                );
             case BinaryExpressionSyntax binaryExpression
                 when binaryExpression.IsKind(SyntaxKind.CoalesceExpression):
-                if (TryFindProjectionInvocation(binaryExpression.Left, generatorOptions, out invocation))
+                if (
+                    TryFindProjectionInvocation(
+                        binaryExpression.Left,
+                        generatorOptions,
+                        out invocation
+                    )
+                )
                 {
                     return true;
                 }
 
-                return TryFindProjectionInvocation(binaryExpression.Right, generatorOptions, out invocation);
+                return TryFindProjectionInvocation(
+                    binaryExpression.Right,
+                    generatorOptions,
+                    out invocation
+                );
             case InvocationExpressionSyntax directInvocation
                 when IsProjectionInvocation(directInvocation, generatorOptions):
                 invocation = directInvocation;
                 return true;
             case InvocationExpressionSyntax nestedInvocation
                 when nestedInvocation.Expression is MemberAccessExpressionSyntax memberAccess:
-                return TryFindProjectionInvocation(memberAccess.Expression, generatorOptions, out invocation);
+                return TryFindProjectionInvocation(
+                    memberAccess.Expression,
+                    generatorOptions,
+                    out invocation
+                );
             case MemberAccessExpressionSyntax memberAccess:
-                return TryFindProjectionInvocation(memberAccess.Expression, generatorOptions, out invocation);
+                return TryFindProjectionInvocation(
+                    memberAccess.Expression,
+                    generatorOptions,
+                    out invocation
+                );
             case ConditionalAccessExpressionSyntax conditionalAccess
                 when conditionalAccess.WhenNotNull
                     is InvocationExpressionSyntax whenNotNullInvocation
@@ -2390,9 +2433,12 @@ internal static class ProjectionTemplateBuilder
     {
         return GetInvocationName(invocation.Expression) switch
         {
-            var name when name == generatorOptions.SelectExprMethodName => ProjectionOperationKind.Select,
-            var name when name == generatorOptions.SelectManyExprMethodName => ProjectionOperationKind.SelectMany,
-            var name when name == generatorOptions.GroupByExprMethodName => ProjectionOperationKind.GroupBy,
+            var name when name == generatorOptions.SelectExprMethodName =>
+                ProjectionOperationKind.Select,
+            var name when name == generatorOptions.SelectManyExprMethodName =>
+                ProjectionOperationKind.SelectMany,
+            var name when name == generatorOptions.GroupByExprMethodName =>
+                ProjectionOperationKind.GroupBy,
             _ => null,
         };
     }

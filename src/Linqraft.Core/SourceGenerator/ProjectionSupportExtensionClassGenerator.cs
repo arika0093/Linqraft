@@ -39,9 +39,7 @@ internal abstract class ProjectionSupportExtensionClassGenerator
         builder.AppendLine($"/// {GetClassSummary(generatorOptions)}");
         builder.AppendLine("/// </summary>");
         builder.AppendLine("[global::Microsoft.CodeAnalysis.EmbeddedAttribute]");
-        builder.AppendLine(
-            $"internal static partial class {GetClassName(generatorOptions)}"
-        );
+        builder.AppendLine($"internal static partial class {GetClassName(generatorOptions)}");
         builder.AppendLine("{");
         using (builder.Indent())
         {
@@ -188,8 +186,7 @@ internal abstract class ProjectionSupportExtensionClassGenerator
             };
         var filteredParameters = parameters.Where(parameter => parameter is not null);
         var typeParameters = hasKeySelector ? "<TIn, TKey, TResult>" : "<TIn, TResult>";
-        return
-            $"public static {receiverType}<TResult> {GetMethodName(generatorOptions)}{typeParameters}({string.Join(", ", filteredParameters)}) where TIn : class";
+        return $"public static {receiverType}<TResult> {GetMethodName(generatorOptions)}{typeParameters}({string.Join(", ", filteredParameters)}) where TIn : class";
     }
 
     protected sealed record SupportMethodSignature

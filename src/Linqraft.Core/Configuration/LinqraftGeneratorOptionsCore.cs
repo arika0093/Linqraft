@@ -129,7 +129,8 @@ public abstract class LinqraftGeneratorOptionsCore
     /// Gets the analyzer config key that controls generated property accessors.
     /// Return <see langword="null"/> to skip reading analyzer config and keep the built-in default.
     /// </summary>
-    public virtual string? PropertyAccessorPropertyName => "build_property.LinqraftPropertyAccessor";
+    public virtual string? PropertyAccessorPropertyName =>
+        "build_property.LinqraftPropertyAccessor";
 
     /// <summary>
     /// Gets the analyzer config key that controls whether generated members use <c>required</c>.
@@ -201,7 +202,9 @@ public abstract class LinqraftGeneratorOptionsCore
     public virtual string DtoPlaceholderPrefix => "__LinqraftDto";
 
     internal string? MappingGenerateAttributeMetadataName =>
-        MappingGenerateAttributeName is null ? null : $"{SupportNamespace}.{MappingGenerateAttributeName}";
+        MappingGenerateAttributeName is null
+            ? null
+            : $"{SupportNamespace}.{MappingGenerateAttributeName}";
 
     internal string? GeneratorKitMetadataName =>
         GeneratorKitClassName is null ? null : $"{SupportNamespace}.{GeneratorKitClassName}";

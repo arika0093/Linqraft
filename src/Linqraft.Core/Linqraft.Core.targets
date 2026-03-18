@@ -5,8 +5,7 @@
   <ItemGroup>
     <Compile Include="$(MSBuildThisFileDirectory)..\contentFiles\cs\netstandard2.0\Linqraft.Core\**\*.cs" />
     <Compile Update="@(Compile)">
-      <Visible
-        Condition="%(NuGetPackageId) == 'Linqraft.Core' and %(NuGetItemType) == 'Compile'"
+      <Visible Condition="%(NuGetPackageId) == 'Linqraft.Core' and %(NuGetItemType) == 'Compile'"
         >false</Visible
       >
     </Compile>
