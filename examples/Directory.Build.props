@@ -13,7 +13,7 @@
       <OutputItemType>Analyzer</OutputItemType>
       <ReferenceOutputAssembly>true</ReferenceOutputAssembly>
     </ProjectReference>
-    <ProjectReference Include="..\..\src\Linqraft.SourceGenerator\Linqraft.SourceGenerator.csproj">
+    <ProjectReference Include="..\..\src\Linqraft.Generator\Linqraft.Generator.csproj">
       <OutputItemType>Analyzer</OutputItemType>
       <ReferenceOutputAssembly>true</ReferenceOutputAssembly>
     </ProjectReference>

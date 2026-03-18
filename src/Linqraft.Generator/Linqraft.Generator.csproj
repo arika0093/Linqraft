@@ -1,8 +1,7 @@
-﻿<Project Sdk="Microsoft.NET.Sdk">
+<Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
     <EnforceExtendedAnalyzerRules>true</EnforceExtendedAnalyzerRules>
     <NoWarn>$(NoWarn);RS2008;RSEXPERIMENTAL002</NoWarn>
-    <!--Nuget-->
     <IsRoslynComponent>true</IsRoslynComponent>
     <AnalyzerLanguage>cs</AnalyzerLanguage>
     <IncludeBuildOutput>false</IncludeBuildOutput>
@@ -13,7 +12,7 @@
   </PropertyGroup>
   <ItemGroup>
     <None
-      Include="$(OutputPath)\Linqraft.SourceGenerator.dll"
+      Include="$(OutputPath)\Linqraft.Generator.dll"
       Pack="true"
       PackagePath="analyzers/dotnet/cs"
       Visible="false"

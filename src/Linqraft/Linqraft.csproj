@@ -10,7 +10,7 @@
   <ItemGroup>
     <!-- Include Source Generator DLLs -->
     <None
-      Include="..\Linqraft.SourceGenerator\$(OutputPath)\Linqraft.SourceGenerator.dll"
+      Include="..\Linqraft.Generator\$(OutputPath)\Linqraft.Generator.dll"
       Pack="true"
       PackagePath="analyzers/dotnet/cs"
       Visible="false"
@@ -25,7 +25,7 @@
   </ItemGroup>
   <ItemGroup>
     <ProjectReference
-      Include="..\Linqraft.SourceGenerator\Linqraft.SourceGenerator.csproj"
+      Include="..\Linqraft.Generator\Linqraft.Generator.csproj"
       PrivateAssets="all"
     />
     <ProjectReference Include="..\Linqraft.Analyzer\Linqraft.Analyzer.csproj" PrivateAssets="all" />

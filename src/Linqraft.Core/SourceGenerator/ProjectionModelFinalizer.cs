@@ -297,8 +297,8 @@ internal static class ProjectionModelFinalizer
             }
 
             return string.IsNullOrWhiteSpace(baseNamespace)
-                ? $"LinqraftGenerated_{template.ShapeHash}"
-                : $"{baseNamespace}.LinqraftGenerated_{template.ShapeHash}";
+                ? $"{configuration.GeneratorOptions.NestedDtoNamespacePrefix}_{template.ShapeHash}"
+                : $"{baseNamespace}.{configuration.GeneratorOptions.NestedDtoNamespacePrefix}_{template.ShapeHash}";
         }
 
         return baseNamespace;

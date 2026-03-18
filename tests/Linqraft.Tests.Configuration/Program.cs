@@ -1,13 +1,18 @@
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.IO;
 using System.Linq;
 using System.Runtime.CompilerServices;
+using System.Threading;
+using System.Threading.Tasks;
 using GlobalGenerated;
 using Linqraft.Tests.Utility;
 
 public sealed class GlobalPropertyConfigurationTests
 {
+    private const int InitialDirectoryDeleteRetryDelayMilliseconds = 100;
+
     private static readonly List<Order> Orders =
     [
         new()
@@ -141,6 +146,130 @@ public sealed class GlobalPropertyConfigurationTests
     }
 
     [Test]
+    public async Task Source_only_Linqraft_Core_package_can_be_consumed_by_another_generator_project()
+    {
+        var repositoryRoot = GetRepositoryRoot();
+        var tempRoot = Path.Combine(
+            Path.GetTempPath(),
+            $"linqraft-core-package-test-{Guid.NewGuid():N}"
+        );
+        Directory.CreateDirectory(tempRoot);
+
+        try
+        {
+            var packageRoot = Path.Combine(tempRoot, "packages");
+            var globalPackagesRoot = Path.Combine(tempRoot, "global-packages");
+            var projectRoot = Path.Combine(tempRoot, "src", "ConsumerGenerator");
+            Directory.CreateDirectory(packageRoot);
+            Directory.CreateDirectory(globalPackagesRoot);
+            Directory.CreateDirectory(projectRoot);
+
+            await RunDotNetCommandAsync(
+                [
+                    "pack",
+                    Path.Combine(repositoryRoot, "src", "Linqraft.Core", "Linqraft.Core.csproj"),
+                    "-c",
+                    "Debug",
+                    "-o",
+                    packageRoot,
+                ],
+                repositoryRoot
+            );
+
+            var packagePath = Directory.GetFiles(packageRoot, "Linqraft.Core.*.nupkg").Single();
+            var packageVersion = Path
+                .GetFileNameWithoutExtension(packagePath)["Linqraft.Core.".Length..];
+
+            var nuGetConfigPath = Path.Combine(tempRoot, "NuGet.Config");
+            File.WriteAllText(
+                nuGetConfigPath,
+                $$"""
+                <?xml version="1.0" encoding="utf-8"?>
+                <configuration>
+                  <packageSources>
+                    <clear />
+                    <add key="local" value="{{packageRoot}}" />
+                    <add key="nuget.org" value="https://api.nuget.org/v3/index.json" />
+                  </packageSources>
+                </configuration>
+                """
+            );
+
+            File.WriteAllText(
+                Path.Combine(projectRoot, "ConsumerGenerator.csproj"),
+                $$"""
+                <Project Sdk="Microsoft.NET.Sdk">
+                  <PropertyGroup>
+                    <TargetFramework>netstandard2.0</TargetFramework>
+                    <LangVersion>latest</LangVersion>
+                    <Nullable>enable</Nullable>
+                    <IsRoslynComponent>true</IsRoslynComponent>
+                    <AnalyzerLanguage>cs</AnalyzerLanguage>
+                    <EnforceExtendedAnalyzerRules>true</EnforceExtendedAnalyzerRules>
+                  </PropertyGroup>
+                  <ItemGroup>
+                    <PackageReference Include="Linqraft.Core" Version="[{{packageVersion}}]" />
+                  </ItemGroup>
+                </Project>
+                """
+            );
+
+            File.WriteAllText(
+                Path.Combine(projectRoot, "MyGenerator.cs"),
+                """
+                using Linqraft.Core;
+                using Linqraft.Core.Configuration;
+                using Microsoft.CodeAnalysis;
+
+                namespace ConsumerGenerator;
+
+                [Generator(LanguageNames.CSharp)]
+                public sealed class MyGenerator : LinqraftGeneratorCore<MyGeneratorOptions>;
+
+                public sealed class MyGeneratorOptions : LinqraftGeneratorOptionsCore
+                {
+                    public override string SupportNamespace => "ConsumerSupport";
+                }
+                """
+            );
+
+            await RunDotNetCommandAsync(
+                [
+                    "build",
+                    Path.Combine(projectRoot, "ConsumerGenerator.csproj"),
+                    "--configfile",
+                    nuGetConfigPath,
+                    "--verbosity",
+                    "minimal",
+                ],
+                projectRoot,
+                [("NUGET_PACKAGES", globalPackagesRoot)]
+            );
+
+            File.Exists(
+                    Path.Combine(projectRoot, "bin", "Debug", "netstandard2.0", "ConsumerGenerator.dll")
+                )
+                .ShouldBeTrue();
+
+            var assetsJsonPath = Path.Combine(projectRoot, "obj", "project.assets.json");
+            File.Exists(assetsJsonPath).ShouldBeTrue();
+            var assetsJson = File.ReadAllText(assetsJsonPath);
+            assetsJson.Contains($"\"Linqraft.Core/{packageVersion}\"", StringComparison.Ordinal)
+                .ShouldBeTrue();
+            assetsJson.Contains("\"PolySharp/", StringComparison.Ordinal).ShouldBeTrue();
+            assetsJson.Contains("\"Microsoft.CodeAnalysis.CSharp/", StringComparison.Ordinal)
+                .ShouldBeTrue();
+        }
+        finally
+        {
+            if (Directory.Exists(tempRoot))
+            {
+                TryDeleteDirectory(tempRoot);
+            }
+        }
+    }
+
+    [Test]
     public void Generated_files_include_global_using_by_default()
     {
         var generatedRoot = Path.Combine(
@@ -150,12 +279,13 @@ public sealed class GlobalPropertyConfigurationTests
             ".generated"
         );
 
-        var globalUsingSource = Directory
+        var globalUsingSources = Directory
             .GetFiles(generatedRoot, "Linqraft.GlobalUsings.g.cs", SearchOption.AllDirectories)
             .Select(File.ReadAllText)
-            .Single();
+            .ToArray();
 
-        globalUsingSource.ShouldContain("global using Linqraft;");
+        globalUsingSources.ShouldNotBeEmpty();
+        globalUsingSources.ShouldAllBe(source => source.Contains("global using Linqraft;"));
     }
 
     [Test]
@@ -610,6 +740,73 @@ public sealed class GlobalPropertyConfigurationTests
         }
 
         throw new DirectoryNotFoundException("Could not find the repository root for Linqraft.");
+    }
+
+    private static async Task RunDotNetCommandAsync(
+        IReadOnlyList<string> arguments,
+        string workingDirectory,
+        IReadOnlyList<(string Key, string Value)>? environmentVariables = null
+    )
+    {
+        using var process = new Process
+        {
+            StartInfo = new ProcessStartInfo
+            {
+                FileName = "dotnet",
+                WorkingDirectory = workingDirectory,
+                RedirectStandardOutput = true,
+                RedirectStandardError = true,
+            },
+        };
+
+        foreach (var (key, value) in environmentVariables ?? [])
+        {
+            process.StartInfo.Environment[key] = value;
+        }
+
+        foreach (var argument in arguments)
+        {
+            process.StartInfo.ArgumentList.Add(argument);
+        }
+
+        process.Start();
+        var standardOutputTask = process.StandardOutput.ReadToEndAsync();
+        var standardErrorTask = process.StandardError.ReadToEndAsync();
+        await Task.WhenAll(standardOutputTask, standardErrorTask, process.WaitForExitAsync());
+        var standardOutput = await standardOutputTask;
+        var standardError = await standardErrorTask;
+
+        if (process.ExitCode != 0)
+        {
+            throw new InvalidOperationException(
+                $"dotnet {string.Join(" ", arguments)} failed with exit code {process.ExitCode}.{Environment.NewLine}{standardOutput}{Environment.NewLine}{standardError}"
+            );
+        }
+    }
+
+    private static void TryDeleteDirectory(string path)
+    {
+        for (var attempt = 0; attempt < 3; attempt++)
+        {
+            try
+            {
+                Directory.Delete(path, recursive: true);
+                return;
+            }
+            catch (IOException) when (attempt < 2)
+            {
+                Thread.Sleep(GetDirectoryDeleteRetryDelayMilliseconds(attempt));
+            }
+            catch (UnauthorizedAccessException) when (attempt < 2)
+            {
+                Thread.Sleep(GetDirectoryDeleteRetryDelayMilliseconds(attempt));
+            }
+        }
+    }
+
+    private static int GetDirectoryDeleteRetryDelayMilliseconds(int attempt)
+    {
+        return InitialDirectoryDeleteRetryDelayMilliseconds * (1 << attempt);
     }
 
     private static int CountLeadingSpaces(string value)

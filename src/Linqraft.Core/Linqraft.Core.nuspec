@@ -1,0 +1,32 @@
+<?xml version="1.0"?>
+<package xmlns="http://schemas.microsoft.com/packaging/2010/07/nuspec.xsd">
+  <metadata>
+    <id>Linqraft.Core</id>
+    <version>$version$</version>
+    <authors>arika0093</authors>
+    <includeBuildOutput>false</includeBuildOutput>
+    <developmentDependency>true</developmentDependency>
+    <license type="expression">Apache-2.0</license>
+    <icon>linqraft.png</icon>
+    <readme>README.nuget.md</readme>
+    <projectUrl>https://github.com/arika0093/Linqraft</projectUrl>
+    <requireLicenseAcceptance>false</requireLicenseAcceptance>
+    <description>Write Select queries easily with on-demand DTO generation and null-propagation operators.</description>
+    <repository type="git" url="https://github.com/arika0093/Linqraft" />
+    <contentFiles>
+      <files include="cs/netstandard2.0/Linqraft.Core/**/*.cs" buildAction="None" />
+    </contentFiles>
+    <dependencies>
+      <group targetFramework=".NETStandard2.0">
+        <dependency id="Microsoft.CodeAnalysis.CSharp" version="$microsoftCodeAnalysisCSharpDependencyVersion$" />
+        <dependency id="PolySharp" version="$polySharpDependencyVersion$" />
+      </group>
+    </dependencies>
+  </metadata>
+  <files>
+    <file src="**\*.cs" target="contentFiles/cs/netstandard2.0/Linqraft.Core/" exclude="bin/**;obj/**;InternalsVisibleTo.cs" />
+    <file src="Linqraft.Core.targets" target="build/Linqraft.Core.targets" />
+    <file src="..\..\docs\README.nuget.md" target="README.nuget.md" />
+    <file src="..\..\assets\linqraft.png" target="linqraft.png" />
+  </files>
+</package>

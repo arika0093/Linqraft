@@ -18,7 +18,8 @@ internal static class ProjectionTemplateBuilder
 {
     public static ProjectionSourceTemplateModel? AnalyzeProjectionInvocation(
         GeneratorSyntaxContext syntaxContext,
-        CancellationToken cancellationToken
+        CancellationToken cancellationToken,
+        LinqraftGeneratorOptionsCore generatorOptions
     )
     {
         return syntaxContext.Node is InvocationExpressionSyntax invocation
@@ -27,28 +28,32 @@ internal static class ProjectionTemplateBuilder
                 syntaxContext.SemanticModel,
                 cancellationToken,
                 allowInterceptor: true,
-                ownerHintName: null
+                ownerHintName: null,
+                generatorOptions
             )
             : null;
     }
 
     public static ObjectGenerationSourceTemplateModel? AnalyzeObjectGenerationInvocation(
         GeneratorSyntaxContext syntaxContext,
-        CancellationToken cancellationToken
+        CancellationToken cancellationToken,
+        LinqraftGeneratorOptionsCore generatorOptions
     )
     {
         return syntaxContext.Node is InvocationExpressionSyntax invocation
             ? AnalyzeObjectGenerationInvocationCore(
                 invocation,
                 syntaxContext.SemanticModel,
-                cancellationToken
+                cancellationToken,
+                generatorOptions
             )
             : null;
     }
 
     public static MappingSourceTemplateModel? AnalyzeMappingClass(
         GeneratorAttributeSyntaxContext attributeContext,
-        CancellationToken cancellationToken
+        CancellationToken cancellationToken,
+        LinqraftGeneratorOptionsCore generatorOptions
     )
     {
         if (
@@ -59,7 +64,7 @@ internal static class ProjectionTemplateBuilder
             return null;
         }
 
-        if (!InheritsFromMappingDeclare(classSymbol))
+        if (!InheritsFromMappingDeclare(classSymbol, generatorOptions))
         {
             return null;
         }
@@ -75,27 +80,28 @@ internal static class ProjectionTemplateBuilder
         var selectExpr = defineMapping
             .DescendantNodes()
             .OfType<InvocationExpressionSyntax>()
-            .FirstOrDefault(IsSelectExprInvocation);
+            .FirstOrDefault(invocation => IsSelectExprInvocation(invocation, generatorOptions));
         if (selectExpr is null)
         {
             return null;
         }
 
         var mappingHintName =
-            $"Mapping_{HashingHelper.ComputeHash(classSymbol.ToDisplayString(), 16)}";
+            $"{generatorOptions.MappingHintNamePrefix}_{HashingHelper.ComputeHash(classSymbol.ToDisplayString(), 16)}";
         var projection = AnalyzeQueryProjectionInvocation(
             selectExpr,
             attributeContext.SemanticModel,
             cancellationToken,
             allowInterceptor: false,
-            ownerHintName: mappingHintName
+            ownerHintName: mappingHintName,
+            generatorOptions
         );
         if (projection is null)
         {
             return null;
         }
 
-        var mappingAttribute = GetMappingGenerateAttribute(classSymbol.GetAttributes());
+        var mappingAttribute = GetMappingGenerateAttribute(classSymbol.GetAttributes(), generatorOptions);
         var methodName = GetMappingMethodName(mappingAttribute);
         var accessibilityKeyword = GetMappingGeneratedAccessibilityKeyword(
             classSymbol.DeclaredAccessibility,
@@ -133,7 +139,8 @@ internal static class ProjectionTemplateBuilder
 
     public static MappingSourceTemplateModel? AnalyzeMappingMethod(
         GeneratorAttributeSyntaxContext attributeContext,
-        CancellationToken cancellationToken
+        CancellationToken cancellationToken,
+        LinqraftGeneratorOptionsCore generatorOptions
     )
     {
         if (
@@ -156,27 +163,28 @@ internal static class ProjectionTemplateBuilder
         var selectExpr = declaration
             .DescendantNodes()
             .OfType<InvocationExpressionSyntax>()
-            .FirstOrDefault(IsSelectExprInvocation);
+            .FirstOrDefault(invocation => IsSelectExprInvocation(invocation, generatorOptions));
         if (selectExpr is null)
         {
             return null;
         }
 
         var mappingHintName =
-            $"Mapping_{HashingHelper.ComputeHash(methodSymbol.ToDisplayString(), 16)}";
+            $"{generatorOptions.MappingHintNamePrefix}_{HashingHelper.ComputeHash(methodSymbol.ToDisplayString(), 16)}";
         var projection = AnalyzeQueryProjectionInvocation(
             selectExpr,
             attributeContext.SemanticModel,
             cancellationToken,
             allowInterceptor: false,
-            ownerHintName: mappingHintName
+            ownerHintName: mappingHintName,
+            generatorOptions
         );
         if (projection is null)
         {
             return null;
         }
 
-        var mappingAttribute = GetMappingGenerateAttribute(methodSymbol.GetAttributes());
+        var mappingAttribute = GetMappingGenerateAttribute(methodSymbol.GetAttributes(), generatorOptions);
         return new MappingSourceTemplateModel
         {
             Request = new MappingRequestTemplate
@@ -217,18 +225,19 @@ internal static class ProjectionTemplateBuilder
         SemanticModel semanticModel,
         CancellationToken cancellationToken,
         bool allowInterceptor,
-        string? ownerHintName
+        string? ownerHintName,
+        LinqraftGeneratorOptionsCore generatorOptions
     )
     {
         cancellationToken.ThrowIfCancellationRequested();
 
-        var operationKind = GetProjectionOperationKind(invocation);
+        var operationKind = GetProjectionOperationKind(invocation, generatorOptions);
         if (operationKind is null)
         {
             return null;
         }
 
-        if (allowInterceptor && IsInsideMappingDeclaration(invocation))
+        if (allowInterceptor && IsInsideMappingDeclaration(invocation, generatorOptions))
         {
             return null;
         }
@@ -268,7 +277,7 @@ internal static class ProjectionTemplateBuilder
             return null;
         }
 
-        var captureInfo = AnalyzeCaptures(invocation, semanticModel, cancellationToken);
+        var captureInfo = AnalyzeCaptures(invocation, semanticModel, cancellationToken, generatorOptions);
         var captureEntries = captureInfo.Entries;
         var callerNamespace = ResolveCallerNamespace(invocation, semanticModel);
         var methodHash = HashingHelper.ComputeHash(
@@ -280,7 +289,8 @@ internal static class ProjectionTemplateBuilder
         var buildContext = new ProjectionBuildContext(
             semanticModel,
             captureEntries,
-            cancellationToken
+            cancellationToken,
+            generatorOptions
         );
         var analyzedProjection = operationKind.Value switch
         {
@@ -496,7 +506,11 @@ internal static class ProjectionTemplateBuilder
             resultTypeTemplate =
                 ResolveNamedType(explicitTypeSyntax, semanticModel, callerNamespace) ?? "TResult";
             if (
-                TryFindProjectedAnonymousBody(selectorBody, out var projectedAnonymousBody)
+                TryFindProjectedAnonymousBody(
+                    selectorBody,
+                    buildContext.GeneratorOptions,
+                    out var projectedAnonymousBody
+                )
                 && projectedAnonymousBody is not null
             )
             {
@@ -507,7 +521,8 @@ internal static class ProjectionTemplateBuilder
                     invocation,
                     sourceType as INamedTypeSymbol,
                     ownerHintName,
-                    cancellationToken
+                    cancellationToken,
+                    buildContext.GeneratorOptions
                 );
                 var buildResult = buildContext.BuildProjectionTemplate(
                     projectedAnonymousBody,
@@ -614,7 +629,8 @@ internal static class ProjectionTemplateBuilder
                     invocation,
                     sourceType as INamedTypeSymbol,
                     ownerHintName,
-                    cancellationToken
+                    cancellationToken,
+                    buildContext.GeneratorOptions
                 );
                 var existingProperties = new HashSet<string>(
                     rootDto
@@ -675,11 +691,12 @@ internal static class ProjectionTemplateBuilder
 
     private static bool TryFindProjectedAnonymousBody(
         ExpressionSyntax expression,
+        LinqraftGeneratorOptionsCore generatorOptions,
         out AnonymousObjectCreationExpressionSyntax? anonymousBody
     )
     {
         anonymousBody = null;
-        if (!TryFindProjectionInvocation(expression, out var invocation))
+        if (!TryFindProjectionInvocation(expression, generatorOptions, out var invocation))
         {
             return false;
         }
@@ -700,18 +717,20 @@ internal static class ProjectionTemplateBuilder
             return true;
         }
 
-        return body is not null && TryFindProjectedAnonymousBody(body, out anonymousBody);
+        return body is not null
+            && TryFindProjectedAnonymousBody(body, generatorOptions, out anonymousBody);
     }
 
     private static ObjectGenerationSourceTemplateModel? AnalyzeObjectGenerationInvocationCore(
         InvocationExpressionSyntax invocation,
         SemanticModel semanticModel,
-        CancellationToken cancellationToken
+        CancellationToken cancellationToken,
+        LinqraftGeneratorOptionsCore generatorOptions
     )
     {
         cancellationToken.ThrowIfCancellationRequested();
 
-        if (!IsGenerateInvocation(invocation, semanticModel, cancellationToken))
+        if (!IsGenerateInvocation(invocation, semanticModel, cancellationToken, generatorOptions))
         {
             return null;
         }
@@ -732,21 +751,23 @@ internal static class ProjectionTemplateBuilder
             $"{invocation.SyntaxTree.FilePath}|{invocation.SpanStart}|{argument}",
             16
         );
-        var ownerHintName = $"Generate_{methodHash}";
+        var ownerHintName = $"{generatorOptions.ObjectGenerationHintNamePrefix}_{methodHash}";
         var rootDto = CreateRootDtoTemplate(
             nameSyntax.TypeArgumentList.Arguments[0],
             semanticModel,
             invocation,
             sourceType: null,
             ownerHintName,
-            cancellationToken
+            cancellationToken,
+            generatorOptions
         );
-        var captureInfo = AnalyzeCaptures(invocation, semanticModel, cancellationToken);
+        var captureInfo = AnalyzeCaptures(invocation, semanticModel, cancellationToken, generatorOptions);
         var captureEntries = captureInfo.Entries;
         var buildContext = new ProjectionBuildContext(
             semanticModel,
             captureEntries,
-            cancellationToken
+            cancellationToken,
+            generatorOptions
         );
         var existingProperties = new HashSet<string>(
             rootDto
@@ -821,6 +842,7 @@ internal static class ProjectionTemplateBuilder
         private readonly SemanticModel _semanticModel;
         private readonly IReadOnlyList<ProjectionExpressionEmitter.CaptureEntry> _captureEntries;
         private readonly CancellationToken _cancellationToken;
+        private readonly LinqraftGeneratorOptionsCore _generatorOptions;
         private readonly Dictionary<string, GeneratedDtoTemplateModel> _generatedDtos = new(
             StringComparer.Ordinal
         );
@@ -828,13 +850,17 @@ internal static class ProjectionTemplateBuilder
         public ProjectionBuildContext(
             SemanticModel semanticModel,
             IReadOnlyList<ProjectionExpressionEmitter.CaptureEntry> captureEntries,
-            CancellationToken cancellationToken
+            CancellationToken cancellationToken,
+            LinqraftGeneratorOptionsCore generatorOptions
         )
         {
             _semanticModel = semanticModel;
             _captureEntries = captureEntries;
             _cancellationToken = cancellationToken;
+            _generatorOptions = generatorOptions;
         }
+
+        public LinqraftGeneratorOptionsCore GeneratorOptions => _generatorOptions;
 
         public ProjectionBuildResult BuildProjectionTemplate(
             ExpressionSyntax expression,
@@ -1124,7 +1150,8 @@ internal static class ProjectionTemplateBuilder
                                     )
                                     .Type as INamedTypeSymbol,
                                 ownerHintName,
-                                _cancellationToken
+                                _cancellationToken,
+                                _generatorOptions
                             );
                             replacementTypes[nestedAnonymous.Span] = nestedDto.PlaceholderToken;
                             var nestedBuildResult = BuildProjectionTemplate(
@@ -1283,6 +1310,7 @@ internal static class ProjectionTemplateBuilder
                 expression,
                 rootTypeName,
                 useEmptyCollectionFallback,
+                _generatorOptions,
                 replacementTypes,
                 _captureEntries
             );
@@ -1318,7 +1346,7 @@ internal static class ProjectionTemplateBuilder
             return new GeneratedDtoTemplateModel
             {
                 TemplateId = templateId,
-                PlaceholderToken = CreateDtoPlaceholderToken(templateId),
+                PlaceholderToken = CreateDtoPlaceholderToken(templateId, _generatorOptions),
                 Kind = GeneratedDtoTemplateKind.NestedAuto,
                 PreferredNamespace = defaultNamespace,
                 UseGlobalNamespaceFallback = useGlobalNamespaceFallback,
@@ -1351,7 +1379,8 @@ internal static class ProjectionTemplateBuilder
                 _semanticModel,
                 syntax,
                 rootTypeName,
-                useEmptyCollectionFallback: false
+                useEmptyCollectionFallback: false,
+                _generatorOptions
             );
             return emitter.Emit(syntax);
         }
@@ -1361,7 +1390,7 @@ internal static class ProjectionTemplateBuilder
             out CollectionProjectionInfo projectionInfo
         )
         {
-            if (!TryFindProjectionInvocation(expression, out var invocation))
+            if (!TryFindProjectionInvocation(expression, _generatorOptions, out var invocation))
             {
                 projectionInfo = default;
                 return false;
@@ -1398,7 +1427,7 @@ internal static class ProjectionTemplateBuilder
                     ?? _semanticModel.GetTypeInfo(expression, _cancellationToken).ConvertedType,
                 ProjectionMethodName = GetInvocationName(invocation.Expression),
                 IsNestedExplicitDto =
-                    IsSelectExprInvocation(invocation)
+                    IsSelectExprInvocation(invocation, _generatorOptions)
                     && genericArgs.Count >= 2
                     && body is AnonymousObjectCreationExpressionSyntax,
                 NestedResultTypeSyntax = genericArgs.Count >= 2 ? genericArgs[1] : null,
@@ -1428,7 +1457,7 @@ internal static class ProjectionTemplateBuilder
                 !expression
                     .DescendantNodesAndSelf()
                     .OfType<InvocationExpressionSyntax>()
-                    .Any(IsProjectionInvocation)
+                    .Any(invocation => IsProjectionInvocation(invocation, _generatorOptions))
             )
             {
                 return false;
@@ -1477,7 +1506,8 @@ internal static class ProjectionTemplateBuilder
         InvocationExpressionSyntax invocation,
         INamedTypeSymbol? sourceType,
         string ownerHintName,
-        CancellationToken cancellationToken
+        CancellationToken cancellationToken,
+        LinqraftGeneratorOptionsCore generatorOptions
     )
     {
         var resultType =
@@ -1511,7 +1541,7 @@ internal static class ProjectionTemplateBuilder
         return new GeneratedDtoTemplateModel
         {
             TemplateId = templateId,
-            PlaceholderToken = CreateDtoPlaceholderToken(templateId),
+            PlaceholderToken = CreateDtoPlaceholderToken(templateId, generatorOptions),
             Kind = GeneratedDtoTemplateKind.RootExplicit,
             PreferredNamespace = namespaceName,
             UseGlobalNamespaceFallback = string.IsNullOrWhiteSpace(namespaceName),
@@ -1553,10 +1583,11 @@ internal static class ProjectionTemplateBuilder
     private static CaptureAnalysisResult AnalyzeCaptures(
         InvocationExpressionSyntax invocation,
         SemanticModel semanticModel,
-        CancellationToken cancellationToken
+        CancellationToken cancellationToken,
+        LinqraftGeneratorOptionsCore generatorOptions
     )
     {
-        var captureArgument = GetCaptureArgument(invocation);
+        var captureArgument = GetCaptureArgument(invocation, generatorOptions);
         if (captureArgument?.Expression is null)
         {
             return CaptureAnalysisResult.None;
@@ -1717,9 +1748,12 @@ internal static class ProjectionTemplateBuilder
             .ToArray();
     }
 
-    private static string CreateDtoPlaceholderToken(string templateId)
+    private static string CreateDtoPlaceholderToken(
+        string templateId,
+        LinqraftGeneratorOptionsCore generatorOptions
+    )
     {
-        return $"__LinqraftDto_{HashingHelper.ComputeHash(templateId, 16)}__";
+        return $"{generatorOptions.DtoPlaceholderPrefix}_{HashingHelper.ComputeHash(templateId, 16)}__";
     }
 
     private static IReadOnlyList<(string Name, ExpressionSyntax Expression)> GetProjectionMembers(
@@ -1753,45 +1787,46 @@ internal static class ProjectionTemplateBuilder
 
     private static bool TryFindProjectionInvocation(
         ExpressionSyntax expression,
+        LinqraftGeneratorOptionsCore generatorOptions,
         out InvocationExpressionSyntax invocation
     )
     {
         switch (expression)
         {
             case ConditionalExpressionSyntax conditionalExpression:
-                if (TryFindProjectionInvocation(conditionalExpression.WhenTrue, out invocation))
+                if (TryFindProjectionInvocation(conditionalExpression.WhenTrue, generatorOptions, out invocation))
                 {
                     return true;
                 }
 
-                return TryFindProjectionInvocation(conditionalExpression.WhenFalse, out invocation);
+                return TryFindProjectionInvocation(conditionalExpression.WhenFalse, generatorOptions, out invocation);
             case BinaryExpressionSyntax binaryExpression
                 when binaryExpression.IsKind(SyntaxKind.CoalesceExpression):
-                if (TryFindProjectionInvocation(binaryExpression.Left, out invocation))
+                if (TryFindProjectionInvocation(binaryExpression.Left, generatorOptions, out invocation))
                 {
                     return true;
                 }
 
-                return TryFindProjectionInvocation(binaryExpression.Right, out invocation);
+                return TryFindProjectionInvocation(binaryExpression.Right, generatorOptions, out invocation);
             case InvocationExpressionSyntax directInvocation
-                when IsProjectionInvocation(directInvocation):
+                when IsProjectionInvocation(directInvocation, generatorOptions):
                 invocation = directInvocation;
                 return true;
             case InvocationExpressionSyntax nestedInvocation
                 when nestedInvocation.Expression is MemberAccessExpressionSyntax memberAccess:
-                return TryFindProjectionInvocation(memberAccess.Expression, out invocation);
+                return TryFindProjectionInvocation(memberAccess.Expression, generatorOptions, out invocation);
             case MemberAccessExpressionSyntax memberAccess:
-                return TryFindProjectionInvocation(memberAccess.Expression, out invocation);
+                return TryFindProjectionInvocation(memberAccess.Expression, generatorOptions, out invocation);
             case ConditionalAccessExpressionSyntax conditionalAccess
                 when conditionalAccess.WhenNotNull
                     is InvocationExpressionSyntax whenNotNullInvocation
-                    && IsProjectionInvocation(whenNotNullInvocation):
+                    && IsProjectionInvocation(whenNotNullInvocation, generatorOptions):
                 invocation = whenNotNullInvocation;
                 return true;
             case ConditionalAccessExpressionSyntax conditionalAccess:
                 if (
                     conditionalAccess.WhenNotNull is ExpressionSyntax whenNotNull
-                    && TryFindProjectionInvocation(whenNotNull, out invocation)
+                    && TryFindProjectionInvocation(whenNotNull, generatorOptions, out invocation)
                 )
                 {
                     return true;
@@ -1805,15 +1840,17 @@ internal static class ProjectionTemplateBuilder
         }
     }
 
-    private static bool IsProjectionInvocation(InvocationExpressionSyntax invocation)
+    private static bool IsProjectionInvocation(
+        InvocationExpressionSyntax invocation,
+        LinqraftGeneratorOptionsCore generatorOptions
+    )
     {
         var name = GetInvocationName(invocation.Expression);
-        return name
-            is "Select"
-                or "SelectMany"
-                or "SelectExpr"
-                or "SelectManyExpr"
-                or "GroupByExpr";
+        return name == "Select"
+            || name == "SelectMany"
+            || name == generatorOptions.SelectExprMethodName
+            || name == generatorOptions.SelectManyExprMethodName
+            || name == generatorOptions.GroupByExprMethodName;
     }
 
     private static ProjectionPattern? ResolveProjectionPattern(
@@ -1922,7 +1959,10 @@ internal static class ProjectionTemplateBuilder
         return expression is AnonymousObjectCreationExpressionSyntax or LambdaExpressionSyntax;
     }
 
-    private static ArgumentSyntax? GetCaptureArgument(InvocationExpressionSyntax invocation)
+    private static ArgumentSyntax? GetCaptureArgument(
+        InvocationExpressionSyntax invocation,
+        LinqraftGeneratorOptionsCore generatorOptions
+    )
     {
         var namedCapture = invocation.ArgumentList.Arguments.FirstOrDefault(argument =>
             argument.NameColon?.Name.Identifier.ValueText == "capture"
@@ -1932,7 +1972,7 @@ internal static class ProjectionTemplateBuilder
             return namedCapture;
         }
 
-        var captureIndex = GetPositionalCaptureArgumentIndex(invocation);
+        var captureIndex = GetPositionalCaptureArgumentIndex(invocation, generatorOptions);
         if (
             captureIndex is not int index
             || index < 0
@@ -1946,14 +1986,17 @@ internal static class ProjectionTemplateBuilder
         return IsCaptureExpression(argument.Expression) ? argument : null;
     }
 
-    private static int? GetPositionalCaptureArgumentIndex(InvocationExpressionSyntax invocation)
+    private static int? GetPositionalCaptureArgumentIndex(
+        InvocationExpressionSyntax invocation,
+        LinqraftGeneratorOptionsCore generatorOptions
+    )
     {
         return GetInvocationName(invocation.Expression) switch
         {
-            "Generate" => 1,
-            "SelectExpr" => 1,
-            "SelectManyExpr" => 1,
-            "GroupByExpr" => 2,
+            var name when name == generatorOptions.ObjectGenerationMethodName => 1,
+            var name when name == generatorOptions.SelectExprMethodName => 1,
+            var name when name == generatorOptions.SelectManyExprMethodName => 1,
+            var name when name == generatorOptions.GroupByExprMethodName => 2,
             _ => null,
         };
     }
@@ -2341,14 +2384,15 @@ internal static class ProjectionTemplateBuilder
     }
 
     private static ProjectionOperationKind? GetProjectionOperationKind(
-        InvocationExpressionSyntax invocation
+        InvocationExpressionSyntax invocation,
+        LinqraftGeneratorOptionsCore generatorOptions
     )
     {
         return GetInvocationName(invocation.Expression) switch
         {
-            "SelectExpr" => ProjectionOperationKind.Select,
-            "SelectManyExpr" => ProjectionOperationKind.SelectMany,
-            "GroupByExpr" => ProjectionOperationKind.GroupBy,
+            var name when name == generatorOptions.SelectExprMethodName => ProjectionOperationKind.Select,
+            var name when name == generatorOptions.SelectManyExprMethodName => ProjectionOperationKind.SelectMany,
+            var name when name == generatorOptions.GroupByExprMethodName => ProjectionOperationKind.GroupBy,
             _ => null,
         };
     }
@@ -2356,13 +2400,19 @@ internal static class ProjectionTemplateBuilder
     private static bool IsGenerateInvocation(
         InvocationExpressionSyntax invocation,
         SemanticModel semanticModel,
-        CancellationToken cancellationToken
+        CancellationToken cancellationToken,
+        LinqraftGeneratorOptionsCore generatorOptions
     )
     {
+        if (generatorOptions.GeneratorKitMetadataName is not { } generatorKitMetadataName)
+        {
+            return false;
+        }
+
         if (
             !string.Equals(
                 GetInvocationName(invocation.Expression),
-                "Generate",
+                generatorOptions.ObjectGenerationMethodName,
                 StringComparison.Ordinal
             )
         )
@@ -2380,22 +2430,38 @@ internal static class ProjectionTemplateBuilder
         var targetMethod = methodSymbol.ReducedFrom ?? methodSymbol;
         return string.Equals(
                 targetMethod.ContainingType.ToDisplayString(),
-                "Linqraft.LinqraftKit",
+                generatorKitMetadataName,
                 StringComparison.Ordinal
-            ) && string.Equals(targetMethod.Name, "Generate", StringComparison.Ordinal);
+            )
+            && string.Equals(
+                targetMethod.Name,
+                generatorOptions.ObjectGenerationMethodName,
+                StringComparison.Ordinal
+            );
     }
 
-    private static bool IsSelectExprInvocation(InvocationExpressionSyntax invocation)
+    private static bool IsSelectExprInvocation(
+        InvocationExpressionSyntax invocation,
+        LinqraftGeneratorOptionsCore generatorOptions
+    )
     {
         return string.Equals(
             GetInvocationName(invocation.Expression),
-            "SelectExpr",
+            generatorOptions.SelectExprMethodName,
             StringComparison.Ordinal
         );
     }
 
-    private static bool IsInsideMappingDeclaration(SyntaxNode node)
+    private static bool IsInsideMappingDeclaration(
+        SyntaxNode node,
+        LinqraftGeneratorOptionsCore generatorOptions
+    )
     {
+        if (generatorOptions.MappingGenerateAttributeName is not { } mappingGenerateAttributeName)
+        {
+            return false;
+        }
+
         return node.Ancestors()
             .OfType<MemberDeclarationSyntax>()
             .Any(member =>
@@ -2404,7 +2470,10 @@ internal static class ProjectionTemplateBuilder
                     .Any(attribute =>
                         attribute
                             .Name.ToString()
-                            .Contains("LinqraftMappingGenerate", StringComparison.Ordinal)
+                            .Contains(
+                                mappingGenerateAttributeName.Replace("Attribute", string.Empty),
+                                StringComparison.Ordinal
+                            )
                     )
             );
     }
@@ -2442,12 +2511,20 @@ internal static class ProjectionTemplateBuilder
             ?? AnonymousMemberNameResolver.Get(initializer.Expression);
     }
 
-    private static bool InheritsFromMappingDeclare(INamedTypeSymbol symbol)
+    private static bool InheritsFromMappingDeclare(
+        INamedTypeSymbol symbol,
+        LinqraftGeneratorOptionsCore generatorOptions
+    )
     {
+        if (generatorOptions.MappingDeclareClassName is not { } mappingDeclareClassName)
+        {
+            return false;
+        }
+
         var current = symbol.BaseType;
         while (current is not null)
         {
-            if (current.Name == "LinqraftMappingDeclare")
+            if (current.Name == mappingDeclareClassName)
             {
                 return true;
             }
@@ -2459,11 +2536,17 @@ internal static class ProjectionTemplateBuilder
     }
 
     private static AttributeData? GetMappingGenerateAttribute(
-        ImmutableArray<AttributeData> attributes
+        ImmutableArray<AttributeData> attributes,
+        LinqraftGeneratorOptionsCore generatorOptions
     )
     {
+        if (generatorOptions.MappingGenerateAttributeName is not { } mappingGenerateAttributeName)
+        {
+            return null;
+        }
+
         return attributes.FirstOrDefault(attribute =>
-            attribute.AttributeClass?.Name == "LinqraftMappingGenerateAttribute"
+            attribute.AttributeClass?.Name == mappingGenerateAttributeName
         );
     }
 

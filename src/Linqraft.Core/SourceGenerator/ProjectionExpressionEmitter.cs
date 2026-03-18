@@ -1,5 +1,6 @@
 using System.Collections.Generic;
 using System.Linq;
+using Linqraft.Core.Configuration;
 using Linqraft.Core.Formatting;
 using Linqraft.Core.Utilities;
 using Microsoft.CodeAnalysis;
@@ -54,12 +55,14 @@ internal sealed class ProjectionExpressionEmitter
     private readonly bool _useEmptyCollectionFallback;
     private readonly IReadOnlyDictionary<TextSpan, string> _replacementTypes;
     private readonly IReadOnlyList<CaptureEntry> _captureEntries;
+    private readonly LinqraftGeneratorOptionsCore _generatorOptions;
 
     public ProjectionExpressionEmitter(
         SemanticModel semanticModel,
         ExpressionSyntax rootExpression,
         string rootTypeName,
         bool useEmptyCollectionFallback,
+        LinqraftGeneratorOptionsCore generatorOptions,
         IReadOnlyDictionary<TextSpan, string>? replacementTypes = null,
         IReadOnlyList<CaptureEntry>? captureEntries = null
     )
@@ -68,6 +71,7 @@ internal sealed class ProjectionExpressionEmitter
         _rootExpression = rootExpression;
         _rootTypeName = rootTypeName;
         _useEmptyCollectionFallback = useEmptyCollectionFallback;
+        _generatorOptions = generatorOptions;
         _replacementTypes = replacementTypes ?? new Dictionary<TextSpan, string>();
         _captureEntries = captureEntries ?? global::System.Array.Empty<CaptureEntry>();
     }
@@ -315,6 +319,7 @@ internal sealed class ProjectionExpressionEmitter
             expression.Left,
             rootTypeName,
             useEmptyCollectionFallback: true,
+            _generatorOptions,
             _replacementTypes,
             _captureEntries
         );
@@ -331,17 +336,17 @@ internal sealed class ProjectionExpressionEmitter
                 .Identifier
                 .ValueText switch
             {
-                "SelectExpr" => EmitProjectionInvocation(
+                var methodName when methodName == _generatorOptions.SelectExprMethodName => EmitProjectionInvocation(
                     Emit(memberAccess.Expression),
                     expression,
                     "Select"
                 ),
-                "SelectManyExpr" => EmitProjectionInvocation(
+                var methodName when methodName == _generatorOptions.SelectManyExprMethodName => EmitProjectionInvocation(
                     Emit(memberAccess.Expression),
                     expression,
                     "SelectMany"
                 ),
-                "GroupByExpr" => EmitGroupByExprInvocation(
+                var methodName when methodName == _generatorOptions.GroupByExprMethodName => EmitGroupByExprInvocation(
                     Emit(memberAccess.Expression),
                     expression
                 ),
@@ -490,6 +495,7 @@ internal sealed class ProjectionExpressionEmitter
             expression,
             rootTypeName,
             ShouldUseCollectionFallback(expression, expressionType),
+            _generatorOptions,
             _replacementTypes,
             _captureEntries
         );
@@ -773,7 +779,7 @@ internal sealed class ProjectionExpressionEmitter
         MemberAccessExpressionSyntax memberAccess
     )
     {
-        if (memberAccess.Name.Identifier.ValueText == "SelectExpr")
+        if (memberAccess.Name.Identifier.ValueText == _generatorOptions.SelectExprMethodName)
         {
             var selector = invocation
                 .ArgumentList.Arguments.Select(argument => argument.Expression)
@@ -795,9 +801,9 @@ internal sealed class ProjectionExpressionEmitter
     {
         return methodName.Identifier.ValueText switch
         {
-            "SelectExpr" => EmitProjectionInvocation(receiver, invocation, "Select"),
-            "SelectManyExpr" => EmitProjectionInvocation(receiver, invocation, "SelectMany"),
-            "GroupByExpr" => EmitGroupByExprInvocation(receiver, invocation),
+            var name when name == _generatorOptions.SelectExprMethodName => EmitProjectionInvocation(receiver, invocation, "Select"),
+            var name when name == _generatorOptions.SelectManyExprMethodName => EmitProjectionInvocation(receiver, invocation, "SelectMany"),
+            var name when name == _generatorOptions.GroupByExprMethodName => EmitGroupByExprInvocation(receiver, invocation),
             _ => TryEmitExtensionInvocation(invocation, methodName, receiver, out var rewritten)
                 ? rewritten
                 : $"{receiver}.{EmitSimpleName(methodName)}{EmitArgumentList(invocation.ArgumentList)}",

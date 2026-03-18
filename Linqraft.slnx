@@ -16,7 +16,7 @@
     <File Path="src/Directory.Build.props" />
     <Project Path="src/Linqraft.Analyzer/Linqraft.Analyzer.csproj" />
     <Project Path="src/Linqraft.Core/Linqraft.Core.csproj" />
-    <Project Path="src/Linqraft.SourceGenerator/Linqraft.SourceGenerator.csproj" />
+    <Project Path="src/Linqraft.Generator/Linqraft.Generator.csproj" />
     <Project Path="src/Linqraft/Linqraft.csproj" />
   </Folder>
   <Folder Name="/tests/">
