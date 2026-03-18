@@ -56,6 +56,7 @@ internal sealed class ProjectionExpressionEmitter
     private readonly IReadOnlyDictionary<TextSpan, string> _replacementTypes;
     private readonly IReadOnlyList<CaptureEntry> _captureEntries;
     private readonly LinqraftGeneratorOptionsCore _generatorOptions;
+    private readonly HashSet<ISymbol> _activeProjectableSymbols;
 
     public ProjectionExpressionEmitter(
         SemanticModel semanticModel,
@@ -64,7 +65,8 @@ internal sealed class ProjectionExpressionEmitter
         bool useEmptyCollectionFallback,
         LinqraftGeneratorOptionsCore generatorOptions,
         IReadOnlyDictionary<TextSpan, string>? replacementTypes = null,
-        IReadOnlyList<CaptureEntry>? captureEntries = null
+        IReadOnlyList<CaptureEntry>? captureEntries = null,
+        HashSet<ISymbol>? activeProjectableSymbols = null
     )
     {
         _semanticModel = semanticModel;
@@ -74,6 +76,7 @@ internal sealed class ProjectionExpressionEmitter
         _generatorOptions = generatorOptions;
         _replacementTypes = replacementTypes ?? new Dictionary<TextSpan, string>();
         _captureEntries = captureEntries ?? global::System.Array.Empty<CaptureEntry>();
+        _activeProjectableSymbols = activeProjectableSymbols ?? new HashSet<ISymbol>(SymbolEqualityComparer.Default);
     }
 
     public string Emit(ExpressionSyntax expression)
@@ -326,7 +329,8 @@ internal sealed class ProjectionExpressionEmitter
             useEmptyCollectionFallback: true,
             _generatorOptions,
             _replacementTypes,
-            _captureEntries
+            _captureEntries,
+            _activeProjectableSymbols
         );
         rewritten = nestedEmitter.Emit(expression.Left);
         return true;
@@ -503,7 +507,8 @@ internal sealed class ProjectionExpressionEmitter
             ShouldUseCollectionFallback(expression, expressionType),
             _generatorOptions,
             _replacementTypes,
-            _captureEntries
+            _captureEntries,
+            _activeProjectableSymbols
         );
         return nestedEmitter.Emit(expression);
     }
@@ -961,13 +966,40 @@ internal sealed class ProjectionExpressionEmitter
             return false;
         }
 
-        if (!TryExpandProjectableInvocation(invocation, overrideReceiver, out var expanded))
+        if (
+            !TryExpandProjectableInvocation(
+                invocation,
+                overrideReceiver,
+                out var expanded,
+                out var expandedSymbol
+            )
+        )
         {
             return false;
         }
 
-        rewritten = Emit(expanded);
-        return true;
+        if (
+            expandedSymbol is not null
+            && !_activeProjectableSymbols.Add(expandedSymbol)
+        )
+        {
+            throw new global::System.InvalidOperationException(
+                $"Detected recursive AsProjectable expansion for '{expandedSymbol.ToDisplayString()}'."
+            );
+        }
+
+        try
+        {
+            rewritten = Emit(expanded);
+            return true;
+        }
+        finally
+        {
+            if (expandedSymbol is not null)
+            {
+                _activeProjectableSymbols.Remove(expandedSymbol);
+            }
+        }
     }
 
     private bool TryEmitExtensionInvocation(
@@ -1005,39 +1037,56 @@ internal sealed class ProjectionExpressionEmitter
     private bool TryExpandProjectableInvocation(
         InvocationExpressionSyntax invocation,
         string? overrideReceiver,
-        out ExpressionSyntax expanded
+        out ExpressionSyntax expanded,
+        out ISymbol? expandedSymbol
     )
     {
         var targetExpression = GetHookReceiverExpression(invocation);
         if (targetExpression is null)
         {
             expanded = invocation;
+            expandedSymbol = null;
             return false;
         }
 
-        if (TryExpandProjectableProperty(targetExpression, overrideReceiver, out expanded))
+        if (
+            TryExpandProjectableProperty(
+                targetExpression,
+                overrideReceiver,
+                out expanded,
+                out expandedSymbol
+            )
+        )
         {
             return true;
         }
 
         if (targetExpression is InvocationExpressionSyntax targetInvocation)
         {
-            return TryExpandProjectableMethod(targetInvocation, overrideReceiver, out expanded);
+            return TryExpandProjectableMethod(
+                targetInvocation,
+                overrideReceiver,
+                out expanded,
+                out expandedSymbol
+            );
         }
 
         expanded = invocation;
+        expandedSymbol = null;
         return false;
     }
 
     private bool TryExpandProjectableProperty(
         ExpressionSyntax targetExpression,
         string? overrideReceiver,
-        out ExpressionSyntax expanded
+        out ExpressionSyntax expanded,
+        out ISymbol? expandedSymbol
     )
     {
         if (!BelongsToSemanticModel(targetExpression))
         {
             expanded = targetExpression;
+            expandedSymbol = null;
             return false;
         }
 
@@ -1048,6 +1097,7 @@ internal sealed class ProjectionExpressionEmitter
         if (propertySymbol?.IsStatic == true)
         {
             expanded = targetExpression;
+            expandedSymbol = null;
             return false;
         }
 
@@ -1057,10 +1107,17 @@ internal sealed class ProjectionExpressionEmitter
         if (bodyExpression is null)
         {
             expanded = targetExpression;
+            expandedSymbol = null;
             return false;
         }
 
         var declarationModel = _semanticModel.Compilation.GetSemanticModel(bodyExpression.SyntaxTree);
+        EnsureProjectableExpansionIsAcyclic(
+            propertySymbol!,
+            bodyExpression,
+            declarationModel,
+            new HashSet<ISymbol>(_activeProjectableSymbols, SymbolEqualityComparer.Default)
+        );
         var receiverExpression =
             overrideReceiver is null
                 ? GetProjectableReceiverExpression(targetExpression)
@@ -1073,18 +1130,21 @@ internal sealed class ProjectionExpressionEmitter
         );
         expanded =
             (ExpressionSyntax?)rewriter.Visit(bodyExpression.WithoutTrivia()) ?? bodyExpression;
+        expandedSymbol = propertySymbol;
         return true;
     }
 
     private bool TryExpandProjectableMethod(
         InvocationExpressionSyntax targetInvocation,
         string? overrideReceiver,
-        out ExpressionSyntax expanded
+        out ExpressionSyntax expanded,
+        out ISymbol? expandedSymbol
     )
     {
         if (!BelongsToSemanticModel(targetInvocation))
         {
             expanded = targetInvocation;
+            expandedSymbol = null;
             return false;
         }
 
@@ -1095,6 +1155,7 @@ internal sealed class ProjectionExpressionEmitter
         if (methodSymbol is null || methodSymbol.IsStatic)
         {
             expanded = targetInvocation;
+            expandedSymbol = null;
             return false;
         }
 
@@ -1104,10 +1165,17 @@ internal sealed class ProjectionExpressionEmitter
         if (bodyExpression is null)
         {
             expanded = targetInvocation;
+            expandedSymbol = null;
             return false;
         }
 
         var declarationModel = _semanticModel.Compilation.GetSemanticModel(bodyExpression.SyntaxTree);
+        EnsureProjectableExpansionIsAcyclic(
+            methodSymbol,
+            bodyExpression,
+            declarationModel,
+            new HashSet<ISymbol>(_activeProjectableSymbols, SymbolEqualityComparer.Default)
+        );
         var receiverExpression =
             overrideReceiver is null
                 ? GetProjectableReceiverExpression(targetInvocation)
@@ -1125,6 +1193,7 @@ internal sealed class ProjectionExpressionEmitter
         );
         expanded =
             (ExpressionSyntax?)rewriter.Visit(bodyExpression.WithoutTrivia()) ?? bodyExpression;
+        expandedSymbol = methodSymbol;
         return true;
     }
 
@@ -1234,6 +1303,136 @@ internal sealed class ProjectionExpressionEmitter
                 memberAccess.Expression.WithoutTrivia(),
             _ => null,
         };
+    }
+
+    private void EnsureProjectableExpansionIsAcyclic(
+        ISymbol symbol,
+        ExpressionSyntax bodyExpression,
+        SemanticModel semanticModel,
+        ISet<ISymbol> activeSymbols
+    )
+    {
+        if (!activeSymbols.Add(symbol))
+        {
+            throw new global::System.InvalidOperationException(
+                $"Detected recursive AsProjectable expansion for '{symbol.ToDisplayString()}'."
+            );
+        }
+
+        try
+        {
+            foreach (
+                var invocation in bodyExpression
+                    .DescendantNodesAndSelf()
+                    .OfType<InvocationExpressionSyntax>()
+            )
+            {
+                if (!IsProjectionHookInvocation(invocation, LinqraftProjectionHookKind.Projectable))
+                {
+                    continue;
+                }
+
+                var targetExpression = GetHookReceiverExpression(invocation);
+                if (
+                    targetExpression is null
+                    || !TryGetProjectableTargetSymbol(
+                        targetExpression,
+                        semanticModel,
+                        out var nestedSymbol,
+                        out var nestedBodyExpression,
+                        out var nestedSemanticModel
+                    )
+                )
+                {
+                    continue;
+                }
+
+                EnsureProjectableExpansionIsAcyclic(
+                    nestedSymbol,
+                    nestedBodyExpression,
+                    nestedSemanticModel,
+                    activeSymbols
+                );
+            }
+        }
+        finally
+        {
+            activeSymbols.Remove(symbol);
+        }
+    }
+
+    private static bool TryGetProjectableTargetSymbol(
+        ExpressionSyntax targetExpression,
+        SemanticModel semanticModel,
+        out ISymbol symbol,
+        out ExpressionSyntax bodyExpression,
+        out SemanticModel declarationModel
+    )
+    {
+        symbol = null!;
+        bodyExpression = null!;
+        declarationModel = null!;
+
+        switch (targetExpression)
+        {
+            case InvocationExpressionSyntax targetInvocation:
+            {
+                var methodSymbol =
+                    semanticModel.GetSymbolInfo(targetInvocation).Symbol as IMethodSymbol
+                    ?? semanticModel
+                        .GetSymbolInfo(targetInvocation)
+                        .CandidateSymbols.OfType<IMethodSymbol>()
+                        .FirstOrDefault();
+                if (methodSymbol is null || methodSymbol.IsStatic)
+                {
+                    return false;
+                }
+
+                var methodSyntax = methodSymbol.DeclaringSyntaxReferences.FirstOrDefault()?.GetSyntax()
+                    as MethodDeclarationSyntax;
+                var nestedBodyExpression = GetProjectableBodyExpression(methodSyntax);
+                if (nestedBodyExpression is null)
+                {
+                    return false;
+                }
+
+                symbol = methodSymbol;
+                bodyExpression = nestedBodyExpression;
+                declarationModel = semanticModel.Compilation.GetSemanticModel(
+                    nestedBodyExpression.SyntaxTree
+                );
+                return true;
+            }
+            default:
+            {
+                var propertySymbol =
+                    semanticModel.GetSymbolInfo(targetExpression).Symbol as IPropertySymbol
+                    ?? semanticModel
+                        .GetSymbolInfo(targetExpression)
+                        .CandidateSymbols.OfType<IPropertySymbol>()
+                        .FirstOrDefault();
+                if (propertySymbol is null || propertySymbol.IsStatic)
+                {
+                    return false;
+                }
+
+                var propertySyntax = propertySymbol
+                    .DeclaringSyntaxReferences.FirstOrDefault()
+                    ?.GetSyntax() as PropertyDeclarationSyntax;
+                var nestedBodyExpression = GetProjectableBodyExpression(propertySyntax);
+                if (nestedBodyExpression is null)
+                {
+                    return false;
+                }
+
+                symbol = propertySymbol;
+                bodyExpression = nestedBodyExpression;
+                declarationModel = semanticModel.Compilation.GetSemanticModel(
+                    nestedBodyExpression.SyntaxTree
+                );
+                return true;
+            }
+        }
     }
 
     private bool IsProjectionHookInvocation(

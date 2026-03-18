@@ -38,14 +38,7 @@ internal abstract class ProjectionSupportExtensionClassGenerator
         LinqraftGeneratorOptionsCore generatorOptions
     )
     {
-        foreach (
-            var hook in generatorOptions
-                .ProjectionHooks.GroupBy(
-                    hook => hook.MethodName,
-                    global::System.StringComparer.Ordinal
-                )
-                .Select(group => group.First())
-        )
+        foreach (var hook in generatorOptions.GetValidatedProjectionHooks())
         {
             var builder = new IndentedStringBuilder();
             builder.AppendLine("/// <summary>");

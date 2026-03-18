@@ -19,6 +19,8 @@ Linqraft is a Roslyn Source Generator for easily writing `IQueryable` projection
   * Supports nested DTOs, collections, and calculated fields.
 * Null-propagation operator support (`?.`) in Expression Trees
   * No more need to write `o.Customer != null ? o.Customer.Name : null`.
+* Explicit projection hooks
+  * `AsLeftJoin()` and `AsProjectable()` can opt a selector fragment into a generated rewrite.
 * Zero-dependency
   * No runtime dependencies are required since it uses Source Generators and Interceptors.
 
@@ -148,6 +150,24 @@ namespace Tutorial.LinqraftGenerated_67EDED21
 ### Drop-in Replacement Analyzers
 
 [Analyzers](./docs/analyzers/README.md) are provided to replace existing Select code with Linqraft. The replacement is completed in an instant.
+
+### Projection Hooks
+
+Linqraft also supports explicit projection hooks for cases where you want the generator to rewrite part of a selector body:
+
+```csharp
+var rows = dbContext.Orders
+    .SelectExpr(order => new
+    {
+        CustomerName = order.Customer.AsLeftJoin().Name,
+        FirstLargeItem = order.FirstLargeItemProductName.AsProjectable(),
+    });
+```
+
+- `AsLeftJoin()` rewrites a nullable navigation access as an explicit null-guarded access.
+- `AsProjectable()` inlines a computed instance property or method into the generated projection.
+
+See [Projection Hooks](./docs/library/projection-hooks.md) for details and constraints.
 
 ## Quick Start
 ### Single File Example

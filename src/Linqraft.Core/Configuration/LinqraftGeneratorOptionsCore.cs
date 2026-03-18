@@ -254,9 +254,28 @@ public abstract class LinqraftGeneratorOptionsCore
     internal string? GeneratorKitMetadataName =>
         GeneratorKitClassName is null ? null : $"{SupportNamespace}.{GeneratorKitClassName}";
 
+    internal IReadOnlyList<LinqraftProjectionHookDefinition> GetValidatedProjectionHooks()
+    {
+        var hooks = ProjectionHooks;
+        var duplicates = hooks
+            .GroupBy(hook => hook.MethodName, System.StringComparer.Ordinal)
+            .Where(group => group.Skip(1).Any())
+            .Select(group => group.Key)
+            .OrderBy(name => name, System.StringComparer.Ordinal)
+            .ToArray();
+        if (duplicates.Length != 0)
+        {
+            throw new System.InvalidOperationException(
+                $"ProjectionHooks contains duplicate method name(s): {string.Join(", ", duplicates)}."
+            );
+        }
+
+        return hooks;
+    }
+
     internal LinqraftProjectionHookDefinition? FindProjectionHook(string methodName)
     {
-        return ProjectionHooks.FirstOrDefault(hook =>
+        return GetValidatedProjectionHooks().FirstOrDefault(hook =>
             string.Equals(hook.MethodName, methodName, System.StringComparison.Ordinal)
         );
     }

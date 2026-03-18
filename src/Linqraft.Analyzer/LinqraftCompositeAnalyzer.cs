@@ -119,8 +119,16 @@ public sealed class LinqraftCompositeAnalyzer : DiagnosticAnalyzer
     )
     {
         if (
-            !AnalyzerHelpers.IsProjectionHookInvocation(invocation)
-            || AnalyzerHelpers.IsInsideProjectionHookContext(invocation)
+            !AnalyzerHelpers.IsProjectionHookInvocation(
+                invocation,
+                context.SemanticModel,
+                context.CancellationToken
+            )
+            || AnalyzerHelpers.IsInsideProjectionHookContext(
+                invocation,
+                context.SemanticModel,
+                context.CancellationToken
+            )
         )
         {
             return;

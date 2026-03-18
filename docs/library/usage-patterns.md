@@ -10,6 +10,7 @@ Linqraft provides several usage patterns for different scenarios. This guide exp
 | [Explicit DTO](#explicit-dto-pattern) | Auto-generated DTO | Reusable DTOs, API responses, type-safe code |
 | [Pre-existing DTO](#pre-existing-dto-pattern) | Your DTO class | Using existing DTOs, shared types |
 | [Aggregation & Flattening](#aggregation--flattening-helpers) | Named or anonymous projections | GroupBy / SelectMany pipelines without manual intermediate `IGrouping` handling |
+| [Projection Hooks](./projection-hooks.md) | Rewritten selector fragments | Opt into `AsLeftJoin()` / `AsProjectable()` rewrites inside generated projections |
 | [LinqraftKit.Generate](#linqraftkitgenerate) | Auto-generated DTO | Building generated DTOs from runtime objects outside `IEnumerable` / `IQueryable` pipelines |
 
 ## Anonymous Pattern

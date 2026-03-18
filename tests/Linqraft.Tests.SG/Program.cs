@@ -250,6 +250,70 @@ public sealed class SourceGeneratorSmokeTests
     }
 
     [Test]
+    public void Generator_reports_recursive_asprojectable_cycle()
+    {
+        var driver = CreateDriver();
+        var compilation = CreateCompilation(
+            CreateRecursiveProjectableProjectionTree(),
+            CreateMarkerTree("recursive-projectable")
+        );
+
+        driver = driver.RunGeneratorsAndUpdateCompilation(
+            compilation,
+            out _,
+            out var diagnostics
+        );
+
+        diagnostics.Select(diagnostic => diagnostic.Id).Any(id => id is "CS8784" or "CS8785")
+            .ShouldBeTrue();
+        diagnostics
+            .Select(diagnostic => diagnostic.GetMessage())
+            .Any(message =>
+                message.Contains(
+                    "Detected recursive AsProjectable expansion",
+                    StringComparison.Ordinal
+                )
+            )
+            .ShouldBeTrue();
+    }
+
+    [Test]
+    public void Generator_reports_duplicate_projection_hook_names()
+    {
+        var driver = CreateDriver(
+            new DuplicateHookGenerator(),
+            new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
+            {
+                ["build_property.RootNamespace"] = "DuplicateHookFixture",
+                ["build_property.InterceptorsNamespaces"] = "DuplicateHookSupport",
+                ["build_property.InterceptorsPreviewNamespaces"] = "DuplicateHookSupport",
+            }
+        );
+        var compilation = CreateCompilation(
+            CreateDuplicateHookProjectionTree(),
+            CreateMarkerTree("duplicate-hooks")
+        );
+
+        driver = driver.RunGeneratorsAndUpdateCompilation(
+            compilation,
+            out _,
+            out var diagnostics
+        );
+
+        diagnostics.Select(diagnostic => diagnostic.Id).Any(id => id is "CS8784" or "CS8785")
+            .ShouldBeTrue();
+        diagnostics
+            .Select(diagnostic => diagnostic.GetMessage())
+            .Any(message =>
+                message.Contains(
+                    "ProjectionHooks contains duplicate method name(s): InlineProjectable.",
+                    StringComparison.Ordinal
+                )
+            )
+            .ShouldBeTrue();
+    }
+
+    [Test]
     public void Generator_core_omits_optional_linqraft_specific_support_when_names_are_null()
     {
         var driver = CreateDriver(
@@ -818,6 +882,72 @@ public sealed class SourceGeneratorSmokeTests
         );
     }
 
+    private static SyntaxTree CreateRecursiveProjectableProjectionTree()
+    {
+        const string source = """
+            using System.Linq;
+            using Linqraft;
+
+            namespace RecursiveProjectableFixture;
+
+            public sealed class RecursiveEntity
+            {
+                public int Value { get; set; }
+
+                public int Recursive() => Recursive().AsProjectable();
+            }
+
+            public partial class RecursiveDto;
+
+            public static class RecursiveQueries
+            {
+                public static IQueryable<RecursiveDto> Run(IQueryable<RecursiveEntity> query)
+                    => query.SelectExpr<RecursiveEntity, RecursiveDto>(x => new
+                    {
+                        Value = x.Recursive().AsProjectable(),
+                    });
+            }
+            """;
+
+        return CSharpSyntaxTree.ParseText(
+            source,
+            new CSharpParseOptions(LanguageVersion.Preview),
+            path: "RecursiveProjectableProjection.cs"
+        );
+    }
+
+    private static SyntaxTree CreateDuplicateHookProjectionTree()
+    {
+        const string source = """
+            using System.Linq;
+            using DuplicateHookSupport;
+
+            namespace DuplicateHookFixture;
+
+            public sealed class DuplicateHookEntity
+            {
+                public int Value { get; set; }
+            }
+
+            public partial class DuplicateHookDto;
+
+            public static class DuplicateHookQueries
+            {
+                public static IQueryable<DuplicateHookDto> Run(IQueryable<DuplicateHookEntity> query)
+                    => query.ProjectExpr<DuplicateHookEntity, DuplicateHookDto>(x => new
+                    {
+                        Value = x.Value,
+                    });
+            }
+            """;
+
+        return CSharpSyntaxTree.ParseText(
+            source,
+            new CSharpParseOptions(LanguageVersion.Preview),
+            path: "DuplicateHookProjection.cs"
+        );
+    }
+
     private static SyntaxTree CreateMarkerTree(string value)
     {
         var source = $$"""
@@ -1179,6 +1309,8 @@ public sealed class SourceGeneratorSmokeTests
 
     private sealed class CustomHookGenerator : LinqraftGeneratorCore<CustomHookGeneratorOptions>;
 
+    private sealed class DuplicateHookGenerator : LinqraftGeneratorCore<DuplicateHookGeneratorOptions>;
+
     private sealed class CustomGeneratorOptions : LinqraftGeneratorOptionsCore
     {
         public override string GeneratorDisplayName => "CustomTest";
@@ -1237,6 +1369,33 @@ public sealed class SourceGeneratorSmokeTests
                 "InlineProjectable",
                 LinqraftProjectionHookKind.Projectable,
                 "CustomProjectionHooks"
+            ),
+        ];
+    }
+
+    private sealed class DuplicateHookGeneratorOptions : LinqraftGeneratorOptionsCore
+    {
+        public override string SupportNamespace => "DuplicateHookSupport";
+
+        public override string GlobalUsingNamespace => "DuplicateHookSupport";
+
+        public override string DeclarationSourceHintName => "DuplicateHook.Declarations.g.cs";
+
+        public override string GlobalUsingsSourceHintName => "DuplicateHook.GlobalUsings.g.cs";
+
+        public override string SelectExprMethodName => "ProjectExpr";
+
+        public override IReadOnlyList<LinqraftProjectionHookDefinition> ProjectionHooks =>
+        [
+            new(
+                "InlineProjectable",
+                LinqraftProjectionHookKind.Projectable,
+                "DuplicateProjectionHooks"
+            ),
+            new(
+                "InlineProjectable",
+                LinqraftProjectionHookKind.LeftJoin,
+                "DuplicateProjectionHooks2"
             ),
         ];
     }
