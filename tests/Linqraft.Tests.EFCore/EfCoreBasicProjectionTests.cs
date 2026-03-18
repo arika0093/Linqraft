@@ -245,7 +245,7 @@ public sealed class EfCoreBasicProjectionTests
     }
 
     [Test]
-    public async Task SelectExpr_asleftjoin_preserves_rows_for_nullable_navigation_over_sqlite()
+    public async Task SelectExpr_AsLeftJoin_preserves_rows_for_nullable_navigation_over_sqlite()
     {
         await using var database = await SqliteTestDatabase.CreateAsync();
 
@@ -281,7 +281,7 @@ public sealed class EfCoreBasicProjectionTests
     }
 
     [Test]
-    public async Task SelectExpr_asprojectable_inlines_computed_query_property_over_sqlite()
+    public async Task SelectExpr_AsProjectable_inlines_computed_query_property_over_sqlite()
     {
         await using var database = await SqliteTestDatabase.CreateAsync();
 
