@@ -18,8 +18,8 @@
     </contentFiles>
     <dependencies>
       <group targetFramework=".NETStandard2.0">
-        <dependency id="Microsoft.CodeAnalysis.CSharp" version="[4.11.0,)" />
-        <dependency id="PolySharp" version="[1.0.0,2.0.0)" />
+        <dependency id="Microsoft.CodeAnalysis.CSharp" version="$microsoftCodeAnalysisCSharpDependencyVersion$" />
+        <dependency id="PolySharp" version="$polySharpDependencyVersion$" />
       </group>
     </dependencies>
   </metadata>

@@ -3,15 +3,20 @@
     <TargetFramework>netstandard2.0</TargetFramework>
     <LangVersion>latest</LangVersion>
     <Nullable>enable</Nullable>
+    <!-- Source-only packaging intentionally has no lib/ref assets, so NuGet's dependency-group/lib matching warning is expected. -->
     <NoWarn>$(NoWarn);RSEXPERIMENTAL002;NU5128</NoWarn>
+    <MicrosoftCodeAnalysisCSharpPackageVersion>4.11.0</MicrosoftCodeAnalysisCSharpPackageVersion>
+    <MicrosoftCodeAnalysisCSharpDependencyVersion>[4.11.0]</MicrosoftCodeAnalysisCSharpDependencyVersion>
+    <PolySharpPackageVersion>1.15.0</PolySharpPackageVersion>
+    <PolySharpDependencyVersion>[1.15.0]</PolySharpDependencyVersion>
     <IncludeBuildOutput>false</IncludeBuildOutput>
     <DevelopmentDependency>true</DevelopmentDependency>
     <GeneratePackageOnBuild>true</GeneratePackageOnBuild>
   </PropertyGroup>
 
   <ItemGroup>
-    <PackageReference Include="Microsoft.CodeAnalysis.CSharp" Version="4.11.0" />
-    <PackageReference Include="PolySharp" Version="1.*" Condition="!Exists('packages.config')">
+    <PackageReference Include="Microsoft.CodeAnalysis.CSharp" Version="$(MicrosoftCodeAnalysisCSharpPackageVersion)" />
+    <PackageReference Include="PolySharp" Version="$(PolySharpPackageVersion)" Condition="!Exists('packages.config')">
       <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
     </PackageReference>
   </ItemGroup>
@@ -35,6 +40,8 @@
     <ParameterGroup>
       <PackagePath ParameterType="System.String" Required="true" />
       <TemplatePath ParameterType="System.String" Required="true" />
+      <MicrosoftCodeAnalysisCSharpDependencyVersion ParameterType="System.String" Required="true" />
+      <PolySharpDependencyVersion ParameterType="System.String" Required="true" />
     </ParameterGroup>
     <Task>
       <Using Namespace="System" />
@@ -43,41 +50,56 @@
       <Using Namespace="System.Linq" />
       <Using Namespace="System.Text.RegularExpressions" />
       <Code Type="Fragment" Language="cs"><![CDATA[
-        var template = File.ReadAllText(TemplatePath);
-        using var stream = new FileStream(PackagePath, FileMode.Open, FileAccess.ReadWrite, FileShare.None);
-        using var archive = new ZipArchive(stream, ZipArchiveMode.Update);
-        var nuspecEntry = archive.Entries.FirstOrDefault(entry =>
-            entry.FullName.EndsWith(".nuspec", StringComparison.OrdinalIgnoreCase));
-
-        if (nuspecEntry is null)
+        try
         {
-            throw new InvalidOperationException($"Could not find a .nuspec entry in '{PackagePath}'.");
-        }
+            var template = File.ReadAllText(TemplatePath);
+            using var stream = new FileStream(PackagePath, FileMode.Open, FileAccess.ReadWrite, FileShare.Read);
+            using var archive = new ZipArchive(stream, ZipArchiveMode.Update);
+            var nuspecEntry = archive.Entries.FirstOrDefault(entry =>
+                entry.FullName.EndsWith(".nuspec", StringComparison.OrdinalIgnoreCase));
 
-        string currentNuspec;
-        using (var reader = new StreamReader(nuspecEntry.Open()))
+            if (nuspecEntry is null)
+            {
+                throw new InvalidOperationException($"Could not find a .nuspec entry in '{PackagePath}'.");
+            }
+
+            string currentNuspec;
+            using (var nuspecStream = nuspecEntry.Open())
+            using (var reader = new StreamReader(nuspecStream))
+            {
+                currentNuspec = reader.ReadToEnd();
+            }
+
+            var versionMatch = Regex.Match(
+                currentNuspec,
+                @"<version>(?<value>[^<]+)</version>",
+                RegexOptions.CultureInvariant);
+            var version = versionMatch.Success ? versionMatch.Groups["value"].Value.Trim() : null;
+
+            if (string.IsNullOrEmpty(version))
+            {
+                throw new InvalidOperationException($"Could not determine the package version from '{PackagePath}'.");
+            }
+
+            var updatedNuspec = template
+                .Replace("$version$", version)
+                .Replace(
+                    "$microsoftCodeAnalysisCSharpDependencyVersion$",
+                    MicrosoftCodeAnalysisCSharpDependencyVersion)
+                .Replace("$polySharpDependencyVersion$", PolySharpDependencyVersion);
+            var nuspecPath = nuspecEntry.FullName;
+            nuspecEntry.Delete();
+
+            var replacementEntry = archive.CreateEntry(nuspecPath, CompressionLevel.Optimal);
+            using var writer = new StreamWriter(replacementEntry.Open());
+            writer.Write(updatedNuspec);
+        }
+        catch (Exception ex)
         {
-            currentNuspec = reader.ReadToEnd();
+            throw new InvalidOperationException(
+                $"Failed to rewrite the packed nuspec for '{PackagePath}' using template '{TemplatePath}'.",
+                ex);
         }
-
-        var versionMatch = Regex.Match(
-            currentNuspec,
-            @"<version>(?<value>[^<]+)</version>",
-            RegexOptions.CultureInvariant);
-        var version = versionMatch.Success ? versionMatch.Groups["value"].Value : null;
-
-        if (string.IsNullOrEmpty(version))
-        {
-            throw new InvalidOperationException($"Could not determine the package version from '{PackagePath}'.");
-        }
-
-        var updatedNuspec = template.Replace("$version$", version);
-        var nuspecPath = nuspecEntry.FullName;
-        nuspecEntry.Delete();
-
-        var replacementEntry = archive.CreateEntry(nuspecPath, CompressionLevel.Optimal);
-        using var writer = new StreamWriter(replacementEntry.Open());
-        writer.Write(updatedNuspec);
       ]]></Code>
     </Task>
   </UsingTask>
@@ -86,6 +108,8 @@
     <RewritePackedNuspec
       PackagePath="%(NuGetPackOutput.Identity)"
       TemplatePath="$(MSBuildProjectDirectory)/Linqraft.Core.nuspec"
+      MicrosoftCodeAnalysisCSharpDependencyVersion="$(MicrosoftCodeAnalysisCSharpDependencyVersion)"
+      PolySharpDependencyVersion="$(PolySharpDependencyVersion)"
       Condition="'%(NuGetPackOutput.Extension)' == '.nupkg'"
     />
   </Target>

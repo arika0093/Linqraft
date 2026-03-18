@@ -4,11 +4,15 @@ using System.Diagnostics;
 using System.IO;
 using System.Linq;
 using System.Runtime.CompilerServices;
+using System.Threading;
+using System.Threading.Tasks;
 using GlobalGenerated;
 using Linqraft.Tests.Utility;
 
 public sealed class GlobalPropertyConfigurationTests
 {
+    private const int InitialDirectoryDeleteRetryDelayMilliseconds = 100;
+
     private static readonly List<Order> Orders =
     [
         new()
@@ -142,13 +146,12 @@ public sealed class GlobalPropertyConfigurationTests
     }
 
     [Test]
-    public void Source_only_Linqraft_Core_package_can_be_consumed_by_another_generator_project()
+    public async Task Source_only_Linqraft_Core_package_can_be_consumed_by_another_generator_project()
     {
         var repositoryRoot = GetRepositoryRoot();
         var tempRoot = Path.Combine(
             Path.GetTempPath(),
-            "linqraft-core-package-test",
-            Guid.NewGuid().ToString("N")
+            $"linqraft-core-package-test-{Guid.NewGuid():N}"
         );
         Directory.CreateDirectory(tempRoot);
 
@@ -161,7 +164,7 @@ public sealed class GlobalPropertyConfigurationTests
             Directory.CreateDirectory(globalPackagesRoot);
             Directory.CreateDirectory(projectRoot);
 
-            RunDotNetCommand(
+            await RunDotNetCommandAsync(
                 [
                     "pack",
                     Path.Combine(repositoryRoot, "src", "Linqraft.Core", "Linqraft.Core.csproj"),
@@ -230,7 +233,7 @@ public sealed class GlobalPropertyConfigurationTests
                 """
             );
 
-            RunDotNetCommand(
+            await RunDotNetCommandAsync(
                 [
                     "build",
                     Path.Combine(projectRoot, "ConsumerGenerator.csproj"),
@@ -240,7 +243,7 @@ public sealed class GlobalPropertyConfigurationTests
                     "minimal",
                 ],
                 projectRoot,
-                ("NUGET_PACKAGES", globalPackagesRoot)
+                [("NUGET_PACKAGES", globalPackagesRoot)]
             );
 
             File.Exists(
@@ -261,7 +264,7 @@ public sealed class GlobalPropertyConfigurationTests
         {
             if (Directory.Exists(tempRoot))
             {
-                Directory.Delete(tempRoot, recursive: true);
+                TryDeleteDirectory(tempRoot);
             }
         }
     }
@@ -739,10 +742,10 @@ public sealed class GlobalPropertyConfigurationTests
         throw new DirectoryNotFoundException("Could not find the repository root for Linqraft.");
     }
 
-    private static void RunDotNetCommand(
+    private static async Task RunDotNetCommandAsync(
         IReadOnlyList<string> arguments,
         string workingDirectory,
-        params (string Key, string Value)[] environmentVariables
+        IReadOnlyList<(string Key, string Value)>? environmentVariables = null
     )
     {
         using var process = new Process
@@ -756,7 +759,7 @@ public sealed class GlobalPropertyConfigurationTests
             },
         };
 
-        foreach (var (key, value) in environmentVariables)
+        foreach (var (key, value) in environmentVariables ?? [])
         {
             process.StartInfo.Environment[key] = value;
         }
@@ -767,9 +770,11 @@ public sealed class GlobalPropertyConfigurationTests
         }
 
         process.Start();
-        var standardOutput = process.StandardOutput.ReadToEnd();
-        var standardError = process.StandardError.ReadToEnd();
-        process.WaitForExit();
+        var standardOutputTask = process.StandardOutput.ReadToEndAsync();
+        var standardErrorTask = process.StandardError.ReadToEndAsync();
+        await Task.WhenAll(standardOutputTask, standardErrorTask, process.WaitForExitAsync());
+        var standardOutput = await standardOutputTask;
+        var standardError = await standardErrorTask;
 
         if (process.ExitCode != 0)
         {
@@ -777,6 +782,31 @@ public sealed class GlobalPropertyConfigurationTests
                 $"dotnet {string.Join(" ", arguments)} failed with exit code {process.ExitCode}.{Environment.NewLine}{standardOutput}{Environment.NewLine}{standardError}"
             );
         }
+    }
+
+    private static void TryDeleteDirectory(string path)
+    {
+        for (var attempt = 0; attempt < 3; attempt++)
+        {
+            try
+            {
+                Directory.Delete(path, recursive: true);
+                return;
+            }
+            catch (IOException) when (attempt < 2)
+            {
+                Thread.Sleep(GetDirectoryDeleteRetryDelayMilliseconds(attempt));
+            }
+            catch (UnauthorizedAccessException) when (attempt < 2)
+            {
+                Thread.Sleep(GetDirectoryDeleteRetryDelayMilliseconds(attempt));
+            }
+        }
+    }
+
+    private static int GetDirectoryDeleteRetryDelayMilliseconds(int attempt)
+    {
+        return InitialDirectoryDeleteRetryDelayMilliseconds * (1 << attempt);
     }
 
     private static int CountLeadingSpaces(string value)
