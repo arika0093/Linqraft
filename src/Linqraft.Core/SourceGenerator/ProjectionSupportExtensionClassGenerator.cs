@@ -38,9 +38,7 @@ internal abstract class ProjectionSupportExtensionClassGenerator
         builder.AppendLine("/// <summary>");
         builder.AppendLine($"/// {GetClassSummary(generatorOptions)}");
         builder.AppendLine("/// </summary>");
-        builder.AppendLine(
-            $"[global::{generatorOptions.EmbeddedAttributeNamespace}.EmbeddedAttribute]"
-        );
+        builder.AppendLine("[global::Microsoft.CodeAnalysis.EmbeddedAttribute]");
         builder.AppendLine(
             $"internal static partial class {GetClassName(generatorOptions)}"
         );

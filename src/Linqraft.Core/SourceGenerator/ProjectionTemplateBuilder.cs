@@ -2404,6 +2404,11 @@ internal static class ProjectionTemplateBuilder
         LinqraftGeneratorOptionsCore generatorOptions
     )
     {
+        if (generatorOptions.GeneratorKitMetadataName is not { } generatorKitMetadataName)
+        {
+            return false;
+        }
+
         if (
             !string.Equals(
                 GetInvocationName(invocation.Expression),
@@ -2425,7 +2430,7 @@ internal static class ProjectionTemplateBuilder
         var targetMethod = methodSymbol.ReducedFrom ?? methodSymbol;
         return string.Equals(
                 targetMethod.ContainingType.ToDisplayString(),
-                generatorOptions.GeneratorKitMetadataName,
+                generatorKitMetadataName,
                 StringComparison.Ordinal
             )
             && string.Equals(
@@ -2452,6 +2457,11 @@ internal static class ProjectionTemplateBuilder
         LinqraftGeneratorOptionsCore generatorOptions
     )
     {
+        if (generatorOptions.MappingGenerateAttributeName is not { } mappingGenerateAttributeName)
+        {
+            return false;
+        }
+
         return node.Ancestors()
             .OfType<MemberDeclarationSyntax>()
             .Any(member =>
@@ -2460,7 +2470,10 @@ internal static class ProjectionTemplateBuilder
                     .Any(attribute =>
                         attribute
                             .Name.ToString()
-                            .Contains(generatorOptions.MappingGenerateAttributeName.Replace("Attribute", string.Empty), StringComparison.Ordinal)
+                            .Contains(
+                                mappingGenerateAttributeName.Replace("Attribute", string.Empty),
+                                StringComparison.Ordinal
+                            )
                     )
             );
     }
@@ -2503,10 +2516,15 @@ internal static class ProjectionTemplateBuilder
         LinqraftGeneratorOptionsCore generatorOptions
     )
     {
+        if (generatorOptions.MappingDeclareClassName is not { } mappingDeclareClassName)
+        {
+            return false;
+        }
+
         var current = symbol.BaseType;
         while (current is not null)
         {
-            if (current.Name == generatorOptions.MappingDeclareClassName)
+            if (current.Name == mappingDeclareClassName)
             {
                 return true;
             }
@@ -2522,8 +2540,13 @@ internal static class ProjectionTemplateBuilder
         LinqraftGeneratorOptionsCore generatorOptions
     )
     {
+        if (generatorOptions.MappingGenerateAttributeName is not { } mappingGenerateAttributeName)
+        {
+            return null;
+        }
+
         return attributes.FirstOrDefault(attribute =>
-            attribute.AttributeClass?.Name == generatorOptions.MappingGenerateAttributeName
+            attribute.AttributeClass?.Name == mappingGenerateAttributeName
         );
     }
 

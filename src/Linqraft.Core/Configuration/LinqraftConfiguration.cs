@@ -84,9 +84,9 @@ internal sealed record LinqraftConfiguration
         };
     }
 
-    private static bool GetBool(AnalyzerConfigOptions options, string key, bool defaultValue)
+    private static bool GetBool(AnalyzerConfigOptions options, string? key, bool defaultValue)
     {
-        if (!options.TryGetValue(key, out var value))
+        if (key is null || !options.TryGetValue(key, out var value))
         {
             return defaultValue;
         }
@@ -96,12 +96,12 @@ internal sealed record LinqraftConfiguration
 
     private static TEnum GetEnum<TEnum>(
         AnalyzerConfigOptions options,
-        string key,
+        string? key,
         TEnum defaultValue
     )
         where TEnum : struct
     {
-        if (!options.TryGetValue(key, out var value))
+        if (key is null || !options.TryGetValue(key, out var value))
         {
             return defaultValue;
         }
@@ -111,8 +111,8 @@ internal sealed record LinqraftConfiguration
             : defaultValue;
     }
 
-    private static string GetOption(AnalyzerConfigOptions options, string key, string defaultValue)
+    private static string GetOption(AnalyzerConfigOptions options, string? key, string defaultValue)
     {
-        return options.TryGetValue(key, out var value) ? value : defaultValue;
+        return key is not null && options.TryGetValue(key, out var value) ? value : defaultValue;
     }
 }

@@ -58,33 +58,39 @@ internal static class LinqraftGeneratorPipeline
             .Where(static template => template is not null)
             .Select(static (template, _) => template!);
 
-        var mappingClassTemplates = context
-            .SyntaxProvider.ForAttributeWithMetadataName(
-                generatorOptions.MappingGenerateAttributeMetadataName,
-                static (node, _) => node is ClassDeclarationSyntax,
-                (attributeContext, cancellationToken) =>
-                    ProjectionTemplateBuilder.AnalyzeMappingClass(
-                        attributeContext,
-                        cancellationToken,
-                        generatorOptions
+        var mappingClassTemplates =
+            generatorOptions.MappingGenerateAttributeMetadataName is { } mappingAttributeMetadataName
+                ? context
+                    .SyntaxProvider.ForAttributeWithMetadataName(
+                        mappingAttributeMetadataName,
+                        static (node, _) => node is ClassDeclarationSyntax,
+                        (attributeContext, cancellationToken) =>
+                            ProjectionTemplateBuilder.AnalyzeMappingClass(
+                                attributeContext,
+                                cancellationToken,
+                                generatorOptions
+                            )
                     )
-            )
-            .Where(static template => template is not null)
-            .Select(static (template, _) => template!);
+                    .Where(static template => template is not null)
+                    .Select(static (template, _) => template!)
+                : CreateEmptyTemplates<MappingSourceTemplateModel>(context);
 
-        var mappingMethodTemplates = context
-            .SyntaxProvider.ForAttributeWithMetadataName(
-                generatorOptions.MappingGenerateAttributeMetadataName,
-                static (node, _) => node is MethodDeclarationSyntax,
-                (attributeContext, cancellationToken) =>
-                    ProjectionTemplateBuilder.AnalyzeMappingMethod(
-                        attributeContext,
-                        cancellationToken,
-                        generatorOptions
+        var mappingMethodTemplates =
+            generatorOptions.MappingGenerateAttributeMetadataName is { } mappingMethodMetadataName
+                ? context
+                    .SyntaxProvider.ForAttributeWithMetadataName(
+                        mappingMethodMetadataName,
+                        static (node, _) => node is MethodDeclarationSyntax,
+                        (attributeContext, cancellationToken) =>
+                            ProjectionTemplateBuilder.AnalyzeMappingMethod(
+                                attributeContext,
+                                cancellationToken,
+                                generatorOptions
+                            )
                     )
-            )
-            .Where(static template => template is not null)
-            .Select(static (template, _) => template!);
+                    .Where(static template => template is not null)
+                    .Select(static (template, _) => template!)
+                : CreateEmptyTemplates<MappingSourceTemplateModel>(context);
 
         var projectionModels = projectionTemplates
             .Combine(configuration)
@@ -354,6 +360,11 @@ internal static class LinqraftGeneratorPipeline
         LinqraftGeneratorOptionsCore generatorOptions
     )
     {
+        if (generatorOptions.GeneratorKitClassName is null)
+        {
+            return false;
+        }
+
         return invocation.Expression switch
         {
             MemberAccessExpressionSyntax memberAccess
@@ -364,5 +375,16 @@ internal static class LinqraftGeneratorPipeline
                 true,
             _ => false,
         };
+    }
+
+    private static IncrementalValuesProvider<T> CreateEmptyTemplates<T>(
+        IncrementalGeneratorInitializationContext context
+    )
+        where T : class
+    {
+        return context
+            .SyntaxProvider.CreateSyntaxProvider(static (_, _) => false, static (_, _) => (T?)null)
+            .Where(static template => template is not null)
+            .Select(static (template, _) => template!);
     }
 }

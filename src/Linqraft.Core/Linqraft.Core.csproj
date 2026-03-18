@@ -19,27 +19,12 @@
   </ItemGroup>
 
   <ItemGroup>
-    <Compile
-      Include="..\Linqraft.SourceGenerator\**\*.cs"
-      Exclude="..\Linqraft.SourceGenerator\bin\**\*.cs;..\Linqraft.SourceGenerator\obj\**\*.cs"
-      Link="SourceGenerator/%(RecursiveDir)%(Filename)%(Extension)"
-    />
-  </ItemGroup>
-
-  <ItemGroup>
     <None Include="Linqraft.Core.targets" Pack="true" PackagePath="build/Linqraft.Core.targets" Visible="false" />
     <None
       Include="**\*.cs"
       Exclude="bin\**\*.cs;obj\**\*.cs;InternalsVisibleTo.cs"
       Pack="true"
       PackagePath="contentFiles/cs/netstandard2.0/Linqraft.Core/%(RecursiveDir)%(Filename)%(Extension)"
-      Visible="false"
-    />
-    <None
-      Include="..\Linqraft.SourceGenerator\**\*.cs"
-      Exclude="..\Linqraft.SourceGenerator\bin\**\*.cs;..\Linqraft.SourceGenerator\obj\**\*.cs"
-      Pack="true"
-      PackagePath="contentFiles/cs/netstandard2.0/Linqraft.Core/SourceGenerator/%(RecursiveDir)%(Filename)%(Extension)"
       Visible="false"
     />
   </ItemGroup>
