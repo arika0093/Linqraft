@@ -58,10 +58,37 @@ var orders = await dbContext.Orders
 
 [Analyzers](./docs/analyzers/README.md) are provided to replace existing Select code with Linqraft. The replacement is completed in an instant.
 
+```csharp
+// before
+// order is (anonymous type)
+var order = await dbContext.Orders
+    .Select(o => new {
+        CustomerName = o.Customer != null ? o.Customer.Name : null,
+        Items = o.OrderItems.Select(oi => new {
+            ProductName = oi.Product != null ? oi.Product.Name : null,
+        }),
+    })
+    .FirstOrDefaultAsync();
 
-### No Dependencies 
+// after (apply code fix)
+// order is OrderDto✨️
+var order = await dbContext.Orders
+    .SelectExpr<Order, OrderDto>(o => new {
+        // automatically replace null checks with null-propagation operator
+        CustomerName = o.Customer?.Name,
+        Items = o.OrderItems.Select(oi => new {
+            ProductName = oi.Product?.Name,
+        }),
+    })
+    .FirstOrDefaultAsync();
+```
 
-Thanks to the magic of Source Generators and Interceptors, there are no dependencies in production. The generated code consists of simple LINQ queries that work with any LINQ provider, such as EF Core or Dapper.
+<details>
+<summary>Animation of the code replacement process</summary>
+
+![code replacement animation](./assets/replace-codefix-sample.gif)
+
+</details>
 
 ### Projection Hooks
 
@@ -76,10 +103,69 @@ var rows = dbContext.Orders
     });
 ```
 
-- `AsLeftJoin()` rewrites a nullable navigation access as an explicit null-guarded access.
-- `AsProjectable()` inlines a computed instance property or method into the generated projection.
+Currently, the following hooks are available:
 
-See [Projection Hooks](./docs/library/projection-hooks.md) for details and constraints.
+* `AsLeftJoin()`: It generates queries that behave like a `LEFT JOIN`.
+* `AsProjectable()`: It realizes the behavior like [EntityFrameworkCore.Projectables](https://github.com/EFNext/EntityFrameworkCore.Projectables). That is, the query logic inside properties like `FirstLargeItemProductName` will be expanded as if it were written inline inside the SelectExpr.
+
+### No Dependencies 
+
+Thanks to the magic of Source Generators and Interceptors, there are no dependencies in production. The generated code consists of simple LINQ queries that work with any LINQ provider, such as EF Core or Dapper.
+
+
+<details>
+<summary>What kind of code is generated?</summary>
+
+The generated code looks like this:
+
+```csharp
+namespace Linqraft
+{
+    internal static partial class SelectExprExtensions
+    {
+        [global::System.Runtime.CompilerServices.InterceptsLocationAttribute(1, "zoTX6YMzp8cIf98imvJzs8YBAABUdXRvcmlhbENhc2VUZXN0LmNz")]
+        public static global::System.Linq.IQueryable<TResult> SelectExpr_55AF867EC668046B<TIn, TResult>(this global::System.Linq.IQueryable<TIn> query, global::System.Func<TIn, object> selector) where TIn : class
+        {
+            var converted = ((global::System.Linq.IQueryable<global::Tutorial.Order>)(object)query).Select(o => new global::Tutorial.OrderDto() {
+                Id = o.Id,
+                CustomerName = o.Customer != null ? (global::System.String?)(o.Customer.Name) : null,
+                CustomerCountry = o.Customer != null && o.Customer.Address != null && o.Customer.Address.Country != null ? (global::System.String?)(o.Customer.Address.Country.Name) : null,
+                CustomerCity = o.Customer != null && o.Customer.Address != null && o.Customer.Address.City != null ? (global::System.String?)(o.Customer.Address.City.Name) : null,
+                CustomerInfo = new global::Tutorial.LinqraftGenerated_2B64B4DD.CustomerInfoDto {
+                    Email = o.Customer != null ? (global::System.String?)(o.Customer.EmailAddress) : null,
+                    Phone = o.Customer != null ? (global::System.String?)(o.Customer.PhoneNumber) : null,
+                },
+                LatestOrderDate = global::System.Linq.Enumerable.Max(
+                    o.OrderItems,
+                    oi => oi.OrderDate
+                ),
+                TotalAmount = global::System.Linq.Enumerable.Sum(
+                    o.OrderItems,
+                    oi => oi.Quantity * oi.UnitPrice
+                ),
+                Items = global::System.Linq.Enumerable.Select(
+                    o.OrderItems,
+                    oi => new global::Tutorial.LinqraftGenerated_67EDED21.ItemsDto {
+                        ProductName = oi.Product != null ? (global::System.String?)(oi.Product.Name) : null,
+                        Quantity = oi.Quantity,
+                    }
+                ),
+            });
+            return (global::System.Linq.IQueryable<TResult>)(object)converted;
+        }
+    }
+}
+```
+
+It may look complex, but what it does is very simple.
+
+* All type names are written in fully qualified names.
+* Calls like `a.Select(x).Where(y)...` are transformed into forms like `Enumerable.Where(Enumerable.Select(a, x), y)`.
+* Null-propagation operators are transformed into ternary operators.
+* If a DTO class is explicitly specified, an instance of that class is generated.
+* Nested DTOs are generated in a `LinqraftGenerated_{Hash}` namespace, which is a measure to avoid collisions between auto-generated classes.
+
+</details>
 
 ## Installation
 
@@ -89,7 +175,7 @@ Install `Linqraft` from NuGet:
 dotnet add package Linqraft
 ```
 
-> ![NOTE]
+> [!NOTE]
 > Linqraft works out of the box with **.NET 8 and later**. For .NET 7(C# 11) and below, additional setup is required.  
 > see [Installation Guide](./docs/library/installation.md#net-7-and-below) for details.
 
@@ -101,7 +187,8 @@ The most basic usage pattern, with automatic DTO generation.
 ```csharp
 // orders: List<OrderDto✨️>
 var orders = await dbContext.Orders
-    // By explicitly specifying the generic arguments, you can specify the type of the DTO.
+    // By explicitly specifying the generic arguments,
+    // you can specify the type of the DTO.
     .SelectExpr<Order, OrderDto>(o => new
     {
         Id = o.Id,
@@ -119,11 +206,13 @@ Use `SelectExpr` without generics to get an anonymous-type projection.
 ```csharp
 // orders: List<{anonymous type}>
 var orders = await dbContext.Orders
-    // without generic arguments, the DTO type will be an anonymous type generated based on the selector body.
+    // without generic arguments, the DTO type will be an anonymous type 
+    // generated based on the selector body.
     .SelectExpr(o => new
     {
         Id = o.Id,
-        // you can also use null-propagation operator without worrying about Expression Tree limitations.
+        // you can also use null-propagation operator
+        // without worrying about Expression Tree limitations.
         CustomerName = o.Customer?.Name,
     })
     .ToListAsync();
