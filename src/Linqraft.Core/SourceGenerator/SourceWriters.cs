@@ -138,11 +138,11 @@ internal static class SourceWriters
                 builder.AppendLine("{");
                 using (builder.Indent())
                 {
-                    foreach (var propertyName in suppressedProperties.Select(property => property.Name))
+                    foreach (
+                        var propertyName in suppressedProperties.Select(property => property.Name)
+                    )
                     {
-                        builder.AppendLine(
-                            $"{propertyName} = {ToParameterName(propertyName)};"
-                        );
+                        builder.AppendLine($"{propertyName} = {ToParameterName(propertyName)};");
                     }
                 }
 
@@ -366,7 +366,10 @@ internal static class SourceWriters
         builder.AppendLine("}");
     }
 
-    private static void WriteMappingDeclaration(IndentedStringBuilder builder, MappingRequest request)
+    private static void WriteMappingDeclaration(
+        IndentedStringBuilder builder,
+        MappingRequest request
+    )
     {
         if (!string.IsNullOrWhiteSpace(request.Namespace))
         {

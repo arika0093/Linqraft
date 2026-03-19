@@ -1557,9 +1557,10 @@ internal static class ProjectionTemplateBuilder
             };
         }
 
-        private static IReadOnlyList<(string Name, ExpressionSyntax Expression)> GetProjectionMembers(
-            ExpressionSyntax expression
-        )
+        private static IReadOnlyList<(
+            string Name,
+            ExpressionSyntax Expression
+        )> GetProjectionMembers(ExpressionSyntax expression)
         {
             return expression switch
             {
@@ -1631,7 +1632,9 @@ internal static class ProjectionTemplateBuilder
         {
             return expression switch
             {
-                InvocationExpressionSyntax invocation => GetInvocationName(invocation.Expression) switch
+                InvocationExpressionSyntax invocation => GetInvocationName(
+                    invocation.Expression
+                ) switch
                 {
                     "First"
                     or "FirstOrDefault"
@@ -1643,9 +1646,9 @@ internal static class ProjectionTemplateBuilder
                     or "ElementAtOrDefault" => false,
                     _ => true,
                 },
-                ConditionalExpressionSyntax conditionalExpression => IsCollectionLikeResultExpression(
-                    conditionalExpression.WhenTrue
-                ) && IsCollectionLikeResultExpression(conditionalExpression.WhenFalse),
+                ConditionalExpressionSyntax conditionalExpression =>
+                    IsCollectionLikeResultExpression(conditionalExpression.WhenTrue)
+                        && IsCollectionLikeResultExpression(conditionalExpression.WhenFalse),
                 BinaryExpressionSyntax binaryExpression
                     when binaryExpression.IsKind(SyntaxKind.CoalesceExpression) =>
                     IsCollectionLikeResultExpression(binaryExpression.Left)

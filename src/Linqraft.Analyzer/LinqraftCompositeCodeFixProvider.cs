@@ -1929,8 +1929,7 @@ public sealed class LinqraftCompositeCodeFixProvider : CodeFixProvider
             {
                 IdentifierNameSyntax identifierName => identifierName.Identifier.ValueText,
                 SimpleNameSyntax simpleName => simpleName.Identifier.ValueText,
-                MemberAccessExpressionSyntax memberAccess =>
-                    memberAccess.Name.Identifier.ValueText,
+                MemberAccessExpressionSyntax memberAccess => memberAccess.Name.Identifier.ValueText,
                 _ => string.Empty,
             };
         }
