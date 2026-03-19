@@ -76,7 +76,8 @@ internal sealed class ProjectionExpressionEmitter
         _generatorOptions = generatorOptions;
         _replacementTypes = replacementTypes ?? new Dictionary<TextSpan, string>();
         _captureEntries = captureEntries ?? global::System.Array.Empty<CaptureEntry>();
-        _activeProjectableSymbols = activeProjectableSymbols ?? new HashSet<ISymbol>(SymbolEqualityComparer.Default);
+        _activeProjectableSymbols =
+            activeProjectableSymbols ?? new HashSet<ISymbol>(SymbolEqualityComparer.Default);
     }
 
     public string Emit(ExpressionSyntax expression)
@@ -855,10 +856,8 @@ internal sealed class ProjectionExpressionEmitter
     {
         switch (expression)
         {
-            case InvocationExpressionSyntax invocation when IsProjectionHookInvocation(
-                invocation,
-                LinqraftProjectionHookKind.LeftJoin
-            ):
+            case InvocationExpressionSyntax invocation
+                when IsProjectionHookInvocation(invocation, LinqraftProjectionHookKind.LeftJoin):
             {
                 var receiverExpression = GetHookReceiverExpression(invocation);
                 if (receiverExpression is null)
@@ -895,7 +894,10 @@ internal sealed class ProjectionExpressionEmitter
                 return true;
             }
             case MemberAccessExpressionSyntax memberAccess
-                when ContainsProjectionHook(memberAccess.Expression, LinqraftProjectionHookKind.LeftJoin):
+                when ContainsProjectionHook(
+                    memberAccess.Expression,
+                    LinqraftProjectionHookKind.LeftJoin
+                ):
                 return TryBuildLeftJoinConditional(
                     memberAccess.Expression,
                     value => applyTail($"{value}.{EmitSimpleName(memberAccess.Name)}"),
@@ -924,7 +926,8 @@ internal sealed class ProjectionExpressionEmitter
                 ):
                 return TryBuildLeftJoinConditional(
                     elementAccess.Expression,
-                    value => applyTail($"{value}{EmitBracketArguments(elementAccess.ArgumentList)}"),
+                    value =>
+                        applyTail($"{value}{EmitBracketArguments(elementAccess.ArgumentList)}"),
                     rootLeftJoinExpression,
                     out rewritten
                 );
@@ -942,7 +945,9 @@ internal sealed class ProjectionExpressionEmitter
             return CreateEmptyCollectionFallback(expressionTypeName);
         }
 
-        return expressionType?.IsReferenceType == true || expressionType?.NullableAnnotation == NullableAnnotation.Annotated
+        return
+            expressionType?.IsReferenceType == true
+            || expressionType?.NullableAnnotation == NullableAnnotation.Annotated
             ? "null"
             : $"default({expressionTypeName})";
     }
@@ -978,10 +983,7 @@ internal sealed class ProjectionExpressionEmitter
             return false;
         }
 
-        if (
-            expandedSymbol is not null
-            && !_activeProjectableSymbols.Add(expandedSymbol)
-        )
+        if (expandedSymbol is not null && !_activeProjectableSymbols.Add(expandedSymbol))
         {
             throw new global::System.InvalidOperationException(
                 $"Detected recursive AsProjectable expansion for '{expandedSymbol.ToDisplayString()}'."
@@ -1092,7 +1094,9 @@ internal sealed class ProjectionExpressionEmitter
 
         var propertySymbol =
             _semanticModel.GetSymbolInfo(targetExpression).Symbol as IPropertySymbol
-            ?? _semanticModel.GetSymbolInfo(targetExpression).CandidateSymbols.OfType<IPropertySymbol>()
+            ?? _semanticModel
+                .GetSymbolInfo(targetExpression)
+                .CandidateSymbols.OfType<IPropertySymbol>()
                 .FirstOrDefault();
         if (propertySymbol?.IsStatic == true)
         {
@@ -1101,7 +1105,8 @@ internal sealed class ProjectionExpressionEmitter
             return false;
         }
 
-        var propertySyntax = propertySymbol?.DeclaringSyntaxReferences.FirstOrDefault()?.GetSyntax()
+        var propertySyntax =
+            propertySymbol?.DeclaringSyntaxReferences.FirstOrDefault()?.GetSyntax()
             as PropertyDeclarationSyntax;
         var bodyExpression = GetProjectableBodyExpression(propertySyntax);
         if (bodyExpression is null)
@@ -1111,17 +1116,18 @@ internal sealed class ProjectionExpressionEmitter
             return false;
         }
 
-        var declarationModel = _semanticModel.Compilation.GetSemanticModel(bodyExpression.SyntaxTree);
+        var declarationModel = _semanticModel.Compilation.GetSemanticModel(
+            bodyExpression.SyntaxTree
+        );
         EnsureProjectableExpansionIsAcyclic(
             propertySymbol!,
             bodyExpression,
             declarationModel,
             new HashSet<ISymbol>(_activeProjectableSymbols, SymbolEqualityComparer.Default)
         );
-        var receiverExpression =
-            overrideReceiver is null
-                ? GetProjectableReceiverExpression(targetExpression)
-                : SyntaxFactory.ParseExpression(overrideReceiver);
+        var receiverExpression = overrideReceiver is null
+            ? GetProjectableReceiverExpression(targetExpression)
+            : SyntaxFactory.ParseExpression(overrideReceiver);
         var rewriter = new ProjectableInliningRewriter(
             declarationModel,
             propertySymbol!.ContainingType,
@@ -1150,7 +1156,9 @@ internal sealed class ProjectionExpressionEmitter
 
         var methodSymbol =
             _semanticModel.GetSymbolInfo(targetInvocation).Symbol as IMethodSymbol
-            ?? _semanticModel.GetSymbolInfo(targetInvocation).CandidateSymbols.OfType<IMethodSymbol>()
+            ?? _semanticModel
+                .GetSymbolInfo(targetInvocation)
+                .CandidateSymbols.OfType<IMethodSymbol>()
                 .FirstOrDefault();
         if (methodSymbol is null || methodSymbol.IsStatic)
         {
@@ -1159,7 +1167,8 @@ internal sealed class ProjectionExpressionEmitter
             return false;
         }
 
-        var methodSyntax = methodSymbol.DeclaringSyntaxReferences.FirstOrDefault()?.GetSyntax()
+        var methodSyntax =
+            methodSymbol.DeclaringSyntaxReferences.FirstOrDefault()?.GetSyntax()
             as MethodDeclarationSyntax;
         var bodyExpression = GetProjectableBodyExpression(methodSyntax);
         if (bodyExpression is null)
@@ -1169,17 +1178,18 @@ internal sealed class ProjectionExpressionEmitter
             return false;
         }
 
-        var declarationModel = _semanticModel.Compilation.GetSemanticModel(bodyExpression.SyntaxTree);
+        var declarationModel = _semanticModel.Compilation.GetSemanticModel(
+            bodyExpression.SyntaxTree
+        );
         EnsureProjectableExpansionIsAcyclic(
             methodSymbol,
             bodyExpression,
             declarationModel,
             new HashSet<ISymbol>(_activeProjectableSymbols, SymbolEqualityComparer.Default)
         );
-        var receiverExpression =
-            overrideReceiver is null
-                ? GetProjectableReceiverExpression(targetInvocation)
-                : SyntaxFactory.ParseExpression(overrideReceiver);
+        var receiverExpression = overrideReceiver is null
+            ? GetProjectableReceiverExpression(targetInvocation)
+            : SyntaxFactory.ParseExpression(overrideReceiver);
         var parameterBindings = BuildProjectableParameterBindings(
             targetInvocation,
             methodSymbol,
@@ -1197,7 +1207,9 @@ internal sealed class ProjectionExpressionEmitter
         return true;
     }
 
-    private static ExpressionSyntax? GetProjectableBodyExpression(PropertyDeclarationSyntax? property)
+    private static ExpressionSyntax? GetProjectableBodyExpression(
+        PropertyDeclarationSyntax? property
+    )
     {
         if (property is null)
         {
@@ -1227,11 +1239,15 @@ internal sealed class ProjectionExpressionEmitter
             return method.ExpressionBody.Expression;
         }
 
-        return method.Body?.Statements.OfType<ReturnStatementSyntax>().Select(statement => statement.Expression)
+        return method
+            .Body?.Statements.OfType<ReturnStatementSyntax>()
+            .Select(statement => statement.Expression)
             .FirstOrDefault(expression => expression is not null);
     }
 
-    private static ExpressionSyntax? GetProjectableBodyExpression(AccessorDeclarationSyntax? accessor)
+    private static ExpressionSyntax? GetProjectableBodyExpression(
+        AccessorDeclarationSyntax? accessor
+    )
     {
         if (accessor is null)
         {
@@ -1243,7 +1259,9 @@ internal sealed class ProjectionExpressionEmitter
             return accessor.ExpressionBody.Expression;
         }
 
-        return accessor.Body?.Statements.OfType<ReturnStatementSyntax>().Select(statement => statement.Expression)
+        return accessor
+            .Body?.Statements.OfType<ReturnStatementSyntax>()
+            .Select(statement => statement.Expression)
             .FirstOrDefault(expression => expression is not null);
     }
 
@@ -1278,7 +1296,11 @@ internal sealed class ProjectionExpressionEmitter
             var argument = invocation.ArgumentList.Arguments[index];
             var parameterName =
                 argument.NameColon?.Name.Identifier.ValueText
-                ?? (index < methodSymbol.Parameters.Length ? methodSymbol.Parameters[index].Name : null);
+                ?? (
+                    index < methodSymbol.Parameters.Length
+                        ? methodSymbol.Parameters[index].Name
+                        : null
+                );
             if (
                 parameterName is null
                 || !parameterSyntaxByName.TryGetValue(parameterName, out var parameterSymbol)
@@ -1388,7 +1410,8 @@ internal sealed class ProjectionExpressionEmitter
                     return false;
                 }
 
-                var methodSyntax = methodSymbol.DeclaringSyntaxReferences.FirstOrDefault()?.GetSyntax()
+                var methodSyntax =
+                    methodSymbol.DeclaringSyntaxReferences.FirstOrDefault()?.GetSyntax()
                     as MethodDeclarationSyntax;
                 var nestedBodyExpression = GetProjectableBodyExpression(methodSyntax);
                 if (nestedBodyExpression is null)
@@ -1416,9 +1439,9 @@ internal sealed class ProjectionExpressionEmitter
                     return false;
                 }
 
-                var propertySyntax = propertySymbol
-                    .DeclaringSyntaxReferences.FirstOrDefault()
-                    ?.GetSyntax() as PropertyDeclarationSyntax;
+                var propertySyntax =
+                    propertySymbol.DeclaringSyntaxReferences.FirstOrDefault()?.GetSyntax()
+                    as PropertyDeclarationSyntax;
                 var nestedBodyExpression = GetProjectableBodyExpression(propertySyntax);
                 if (nestedBodyExpression is null)
                 {
@@ -1449,12 +1472,15 @@ internal sealed class ProjectionExpressionEmitter
         LinqraftProjectionHookKind kind
     )
     {
-        return expression.DescendantNodesAndSelf().OfType<InvocationExpressionSyntax>().Any(invocation =>
-            IsProjectionHookInvocation(invocation, kind)
-        );
+        return expression
+            .DescendantNodesAndSelf()
+            .OfType<InvocationExpressionSyntax>()
+            .Any(invocation => IsProjectionHookInvocation(invocation, kind));
     }
 
-    private static ExpressionSyntax? GetHookReceiverExpression(InvocationExpressionSyntax invocation)
+    private static ExpressionSyntax? GetHookReceiverExpression(
+        InvocationExpressionSyntax invocation
+    )
     {
         return invocation.Expression switch
         {

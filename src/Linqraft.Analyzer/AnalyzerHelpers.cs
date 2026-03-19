@@ -33,7 +33,10 @@ internal static class AnalyzerHelpers
 
     public static bool IsProjectionExprInvocation(InvocationExpressionSyntax invocation)
     {
-        return GetInvocationName(invocation.Expression) is "SelectExpr" or "SelectManyExpr" or "GroupByExpr";
+        return GetInvocationName(invocation.Expression)
+            is "SelectExpr"
+                or "SelectManyExpr"
+                or "GroupByExpr";
     }
 
     public static bool IsProjectionHookInvocation(

@@ -22,11 +22,12 @@ public sealed class EfOrder
 
     public EfShipment? Shipment { get; set; }
 
-    public string? FirstLargeItemProductName => this
-        .Items.Where(item => item.Quantity >= 2)
-        .OrderBy(item => item.Id)
-        .Select(item => item.ProductName)
-        .FirstOrDefault();
+    public string? FirstLargeItemProductName =>
+        this
+            .Items.Where(item => item.Quantity >= 2)
+            .OrderBy(item => item.Id)
+            .Select(item => item.ProductName)
+            .FirstOrDefault();
 }
 
 public sealed class EfCustomer

@@ -258,13 +258,11 @@ public sealed class SourceGeneratorSmokeTests
             CreateMarkerTree("recursive-projectable")
         );
 
-        driver = driver.RunGeneratorsAndUpdateCompilation(
-            compilation,
-            out _,
-            out var diagnostics
-        );
+        driver = driver.RunGeneratorsAndUpdateCompilation(compilation, out _, out var diagnostics);
 
-        diagnostics.Select(diagnostic => diagnostic.Id).Any(id => id is "CS8784" or "CS8785")
+        diagnostics
+            .Select(diagnostic => diagnostic.Id)
+            .Any(id => id is "CS8784" or "CS8785")
             .ShouldBeTrue();
         diagnostics
             .Select(diagnostic => diagnostic.GetMessage())
@@ -294,13 +292,11 @@ public sealed class SourceGeneratorSmokeTests
             CreateMarkerTree("duplicate-hooks")
         );
 
-        driver = driver.RunGeneratorsAndUpdateCompilation(
-            compilation,
-            out _,
-            out var diagnostics
-        );
+        driver = driver.RunGeneratorsAndUpdateCompilation(compilation, out _, out var diagnostics);
 
-        diagnostics.Select(diagnostic => diagnostic.Id).Any(id => id is "CS8784" or "CS8785")
+        diagnostics
+            .Select(diagnostic => diagnostic.Id)
+            .Any(id => id is "CS8784" or "CS8785")
             .ShouldBeTrue();
         diagnostics
             .Select(diagnostic => diagnostic.GetMessage())
@@ -1309,7 +1305,8 @@ public sealed class SourceGeneratorSmokeTests
 
     private sealed class CustomHookGenerator : LinqraftGeneratorCore<CustomHookGeneratorOptions>;
 
-    private sealed class DuplicateHookGenerator : LinqraftGeneratorCore<DuplicateHookGeneratorOptions>;
+    private sealed class DuplicateHookGenerator
+        : LinqraftGeneratorCore<DuplicateHookGeneratorOptions>;
 
     private sealed class CustomGeneratorOptions : LinqraftGeneratorOptionsCore
     {
@@ -1364,13 +1361,13 @@ public sealed class SourceGeneratorSmokeTests
         public override string SelectExprMethodName => "ProjectExpr";
 
         public override IReadOnlyList<LinqraftProjectionHookDefinition> ProjectionHooks =>
-        [
-            new(
-                "InlineProjectable",
-                LinqraftProjectionHookKind.Projectable,
-                "CustomProjectionHooks"
-            ),
-        ];
+            [
+                new(
+                    "InlineProjectable",
+                    LinqraftProjectionHookKind.Projectable,
+                    "CustomProjectionHooks"
+                ),
+            ];
     }
 
     private sealed class DuplicateHookGeneratorOptions : LinqraftGeneratorOptionsCore
@@ -1386,18 +1383,18 @@ public sealed class SourceGeneratorSmokeTests
         public override string SelectExprMethodName => "ProjectExpr";
 
         public override IReadOnlyList<LinqraftProjectionHookDefinition> ProjectionHooks =>
-        [
-            new(
-                "InlineProjectable",
-                LinqraftProjectionHookKind.Projectable,
-                "DuplicateProjectionHooks"
-            ),
-            new(
-                "InlineProjectable",
-                LinqraftProjectionHookKind.LeftJoin,
-                "DuplicateProjectionHooks2"
-            ),
-        ];
+            [
+                new(
+                    "InlineProjectable",
+                    LinqraftProjectionHookKind.Projectable,
+                    "DuplicateProjectionHooks"
+                ),
+                new(
+                    "InlineProjectable",
+                    LinqraftProjectionHookKind.LeftJoin,
+                    "DuplicateProjectionHooks2"
+                ),
+            ];
     }
 
     private sealed class OmittedSupportGenerator : LinqraftGeneratorCore<OmittedSupportOptions>;

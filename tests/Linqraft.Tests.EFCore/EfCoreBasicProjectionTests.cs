@@ -271,11 +271,7 @@ public sealed class EfCoreBasicProjectionTests
             .ToListAsync();
 
         result
-            .Select(row => new
-            {
-                row.OrderNumber,
-                CustomerName = (string?)row.CustomerName,
-            })
+            .Select(row => new { row.OrderNumber, CustomerName = (string?)row.CustomerName })
             .ToList()
             .ShouldBe(expected);
     }
@@ -311,11 +307,7 @@ public sealed class EfCoreBasicProjectionTests
             .ToListAsync();
 
         result
-            .Select(row => new
-            {
-                row.OrderNumber,
-                row.FirstLargeItemProductName,
-            })
+            .Select(row => new { row.OrderNumber, row.FirstLargeItemProductName })
             .ToList()
             .ShouldBe(expected);
     }

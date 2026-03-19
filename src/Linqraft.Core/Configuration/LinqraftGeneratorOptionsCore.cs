@@ -275,9 +275,10 @@ public abstract class LinqraftGeneratorOptionsCore
 
     internal LinqraftProjectionHookDefinition? FindProjectionHook(string methodName)
     {
-        return GetValidatedProjectionHooks().FirstOrDefault(hook =>
-            string.Equals(hook.MethodName, methodName, System.StringComparison.Ordinal)
-        );
+        return GetValidatedProjectionHooks()
+            .FirstOrDefault(hook =>
+                string.Equals(hook.MethodName, methodName, System.StringComparison.Ordinal)
+            );
     }
 
     internal string GetProjectionHookClassName(LinqraftProjectionHookDefinition hook)
