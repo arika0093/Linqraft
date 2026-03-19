@@ -1,10 +1,49 @@
+using System.Collections.Generic;
+using System.Collections.ObjectModel;
+using System.Linq;
+
 namespace Linqraft.Core.Configuration;
+
+/// <summary>
+/// Identifies the built-in rewrite behavior for a projection hook method.
+/// </summary>
+public enum LinqraftProjectionHookKind
+{
+    /// <summary>
+    /// Rewrites a nullable navigation access chain as an explicit null-guarded left join access.
+    /// </summary>
+    LeftJoin,
+
+    /// <summary>
+    /// Inlines the body of a source-defined computed property or method into the generated projection.
+    /// </summary>
+    Projectable,
+}
+
+/// <summary>
+/// Describes a generated projection hook extension method and the rewrite behavior it enables.
+/// </summary>
+/// <param name="MethodName">The hook method name exposed to user code.</param>
+/// <param name="Kind">The rewrite behavior applied inside generated projections.</param>
+/// <param name="ClassName">The generated extension class name. When omitted, <c>{MethodName}Extensions</c> is used.</param>
+public sealed record LinqraftProjectionHookDefinition(
+    string MethodName,
+    LinqraftProjectionHookKind Kind,
+    string? ClassName = null
+);
 
 /// <summary>
 /// Defines customizable names and build-property keys for the reusable Linqraft generator core.
 /// </summary>
 public abstract class LinqraftGeneratorOptionsCore
 {
+    private static readonly ReadOnlyCollection<LinqraftProjectionHookDefinition> DefaultProjectionHooks =
+        new List<LinqraftProjectionHookDefinition>
+        {
+            new("AsLeftJoin", LinqraftProjectionHookKind.LeftJoin),
+            new("AsProjectable", LinqraftProjectionHookKind.Projectable),
+        }.AsReadOnly();
+
     /// <summary>
     /// Gets the display name used in generated diagnostics, comments, and runtime exception messages.
     /// Provide a short library name such as <c>Linqraft</c> or your own package name.
@@ -114,6 +153,12 @@ public abstract class LinqraftGeneratorOptionsCore
     public virtual string GroupByExprClassName => $"{GroupByExprMethodName}Extensions";
 
     /// <summary>
+    /// Gets the generated no-op extension methods that act as explicit rewrite hooks inside generated projections.
+    /// </summary>
+    public virtual IReadOnlyList<LinqraftProjectionHookDefinition> ProjectionHooks =>
+        DefaultProjectionHooks;
+
+    /// <summary>
     /// Gets the analyzer config key for the generated global namespace option.
     /// Return <see langword="null"/> to skip reading analyzer config and keep the built-in default.
     /// </summary>
@@ -208,4 +253,37 @@ public abstract class LinqraftGeneratorOptionsCore
 
     internal string? GeneratorKitMetadataName =>
         GeneratorKitClassName is null ? null : $"{SupportNamespace}.{GeneratorKitClassName}";
+
+    internal IReadOnlyList<LinqraftProjectionHookDefinition> GetValidatedProjectionHooks()
+    {
+        var hooks = ProjectionHooks;
+        var duplicates = hooks
+            .GroupBy(hook => hook.MethodName, System.StringComparer.Ordinal)
+            .Where(group => group.Skip(1).Any())
+            .Select(group => group.Key)
+            .OrderBy(name => name, System.StringComparer.Ordinal)
+            .ToArray();
+        if (duplicates.Length != 0)
+        {
+            throw new System.InvalidOperationException(
+                $"ProjectionHooks contains duplicate method name(s): {string.Join(", ", duplicates)}."
+            );
+        }
+
+        return hooks;
+    }
+
+    internal LinqraftProjectionHookDefinition? FindProjectionHook(string methodName)
+    {
+        return GetValidatedProjectionHooks().FirstOrDefault(hook =>
+            string.Equals(hook.MethodName, methodName, System.StringComparison.Ordinal)
+        );
+    }
+
+    internal string GetProjectionHookClassName(LinqraftProjectionHookDefinition hook)
+    {
+        return string.IsNullOrWhiteSpace(hook.ClassName)
+            ? $"{hook.MethodName}Extensions"
+            : hook.ClassName!;
+    }
 }

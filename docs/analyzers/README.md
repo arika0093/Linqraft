@@ -16,6 +16,7 @@
 | [LQRW004](./LQRW004.md) | AnonymousCaptureDelegatePatternAnalyzer | Anonymous-object capture should be migrated to the delegate capture pattern | Warning | ✅️ |
 | [LQRE001](./LQRE001.md) | LocalVariableCaptureAnalyzer | Reports missing `capture:` entries for `SelectExpr` selectors | Error | ✅️ |
 | [LQRE002](./LQRE002.md) | GroupByAnonymousKeyAnalyzer | Reports anonymous type keys in `GroupBy` followed by `SelectExpr` | Error | ✅️ |
+| [LQRE003](./LQRE003.md) | ProjectionHookUsageAnalyzer | Reports `AsLeftJoin` / `AsProjectable` usage outside generated projection contexts | Error | ❌️ |
 
 Basically, analyzers come with code fixes that can be automatically applied to implement the suggested changes.
 This allows you to fix the above recommendations with a single click.
