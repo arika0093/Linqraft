@@ -882,13 +882,14 @@ public sealed class LinqraftCompositeCodeFixProvider : CodeFixProvider
         }
 
         foreach (
-            var returnStatement in method.Body.DescendantNodes().OfType<ReturnStatementSyntax>()
+            var expression in method
+                .Body.DescendantNodes()
+                .OfType<ReturnStatementSyntax>()
+                .Where(returnStatement => returnStatement.Expression is not null)
+                .Select(returnStatement => returnStatement.Expression!)
         )
         {
-            if (returnStatement.Expression is not null)
-            {
-                yield return returnStatement.Expression;
-            }
+            yield return expression;
         }
     }
 
@@ -1235,20 +1236,12 @@ public sealed class LinqraftCompositeCodeFixProvider : CodeFixProvider
             AnalyzerHelpers.GetCaptureNames(invocation),
             StringComparer.Ordinal
         );
-        var missingCaptureNames = new List<string>();
-        foreach (
-            var reference in AnalyzerHelpers
-                .CollectOuterReferences(lambda, semanticModel, cancellationToken)
-                .Distinct(SymbolEqualityComparer.Default)
-        )
-        {
-            if (existingCaptureNames.Add(reference.Name))
-            {
-                missingCaptureNames.Add(reference.Name);
-            }
-        }
-
-        return missingCaptureNames.ToArray();
+        return AnalyzerHelpers
+            .CollectOuterReferences(lambda, semanticModel, cancellationToken)
+            .Distinct(SymbolEqualityComparer.Default)
+            .Where(reference => existingCaptureNames.Add(reference.Name))
+            .Select(reference => reference.Name)
+            .ToArray();
     }
 
     private static InvocationExpressionSyntax AddCaptureNames(
@@ -1423,129 +1416,6 @@ public sealed class LinqraftCompositeCodeFixProvider : CodeFixProvider
         return AnalyzerHelpers.GenerateDtoName(invocation);
     }
 
-    private static ExpressionSyntax ConvertObjectCreationToAnonymous(
-        ObjectCreationExpressionSyntax objectCreation,
-        INamedTypeSymbol? targetType,
-        SemanticModel? semanticModel,
-        int position
-    )
-    {
-        if (
-            objectCreation.ArgumentList is { Arguments.Count: > 0 }
-            || objectCreation.Initializer is null
-        )
-        {
-            return objectCreation;
-        }
-
-        var members = objectCreation
-            .Initializer.Expressions.OfType<AssignmentExpressionSyntax>()
-            .Select(assignment =>
-                AppendValueWithContinuation(
-                    $"{assignment.Left} = ",
-                    AddAnonymousTargetTypeCastIfNeeded(
-                            assignment.Right,
-                            targetType is null
-                                ? null
-                                : GetObjectInitializerMemberType(targetType, assignment.Left),
-                            semanticModel,
-                            position
-                        )
-                        .ToString()
-                )
-            )
-            .ToList();
-
-        return SyntaxFactory.ParseExpression(BuildInitializerExpression("new", members));
-    }
-
-    private static ExpressionSyntax AddAnonymousTargetTypeCastIfNeeded(
-        ExpressionSyntax expression,
-        ITypeSymbol? targetType,
-        SemanticModel? semanticModel,
-        int position
-    )
-    {
-        expression = UnwrapParentheses(expression);
-        if (
-            targetType is null
-            || expression is CastExpressionSyntax
-            || expression is not ConditionalExpressionSyntax conditionalExpression
-            || (
-                !IsNullLike(conditionalExpression.WhenTrue)
-                && !IsNullLike(conditionalExpression.WhenFalse)
-            )
-            || !NeedsTargetTypeCast(targetType)
-        )
-        {
-            return expression;
-        }
-
-        var targetTypeText = semanticModel is null
-            ? targetType.ToDisplayString(SymbolDisplayFormat.MinimallyQualifiedFormat)
-            : targetType.ToMinimalDisplayString(
-                semanticModel,
-                position,
-                SymbolDisplayFormat.MinimallyQualifiedFormat
-            );
-        return SyntaxFactory.CastExpression(
-            SyntaxFactory.ParseTypeName(targetTypeText),
-            SyntaxFactory.ParenthesizedExpression(expression.WithoutTrivia())
-        );
-    }
-
-    private static bool NeedsTargetTypeCast(ITypeSymbol targetType)
-    {
-        return targetType.IsValueType || IsNullableValueType(targetType);
-    }
-
-    private static bool IsNullableValueType(ITypeSymbol type)
-    {
-        return type is INamedTypeSymbol namedType
-            && namedType.OriginalDefinition.SpecialType == SpecialType.System_Nullable_T;
-    }
-
-    private static ITypeSymbol? GetObjectInitializerMemberType(
-        INamedTypeSymbol objectType,
-        ExpressionSyntax assignmentTarget
-    )
-    {
-        var memberName = GetAssignedMemberName(assignmentTarget);
-        if (string.IsNullOrWhiteSpace(memberName))
-        {
-            return null;
-        }
-
-        for (
-            INamedTypeSymbol? current = objectType;
-            current is not null;
-            current = current.BaseType
-        )
-        {
-            var member = current.GetMembers(memberName).FirstOrDefault();
-            switch (member)
-            {
-                case IPropertySymbol propertySymbol:
-                    return propertySymbol.Type;
-                case IFieldSymbol fieldSymbol:
-                    return fieldSymbol.Type;
-            }
-        }
-
-        return null;
-    }
-
-    private static string GetAssignedMemberName(ExpressionSyntax assignmentTarget)
-    {
-        return assignmentTarget switch
-        {
-            IdentifierNameSyntax identifierName => identifierName.Identifier.ValueText,
-            SimpleNameSyntax simpleName => simpleName.Identifier.ValueText,
-            MemberAccessExpressionSyntax memberAccess => memberAccess.Name.Identifier.ValueText,
-            _ => string.Empty,
-        };
-    }
-
     private static ExpressionSyntax RewriteProjectionExpression(
         ExpressionSyntax expression,
         bool simplifyTernary,
@@ -1654,12 +1524,13 @@ public sealed class LinqraftCompositeCodeFixProvider : CodeFixProvider
             return true;
         }
 
+        collectedPaths = new List<string>();
         if (
             IsNullLike(conditionalExpression.WhenTrue)
             && TryCollectNullGuardPaths(
                 conditionalExpression.Condition,
                 valueWhenConditionTrue: false,
-                collectedPaths = new List<string>()
+                collectedPaths
             )
         )
         {
@@ -1938,6 +1809,130 @@ public sealed class LinqraftCompositeCodeFixProvider : CodeFixProvider
                 semanticModel,
                 node.SpanStart
             );
+        }
+
+        private static ExpressionSyntax ConvertObjectCreationToAnonymous(
+            ObjectCreationExpressionSyntax objectCreation,
+            INamedTypeSymbol? targetType,
+            SemanticModel? semanticModel,
+            int position
+        )
+        {
+            if (
+                objectCreation.ArgumentList is { Arguments.Count: > 0 }
+                || objectCreation.Initializer is null
+            )
+            {
+                return objectCreation;
+            }
+
+            var members = objectCreation
+                .Initializer.Expressions.OfType<AssignmentExpressionSyntax>()
+                .Select(assignment =>
+                    AppendValueWithContinuation(
+                        $"{assignment.Left} = ",
+                        AddAnonymousTargetTypeCastIfNeeded(
+                                assignment.Right,
+                                targetType is null
+                                    ? null
+                                    : GetObjectInitializerMemberType(targetType, assignment.Left),
+                                semanticModel,
+                                position
+                            )
+                            .ToString()
+                    )
+                )
+                .ToList();
+
+            return SyntaxFactory.ParseExpression(BuildInitializerExpression("new", members));
+        }
+
+        private static ExpressionSyntax AddAnonymousTargetTypeCastIfNeeded(
+            ExpressionSyntax expression,
+            ITypeSymbol? targetType,
+            SemanticModel? semanticModel,
+            int position
+        )
+        {
+            expression = UnwrapParentheses(expression);
+            if (
+                targetType is null
+                || expression is CastExpressionSyntax
+                || expression is not ConditionalExpressionSyntax conditionalExpression
+                || (
+                    !IsNullLike(conditionalExpression.WhenTrue)
+                    && !IsNullLike(conditionalExpression.WhenFalse)
+                )
+                || !NeedsTargetTypeCast(targetType)
+            )
+            {
+                return expression;
+            }
+
+            var targetTypeText = semanticModel is null
+                ? targetType.ToDisplayString(SymbolDisplayFormat.MinimallyQualifiedFormat)
+                : targetType.ToMinimalDisplayString(
+                    semanticModel,
+                    position,
+                    SymbolDisplayFormat.MinimallyQualifiedFormat
+                );
+            return SyntaxFactory.CastExpression(
+                SyntaxFactory.ParseTypeName(targetTypeText),
+                SyntaxFactory.ParenthesizedExpression(expression.WithoutTrivia())
+            );
+        }
+
+        private static ITypeSymbol? GetObjectInitializerMemberType(
+            INamedTypeSymbol objectType,
+            ExpressionSyntax assignmentTarget
+        )
+        {
+            var memberName = GetAssignedMemberName(assignmentTarget);
+            if (string.IsNullOrWhiteSpace(memberName))
+            {
+                return null;
+            }
+
+            for (
+                INamedTypeSymbol? current = objectType;
+                current is not null;
+                current = current.BaseType
+            )
+            {
+                var member = current.GetMembers(memberName).FirstOrDefault();
+                switch (member)
+                {
+                    case IPropertySymbol propertySymbol:
+                        return propertySymbol.Type;
+                    case IFieldSymbol fieldSymbol:
+                        return fieldSymbol.Type;
+                }
+            }
+
+            return null;
+        }
+
+        private static bool NeedsTargetTypeCast(ITypeSymbol targetType)
+        {
+            return targetType.IsValueType || IsNullableValueType(targetType);
+        }
+
+        private static bool IsNullableValueType(ITypeSymbol type)
+        {
+            return type is INamedTypeSymbol namedType
+                && namedType.OriginalDefinition.SpecialType == SpecialType.System_Nullable_T;
+        }
+
+        private static string GetAssignedMemberName(ExpressionSyntax assignmentTarget)
+        {
+            return assignmentTarget switch
+            {
+                IdentifierNameSyntax identifierName => identifierName.Identifier.ValueText,
+                SimpleNameSyntax simpleName => simpleName.Identifier.ValueText,
+                MemberAccessExpressionSyntax memberAccess =>
+                    memberAccess.Name.Identifier.ValueText,
+                _ => string.Empty,
+            };
         }
     }
 

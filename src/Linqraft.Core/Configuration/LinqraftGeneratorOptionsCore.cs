@@ -281,7 +281,7 @@ public abstract class LinqraftGeneratorOptionsCore
             );
     }
 
-    internal string GetProjectionHookClassName(LinqraftProjectionHookDefinition hook)
+    internal static string GetProjectionHookClassName(LinqraftProjectionHookDefinition hook)
     {
         return string.IsNullOrWhiteSpace(hook.ClassName)
             ? $"{hook.MethodName}Extensions"

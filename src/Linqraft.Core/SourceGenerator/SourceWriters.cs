@@ -26,7 +26,7 @@ internal static class SourceWriters
     )
     {
         var builder = CreateFileBuilder(configuration);
-        WriteMappingDeclaration(builder, request, configuration.GeneratorOptions);
+        WriteMappingDeclaration(builder, request);
         return FinalizeSource(builder);
     }
 
@@ -54,7 +54,7 @@ internal static class SourceWriters
                 );
                 break;
             case MappingOwnedGeneratedSourceModel mapping:
-                WriteMappingDeclaration(builder, mapping.Request, configuration.GeneratorOptions);
+                WriteMappingDeclaration(builder, mapping.Request);
                 break;
             default:
                 throw new InvalidOperationException(
@@ -138,9 +138,11 @@ internal static class SourceWriters
                 builder.AppendLine("{");
                 using (builder.Indent())
                 {
-                    foreach (var property in suppressedProperties)
+                    foreach (var propertyName in suppressedProperties.Select(property => property.Name))
                     {
-                        builder.AppendLine($"{property.Name} = {ToParameterName(property.Name)};");
+                        builder.AppendLine(
+                            $"{propertyName} = {ToParameterName(propertyName)};"
+                        );
                     }
                 }
 
@@ -319,13 +321,23 @@ internal static class SourceWriters
                     );
                 }
 
-                builder.AppendLine(
-                    request.Captures.Length == 0
-                        ? $"internal static T {request.MethodName}<T>(object x)"
-                    : request.CaptureTransportKind == CaptureTransportKind.Delegate
-                        ? $"internal static T {request.MethodName}<T>(object x, global::System.Func<object> capture)"
-                    : $"internal static T {request.MethodName}<T>(object x, object capture)"
-                );
+                string signature;
+                if (request.Captures.Length == 0)
+                {
+                    signature = $"internal static T {request.MethodName}<T>(object x)";
+                }
+                else if (request.CaptureTransportKind == CaptureTransportKind.Delegate)
+                {
+                    signature =
+                        $"internal static T {request.MethodName}<T>(object x, global::System.Func<object> capture)";
+                }
+                else
+                {
+                    signature =
+                        $"internal static T {request.MethodName}<T>(object x, object capture)";
+                }
+
+                builder.AppendLine(signature);
                 builder.AppendLine("{");
                 using (builder.Indent())
                 {
@@ -354,11 +366,7 @@ internal static class SourceWriters
         builder.AppendLine("}");
     }
 
-    private static void WriteMappingDeclaration(
-        IndentedStringBuilder builder,
-        MappingRequest request,
-        LinqraftGeneratorOptionsCore generatorOptions
-    )
+    private static void WriteMappingDeclaration(IndentedStringBuilder builder, MappingRequest request)
     {
         if (!string.IsNullOrWhiteSpace(request.Namespace))
         {

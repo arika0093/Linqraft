@@ -48,11 +48,18 @@ internal static class GeneratedSourceFormatter
             }
             else if (trimmed[0] == '[')
             {
-                effectiveIndent =
-                    IsAttributeContext(lastTrimmed) ? baseIndent
-                    : lastTrimmed.Length != 0 && (lastTrimmed[0] is '.' or '[' or '}')
-                        ? lastNonEmptyIndent
-                    : lastNonEmptyIndent + 1;
+                if (IsAttributeContext(lastTrimmed))
+                {
+                    effectiveIndent = baseIndent;
+                }
+                else if (lastTrimmed.Length != 0 && (lastTrimmed[0] is '.' or '[' or '}'))
+                {
+                    effectiveIndent = lastNonEmptyIndent;
+                }
+                else
+                {
+                    effectiveIndent = lastNonEmptyIndent + 1;
+                }
             }
             else if (trimmed[0] == '?')
             {

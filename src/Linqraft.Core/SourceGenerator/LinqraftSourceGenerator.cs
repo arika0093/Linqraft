@@ -319,16 +319,6 @@ internal static class LinqraftGeneratorPipeline
             .Select(static (pair, _) => new EquatableArray<T>(pair.Left.Concat(pair.Right)));
     }
 
-    private static IncrementalValueProvider<EquatableArray<T>> MergeCollectedValues<T>(
-        IncrementalValueProvider<ImmutableArray<T>> first,
-        IncrementalValueProvider<ImmutableArray<T>> second,
-        IncrementalValueProvider<ImmutableArray<T>> third
-    )
-        where T : IEquatable<T>
-    {
-        return MergeCollectedValues(MergeCollectedValues(first, second), third);
-    }
-
     private static bool IsPotentialProjectionInvocation(
         InvocationExpressionSyntax invocation,
         LinqraftGeneratorOptionsCore generatorOptions

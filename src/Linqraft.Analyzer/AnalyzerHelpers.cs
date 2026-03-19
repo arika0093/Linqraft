@@ -409,10 +409,19 @@ internal static class AnalyzerHelpers
         var whenFalseIsNull = conditionalExpression.WhenFalse.IsKind(
             SyntaxKind.NullLiteralExpression
         );
-        var otherBranch =
-            whenTrueIsNull ? conditionalExpression.WhenFalse
-            : whenFalseIsNull ? conditionalExpression.WhenTrue
-            : null;
+        ExpressionSyntax? otherBranch;
+        if (whenTrueIsNull)
+        {
+            otherBranch = conditionalExpression.WhenFalse;
+        }
+        else if (whenFalseIsNull)
+        {
+            otherBranch = conditionalExpression.WhenTrue;
+        }
+        else
+        {
+            otherBranch = null;
+        }
         return otherBranch
                 is ObjectCreationExpressionSyntax
                     or AnonymousObjectCreationExpressionSyntax

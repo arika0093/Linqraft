@@ -85,14 +85,8 @@ internal static class SymbolNameHelper
             return true;
         }
 
-        foreach (var current in symbol.AllInterfaces)
-        {
-            if (current.ConstructedFrom.ToDisplayString() == metadataName)
-            {
-                return true;
-            }
-        }
-
-        return false;
+        return symbol.AllInterfaces.Any(current =>
+            current.ConstructedFrom.ToDisplayString() == metadataName
+        );
     }
 }

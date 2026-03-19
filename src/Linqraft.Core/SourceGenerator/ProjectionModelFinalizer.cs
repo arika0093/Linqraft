@@ -283,11 +283,17 @@ internal static class ProjectionModelFinalizer
         LinqraftConfiguration configuration
     )
     {
-        var baseNamespace = string.IsNullOrWhiteSpace(template.PreferredNamespace)
-            ? template.UseGlobalNamespaceFallback
+        string baseNamespace;
+        if (string.IsNullOrWhiteSpace(template.PreferredNamespace))
+        {
+            baseNamespace = template.UseGlobalNamespaceFallback
                 ? configuration.GlobalNamespace
-                : string.Empty
-            : template.PreferredNamespace;
+                : string.Empty;
+        }
+        else
+        {
+            baseNamespace = template.PreferredNamespace;
+        }
 
         if (template.Kind == GeneratedDtoTemplateKind.NestedAuto)
         {

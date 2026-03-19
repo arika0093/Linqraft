@@ -48,7 +48,7 @@ internal abstract class ProjectionSupportExtensionClassGenerator
             builder.AppendLine("/// </summary>");
             builder.AppendLine("[global::Microsoft.CodeAnalysis.EmbeddedAttribute]");
             builder.AppendLine(
-                $"internal static partial class {generatorOptions.GetProjectionHookClassName(hook)}"
+                $"internal static partial class {LinqraftGeneratorOptionsCore.GetProjectionHookClassName(hook)}"
             );
             builder.AppendLine("{");
             using (builder.Indent())
@@ -93,7 +93,7 @@ internal abstract class ProjectionSupportExtensionClassGenerator
         return builder.ToString().TrimEnd();
     }
 
-    private void WriteMethod(
+    private static void WriteMethod(
         IndentedStringBuilder builder,
         SupportMethodSignature signature,
         LinqraftGeneratorOptionsCore generatorOptions

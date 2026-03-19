@@ -1513,6 +1513,277 @@ internal static class ProjectionTemplateBuilder
 
             return ApplyExpressionNullability(effectiveTypeName, expressionType);
         }
+
+        private static GeneratedDtoTemplateModel MergeDtoTemplate(
+            GeneratedDtoTemplateModel existing,
+            GeneratedDtoTemplateModel incoming
+        )
+        {
+            var merged = existing.Properties.ToDictionary(
+                property => property.Name,
+                StringComparer.Ordinal
+            );
+            foreach (var property in incoming.Properties)
+            {
+                if (!merged.TryGetValue(property.Name, out var current))
+                {
+                    merged.Add(property.Name, property);
+                    continue;
+                }
+
+                merged[property.Name] = new GeneratedPropertyTemplateModel
+                {
+                    Name = property.Name,
+                    TypeTemplate = MergeTemplateType(current.TypeTemplate, property.TypeTemplate),
+                    FallbackTypeTemplate = MergeTemplateType(
+                        current.FallbackTypeTemplate,
+                        property.FallbackTypeTemplate
+                    ),
+                    Documentation = current.Documentation ?? property.Documentation,
+                    IsSuppressed = current.IsSuppressed && property.IsSuppressed,
+                };
+            }
+
+            var mergedProperties = merged
+                .Values.OrderByDescending(property => property.IsSuppressed)
+                .ThenBy(property => property.Name, StringComparer.Ordinal)
+                .ToArray();
+            return existing with
+            {
+                Properties = mergedProperties,
+                Origins = MergeOrigins(existing.Origins, incoming.Origins),
+                ShapeSignature =
+                    $"{existing.TemplateId}|{string.Join(";", mergedProperties.Select(property => $"{property.Name}:{property.TypeTemplate}:{property.FallbackTypeTemplate}:{property.IsSuppressed}"))}",
+            };
+        }
+
+        private static IReadOnlyList<(string Name, ExpressionSyntax Expression)> GetProjectionMembers(
+            ExpressionSyntax expression
+        )
+        {
+            return expression switch
+            {
+                AnonymousObjectCreationExpressionSyntax anonymousObject => anonymousObject
+                    .Initializers.Select(initializer =>
+                        (GetAnonymousMemberName(initializer), initializer.Expression)
+                    )
+                    .ToList(),
+                ObjectCreationExpressionSyntax objectCreation
+                    when objectCreation.Initializer is not null => objectCreation
+                    .Initializer.Expressions.OfType<AssignmentExpressionSyntax>()
+                    .Select(assignment =>
+                        (
+                            assignment.Left switch
+                            {
+                                IdentifierNameSyntax identifier => identifier.Identifier.ValueText,
+                                _ => assignment.Left.ToString(),
+                            },
+                            assignment.Right
+                        )
+                    )
+                    .ToList(),
+                _ => Array.Empty<(string Name, ExpressionSyntax Expression)>(),
+            };
+        }
+
+        private static string BuildCollectionTypeName(
+            ITypeSymbol? collectionType,
+            string elementTypeName
+        )
+        {
+            if (collectionType is IArrayTypeSymbol)
+            {
+                return $"{elementTypeName}[]";
+            }
+
+            if (
+                collectionType is INamedTypeSymbol namedType
+                && namedType.IsGenericType
+                && namedType.TypeArguments.Length == 1
+            )
+            {
+                var container = namedType.ConstructedFrom.ToFullyQualifiedTypeName();
+                var containerName = container[..container.IndexOf('<')];
+                return $"{containerName}<{elementTypeName}>{GetNullableSuffix(namedType.NullableAnnotation)}";
+            }
+
+            return $"global::System.Collections.Generic.IEnumerable<{elementTypeName}>";
+        }
+
+        private static string ApplyExpressionNullability(
+            string typeName,
+            ITypeSymbol? expressionType
+        )
+        {
+            return
+                expressionType?.NullableAnnotation == NullableAnnotation.Annotated
+                && !typeName.EndsWith("?", StringComparison.Ordinal)
+                ? $"{typeName}?"
+                : typeName;
+        }
+
+        private static bool IsCollectionLikeType(ITypeSymbol? type)
+        {
+            return type is IArrayTypeSymbol || SymbolNameHelper.IsEnumerable(type);
+        }
+
+        private static bool IsCollectionLikeResultExpression(ExpressionSyntax expression)
+        {
+            return expression switch
+            {
+                InvocationExpressionSyntax invocation => GetInvocationName(invocation.Expression) switch
+                {
+                    "First"
+                    or "FirstOrDefault"
+                    or "Single"
+                    or "SingleOrDefault"
+                    or "Last"
+                    or "LastOrDefault"
+                    or "ElementAt"
+                    or "ElementAtOrDefault" => false,
+                    _ => true,
+                },
+                ConditionalExpressionSyntax conditionalExpression => IsCollectionLikeResultExpression(
+                    conditionalExpression.WhenTrue
+                ) && IsCollectionLikeResultExpression(conditionalExpression.WhenFalse),
+                BinaryExpressionSyntax binaryExpression
+                    when binaryExpression.IsKind(SyntaxKind.CoalesceExpression) =>
+                    IsCollectionLikeResultExpression(binaryExpression.Left)
+                        || IsCollectionLikeResultExpression(binaryExpression.Right),
+                _ => false,
+            };
+        }
+
+        private static string UnwrapProjectedTypeName(
+            string projectedTypeName,
+            ITypeSymbol? lambdaBodyType
+        )
+        {
+            if (lambdaBodyType is IArrayTypeSymbol arrayType)
+            {
+                return
+                    arrayType.ElementType.IsAnonymousType
+                    && TryGetSingleGenericArgument(projectedTypeName, out var parsedArrayElement)
+                    ? parsedArrayElement
+                    : arrayType.ElementType.ToFullyQualifiedTypeName();
+            }
+
+            if (
+                lambdaBodyType is INamedTypeSymbol namedType
+                && namedType.IsGenericType
+                && namedType.TypeArguments.Length == 1
+            )
+            {
+                var elementType = namedType.TypeArguments[0];
+                return
+                    elementType.IsAnonymousType
+                    && TryGetSingleGenericArgument(projectedTypeName, out var parsedElement)
+                    ? parsedElement
+                    : elementType.ToFullyQualifiedTypeName();
+            }
+
+            return TryGetSingleGenericArgument(projectedTypeName, out var parsedGenericArgument)
+                ? parsedGenericArgument
+                : projectedTypeName;
+        }
+
+        private static string RemoveNullableAnnotation(string typeName)
+        {
+            return typeName.EndsWith("?", StringComparison.Ordinal) ? typeName[..^1] : typeName;
+        }
+
+        private static string MakeNullable(string typeName)
+        {
+            return typeName.EndsWith("?", StringComparison.Ordinal) ? typeName : $"{typeName}?";
+        }
+
+        private static bool TryGetNullGuardBranch(
+            ConditionalExpressionSyntax conditionalExpression,
+            out ExpressionSyntax nonNullBranch
+        )
+        {
+            if (conditionalExpression.WhenTrue.IsKind(SyntaxKind.NullLiteralExpression))
+            {
+                nonNullBranch = conditionalExpression.WhenFalse;
+                return true;
+            }
+
+            if (conditionalExpression.WhenFalse.IsKind(SyntaxKind.NullLiteralExpression))
+            {
+                nonNullBranch = conditionalExpression.WhenTrue;
+                return true;
+            }
+
+            nonNullBranch = null!;
+            return false;
+        }
+
+        private static string MergeTemplateType(string existingTypeName, string incomingTypeName)
+        {
+            if (string.IsNullOrWhiteSpace(existingTypeName))
+            {
+                return incomingTypeName;
+            }
+
+            if (
+                string.IsNullOrWhiteSpace(incomingTypeName)
+                || string.Equals(existingTypeName, incomingTypeName, StringComparison.Ordinal)
+            )
+            {
+                return existingTypeName;
+            }
+
+            return existingTypeName;
+        }
+
+        private static EquatableArray<GeneratedSourceOriginModel> MergeOrigins(
+            EquatableArray<GeneratedSourceOriginModel> existing,
+            EquatableArray<GeneratedSourceOriginModel> incoming
+        )
+        {
+            return existing
+                .Concat(incoming)
+                .Distinct()
+                .OrderBy(origin => origin.FileName, StringComparer.Ordinal)
+                .ThenBy(origin => origin.LineNumber)
+                .ToArray();
+        }
+
+        private static bool TryGetSingleGenericArgument(string typeName, out string genericArgument)
+        {
+            genericArgument = string.Empty;
+            var start = typeName.IndexOf('<');
+            var end = typeName.LastIndexOf('>');
+            if (start < 0 || end <= start)
+            {
+                return false;
+            }
+
+            var candidate = typeName[(start + 1)..end];
+            var depth = 0;
+            foreach (var character in candidate)
+            {
+                switch (character)
+                {
+                    case '<':
+                        depth++;
+                        break;
+                    case '>':
+                        depth--;
+                        break;
+                    case ',' when depth == 0:
+                        return false;
+                }
+            }
+
+            genericArgument = candidate;
+            return true;
+        }
+
+        private static string GetNullableSuffix(NullableAnnotation nullableAnnotation)
+        {
+            return nullableAnnotation == NullableAnnotation.Annotated ? "?" : string.Empty;
+        }
     }
 
     private static GeneratedDtoTemplateModel CreateRootDtoTemplate(
@@ -1676,67 +1947,6 @@ internal static class ProjectionTemplateBuilder
         return CaptureAnalysisResult.None;
     }
 
-    private static GeneratedDtoTemplateModel MergeDtoTemplate(
-        GeneratedDtoTemplateModel existing,
-        GeneratedDtoTemplateModel incoming
-    )
-    {
-        var merged = existing.Properties.ToDictionary(
-            property => property.Name,
-            StringComparer.Ordinal
-        );
-        foreach (var property in incoming.Properties)
-        {
-            if (!merged.TryGetValue(property.Name, out var current))
-            {
-                merged.Add(property.Name, property);
-                continue;
-            }
-
-            merged[property.Name] = new GeneratedPropertyTemplateModel
-            {
-                Name = property.Name,
-                TypeTemplate = MergeTemplateType(current.TypeTemplate, property.TypeTemplate),
-                FallbackTypeTemplate = MergeTemplateType(
-                    current.FallbackTypeTemplate,
-                    property.FallbackTypeTemplate
-                ),
-                Documentation = current.Documentation ?? property.Documentation,
-                IsSuppressed = current.IsSuppressed && property.IsSuppressed,
-            };
-        }
-
-        var mergedProperties = merged
-            .Values.OrderByDescending(property => property.IsSuppressed)
-            .ThenBy(property => property.Name, StringComparer.Ordinal)
-            .ToArray();
-        return existing with
-        {
-            Properties = mergedProperties,
-            Origins = MergeOrigins(existing.Origins, incoming.Origins),
-            ShapeSignature =
-                $"{existing.TemplateId}|{string.Join(";", mergedProperties.Select(property => $"{property.Name}:{property.TypeTemplate}:{property.FallbackTypeTemplate}:{property.IsSuppressed}"))}",
-        };
-    }
-
-    private static string MergeTemplateType(string existingTypeName, string incomingTypeName)
-    {
-        if (string.IsNullOrWhiteSpace(existingTypeName))
-        {
-            return incomingTypeName;
-        }
-
-        if (
-            string.IsNullOrWhiteSpace(incomingTypeName)
-            || string.Equals(existingTypeName, incomingTypeName, StringComparison.Ordinal)
-        )
-        {
-            return existingTypeName;
-        }
-
-        return existingTypeName;
-    }
-
     private static GeneratedSourceOriginModel CreateOrigin(SyntaxNode node)
     {
         var lineSpan = node.GetLocation().GetLineSpan();
@@ -1750,54 +1960,12 @@ internal static class ProjectionTemplateBuilder
         };
     }
 
-    private static EquatableArray<GeneratedSourceOriginModel> MergeOrigins(
-        EquatableArray<GeneratedSourceOriginModel> existing,
-        EquatableArray<GeneratedSourceOriginModel> incoming
-    )
-    {
-        return existing
-            .Concat(incoming)
-            .Distinct()
-            .OrderBy(origin => origin.FileName, StringComparer.Ordinal)
-            .ThenBy(origin => origin.LineNumber)
-            .ToArray();
-    }
-
     private static string CreateDtoPlaceholderToken(
         string templateId,
         LinqraftGeneratorOptionsCore generatorOptions
     )
     {
         return $"{generatorOptions.DtoPlaceholderPrefix}_{HashingHelper.ComputeHash(templateId, 16)}__";
-    }
-
-    private static IReadOnlyList<(string Name, ExpressionSyntax Expression)> GetProjectionMembers(
-        ExpressionSyntax expression
-    )
-    {
-        return expression switch
-        {
-            AnonymousObjectCreationExpressionSyntax anonymousObject => anonymousObject
-                .Initializers.Select(initializer =>
-                    (GetAnonymousMemberName(initializer), initializer.Expression)
-                )
-                .ToList(),
-            ObjectCreationExpressionSyntax objectCreation
-                when objectCreation.Initializer is not null => objectCreation
-                .Initializer.Expressions.OfType<AssignmentExpressionSyntax>()
-                .Select(assignment =>
-                    (
-                        assignment.Left switch
-                        {
-                            IdentifierNameSyntax identifier => identifier.Identifier.ValueText,
-                            _ => assignment.Left.ToString(),
-                        },
-                        assignment.Right
-                    )
-                )
-                .ToList(),
-            _ => Array.Empty<(string Name, ExpressionSyntax Expression)>(),
-        };
     }
 
     private static bool TryFindProjectionInvocation(
@@ -2128,166 +2296,6 @@ internal static class ProjectionTemplateBuilder
         public required ProjectionExpressionEmitter.CaptureEntry[] Entries { get; init; }
     }
 
-    private static string BuildCollectionTypeName(
-        ITypeSymbol? collectionType,
-        string elementTypeName
-    )
-    {
-        if (collectionType is IArrayTypeSymbol)
-        {
-            return $"{elementTypeName}[]";
-        }
-
-        if (
-            collectionType is INamedTypeSymbol namedType
-            && namedType.IsGenericType
-            && namedType.TypeArguments.Length == 1
-        )
-        {
-            var container = namedType.ConstructedFrom.ToFullyQualifiedTypeName();
-            var containerName = container[..container.IndexOf('<')];
-            return $"{containerName}<{elementTypeName}>{GetNullableSuffix(namedType.NullableAnnotation)}";
-        }
-
-        return $"global::System.Collections.Generic.IEnumerable<{elementTypeName}>";
-    }
-
-    private static string ApplyExpressionNullability(string typeName, ITypeSymbol? expressionType)
-    {
-        return
-            expressionType?.NullableAnnotation == NullableAnnotation.Annotated
-            && !typeName.EndsWith("?", StringComparison.Ordinal)
-            ? $"{typeName}?"
-            : typeName;
-    }
-
-    private static bool IsCollectionLikeType(ITypeSymbol? type)
-    {
-        return type is IArrayTypeSymbol || SymbolNameHelper.IsEnumerable(type);
-    }
-
-    private static bool IsCollectionLikeResultExpression(ExpressionSyntax expression)
-    {
-        return expression switch
-        {
-            InvocationExpressionSyntax invocation => GetInvocationName(invocation.Expression) switch
-            {
-                "First"
-                or "FirstOrDefault"
-                or "Single"
-                or "SingleOrDefault"
-                or "Last"
-                or "LastOrDefault"
-                or "ElementAt"
-                or "ElementAtOrDefault" => false,
-                _ => true,
-            },
-            ConditionalExpressionSyntax conditionalExpression => IsCollectionLikeResultExpression(
-                conditionalExpression.WhenTrue
-            ) && IsCollectionLikeResultExpression(conditionalExpression.WhenFalse),
-            BinaryExpressionSyntax binaryExpression
-                when binaryExpression.IsKind(SyntaxKind.CoalesceExpression) =>
-                IsCollectionLikeResultExpression(binaryExpression.Left)
-                    || IsCollectionLikeResultExpression(binaryExpression.Right),
-            _ => false,
-        };
-    }
-
-    private static string UnwrapProjectedTypeName(
-        string projectedTypeName,
-        ITypeSymbol? lambdaBodyType
-    )
-    {
-        if (lambdaBodyType is IArrayTypeSymbol arrayType)
-        {
-            return
-                arrayType.ElementType.IsAnonymousType
-                && TryGetSingleGenericArgument(projectedTypeName, out var parsedArrayElement)
-                ? parsedArrayElement
-                : arrayType.ElementType.ToFullyQualifiedTypeName();
-        }
-
-        if (
-            lambdaBodyType is INamedTypeSymbol namedType
-            && namedType.IsGenericType
-            && namedType.TypeArguments.Length == 1
-        )
-        {
-            var elementType = namedType.TypeArguments[0];
-            return
-                elementType.IsAnonymousType
-                && TryGetSingleGenericArgument(projectedTypeName, out var parsedElement)
-                ? parsedElement
-                : elementType.ToFullyQualifiedTypeName();
-        }
-
-        return TryGetSingleGenericArgument(projectedTypeName, out var parsedGenericArgument)
-            ? parsedGenericArgument
-            : projectedTypeName;
-    }
-
-    private static bool TryGetSingleGenericArgument(string typeName, out string genericArgument)
-    {
-        genericArgument = string.Empty;
-        var start = typeName.IndexOf('<');
-        var end = typeName.LastIndexOf('>');
-        if (start < 0 || end <= start)
-        {
-            return false;
-        }
-
-        var candidate = typeName[(start + 1)..end];
-        var depth = 0;
-        foreach (var character in candidate)
-        {
-            switch (character)
-            {
-                case '<':
-                    depth++;
-                    break;
-                case '>':
-                    depth--;
-                    break;
-                case ',' when depth == 0:
-                    return false;
-            }
-        }
-
-        genericArgument = candidate;
-        return true;
-    }
-
-    private static string RemoveNullableAnnotation(string typeName)
-    {
-        return typeName.EndsWith("?", StringComparison.Ordinal) ? typeName[..^1] : typeName;
-    }
-
-    private static string MakeNullable(string typeName)
-    {
-        return typeName.EndsWith("?", StringComparison.Ordinal) ? typeName : $"{typeName}?";
-    }
-
-    private static bool TryGetNullGuardBranch(
-        ConditionalExpressionSyntax conditionalExpression,
-        out ExpressionSyntax nonNullBranch
-    )
-    {
-        if (conditionalExpression.WhenTrue.IsKind(SyntaxKind.NullLiteralExpression))
-        {
-            nonNullBranch = conditionalExpression.WhenFalse;
-            return true;
-        }
-
-        if (conditionalExpression.WhenFalse.IsKind(SyntaxKind.NullLiteralExpression))
-        {
-            nonNullBranch = conditionalExpression.WhenTrue;
-            return true;
-        }
-
-        nonNullBranch = null!;
-        return false;
-    }
-
     private static string ResolveCallerNamespace(SyntaxNode node, SemanticModel semanticModel)
     {
         var symbol = semanticModel.GetEnclosingSymbol(node.SpanStart);
@@ -2327,8 +2335,7 @@ internal static class ProjectionTemplateBuilder
                     name: identifierName.Identifier.ValueText
                 )
                 .OfType<ITypeSymbol>()
-                .Where(candidate => candidate is not IErrorTypeSymbol)
-                .FirstOrDefault();
+                .FirstOrDefault(candidate => candidate is not IErrorTypeSymbol);
         }
 
         if (type is not null)
@@ -2371,11 +2378,6 @@ internal static class ProjectionTemplateBuilder
 
         qualifiedTypeName = string.Empty;
         return false;
-    }
-
-    private static string GetNullableSuffix(NullableAnnotation nullableAnnotation)
-    {
-        return nullableAnnotation == NullableAnnotation.Annotated ? "?" : string.Empty;
     }
 
     private static string GetMappingGeneratedAccessibilityKeyword(
@@ -2664,7 +2666,7 @@ internal static class ProjectionTemplateBuilder
             QualifiedNameSyntax qualifiedName => qualifiedName.Right.Identifier.ValueText,
             GenericNameSyntax genericName => genericName.Identifier.ValueText,
             AliasQualifiedNameSyntax aliasQualified => aliasQualified.Name.Identifier.ValueText,
-            _ => typeSyntax.ToString().Split('.').Last(),
+            _ => typeSyntax.ToString().Split('.')[^1],
         };
     }
 

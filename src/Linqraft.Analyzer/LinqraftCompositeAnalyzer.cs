@@ -209,43 +209,47 @@ public sealed class LinqraftCompositeAnalyzer : DiagnosticAnalyzer
             AnalyzerHelpers.GetCaptureNames(invocation),
             System.StringComparer.Ordinal
         );
+        var outerReferenceNames = new HashSet<string>(
+            outerReferences.Select(reference => reference.Name),
+            System.StringComparer.Ordinal
+        );
 
-        foreach (var reference in outerReferences)
+        foreach (
+            var referenceName in outerReferences
+                .Where(reference => !capturedNames.Contains(reference.Name))
+                .Select(reference => reference.Name)
+        )
         {
-            if (capturedNames.Contains(reference.Name))
-            {
-                continue;
-            }
-
             context.ReportDiagnostic(
                 Diagnostic.Create(
                     DiagnosticDescriptors.LocalVariableCapture,
                     invocation.GetLocation(),
                     properties: ImmutableDictionary<string, string?>.Empty.Add(
                         "CaptureName",
-                        reference.Name
+                        referenceName
                     ),
-                    messageArgs: new object[] { reference.Name }
+                    messageArgs: new object[] { referenceName }
                 )
             );
         }
 
-        foreach (var captureName in capturedNames)
+        foreach (
+            var captureName in capturedNames.Where(captureName =>
+                !outerReferenceNames.Contains(captureName)
+            )
+        )
         {
-            if (!outerReferences.Any(reference => reference.Name == captureName))
-            {
-                context.ReportDiagnostic(
-                    Diagnostic.Create(
-                        DiagnosticDescriptors.UnnecessaryCapture,
-                        invocation.GetLocation(),
-                        properties: ImmutableDictionary<string, string?>.Empty.Add(
-                            "CaptureName",
-                            captureName
-                        ),
-                        messageArgs: new object[] { captureName }
-                    )
-                );
-            }
+            context.ReportDiagnostic(
+                Diagnostic.Create(
+                    DiagnosticDescriptors.UnnecessaryCapture,
+                    invocation.GetLocation(),
+                    properties: ImmutableDictionary<string, string?>.Empty.Add(
+                        "CaptureName",
+                        captureName
+                    ),
+                    messageArgs: new object[] { captureName }
+                )
+            );
         }
 
         if (FlowsFromAnonymousGroupBy(invocation))

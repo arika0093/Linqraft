@@ -272,11 +272,9 @@ internal sealed class ProjectionExpressionEmitter
 
         return string.Join(
             "\n",
-            [
-                condition,
-                IndentAllLines(AppendValueWithContinuation("? ", whenTrue)),
-                IndentAllLines(AppendValueWithContinuation(": ", whenFalse)),
-            ]
+            condition,
+            IndentAllLines(AppendValueWithContinuation("? ", whenTrue)),
+            IndentAllLines(AppendValueWithContinuation(": ", whenFalse))
         );
     }
 
@@ -493,14 +491,23 @@ internal sealed class ProjectionExpressionEmitter
             return Emit(expression);
         }
 
-        var rootTypeName =
-            _replacementTypes.TryGetValue(expression.Span, out var replacementType)
-                ? replacementType
-            : expressionType is not null
+        string rootTypeName;
+        if (_replacementTypes.TryGetValue(expression.Span, out var replacementType))
+        {
+            rootTypeName = replacementType;
+        }
+        else if (
+            expressionType is not null
             && expressionType is not IErrorTypeSymbol
             && !ContainsAnonymousType(expressionType)
-                ? expressionType.ToFullyQualifiedTypeName()
-            : _rootTypeName;
+        )
+        {
+            rootTypeName = expressionType.ToFullyQualifiedTypeName();
+        }
+        else
+        {
+            rootTypeName = _rootTypeName;
+        }
         var nestedEmitter = new ProjectionExpressionEmitter(
             _semanticModel,
             expression,
@@ -611,11 +618,9 @@ internal sealed class ProjectionExpressionEmitter
                 {
                     rewritten = string.Join(
                         "\n",
-                        [
-                            string.Join(" && ", checks.Select(check => $"{check} != null")),
-                            IndentAllLines(AppendValueWithContinuation("? ", formattedAccess)),
-                            IndentAllLines(AppendValueWithContinuation(": ", fallback)),
-                        ]
+                        string.Join(" && ", checks.Select(check => $"{check} != null")),
+                        IndentAllLines(AppendValueWithContinuation("? ", formattedAccess)),
+                        IndentAllLines(AppendValueWithContinuation(": ", fallback))
                     );
                 }
                 else
@@ -879,11 +884,9 @@ internal sealed class ProjectionExpressionEmitter
                 {
                     rewritten = string.Join(
                         "\n",
-                        [
-                            $"{receiver} != null",
-                            IndentAllLines(AppendValueWithContinuation("? ", access)),
-                            IndentAllLines(AppendValueWithContinuation(": ", fallback)),
-                        ]
+                        $"{receiver} != null",
+                        IndentAllLines(AppendValueWithContinuation("? ", access)),
+                        IndentAllLines(AppendValueWithContinuation(": ", fallback))
                     );
                 }
                 else
@@ -1265,7 +1268,7 @@ internal sealed class ProjectionExpressionEmitter
             .FirstOrDefault(expression => expression is not null);
     }
 
-    private Dictionary<ISymbol, ExpressionSyntax> BuildProjectableParameterBindings(
+    private static Dictionary<ISymbol, ExpressionSyntax> BuildProjectableParameterBindings(
         InvocationExpressionSyntax invocation,
         IMethodSymbol methodSymbol,
         SemanticModel declarationModel
@@ -1552,7 +1555,7 @@ internal sealed class ProjectionExpressionEmitter
             return $"global::System.Linq.Enumerable.Empty<{genericArgument}>()";
         }
 
-        // TODO: The public docs do not define a fallback constructor strategy for custom collection types.
+        // The public docs do not define a fallback constructor strategy for custom collection types.
         return $"new {normalizedTypeName}()";
     }
 
@@ -1840,7 +1843,7 @@ internal sealed class ProjectionExpressionEmitter
         };
     }
 
-    private bool ShouldOmitConditionalCast(ExpressionSyntax expression, ITypeSymbol? type)
+    private static bool ShouldOmitConditionalCast(ExpressionSyntax expression, ITypeSymbol? type)
     {
         if (type is null)
         {
@@ -1997,7 +2000,7 @@ internal sealed class ProjectionExpressionEmitter
             return $"{castPrefix}({expression})";
         }
 
-        return string.Join("\n", [$"{castPrefix}(", IndentAllLines(expression), ")"]);
+        return string.Join("\n", $"{castPrefix}(", IndentAllLines(expression), ")");
     }
 
     private string EmitCastExpression(CastExpressionSyntax expression)

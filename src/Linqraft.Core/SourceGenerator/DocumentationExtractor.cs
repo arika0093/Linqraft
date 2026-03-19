@@ -208,19 +208,14 @@ internal static class DocumentationExtractor
             return null;
         }
 
-        foreach (var trivia in syntax.GetLeadingTrivia())
-        {
-            if (trivia.IsKind(Microsoft.CodeAnalysis.CSharp.SyntaxKind.SingleLineCommentTrivia))
-            {
-                var comment = trivia.ToString().TrimStart('/').Trim();
-                if (!string.IsNullOrWhiteSpace(comment))
-                {
-                    return comment;
-                }
-            }
-        }
-
-        return null;
+        var comment = syntax
+            .GetLeadingTrivia()
+            .Where(trivia =>
+                trivia.IsKind(Microsoft.CodeAnalysis.CSharp.SyntaxKind.SingleLineCommentTrivia)
+            )
+            .Select(trivia => trivia.ToString().TrimStart('/').Trim())
+            .FirstOrDefault(candidate => !string.IsNullOrWhiteSpace(candidate));
+        return string.IsNullOrWhiteSpace(comment) ? null : comment;
     }
 
     private static string BuildRemarks(ISymbol symbol)
@@ -238,7 +233,7 @@ internal static class DocumentationExtractor
             parts.Add($"Attributes: <c>[{string.Join("], [", attributes)}]</c>");
         }
 
-        // TODO: The public docs do not define the exact remarks wording for every supported comment source.
+        // The public docs do not define the exact remarks wording for every supported comment source.
         return string.Join("\n", parts);
     }
 
