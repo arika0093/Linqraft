@@ -202,7 +202,7 @@ public sealed class EfCoreBasicProjectionTests
                     .OrderBy(reward => reward.Id)
                     .Select(reward => reward.CouponCode)
                     .FirstOrDefault()
-                    ?? "NONE",
+                ?? "NONE",
                 HasLargeCardPayment = customer
                     .Orders.SelectMany(order => order.Payments)
                     .OfType<EfCardPayment>()
@@ -223,7 +223,7 @@ public sealed class EfCoreBasicProjectionTests
                     .OrderBy(reward => reward.Id)
                     .Select(reward => reward.CouponCode)
                     .FirstOrDefault()
-                    ?? "NONE",
+                ?? "NONE",
                 HasLargeCardPayment = customer
                     .Orders.SelectMany(order => order.Payments)
                     .OfType<EfCardPayment>()

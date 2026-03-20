@@ -329,8 +329,7 @@ internal static class LinqraftGeneratorPipeline
             return $"{dto.OwnerHintNames[0]}.g.cs";
         }
 
-        return
-            $"{generatorOptions.StandaloneDtoHintNamePrefix}_{HashingHelper.ComputeHash(dto.Dto.Key, 16, cancellationToken)}.g.cs";
+        return $"{generatorOptions.StandaloneDtoHintNamePrefix}_{HashingHelper.ComputeHash(dto.Dto.Key, 16, cancellationToken)}.g.cs";
     }
 
     private static IncrementalValueProvider<EquatableArray<T>> MergeCollectedValues<T>(
@@ -407,7 +406,6 @@ internal static class LinqraftGeneratorPipeline
     )
         where T : class
     {
-        return context
-            .CompilationProvider.SelectMany(static (_, _) => ImmutableArray<T>.Empty);
+        return context.CompilationProvider.SelectMany(static (_, _) => ImmutableArray<T>.Empty);
     }
 }

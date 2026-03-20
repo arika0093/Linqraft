@@ -228,7 +228,9 @@ internal sealed class ProjectionExpressionEmitter
         return BuildInitializerExpression(
             header,
             expression
-                .Initializer.Expressions.Select(item => EmitInitializerItem(item, cancellationToken))
+                .Initializer.Expressions.Select(item =>
+                    EmitInitializerItem(item, cancellationToken)
+                )
                 .ToList(),
             cancellationToken
         );
@@ -241,7 +243,9 @@ internal sealed class ProjectionExpressionEmitter
     {
         cancellationToken = ResolveCancellationToken(cancellationToken);
         return BuildInitializerBody(
-            expression.Expressions.Select(item => EmitInitializerItem(item, cancellationToken)).ToList(),
+            expression
+                .Expressions.Select(item => EmitInitializerItem(item, cancellationToken))
+                .ToList(),
             cancellationToken
         );
     }
@@ -277,10 +281,14 @@ internal sealed class ProjectionExpressionEmitter
         var items = expression.Elements.Select(element =>
             element switch
             {
-                ExpressionElementSyntax expressionElement =>
-                    Emit(expressionElement.Expression, cancellationToken),
-                SpreadElementSyntax spreadElement =>
-                    Emit(spreadElement.Expression, cancellationToken),
+                ExpressionElementSyntax expressionElement => Emit(
+                    expressionElement.Expression,
+                    cancellationToken
+                ),
+                SpreadElementSyntax spreadElement => Emit(
+                    spreadElement.Expression,
+                    cancellationToken
+                ),
                 _ => element.ToString(),
             }
         );
@@ -358,8 +366,7 @@ internal sealed class ProjectionExpressionEmitter
             return rewritten;
         }
 
-        return
-            $"{EmitBinaryOperand(expression.Left, cancellationToken)} {expression.OperatorToken.Text} {EmitBinaryOperand(expression.Right, cancellationToken)}";
+        return $"{EmitBinaryOperand(expression.Left, cancellationToken)} {expression.OperatorToken.Text} {EmitBinaryOperand(expression.Right, cancellationToken)}";
     }
 
     private string EmitBinaryOperand(
@@ -457,7 +464,8 @@ internal sealed class ProjectionExpressionEmitter
                     cancellationToken
                 ),
             },
-            _ => $"{Emit(expression.Expression, cancellationToken)}{EmitArgumentList(expression.ArgumentList, cancellationToken)}",
+            _ =>
+                $"{Emit(expression.Expression, cancellationToken)}{EmitArgumentList(expression.ArgumentList, cancellationToken)}",
         };
     }
 
@@ -474,8 +482,7 @@ internal sealed class ProjectionExpressionEmitter
             .FirstOrDefault();
         if (selector is null)
         {
-            return
-                $"{receiver}.{projectionMethodName}{EmitArgumentList(expression.ArgumentList, cancellationToken)}";
+            return $"{receiver}.{projectionMethodName}{EmitArgumentList(expression.ArgumentList, cancellationToken)}";
         }
 
         return $"{receiver}.{projectionMethodName}({Emit(selector, cancellationToken)})";
@@ -496,8 +503,7 @@ internal sealed class ProjectionExpressionEmitter
             return $"{receiver}.GroupBy{EmitArgumentList(expression.ArgumentList, cancellationToken)}";
         }
 
-        return
-            $"{receiver}.GroupBy({Emit(lambdas[0], cancellationToken)}).Select({Emit(lambdas[1], cancellationToken)})";
+        return $"{receiver}.GroupBy({Emit(lambdas[0], cancellationToken)}).Select({Emit(lambdas[1], cancellationToken)})";
     }
 
     private string EmitMemberInvocation(
@@ -523,7 +529,9 @@ internal sealed class ProjectionExpressionEmitter
         CancellationToken cancellationToken = default
     )
     {
-        var arguments = argumentList.Arguments.Select(argument => EmitArgument(argument, cancellationToken));
+        var arguments = argumentList.Arguments.Select(argument =>
+            EmitArgument(argument, cancellationToken)
+        );
         return $"({string.Join(", ", arguments)})";
     }
 
@@ -546,7 +554,9 @@ internal sealed class ProjectionExpressionEmitter
         CancellationToken cancellationToken = default
     )
     {
-        var arguments = argumentList.Arguments.Select(argument => Emit(argument.Expression, cancellationToken));
+        var arguments = argumentList.Arguments.Select(argument =>
+            Emit(argument.Expression, cancellationToken)
+        );
         return $"[{string.Join(", ", arguments)}]";
     }
 
@@ -554,7 +564,9 @@ internal sealed class ProjectionExpressionEmitter
     {
         if (name is GenericNameSyntax genericName)
         {
-            var typeArguments = genericName.TypeArgumentList.Arguments.Select(type => QualifyType(type));
+            var typeArguments = genericName.TypeArgumentList.Arguments.Select(type =>
+                QualifyType(type)
+            );
             return $"{genericName.Identifier.ValueText}<{string.Join(", ", typeArguments)}>";
         }
 
@@ -600,10 +612,7 @@ internal sealed class ProjectionExpressionEmitter
         CancellationToken cancellationToken = default
     )
     {
-        return AppendValueInline(
-            $"{parameterList} => ",
-            EmitLambdaBody(body, cancellationToken)
-        );
+        return AppendValueInline($"{parameterList} => ", EmitLambdaBody(body, cancellationToken));
     }
 
     private string EmitNestedExpression(
@@ -849,8 +858,7 @@ internal sealed class ProjectionExpressionEmitter
             case MemberBindingExpressionSyntax memberBinding:
                 return $"{receiver}.{EmitSimpleName(memberBinding.Name)}";
             case MemberAccessExpressionSyntax memberAccess:
-                return
-                    $"{BindConditionalReceiver(receiver, memberAccess.Expression, checks, cancellationToken)}.{EmitSimpleName(memberAccess.Name)}";
+                return $"{BindConditionalReceiver(receiver, memberAccess.Expression, checks, cancellationToken)}.{EmitSimpleName(memberAccess.Name)}";
             case InvocationExpressionSyntax invocation
                 when invocation.Expression is MemberBindingExpressionSyntax memberBinding:
                 return EmitInvocationFromReceiver(
@@ -958,7 +966,9 @@ internal sealed class ProjectionExpressionEmitter
                     out hasInvocation,
                     cancellationToken
                 );
-                segments.Add(GetFluentInvocationSegment(invocation, memberAccess, cancellationToken));
+                segments.Add(
+                    GetFluentInvocationSegment(invocation, memberAccess, cancellationToken)
+                );
                 hasInvocation = true;
                 return true;
             case MemberAccessExpressionSyntax memberAccess
@@ -1014,8 +1024,7 @@ internal sealed class ProjectionExpressionEmitter
                 : $".Select({Emit(selector, cancellationToken)})";
         }
 
-        return
-            $".{EmitSimpleName(memberAccess.Name)}{EmitArgumentList(invocation.ArgumentList, cancellationToken)}";
+        return $".{EmitSimpleName(memberAccess.Name)}{EmitArgumentList(invocation.ArgumentList, cancellationToken)}";
     }
 
     private string EmitInvocationFromReceiver(
@@ -1040,12 +1049,12 @@ internal sealed class ProjectionExpressionEmitter
             var name when name == _generatorOptions.GroupByExprMethodName =>
                 EmitGroupByExprInvocation(receiver, invocation, cancellationToken),
             _ => TryEmitExtensionInvocation(
-                    invocation,
-                    methodName,
-                    receiver,
-                    out var rewritten,
-                    cancellationToken
-                )
+                invocation,
+                methodName,
+                receiver,
+                out var rewritten,
+                cancellationToken
+            )
                 ? rewritten
                 : $"{receiver}.{EmitSimpleName(methodName)}{EmitArgumentList(invocation.ArgumentList, cancellationToken)}",
         };
@@ -1373,7 +1382,8 @@ internal sealed class ProjectionExpressionEmitter
         }
 
         var propertySymbol =
-            _semanticModel.GetSymbolInfo(targetExpression, cancellationToken).Symbol as IPropertySymbol
+            _semanticModel.GetSymbolInfo(targetExpression, cancellationToken).Symbol
+                as IPropertySymbol
             ?? _semanticModel
                 .GetSymbolInfo(targetExpression, cancellationToken)
                 .CandidateSymbols.OfType<IPropertySymbol>()
@@ -1438,7 +1448,8 @@ internal sealed class ProjectionExpressionEmitter
         }
 
         var methodSymbol =
-            _semanticModel.GetSymbolInfo(targetInvocation, cancellationToken).Symbol as IMethodSymbol
+            _semanticModel.GetSymbolInfo(targetInvocation, cancellationToken).Symbol
+                as IMethodSymbol
             ?? _semanticModel
                 .GetSymbolInfo(targetInvocation, cancellationToken)
                 .CandidateSymbols.OfType<IMethodSymbol>()
@@ -1693,7 +1704,8 @@ internal sealed class ProjectionExpressionEmitter
             case InvocationExpressionSyntax targetInvocation:
             {
                 var methodSymbol =
-                    semanticModel.GetSymbolInfo(targetInvocation, cancellationToken).Symbol as IMethodSymbol
+                    semanticModel.GetSymbolInfo(targetInvocation, cancellationToken).Symbol
+                        as IMethodSymbol
                     ?? semanticModel
                         .GetSymbolInfo(targetInvocation, cancellationToken)
                         .CandidateSymbols.OfType<IMethodSymbol>()
@@ -1704,8 +1716,9 @@ internal sealed class ProjectionExpressionEmitter
                 }
 
                 var methodSyntax =
-                    methodSymbol.DeclaringSyntaxReferences.FirstOrDefault()?.GetSyntax(cancellationToken)
-                    as MethodDeclarationSyntax;
+                    methodSymbol
+                        .DeclaringSyntaxReferences.FirstOrDefault()
+                        ?.GetSyntax(cancellationToken) as MethodDeclarationSyntax;
                 var nestedBodyExpression = GetProjectableBodyExpression(methodSyntax);
                 if (nestedBodyExpression is null)
                 {
@@ -1722,7 +1735,8 @@ internal sealed class ProjectionExpressionEmitter
             default:
             {
                 var propertySymbol =
-                    semanticModel.GetSymbolInfo(targetExpression, cancellationToken).Symbol as IPropertySymbol
+                    semanticModel.GetSymbolInfo(targetExpression, cancellationToken).Symbol
+                        as IPropertySymbol
                     ?? semanticModel
                         .GetSymbolInfo(targetExpression, cancellationToken)
                         .CandidateSymbols.OfType<IPropertySymbol>()
@@ -1733,8 +1747,9 @@ internal sealed class ProjectionExpressionEmitter
                 }
 
                 var propertySyntax =
-                    propertySymbol.DeclaringSyntaxReferences.FirstOrDefault()?.GetSyntax(cancellationToken)
-                    as PropertyDeclarationSyntax;
+                    propertySymbol
+                        .DeclaringSyntaxReferences.FirstOrDefault()
+                        ?.GetSyntax(cancellationToken) as PropertyDeclarationSyntax;
                 var nestedBodyExpression = GetProjectableBodyExpression(propertySyntax);
                 if (nestedBodyExpression is null)
                 {
@@ -1916,22 +1931,14 @@ internal sealed class ProjectionExpressionEmitter
                 var sibling = ReferenceEquals(binaryExpression.Left, node)
                     ? binaryExpression.Right
                     : binaryExpression.Left;
-                return TryGetContextualCollectionTypeName(
-                    sibling,
-                    out typeName,
-                    cancellationToken
-                );
+                return TryGetContextualCollectionTypeName(sibling, out typeName, cancellationToken);
             }
             case ConditionalExpressionSyntax conditionalExpression:
             {
                 var sibling = ReferenceEquals(conditionalExpression.WhenTrue, node)
                     ? conditionalExpression.WhenFalse
                     : conditionalExpression.WhenTrue;
-                return TryGetContextualCollectionTypeName(
-                    sibling,
-                    out typeName,
-                    cancellationToken
-                );
+                return TryGetContextualCollectionTypeName(sibling, out typeName, cancellationToken);
             }
             case AssignmentExpressionSyntax assignment when ReferenceEquals(assignment.Right, node):
                 return TryResolveAssignedTypeName(assignment.Left, out typeName, cancellationToken);

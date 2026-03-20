@@ -40,10 +40,7 @@ internal static class GeneratedSourceFormatter
 
             previousWasBlank = false;
             var leadingCloseCount = CountLeadingClosingBraces(trimmed, cancellationToken);
-            var leadingGroupCloseCount = CountLeadingGroupingClosures(
-                trimmed,
-                cancellationToken
-            );
+            var leadingGroupCloseCount = CountLeadingGroupingClosures(trimmed, cancellationToken);
             var baseIndent = System.Math.Max(0, scopeIndent - leadingCloseCount);
             var effectiveIndent = baseIndent;
             var nextTrimmed = GetNextNonEmptyTrimmedLine(lines, index + 1, cancellationToken);

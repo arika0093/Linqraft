@@ -47,7 +47,9 @@ internal abstract class ProjectionSupportExtensionClassGenerator
                 /// Provides the {{hook.MethodName}} projection hook that {{generatorOptions.GeneratorDisplayName}} rewrites inside generated projections.
                 /// </summary>
                 [global::Microsoft.CodeAnalysis.EmbeddedAttribute]
-                internal static partial class {{LinqraftGeneratorOptionsCore.GetProjectionHookClassName(hook)}}
+                internal static partial class {{LinqraftGeneratorOptionsCore.GetProjectionHookClassName(
+                    hook
+                )}}
                 {
                 """
             );

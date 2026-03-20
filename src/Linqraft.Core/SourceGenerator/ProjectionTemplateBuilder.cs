@@ -692,8 +692,7 @@ internal static class ProjectionTemplateBuilder
                         semanticModel,
                         callerNamespace,
                         cancellationToken
-                    )
-                    ?? predefinedTypeSyntax.ToString();
+                    ) ?? predefinedTypeSyntax.ToString();
                 var buildResult = buildContext.BuildProjectionTemplate(
                     selectorBody,
                     replacementTypeToken: null,
@@ -1210,7 +1209,13 @@ internal static class ProjectionTemplateBuilder
                     ?? namedObject.Type.ToString();
             }
 
-            if (TryGetCollectionProjection(expression, out var collectionProjection, cancellationToken))
+            if (
+                TryGetCollectionProjection(
+                    expression,
+                    out var collectionProjection,
+                    cancellationToken
+                )
+            )
             {
                 string projectedTypeTemplate;
                 if (collectionProjection.IsNestedExplicitDto)
@@ -1961,8 +1966,7 @@ internal static class ProjectionTemplateBuilder
                 .GroupBy(property => property.Name, StringComparer.Ordinal)
                 .Select(group => group.First())
                 .OrderBy(property => property.Name, StringComparer.Ordinal)
-                .ToArray()
-            ?? Array.Empty<IPropertySymbol>();
+                .ToArray() ?? Array.Empty<IPropertySymbol>();
 
         return new GeneratedDtoTemplateModel
         {
@@ -2111,8 +2115,7 @@ internal static class ProjectionTemplateBuilder
         CancellationToken cancellationToken = default
     )
     {
-        return
-            $"{generatorOptions.DtoPlaceholderPrefix}_{HashingHelper.ComputeHash(templateId, 16, cancellationToken)}__";
+        return $"{generatorOptions.DtoPlaceholderPrefix}_{HashingHelper.ComputeHash(templateId, 16, cancellationToken)}__";
     }
 
     private static bool TryFindProjectionInvocation(
@@ -2244,7 +2247,7 @@ internal static class ProjectionTemplateBuilder
             ParenthesizedLambdaExpressionSyntax parenthesized => parenthesized
                 .ParameterList.Parameters.FirstOrDefault()
                 ?.Identifier.ValueText
-                ?? "x",
+            ?? "x",
             _ => "x",
         };
     }

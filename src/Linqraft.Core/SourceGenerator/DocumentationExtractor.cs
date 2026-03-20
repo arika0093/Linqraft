@@ -218,7 +218,9 @@ internal static class DocumentationExtractor
         CancellationToken cancellationToken = default
     )
     {
-        var syntax = symbol.DeclaringSyntaxReferences.FirstOrDefault()?.GetSyntax(cancellationToken);
+        var syntax = symbol
+            .DeclaringSyntaxReferences.FirstOrDefault()
+            ?.GetSyntax(cancellationToken);
         if (syntax is null)
         {
             return null;
