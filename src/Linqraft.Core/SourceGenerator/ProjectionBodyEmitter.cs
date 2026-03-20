@@ -1,5 +1,6 @@
 using System.Collections.Generic;
 using System.Linq;
+using System.Threading;
 using Linqraft.Core.Formatting;
 
 namespace Linqraft.SourceGenerator;
@@ -11,52 +12,73 @@ internal static class ProjectionBodyEmitter
         ProjectionPattern pattern,
         string resultTypeName,
         bool useFallbackTemplates,
-        IReadOnlyDictionary<string, string> typeReplacements
+        IReadOnlyDictionary<string, string> typeReplacements,
+        CancellationToken cancellationToken = default
     )
     {
         var constructorArguments = projection
             .Members.Where(member => member.IsSuppressed)
             .OrderBy(member => member.Name, System.StringComparer.Ordinal)
-            .Select(member => ResolveTemplateValue(member, useFallbackTemplates, typeReplacements))
+            .Select(member =>
+                ResolveTemplateValue(
+                    member,
+                    useFallbackTemplates,
+                    typeReplacements,
+                    cancellationToken
+                )
+            )
             .ToList();
         var assignments = projection
             .Members.Where(member => !member.IsSuppressed)
             .Select(member =>
                 AppendValueWithContinuation(
                     $"{member.Name} = ",
-                    ResolveTemplateValue(member, useFallbackTemplates, typeReplacements)
+                    ResolveTemplateValue(
+                        member,
+                        useFallbackTemplates,
+                        typeReplacements,
+                        cancellationToken
+                    )
                 )
             )
             .ToList();
 
         return pattern == ProjectionPattern.Anonymous
-            ? BuildInitializerExpression("new", assignments)
-            : WriteNamedProjection(resultTypeName, constructorArguments, assignments);
+            ? BuildInitializerExpression("new", assignments, cancellationToken)
+            : WriteNamedProjection(
+                resultTypeName,
+                constructorArguments,
+                assignments,
+                cancellationToken
+            );
     }
 
     public static string ResolveTemplateValue(
         ProjectionMemberTemplateModel member,
         bool useFallbackTemplates,
-        IReadOnlyDictionary<string, string> typeReplacements
+        IReadOnlyDictionary<string, string> typeReplacements,
+        CancellationToken cancellationToken = default
     )
     {
         var template = useFallbackTemplates ? member.FallbackValueTemplate : member.ValueTemplate;
-        return ReplaceTokens(template, typeReplacements);
+        return ReplaceTokens(template, typeReplacements, cancellationToken);
     }
 
     public static string ResolveTypeTemplate(
         GeneratedPropertyTemplateModel property,
         bool useFallbackTemplates,
-        IReadOnlyDictionary<string, string> typeReplacements
+        IReadOnlyDictionary<string, string> typeReplacements,
+        CancellationToken cancellationToken = default
     )
     {
         var template = useFallbackTemplates ? property.FallbackTypeTemplate : property.TypeTemplate;
-        return ReplaceTokens(template, typeReplacements);
+        return ReplaceTokens(template, typeReplacements, cancellationToken);
     }
 
     public static string ReplaceTokens(
         string template,
-        IReadOnlyDictionary<string, string> typeReplacements
+        IReadOnlyDictionary<string, string> typeReplacements,
+        CancellationToken cancellationToken = default
     )
     {
         if (typeReplacements.Count == 0)
@@ -72,6 +94,7 @@ internal static class ProjectionBodyEmitter
             )
         )
         {
+            cancellationToken.ThrowIfCancellationRequested();
             result = result.Replace(replacement.Key, replacement.Value);
         }
 
@@ -93,7 +116,8 @@ internal static class ProjectionBodyEmitter
     private static string WriteNamedProjection(
         string targetType,
         IReadOnlyList<string> constructorArguments,
-        IReadOnlyList<string> assignments
+        IReadOnlyList<string> assignments,
+        CancellationToken cancellationToken = default
     )
     {
         var constructorSuffix =
@@ -103,10 +127,18 @@ internal static class ProjectionBodyEmitter
             return $"new {targetType}{constructorSuffix}";
         }
 
-        return BuildInitializerExpression($"new {targetType}{constructorSuffix}", assignments);
+        return BuildInitializerExpression(
+            $"new {targetType}{constructorSuffix}",
+            assignments,
+            cancellationToken
+        );
     }
 
-    private static string BuildInitializerExpression(string header, IReadOnlyList<string> items)
+    private static string BuildInitializerExpression(
+        string header,
+        IReadOnlyList<string> items,
+        CancellationToken cancellationToken = default
+    )
     {
         if (!ShouldExpandInitializer(items))
         {
@@ -116,12 +148,13 @@ internal static class ProjectionBodyEmitter
         }
 
         var builder = new IndentedStringBuilder();
-        builder.AppendLine($"{header} {{");
+        builder.AppendLine($"{header} {{", cancellationToken);
         using (builder.Indent())
         {
             foreach (var item in items)
             {
-                AppendMultilineItem(builder, item, ",");
+                cancellationToken.ThrowIfCancellationRequested();
+                AppendMultilineItem(builder, item, ",", cancellationToken);
             }
         }
 
@@ -137,14 +170,16 @@ internal static class ProjectionBodyEmitter
     private static void AppendMultilineItem(
         IndentedStringBuilder builder,
         string value,
-        string suffix
+        string suffix,
+        CancellationToken cancellationToken = default
     )
     {
         var lines = SplitLines(value);
         for (var index = 0; index < lines.Length; index++)
         {
+            cancellationToken.ThrowIfCancellationRequested();
             var line = index == lines.Length - 1 ? lines[index] + suffix : lines[index];
-            builder.AppendLine(line);
+            builder.AppendLine(line, cancellationToken);
         }
     }
 

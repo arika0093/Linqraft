@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.Linq;
+using System.Threading;
 using Linqraft.Core.Collections;
 using Linqraft.Core.Configuration;
 using Linqraft.Core.Utilities;
@@ -28,6 +29,7 @@ internal static class LinqraftGeneratorPipeline
             (provider, _) => LinqraftConfiguration.Parse(provider.GlobalOptions, generatorOptions)
         );
 
+        // lint4sg-allow-create-syntax-provider: projection hooks are invocation-based and cannot be filtered by attribute metadata.
         var projectionTemplates = context
             .SyntaxProvider.CreateSyntaxProvider(
                 (node, _) =>
@@ -43,6 +45,7 @@ internal static class LinqraftGeneratorPipeline
             .Where(static template => template is not null)
             .Select(static (template, _) => template!);
 
+        // lint4sg-allow-create-syntax-provider: object generation is discovered from invocation syntax rather than attributed declarations.
         var objectGenerationTemplates = context
             .SyntaxProvider.CreateSyntaxProvider(
                 (node, _) =>
@@ -95,20 +98,43 @@ internal static class LinqraftGeneratorPipeline
         var projectionModels = projectionTemplates
             .Combine(configuration)
             .Select(
-                (data, _) => ProjectionModelFinalizer.FinalizeProjection(data.Left, data.Right)
+                (data, cancellationToken) =>
+                    ProjectionModelFinalizer.FinalizeProjection(
+                        data.Left,
+                        data.Right,
+                        cancellationToken
+                    )
             );
         var objectGenerationModels = objectGenerationTemplates
             .Combine(configuration)
             .Select(
-                (data, _) =>
-                    ProjectionModelFinalizer.FinalizeObjectGeneration(data.Left, data.Right)
+                (data, cancellationToken) =>
+                    ProjectionModelFinalizer.FinalizeObjectGeneration(
+                        data.Left,
+                        data.Right,
+                        cancellationToken
+                    )
             );
         var mappingClassModels = mappingClassTemplates
             .Combine(configuration)
-            .Select((data, _) => ProjectionModelFinalizer.FinalizeMapping(data.Left, data.Right));
+            .Select(
+                (data, cancellationToken) =>
+                    ProjectionModelFinalizer.FinalizeMapping(
+                        data.Left,
+                        data.Right,
+                        cancellationToken
+                    )
+            );
         var mappingMethodModels = mappingMethodTemplates
             .Combine(configuration)
-            .Select((data, _) => ProjectionModelFinalizer.FinalizeMapping(data.Left, data.Right));
+            .Select(
+                (data, cancellationToken) =>
+                    ProjectionModelFinalizer.FinalizeMapping(
+                        data.Left,
+                        data.Right,
+                        cancellationToken
+                    )
+            );
 
         var projectionSources = projectionModels.Select(
             static (model, _) =>
@@ -177,20 +203,28 @@ internal static class LinqraftGeneratorPipeline
                         Configuration = data.Right,
                     }
             )
-            .Select((buildContext, _) => BuildGeneratedSources(buildContext));
+            .Select(
+                (buildContext, cancellationToken) =>
+                    BuildGeneratedSources(buildContext, cancellationToken)
+            );
+        var generatedSourceFiles = generatedSources.SelectMany(
+            static (sourceSet, _) => sourceSet.Sources
+        );
 
         context.RegisterSourceOutput(
-            generatedSources,
-            (output, sourceSet) => AddGeneratedSources(output, sourceSet)
+            generatedSourceFiles,
+            static (output, source) => output.AddSource(source.HintName, source.SourceText)
         );
     }
 
     private static GeneratedSourceSetModel BuildGeneratedSources(
-        GeneratedSourceBuildContextModel context
+        GeneratedSourceBuildContextModel context,
+        CancellationToken cancellationToken = default
     )
     {
         var mergedDtos = ProjectionModelFinalizer.MergeDtosForEmission(
-            context.OwnedSources.SelectMany(static source => source.GeneratedDtos)
+            context.OwnedSources.SelectMany(static source => source.GeneratedDtos),
+            cancellationToken
         );
         var ownedSourceHints = new HashSet<string>(
             context.OwnedSources.Select(static source => source.OwnerHintName),
@@ -215,6 +249,7 @@ internal static class LinqraftGeneratorPipeline
             )
         )
         {
+            cancellationToken.ThrowIfCancellationRequested();
             collocatedDtosByOwnerHint.TryGetValue(
                 ownedSource.OwnerHintName,
                 out var collocatedDtos
@@ -226,7 +261,8 @@ internal static class LinqraftGeneratorPipeline
                     SourceText = SourceWriters.WriteOwnedUnit(
                         ownedSource,
                         collocatedDtos ?? Array.Empty<GeneratedDtoModel>(),
-                        context.Configuration
+                        context.Configuration,
+                        cancellationToken
                     ),
                 }
             );
@@ -234,14 +270,20 @@ internal static class LinqraftGeneratorPipeline
 
         foreach (var dto in mergedDtos.Where(dto => ShouldEmitStandaloneDto(dto, ownedSourceHints)))
         {
+            cancellationToken.ThrowIfCancellationRequested();
             generatedSources.Add(
                 new GeneratedSourceFileModel
                 {
                     HintName = GetStandaloneDtoHintName(
                         dto,
-                        context.Configuration.GeneratorOptions
+                        context.Configuration.GeneratorOptions,
+                        cancellationToken
                     ),
-                    SourceText = SourceWriters.WriteDtoUnit(dto.Dto, context.Configuration),
+                    SourceText = SourceWriters.WriteDtoUnit(
+                        dto.Dto,
+                        context.Configuration,
+                        cancellationToken
+                    ),
                 }
             );
         }
@@ -252,7 +294,10 @@ internal static class LinqraftGeneratorPipeline
                 new GeneratedSourceFileModel
                 {
                     HintName = context.Configuration.GeneratorOptions.GlobalUsingsSourceHintName,
-                    SourceText = SourceWriters.WriteGlobalUsingsUnit(context.Configuration),
+                    SourceText = SourceWriters.WriteGlobalUsingsUnit(
+                        context.Configuration,
+                        cancellationToken
+                    ),
                 }
             );
         }
@@ -275,7 +320,8 @@ internal static class LinqraftGeneratorPipeline
 
     private static string GetStandaloneDtoHintName(
         GeneratedDtoEmissionModel dto,
-        LinqraftGeneratorOptionsCore generatorOptions
+        LinqraftGeneratorOptionsCore generatorOptions,
+        CancellationToken cancellationToken = default
     )
     {
         if (dto.OwnerHintNames.Length == 1)
@@ -283,18 +329,7 @@ internal static class LinqraftGeneratorPipeline
             return $"{dto.OwnerHintNames[0]}.g.cs";
         }
 
-        return $"{generatorOptions.StandaloneDtoHintNamePrefix}_{HashingHelper.ComputeHash(dto.Dto.Key, 16)}.g.cs";
-    }
-
-    private static void AddGeneratedSources(
-        SourceProductionContext output,
-        GeneratedSourceSetModel sourceSet
-    )
-    {
-        foreach (var source in sourceSet.Sources)
-        {
-            output.AddSource(source.HintName, source.SourceText);
-        }
+        return $"{generatorOptions.StandaloneDtoHintNamePrefix}_{HashingHelper.ComputeHash(dto.Dto.Key, 16, cancellationToken)}.g.cs";
     }
 
     private static IncrementalValueProvider<EquatableArray<T>> MergeCollectedValues<T>(
@@ -371,9 +406,6 @@ internal static class LinqraftGeneratorPipeline
     )
         where T : class
     {
-        return context
-            .SyntaxProvider.CreateSyntaxProvider(static (_, _) => false, static (_, _) => (T?)null)
-            .Where(static template => template is not null)
-            .Select(static (template, _) => template!);
+        return context.CompilationProvider.SelectMany(static (_, _) => ImmutableArray<T>.Empty);
     }
 }

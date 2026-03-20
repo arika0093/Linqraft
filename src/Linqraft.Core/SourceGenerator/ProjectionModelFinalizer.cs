@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Threading;
 using Linqraft.Core.Collections;
 using Linqraft.Core.Configuration;
 
@@ -10,10 +11,15 @@ internal static class ProjectionModelFinalizer
 {
     public static ProjectionGenerationModel FinalizeProjection(
         ProjectionSourceTemplateModel template,
-        LinqraftConfiguration configuration
+        LinqraftConfiguration configuration,
+        CancellationToken cancellationToken = default
     )
     {
-        var dtoReplacements = BuildDtoReplacements(template.GeneratedDtos, configuration);
+        var dtoReplacements = BuildDtoReplacements(
+            template.GeneratedDtos,
+            configuration,
+            cancellationToken
+        );
         var replacements = dtoReplacements.ToDictionary(
             replacement => replacement.PlaceholderToken,
             replacement => replacement.Dto.FullyQualifiedName,
@@ -22,7 +28,8 @@ internal static class ProjectionModelFinalizer
         var requestTemplate = template.Request;
         var resultTypeName = ProjectionBodyEmitter.ReplaceTokens(
             requestTemplate.ResultTypeTemplate,
-            replacements
+            replacements,
+            cancellationToken
         );
 
         return new ProjectionGenerationModel
@@ -43,7 +50,8 @@ internal static class ProjectionModelFinalizer
                     ? null
                     : ProjectionBodyEmitter.ReplaceTokens(
                         requestTemplate.KeySelectorBodyTemplate,
-                        replacements
+                        replacements,
+                        cancellationToken
                     ),
                 UseObjectSelectorSignature = requestTemplate.UseObjectSelectorSignature,
                 CanUsePrebuiltExpression =
@@ -56,13 +64,18 @@ internal static class ProjectionModelFinalizer
                 CaptureTransportTypeName = requestTemplate.CaptureTransportTypeName,
                 ProjectionBodyText = requestTemplate.ProjectionBodyTemplate
                     is { } projectionBodyTemplate
-                    ? ProjectionBodyEmitter.ReplaceTokens(projectionBodyTemplate, replacements)
+                    ? ProjectionBodyEmitter.ReplaceTokens(
+                        projectionBodyTemplate,
+                        replacements,
+                        cancellationToken
+                    )
                     : ProjectionBodyEmitter.BuildProjectionBody(
                         requestTemplate.Projection!,
                         requestTemplate.Pattern,
                         resultTypeName,
                         configuration.ArrayNullabilityRemoval,
-                        replacements
+                        replacements,
+                        cancellationToken
                     ),
             },
             GeneratedDtos = dtoReplacements.Select(replacement => replacement.Dto).ToArray(),
@@ -71,10 +84,15 @@ internal static class ProjectionModelFinalizer
 
     public static ObjectGenerationModel FinalizeObjectGeneration(
         ObjectGenerationSourceTemplateModel template,
-        LinqraftConfiguration configuration
+        LinqraftConfiguration configuration,
+        CancellationToken cancellationToken = default
     )
     {
-        var dtoReplacements = BuildDtoReplacements(template.GeneratedDtos, configuration);
+        var dtoReplacements = BuildDtoReplacements(
+            template.GeneratedDtos,
+            configuration,
+            cancellationToken
+        );
         var replacements = dtoReplacements.ToDictionary(
             replacement => replacement.PlaceholderToken,
             replacement => replacement.Dto.FullyQualifiedName,
@@ -89,17 +107,20 @@ internal static class ProjectionModelFinalizer
                 Origin = template.Request.Origin,
                 ResultTypeName = ProjectionBodyEmitter.ReplaceTokens(
                     template.Request.ResultTypeTemplate,
-                    replacements
+                    replacements,
+                    cancellationToken
                 ),
                 ProjectionBodyText = ProjectionBodyEmitter.BuildProjectionBody(
                     template.Request.Projection,
                     ProjectionPattern.PredefinedDto,
                     ProjectionBodyEmitter.ReplaceTokens(
                         template.Request.ResultTypeTemplate,
-                        replacements
+                        replacements,
+                        cancellationToken
                     ),
                     configuration.ArrayNullabilityRemoval,
-                    replacements
+                    replacements,
+                    cancellationToken
                 ),
                 Captures = template.Request.Captures,
                 CaptureTransportKind = template.Request.CaptureTransportKind,
@@ -113,10 +134,15 @@ internal static class ProjectionModelFinalizer
 
     public static MappingGenerationModel FinalizeMapping(
         MappingSourceTemplateModel template,
-        LinqraftConfiguration configuration
+        LinqraftConfiguration configuration,
+        CancellationToken cancellationToken = default
     )
     {
-        var dtoReplacements = BuildDtoReplacements(template.GeneratedDtos, configuration);
+        var dtoReplacements = BuildDtoReplacements(
+            template.GeneratedDtos,
+            configuration,
+            cancellationToken
+        );
         var replacements = dtoReplacements.ToDictionary(
             replacement => replacement.PlaceholderToken,
             replacement => replacement.Dto.FullyQualifiedName,
@@ -125,7 +151,8 @@ internal static class ProjectionModelFinalizer
         var requestTemplate = template.Request;
         var resultTypeName = ProjectionBodyEmitter.ReplaceTokens(
             requestTemplate.ResultTypeTemplate,
-            replacements
+            replacements,
+            cancellationToken
         );
 
         return new MappingGenerationModel
@@ -152,7 +179,8 @@ internal static class ProjectionModelFinalizer
                     ProjectionPattern.PredefinedDto,
                     resultTypeName,
                     configuration.ArrayNullabilityRemoval,
-                    replacements
+                    replacements,
+                    cancellationToken
                 ),
             },
             GeneratedDtos = dtoReplacements.Select(replacement => replacement.Dto).ToArray(),
@@ -160,7 +188,8 @@ internal static class ProjectionModelFinalizer
     }
 
     public static EquatableArray<GeneratedDtoEmissionModel> MergeDtosForEmission(
-        IEnumerable<GeneratedDtoModel> dtoModels
+        IEnumerable<GeneratedDtoModel> dtoModels,
+        CancellationToken cancellationToken = default
     )
     {
         var mergedDtos = new Dictionary<string, GeneratedDtoModel>(StringComparer.Ordinal);
@@ -169,9 +198,10 @@ internal static class ProjectionModelFinalizer
         );
         foreach (var dto in dtoModels)
         {
+            cancellationToken.ThrowIfCancellationRequested();
             if (mergedDtos.TryGetValue(dto.Key, out var existing))
             {
-                mergedDtos[dto.Key] = MergeDtoShape(existing, dto);
+                mergedDtos[dto.Key] = MergeDtoShape(existing, dto, cancellationToken);
             }
             else
             {
@@ -203,7 +233,8 @@ internal static class ProjectionModelFinalizer
 
     private static IReadOnlyList<GeneratedDtoReplacementModel> BuildDtoReplacements(
         EquatableArray<GeneratedDtoTemplateModel> templates,
-        LinqraftConfiguration configuration
+        LinqraftConfiguration configuration,
+        CancellationToken cancellationToken = default
     )
     {
         return templates
@@ -212,7 +243,7 @@ internal static class ProjectionModelFinalizer
             .Select(template => new GeneratedDtoReplacementModel
             {
                 PlaceholderToken = template.PlaceholderToken,
-                Dto = FinalizeDto(template, templates, configuration),
+                Dto = FinalizeDto(template, templates, configuration, cancellationToken),
             })
             .ToArray();
     }
@@ -220,7 +251,8 @@ internal static class ProjectionModelFinalizer
     private static GeneratedDtoModel FinalizeDto(
         GeneratedDtoTemplateModel template,
         EquatableArray<GeneratedDtoTemplateModel> allTemplates,
-        LinqraftConfiguration configuration
+        LinqraftConfiguration configuration,
+        CancellationToken cancellationToken = default
     )
     {
         var replacements = allTemplates.ToDictionary(
@@ -235,7 +267,8 @@ internal static class ProjectionModelFinalizer
                 TypeName = ProjectionBodyEmitter.ResolveTypeTemplate(
                     property,
                     configuration.ArrayNullabilityRemoval,
-                    replacements
+                    replacements,
+                    cancellationToken
                 ),
                 Documentation = property.Documentation,
                 IsSuppressed = property.IsSuppressed,
@@ -324,7 +357,8 @@ internal static class ProjectionModelFinalizer
 
     private static GeneratedDtoModel MergeDtoShape(
         GeneratedDtoModel existing,
-        GeneratedDtoModel incoming
+        GeneratedDtoModel incoming,
+        CancellationToken cancellationToken = default
     )
     {
         var merged = existing.Properties.ToDictionary(
@@ -333,6 +367,7 @@ internal static class ProjectionModelFinalizer
         );
         foreach (var property in incoming.Properties)
         {
+            cancellationToken.ThrowIfCancellationRequested();
             if (!merged.TryGetValue(property.Name, out var current))
             {
                 merged.Add(property.Name, property);

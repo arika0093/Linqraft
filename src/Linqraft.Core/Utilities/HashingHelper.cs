@@ -1,4 +1,5 @@
 using System.Text;
+using System.Threading;
 
 namespace Linqraft.Core.Utilities;
 
@@ -6,7 +7,11 @@ internal static class HashingHelper
 {
     private static readonly uint[] Crc32Table = CreateCrc32Table();
 
-    public static string ComputeHash(string value, int length = 8)
+    public static string ComputeHash(
+        string value,
+        int length = 8,
+        CancellationToken cancellationToken = default
+    )
     {
         if (length <= 0)
         {
@@ -19,7 +24,8 @@ internal static class HashingHelper
 
         while (builder.Length < length)
         {
-            var crc = ComputeCrc32(bytes, seed);
+            cancellationToken.ThrowIfCancellationRequested();
+            var crc = ComputeCrc32(bytes, seed, cancellationToken);
             builder.Append(crc.ToString("X8"));
             seed = unchecked((crc * 16777619u) + 2166136261u + (uint)builder.Length);
         }
@@ -27,11 +33,16 @@ internal static class HashingHelper
         return builder.ToString(0, length);
     }
 
-    private static uint ComputeCrc32(byte[] bytes, uint seed)
+    private static uint ComputeCrc32(
+        byte[] bytes,
+        uint seed,
+        CancellationToken cancellationToken = default
+    )
     {
         var crc = ~seed;
         foreach (var current in bytes)
         {
+            cancellationToken.ThrowIfCancellationRequested();
             crc = (crc >> 8) ^ Crc32Table[(crc ^ current) & 0xFF];
         }
 

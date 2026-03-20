@@ -1,6 +1,7 @@
 using System;
 using System.IO;
 using System.Text;
+using System.Threading;
 
 namespace Linqraft.Core.Formatting;
 
@@ -35,12 +36,13 @@ internal sealed class IndentedStringBuilder
         _builder.AppendLine();
     }
 
-    public void AppendLine(string line)
+    public void AppendLine(string line, CancellationToken cancellationToken = default)
     {
         if (line.Length != 0)
         {
             for (var index = 0; index < _indent; index++)
             {
+                cancellationToken.ThrowIfCancellationRequested();
                 _builder.Append(_indentToken);
             }
         }
@@ -48,12 +50,13 @@ internal sealed class IndentedStringBuilder
         _builder.AppendLine(line);
     }
 
-    public void AppendLines(string value)
+    public void AppendLines(string value, CancellationToken cancellationToken = default)
     {
         using var reader = new StringReader(value);
         while (reader.ReadLine() is { } line)
         {
-            AppendLine(line);
+            cancellationToken.ThrowIfCancellationRequested();
+            AppendLine(line, cancellationToken);
         }
     }
 
