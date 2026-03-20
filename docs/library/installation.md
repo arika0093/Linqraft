@@ -4,7 +4,7 @@ This guide covers the installation and setup requirements for Linqraft.
 
 ## Prerequisites
 
-Linqraft requires **C# 13.0 or later**.
+Linqraft requires **C# 12.0 or later**.
 
 ### .NET 8 or later
 No additional setup is required for .NET 8 or later. You can proceed to the [Installing Linqraft](#installing-linqraft) section.
