@@ -44,7 +44,7 @@ public sealed class HashingHelperTests
         );
         computeHash.ShouldNotBeNull();
 
-        return computeHash.Invoke(null, [value, length]).ShouldBeOfType<string>();
+        return computeHash.Invoke(null, [value, length, default]).ShouldBeOfType<string>();
     }
 
     private static void SkipIfNativeAot()
