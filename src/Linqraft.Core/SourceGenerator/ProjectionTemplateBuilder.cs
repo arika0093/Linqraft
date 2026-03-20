@@ -1966,7 +1966,8 @@ internal static class ProjectionTemplateBuilder
                 .GroupBy(property => property.Name, StringComparer.Ordinal)
                 .Select(group => group.First())
                 .OrderBy(property => property.Name, StringComparer.Ordinal)
-                .ToArray() ?? Array.Empty<IPropertySymbol>();
+                .ToArray()
+            ?? Array.Empty<IPropertySymbol>();
 
         return new GeneratedDtoTemplateModel
         {
@@ -2247,7 +2248,7 @@ internal static class ProjectionTemplateBuilder
             ParenthesizedLambdaExpressionSyntax parenthesized => parenthesized
                 .ParameterList.Parameters.FirstOrDefault()
                 ?.Identifier.ValueText
-            ?? "x",
+                ?? "x",
             _ => "x",
         };
     }
