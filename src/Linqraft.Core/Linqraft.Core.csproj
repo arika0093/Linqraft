@@ -15,10 +15,10 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <!-- <PackageReference Include="lint4sg" Version="*">
+    <PackageReference Include="lint4sg" Version="0.1.2">
       <PrivateAssets>all</PrivateAssets>
       <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
-    </PackageReference> -->
+    </PackageReference>
     <PackageReference
       Include="Microsoft.CodeAnalysis.CSharp"
       Version="$(MicrosoftCodeAnalysisCSharpPackageVersion)"

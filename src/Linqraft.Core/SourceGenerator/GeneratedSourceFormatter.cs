@@ -1,12 +1,16 @@
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
+using System.Threading;
 
 namespace Linqraft.SourceGenerator;
 
 internal static class GeneratedSourceFormatter
 {
-    public static string FormatGeneratedSource(string source)
+    public static string FormatGeneratedSource(
+        string source,
+        CancellationToken cancellationToken = default
+    )
     {
         var lines = source.Replace("\r\n", "\n").Split('\n');
         var builder = new StringBuilder(source.Length + 64);
@@ -19,6 +23,7 @@ internal static class GeneratedSourceFormatter
 
         for (var index = 0; index < lines.Length; index++)
         {
+            cancellationToken.ThrowIfCancellationRequested();
             var rawLine = lines[index];
             var trimmed = rawLine.Trim();
             if (trimmed.Length == 0)
@@ -34,11 +39,14 @@ internal static class GeneratedSourceFormatter
             }
 
             previousWasBlank = false;
-            var leadingCloseCount = CountLeadingClosingBraces(trimmed);
-            var leadingGroupCloseCount = CountLeadingGroupingClosures(trimmed);
+            var leadingCloseCount = CountLeadingClosingBraces(trimmed, cancellationToken);
+            var leadingGroupCloseCount = CountLeadingGroupingClosures(
+                trimmed,
+                cancellationToken
+            );
             var baseIndent = System.Math.Max(0, scopeIndent - leadingCloseCount);
             var effectiveIndent = baseIndent;
-            var nextTrimmed = GetNextNonEmptyTrimmedLine(lines, index + 1);
+            var nextTrimmed = GetNextNonEmptyTrimmedLine(lines, index + 1, cancellationToken);
             if (trimmed[0] == '.')
             {
                 effectiveIndent =
@@ -105,7 +113,7 @@ internal static class GeneratedSourceFormatter
                 scopeIndent = System.Math.Max(0, scopeIndent - 1);
             }
 
-            PopGroupingIndents(groupingIndentStack, leadingGroupCloseCount);
+            PopGroupingIndents(groupingIndentStack, leadingGroupCloseCount, cancellationToken);
             if (EndsWithGroupingOpener(trimmed))
             {
                 groupingIndentStack.Push(effectiveIndent);
@@ -115,10 +123,15 @@ internal static class GeneratedSourceFormatter
         return builder.ToString();
     }
 
-    private static string GetNextNonEmptyTrimmedLine(string[] lines, int startIndex)
+    private static string GetNextNonEmptyTrimmedLine(
+        string[] lines,
+        int startIndex,
+        CancellationToken cancellationToken = default
+    )
     {
         for (var index = startIndex; index < lines.Length; index++)
         {
+            cancellationToken.ThrowIfCancellationRequested();
             var trimmed = lines[index].Trim();
             if (trimmed.Length != 0)
             {
@@ -153,22 +166,30 @@ internal static class GeneratedSourceFormatter
             || trimmed == "{";
     }
 
-    private static int CountLeadingClosingBraces(string text)
+    private static int CountLeadingClosingBraces(
+        string text,
+        CancellationToken cancellationToken = default
+    )
     {
         var count = 0;
         while (count < text.Length && text[count] == '}')
         {
+            cancellationToken.ThrowIfCancellationRequested();
             count++;
         }
 
         return count;
     }
 
-    private static int CountLeadingGroupingClosures(string text)
+    private static int CountLeadingGroupingClosures(
+        string text,
+        CancellationToken cancellationToken = default
+    )
     {
         var count = 0;
         while (count < text.Length && (text[count] == ')' || text[count] == ']'))
         {
+            cancellationToken.ThrowIfCancellationRequested();
             count++;
         }
 
@@ -190,10 +211,15 @@ internal static class GeneratedSourceFormatter
         return trimmed.Length != 0 && trimmed[^1] is '(' or '[';
     }
 
-    private static void PopGroupingIndents(Stack<int> groupingIndentStack, int count)
+    private static void PopGroupingIndents(
+        Stack<int> groupingIndentStack,
+        int count,
+        CancellationToken cancellationToken = default
+    )
     {
         for (var index = 0; index < count && groupingIndentStack.Count > 0; index++)
         {
+            cancellationToken.ThrowIfCancellationRequested();
             groupingIndentStack.Pop();
         }
     }

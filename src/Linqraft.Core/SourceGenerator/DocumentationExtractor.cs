@@ -13,7 +13,8 @@ internal static class DocumentationExtractor
 {
     public static DocumentationInfo? GetTypeDocumentation(
         INamedTypeSymbol? symbol,
-        LinqraftCommentOutput outputMode
+        LinqraftCommentOutput outputMode,
+        CancellationToken cancellationToken = default
     )
     {
         if (symbol is null || outputMode == LinqraftCommentOutput.None)
@@ -21,10 +22,10 @@ internal static class DocumentationExtractor
             return null;
         }
 
-        var summary = ExtractSummary(symbol);
+        var summary = ExtractSummary(symbol, cancellationToken);
         if (string.IsNullOrWhiteSpace(summary))
         {
-            summary = ExtractSingleLineComment(symbol);
+            summary = ExtractSingleLineComment(symbol, cancellationToken);
         }
 
         if (string.IsNullOrWhiteSpace(summary))
@@ -59,10 +60,10 @@ internal static class DocumentationExtractor
         }
 
         var summary =
-            ExtractSummary(symbol)
+            ExtractSummary(symbol, cancellationToken)
             ?? ExtractCommentAttribute(symbol)
             ?? ExtractDisplayAttribute(symbol)
-            ?? ExtractSingleLineComment(symbol);
+            ?? ExtractSingleLineComment(symbol, cancellationToken);
 
         if (string.IsNullOrWhiteSpace(summary))
         {
@@ -111,6 +112,7 @@ internal static class DocumentationExtractor
                         .OfType<LambdaExpressionSyntax>()
                 )
                 {
+                    cancellationToken.ThrowIfCancellationRequested();
                     if (lambda.Body is ExpressionSyntax lambdaExpression)
                     {
                         var nested = FindDocumentationSymbol(
@@ -160,9 +162,13 @@ internal static class DocumentationExtractor
         }
     }
 
-    private static string? ExtractSummary(ISymbol symbol)
+    private static string? ExtractSummary(
+        ISymbol symbol,
+        CancellationToken cancellationToken = default
+    )
     {
-        var xml = symbol.GetDocumentationCommentXml();
+        cancellationToken.ThrowIfCancellationRequested();
+        var xml = symbol.GetDocumentationCommentXml(cancellationToken: cancellationToken);
         if (string.IsNullOrWhiteSpace(xml))
         {
             return null;
@@ -171,10 +177,17 @@ internal static class DocumentationExtractor
         try
         {
             var document = XDocument.Parse(xml);
-            return document
-                .Descendants("summary")
-                .Select(summary => Normalize(summary.Value))
-                .FirstOrDefault(text => !string.IsNullOrWhiteSpace(text));
+            foreach (var summary in document.Descendants("summary"))
+            {
+                cancellationToken.ThrowIfCancellationRequested();
+                var normalized = Normalize(summary.Value);
+                if (!string.IsNullOrWhiteSpace(normalized))
+                {
+                    return normalized;
+                }
+            }
+
+            return null;
         }
         catch
         {
@@ -200,9 +213,12 @@ internal static class DocumentationExtractor
                 .Value.Value as string;
     }
 
-    private static string? ExtractSingleLineComment(ISymbol symbol)
+    private static string? ExtractSingleLineComment(
+        ISymbol symbol,
+        CancellationToken cancellationToken = default
+    )
     {
-        var syntax = symbol.DeclaringSyntaxReferences.FirstOrDefault()?.GetSyntax();
+        var syntax = symbol.DeclaringSyntaxReferences.FirstOrDefault()?.GetSyntax(cancellationToken);
         if (syntax is null)
         {
             return null;

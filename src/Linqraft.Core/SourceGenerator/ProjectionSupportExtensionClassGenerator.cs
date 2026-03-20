@@ -41,24 +41,26 @@ internal abstract class ProjectionSupportExtensionClassGenerator
         foreach (var hook in generatorOptions.GetValidatedProjectionHooks())
         {
             var builder = new IndentedStringBuilder();
-            builder.AppendLine("/// <summary>");
-            builder.AppendLine(
-                $"/// Provides the {hook.MethodName} projection hook that {generatorOptions.GeneratorDisplayName} rewrites inside generated projections."
+            builder.AppendLines(
+                $$"""
+                /// <summary>
+                /// Provides the {{hook.MethodName}} projection hook that {{generatorOptions.GeneratorDisplayName}} rewrites inside generated projections.
+                /// </summary>
+                [global::Microsoft.CodeAnalysis.EmbeddedAttribute]
+                internal static partial class {{LinqraftGeneratorOptionsCore.GetProjectionHookClassName(hook)}}
+                {
+                """
             );
-            builder.AppendLine("/// </summary>");
-            builder.AppendLine("[global::Microsoft.CodeAnalysis.EmbeddedAttribute]");
-            builder.AppendLine(
-                $"internal static partial class {LinqraftGeneratorOptionsCore.GetProjectionHookClassName(hook)}"
-            );
-            builder.AppendLine("{");
             using (builder.Indent())
             {
-                builder.AppendLine("/// <summary>");
-                builder.AppendLine(
-                    $"/// No-op marker used by generated projections to trigger the {hook.Kind} rewrite behavior."
+                builder.AppendLines(
+                    $$"""
+                    /// <summary>
+                    /// No-op marker used by generated projections to trigger the {{hook.Kind}} rewrite behavior.
+                    /// </summary>
+                    public static T {{hook.MethodName}}<T>(this T value) => value;
+                    """
                 );
-                builder.AppendLine("/// </summary>");
-                builder.AppendLine($"public static T {hook.MethodName}<T>(this T value) => value;");
             }
 
             builder.AppendLine("}");
@@ -69,12 +71,16 @@ internal abstract class ProjectionSupportExtensionClassGenerator
     private string CreateDeclaration(LinqraftGeneratorOptionsCore generatorOptions)
     {
         var builder = new IndentedStringBuilder();
-        builder.AppendLine("/// <summary>");
-        builder.AppendLine($"/// {GetClassSummary(generatorOptions)}");
-        builder.AppendLine("/// </summary>");
-        builder.AppendLine("[global::Microsoft.CodeAnalysis.EmbeddedAttribute]");
-        builder.AppendLine($"internal static partial class {GetClassName(generatorOptions)}");
-        builder.AppendLine("{");
+        builder.AppendLines(
+            $$"""
+            /// <summary>
+            /// {{GetClassSummary(generatorOptions)}}
+            /// </summary>
+            [global::Microsoft.CodeAnalysis.EmbeddedAttribute]
+            internal static partial class {{GetClassName(generatorOptions)}}
+            {
+            """
+        );
         using (builder.Indent())
         {
             builder.AppendLine(
@@ -99,9 +105,13 @@ internal abstract class ProjectionSupportExtensionClassGenerator
         LinqraftGeneratorOptionsCore generatorOptions
     )
     {
-        builder.AppendLine("/// <summary>");
-        builder.AppendLine($"/// {signature.CreateSummary(generatorOptions)}");
-        builder.AppendLine("/// </summary>");
+        builder.AppendLines(
+            $$"""
+            /// <summary>
+            /// {{signature.CreateSummary(generatorOptions)}}
+            /// </summary>
+            """
+        );
         if (signature.CreateObsoleteMessage(generatorOptions) is { } obsoleteMessage)
         {
             builder.AppendLine($"[global::System.Obsolete(\"{obsoleteMessage}\", false)]");
