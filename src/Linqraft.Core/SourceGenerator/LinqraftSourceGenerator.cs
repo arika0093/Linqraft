@@ -29,6 +29,7 @@ internal static class LinqraftGeneratorPipeline
             (provider, _) => LinqraftConfiguration.Parse(provider.GlobalOptions, generatorOptions)
         );
 
+        // lint4sg-allow-create-syntax-provider: projection hooks are invocation-based and cannot be filtered by attribute metadata.
         var projectionTemplates = context
             .SyntaxProvider.CreateSyntaxProvider(
                 (node, _) =>
@@ -44,6 +45,7 @@ internal static class LinqraftGeneratorPipeline
             .Where(static template => template is not null)
             .Select(static (template, _) => template!);
 
+        // lint4sg-allow-create-syntax-provider: object generation is discovered from invocation syntax rather than attributed declarations.
         var objectGenerationTemplates = context
             .SyntaxProvider.CreateSyntaxProvider(
                 (node, _) =>
@@ -406,8 +408,6 @@ internal static class LinqraftGeneratorPipeline
         where T : class
     {
         return context
-            .SyntaxProvider.CreateSyntaxProvider(static (_, _) => false, static (_, _) => (T?)null)
-            .Where(static template => template is not null)
-            .Select(static (template, _) => template!);
+            .CompilationProvider.SelectMany(static (_, _) => ImmutableArray<T>.Empty);
     }
 }
