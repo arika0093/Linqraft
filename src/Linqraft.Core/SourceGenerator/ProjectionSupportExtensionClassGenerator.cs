@@ -30,8 +30,21 @@ internal abstract class ProjectionSupportExtensionClassGenerator
             "\n\n",
             Generators
                 .Select(generator => generator.CreateDeclaration(generatorOptions))
+                .Concat(CreateObjectGenerationDeclarations(generatorOptions))
                 .Concat(CreateHookDeclarations(generatorOptions))
         );
+    }
+
+    private static IEnumerable<string> CreateObjectGenerationDeclarations(
+        LinqraftGeneratorOptionsCore generatorOptions
+    )
+    {
+        if (generatorOptions.GeneratorKitClassName is null)
+        {
+            yield break;
+        }
+
+        yield return new GenerateSupportExtensionClassGenerator().CreateDeclaration(generatorOptions);
     }
 
     private static IEnumerable<string> CreateHookDeclarations(
@@ -281,5 +294,30 @@ internal abstract class ProjectionSupportExtensionClassGenerator
 
         protected override IEnumerable<SupportMethodSignature> GetMethodSignatures() =>
             CreateQueryOverloads(_ => "TResult", hasKeySelector: true);
+    }
+
+    private sealed class GenerateSupportExtensionClassGenerator
+        : ProjectionSupportExtensionClassGenerator
+    {
+        protected override string GetClassName(LinqraftGeneratorOptionsCore generatorOptions) =>
+            generatorOptions.ObjectGenerationExtensionClassName;
+
+        protected override string GetMethodName(LinqraftGeneratorOptionsCore generatorOptions) =>
+            generatorOptions.ObjectGenerationMethodName;
+
+        protected override string GetClassSummary(LinqraftGeneratorOptionsCore generatorOptions) =>
+            $"Provides the {generatorOptions.ObjectGenerationMethodName} entry point that {generatorOptions.GeneratorDisplayName} rewrites inside generated projections.";
+
+        protected override IEnumerable<SupportMethodSignature> GetMethodSignatures()
+        {
+            yield return new SupportMethodSignature
+            {
+                CreateSummary = _ =>
+                    "Interception stub for nested object projections inside generated projection bodies.",
+                CreateSignature = generatorOptions =>
+                    $"public static TResult {generatorOptions.ObjectGenerationMethodName}<TIn, TResult>(this TIn value, global::System.Func<TIn, TResult> selector)",
+                IsLowPriority = false,
+            };
+        }
     }
 }

@@ -117,6 +117,12 @@ public abstract class LinqraftGeneratorOptionsCore
     public virtual string ObjectGenerationMethodName => "Generate";
 
     /// <summary>
+    /// Gets the generated extension class name that provides nested object-generation entry points inside projections.
+    /// The default appends <c>Extensions</c> to <see cref="ObjectGenerationMethodName"/>.
+    /// </summary>
+    public virtual string ObjectGenerationExtensionClassName => $"{ObjectGenerationMethodName}Extensions";
+
+    /// <summary>
     /// Gets the interception method name for projection over <c>IQueryable</c> and <c>IEnumerable</c>.
     /// This should be a valid C# method identifier.
     /// </summary>
@@ -253,6 +259,11 @@ public abstract class LinqraftGeneratorOptionsCore
 
     internal string? GeneratorKitMetadataName =>
         GeneratorKitClassName is null ? null : $"{SupportNamespace}.{GeneratorKitClassName}";
+
+    internal string? ObjectGenerationExtensionMetadataName =>
+        GeneratorKitClassName is null
+            ? null
+            : $"{SupportNamespace}.{ObjectGenerationExtensionClassName}";
 
     internal IReadOnlyList<LinqraftProjectionHookDefinition> GetValidatedProjectionHooks()
     {

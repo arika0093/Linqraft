@@ -55,6 +55,7 @@ internal sealed class ProjectionExpressionEmitter
     private readonly bool _useEmptyCollectionFallback;
     private readonly IReadOnlyDictionary<TextSpan, string> _replacementTypes;
     private readonly IReadOnlyList<CaptureEntry> _captureEntries;
+    private readonly IReadOnlyDictionary<ISymbol, ExpressionSyntax> _parameterBindings;
     private readonly LinqraftGeneratorOptionsCore _generatorOptions;
     private readonly HashSet<ISymbol> _activeProjectableSymbols;
 
@@ -66,6 +67,7 @@ internal sealed class ProjectionExpressionEmitter
         LinqraftGeneratorOptionsCore generatorOptions,
         IReadOnlyDictionary<TextSpan, string>? replacementTypes = null,
         IReadOnlyList<CaptureEntry>? captureEntries = null,
+        IReadOnlyDictionary<ISymbol, ExpressionSyntax>? parameterBindings = null,
         HashSet<ISymbol>? activeProjectableSymbols = null
     )
     {
@@ -76,6 +78,9 @@ internal sealed class ProjectionExpressionEmitter
         _generatorOptions = generatorOptions;
         _replacementTypes = replacementTypes ?? new Dictionary<TextSpan, string>();
         _captureEntries = captureEntries ?? global::System.Array.Empty<CaptureEntry>();
+        _parameterBindings =
+            parameterBindings
+            ?? new Dictionary<ISymbol, ExpressionSyntax>(SymbolEqualityComparer.Default);
         _activeProjectableSymbols =
             activeProjectableSymbols ?? new HashSet<ISymbol>(SymbolEqualityComparer.Default);
     }
@@ -95,6 +100,11 @@ internal sealed class ProjectionExpressionEmitter
         if (TryEmitConditionalChain(expression, out var conditionalText))
         {
             return conditionalText;
+        }
+
+        if (TryEmitProjectionGenerateInvocation(expression, overrideReceiver: null, out var generated))
+        {
+            return generated;
         }
 
         if (TryEmitFluentChain(expression, out var fluentChain))
@@ -329,6 +339,7 @@ internal sealed class ProjectionExpressionEmitter
             _generatorOptions,
             _replacementTypes,
             _captureEntries,
+            _parameterBindings,
             _activeProjectableSymbols
         );
         rewritten = nestedEmitter.Emit(expression.Left);
@@ -455,6 +466,11 @@ internal sealed class ProjectionExpressionEmitter
         }
 
         var symbol = _semanticModel.GetSymbolInfo(identifier).Symbol;
+        if (symbol is not null && _parameterBindings.TryGetValue(symbol, out var replacement))
+        {
+            return Parenthesize(replacement);
+        }
+
         if (symbol is ITypeSymbol typeSymbol)
         {
             return typeSymbol.ToFullyQualifiedTypeName();
@@ -516,6 +532,7 @@ internal sealed class ProjectionExpressionEmitter
             _generatorOptions,
             _replacementTypes,
             _captureEntries,
+            _parameterBindings,
             _activeProjectableSymbols
         );
         return nestedEmitter.Emit(expression);
@@ -810,6 +827,11 @@ internal sealed class ProjectionExpressionEmitter
         return $".{EmitSimpleName(memberAccess.Name)}{EmitArgumentList(invocation.ArgumentList)}";
     }
 
+    private string Parenthesize(ExpressionSyntax expression)
+    {
+        return $"({Emit(expression)})";
+    }
+
     private string EmitInvocationFromReceiver(
         InvocationExpressionSyntax invocation,
         SimpleNameSyntax methodName,
@@ -819,6 +841,11 @@ internal sealed class ProjectionExpressionEmitter
         if (TryEmitProjectableHook(invocation, receiver, out var projectable))
         {
             return projectable;
+        }
+
+        if (TryEmitProjectionGenerateInvocation(invocation, receiver, out var generated))
+        {
+            return generated;
         }
 
         return methodName.Identifier.ValueText switch
@@ -833,6 +860,140 @@ internal sealed class ProjectionExpressionEmitter
                 ? rewritten
                 : $"{receiver}.{EmitSimpleName(methodName)}{EmitArgumentList(invocation.ArgumentList)}",
         };
+    }
+
+    private bool TryEmitProjectionGenerateInvocation(
+        ExpressionSyntax expression,
+        string? overrideReceiver,
+        out string rewritten
+    )
+    {
+        rewritten = string.Empty;
+        if (
+            expression is not InvocationExpressionSyntax invocation
+            || !TryGetProjectionGenerateInvocation(invocation, out var receiverExpression, out var body)
+        )
+        {
+            return false;
+        }
+
+        var receiver = overrideReceiver is null
+            ? receiverExpression
+            : SyntaxFactory.ParseExpression(overrideReceiver);
+        var lambdaParameter = invocation
+            .ArgumentList.Arguments.Select(argument => argument.Expression)
+            .OfType<LambdaExpressionSyntax>()
+            .SelectMany(GetLambdaParameters)
+            .FirstOrDefault();
+        if (lambdaParameter is null)
+        {
+            return false;
+        }
+
+        var parameterSymbol = _semanticModel.GetDeclaredSymbol(lambdaParameter);
+        if (parameterSymbol is null)
+        {
+            return false;
+        }
+
+        var parameterBindings = new Dictionary<ISymbol, ExpressionSyntax>(
+            SymbolEqualityComparer.Default
+        );
+        foreach (var binding in _parameterBindings)
+        {
+            parameterBindings[binding.Key] = binding.Value;
+        }
+
+        parameterBindings[parameterSymbol] = receiver;
+        var bodyType = GetExpressionType(body);
+        var rootTypeName = GetExpressionTypeName(body, bodyType, out _);
+        var nestedEmitter = new ProjectionExpressionEmitter(
+            _semanticModel,
+            body,
+            rootTypeName,
+            _useEmptyCollectionFallback,
+            _generatorOptions,
+            _replacementTypes,
+            _captureEntries,
+            parameterBindings,
+            _activeProjectableSymbols
+        );
+        rewritten = nestedEmitter.Emit(body);
+        return true;
+    }
+
+    private bool TryGetProjectionGenerateInvocation(
+        InvocationExpressionSyntax invocation,
+        out ExpressionSyntax receiver,
+        out ExpressionSyntax body
+    )
+    {
+        receiver = null!;
+        body = null!;
+        if (
+            invocation.Expression is not MemberAccessExpressionSyntax memberAccess
+            || !string.Equals(
+                memberAccess.Name.Identifier.ValueText,
+                _generatorOptions.ObjectGenerationMethodName,
+                global::System.StringComparison.Ordinal
+            )
+        )
+        {
+            return false;
+        }
+
+        if (_generatorOptions.ObjectGenerationExtensionMetadataName is not { } metadataName)
+        {
+            return false;
+        }
+
+        var methodSymbol = _semanticModel.GetSymbolInfo(invocation).Symbol as IMethodSymbol;
+        var targetMethod = methodSymbol?.ReducedFrom ?? methodSymbol;
+        if (
+            targetMethod is null
+            || !string.Equals(
+                targetMethod.ContainingType.ToDisplayString(),
+                metadataName,
+                global::System.StringComparison.Ordinal
+            )
+            || !string.Equals(
+                targetMethod.Name,
+                _generatorOptions.ObjectGenerationMethodName,
+                global::System.StringComparison.Ordinal
+            )
+        )
+        {
+            return false;
+        }
+
+        var lambda = invocation
+            .ArgumentList.Arguments.Select(argument => argument.Expression)
+            .OfType<LambdaExpressionSyntax>()
+            .FirstOrDefault();
+        if (lambda is null || GetLambdaBodyExpression(lambda) is not { } lambdaBody)
+        {
+            return false;
+        }
+
+        receiver = memberAccess.Expression;
+        body = lambdaBody;
+        return true;
+    }
+
+    private static IEnumerable<ParameterSyntax> GetLambdaParameters(LambdaExpressionSyntax lambda)
+    {
+        return lambda switch
+        {
+            SimpleLambdaExpressionSyntax simpleLambda => new[] { simpleLambda.Parameter },
+            ParenthesizedLambdaExpressionSyntax parenthesizedLambda =>
+                parenthesizedLambda.ParameterList.Parameters,
+            _ => global::System.Array.Empty<ParameterSyntax>(),
+        };
+    }
+
+    private static ExpressionSyntax? GetLambdaBodyExpression(LambdaExpressionSyntax lambda)
+    {
+        return lambda.Body as ExpressionSyntax;
     }
 
     private bool TryEmitProjectionHook(ExpressionSyntax expression, out string rewritten)
