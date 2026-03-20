@@ -58,7 +58,6 @@ internal sealed class ProjectionExpressionEmitter
     private readonly IReadOnlyList<CaptureEntry> _captureEntries;
     private readonly LinqraftGeneratorOptionsCore _generatorOptions;
     private readonly HashSet<ISymbol> _activeProjectableSymbols;
-    private readonly CancellationToken _cancellationToken;
 
     public ProjectionExpressionEmitter(
         SemanticModel semanticModel,
@@ -68,8 +67,7 @@ internal sealed class ProjectionExpressionEmitter
         LinqraftGeneratorOptionsCore generatorOptions,
         IReadOnlyDictionary<TextSpan, string>? replacementTypes = null,
         IReadOnlyList<CaptureEntry>? captureEntries = null,
-        HashSet<ISymbol>? activeProjectableSymbols = null,
-        CancellationToken cancellationToken = default
+        HashSet<ISymbol>? activeProjectableSymbols = null
     )
     {
         _semanticModel = semanticModel;
@@ -81,17 +79,15 @@ internal sealed class ProjectionExpressionEmitter
         _captureEntries = captureEntries ?? global::System.Array.Empty<CaptureEntry>();
         _activeProjectableSymbols =
             activeProjectableSymbols ?? new HashSet<ISymbol>(SymbolEqualityComparer.Default);
-        _cancellationToken = cancellationToken;
     }
 
-    private CancellationToken ResolveCancellationToken(CancellationToken cancellationToken)
+    private static CancellationToken ResolveCancellationToken(CancellationToken cancellationToken)
     {
-        return cancellationToken == default ? _cancellationToken : cancellationToken;
+        return cancellationToken;
     }
 
     public string Emit(ExpressionSyntax expression, CancellationToken cancellationToken = default)
     {
-        cancellationToken = ResolveCancellationToken(cancellationToken);
         if (TryEmitCaptureReplacement(expression, out var captureReplacement, cancellationToken))
         {
             return captureReplacement;
@@ -186,7 +182,6 @@ internal sealed class ProjectionExpressionEmitter
         CancellationToken cancellationToken = default
     )
     {
-        cancellationToken = ResolveCancellationToken(cancellationToken);
         var replacementType = _replacementTypes.TryGetValue(expression.Span, out var resolvedType)
             ? resolvedType
             : null;
@@ -215,7 +210,6 @@ internal sealed class ProjectionExpressionEmitter
         CancellationToken cancellationToken = default
     )
     {
-        cancellationToken = ResolveCancellationToken(cancellationToken);
         var arguments = expression.ArgumentList is null
             ? string.Empty
             : EmitArgumentList(expression.ArgumentList, cancellationToken);
@@ -412,8 +406,7 @@ internal sealed class ProjectionExpressionEmitter
             _generatorOptions,
             _replacementTypes,
             _captureEntries,
-            _activeProjectableSymbols,
-            cancellationToken
+            _activeProjectableSymbols
         );
         rewritten = nestedEmitter.Emit(expression.Left, cancellationToken);
         return true;
@@ -657,8 +650,7 @@ internal sealed class ProjectionExpressionEmitter
             _generatorOptions,
             _replacementTypes,
             _captureEntries,
-            _activeProjectableSymbols,
-            cancellationToken
+            _activeProjectableSymbols
         );
         return nestedEmitter.Emit(expression, cancellationToken);
     }
