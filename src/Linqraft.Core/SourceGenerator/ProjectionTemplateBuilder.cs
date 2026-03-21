@@ -305,9 +305,10 @@ internal static class ProjectionTemplateBuilder
         );
         var effectiveOwnerHintName =
             ownerHintName ?? $"{GetInvocationName(invocation.Expression)}_{methodHash}";
-        var selectorLambda = operationKind.Value == ProjectionOperationKind.GroupBy && lambdas.Length >= 2
-            ? lambdas[1]
-            : lambdas[0];
+        var selectorLambda =
+            operationKind.Value == ProjectionOperationKind.GroupBy && lambdas.Length >= 2
+                ? lambdas[1]
+                : lambdas[0];
         var buildContext = new ProjectionBuildContext(
             semanticModel,
             captureEntries,
@@ -377,7 +378,8 @@ internal static class ProjectionTemplateBuilder
                 SelectorParameterName = analyzedProjection.SelectorParameterName,
                 UsesProjectionHelperParameter = analyzedProjection.UsesProjectionHelperParameter,
                 ProjectionHelperParameterName = analyzedProjection.ProjectionHelperParameterName,
-                ProjectionHelperParameterTypeName = analyzedProjection.ProjectionHelperParameterTypeName,
+                ProjectionHelperParameterTypeName =
+                    analyzedProjection.ProjectionHelperParameterTypeName,
                 KeySelectorParameterName = analyzedProjection.KeySelectorParameterName,
                 KeySelectorBodyTemplate = analyzedProjection.KeySelectorBodyTemplate,
                 UseObjectSelectorSignature = analyzedProjection.UseObjectSelectorSignature,
@@ -2301,7 +2303,8 @@ internal static class ProjectionTemplateBuilder
 
     private static string? GetProjectionHelperParameterName(LambdaExpressionSyntax lambda)
     {
-        return lambda is ParenthesizedLambdaExpressionSyntax parenthesized
+        return
+            lambda is ParenthesizedLambdaExpressionSyntax parenthesized
             && parenthesized.ParameterList.Parameters.Count == 2
             ? parenthesized.ParameterList.Parameters[1].Identifier.ValueText
             : null;
@@ -2321,10 +2324,12 @@ internal static class ProjectionTemplateBuilder
             return null;
         }
 
-        return semanticModel.GetDeclaredSymbol(
+        return
+            semanticModel.GetDeclaredSymbol(
                 parenthesized.ParameterList.Parameters[1],
                 cancellationToken
-            ) is IParameterSymbol symbol
+            )
+                is IParameterSymbol symbol
             ? symbol.Type.ToFullyQualifiedTypeName()
             : null;
     }

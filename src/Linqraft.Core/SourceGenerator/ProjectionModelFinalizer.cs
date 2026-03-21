@@ -47,7 +47,8 @@ internal static class ProjectionModelFinalizer
                 SelectorParameterName = requestTemplate.SelectorParameterName,
                 UsesProjectionHelperParameter = requestTemplate.UsesProjectionHelperParameter,
                 ProjectionHelperParameterName = requestTemplate.ProjectionHelperParameterName,
-                ProjectionHelperParameterTypeName = requestTemplate.ProjectionHelperParameterTypeName,
+                ProjectionHelperParameterTypeName =
+                    requestTemplate.ProjectionHelperParameterTypeName,
                 KeySelectorParameterName = requestTemplate.KeySelectorParameterName,
                 KeySelectorBodyText = requestTemplate.KeySelectorBodyTemplate is null
                     ? null

@@ -1081,7 +1081,13 @@ internal sealed class ProjectionExpressionEmitter
     {
         cancellationToken = ResolveCancellationToken(cancellationToken);
         rewritten = string.Empty;
-        if (!ContainsProjectionHook(expression, LinqraftProjectionHookKind.LeftJoin, cancellationToken))
+        if (
+            !ContainsProjectionHook(
+                expression,
+                LinqraftProjectionHookKind.LeftJoin,
+                cancellationToken
+            )
+        )
         {
             return false;
         }
@@ -1849,9 +1855,7 @@ internal sealed class ProjectionExpressionEmitter
             .Any(invocation => IsProjectionHookInvocation(invocation, kind, cancellationToken));
     }
 
-    private static ExpressionSyntax? GetHookTargetExpression(
-        InvocationExpressionSyntax invocation
-    )
+    private static ExpressionSyntax? GetHookTargetExpression(InvocationExpressionSyntax invocation)
     {
         return invocation.ArgumentList.Arguments.FirstOrDefault()?.Expression;
     }

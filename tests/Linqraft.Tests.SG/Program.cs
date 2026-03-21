@@ -183,8 +183,7 @@ public sealed class SourceGeneratorSmokeTests
         var generatedSources = GetGeneratedSourceMap(driver.GetRunResult());
         generatedSources["Linqraft.Declarations.g.cs"]
             .ShouldContain("internal partial interface IProjectionHelper");
-        generatedSources["Linqraft.Declarations.g.cs"]
-            .ShouldContain("T AsLeftJoin<T>(T value);");
+        generatedSources["Linqraft.Declarations.g.cs"].ShouldContain("T AsLeftJoin<T>(T value);");
         generatedSources["Linqraft.Declarations.g.cs"]
             .ShouldContain("T AsProjectable<T>(T value);");
         generatedSources["Linqraft.Declarations.g.cs"]
@@ -289,7 +288,9 @@ public sealed class SourceGeneratorSmokeTests
         generatedSources
             .Where(pair => pair.Key.StartsWith("ProjectExpr_", StringComparison.Ordinal))
             .Select(pair => pair.Value)
-            .ShouldContain(source => !source.Contains("InlineProjectable(", StringComparison.Ordinal));
+            .ShouldContain(source =>
+                !source.Contains("InlineProjectable(", StringComparison.Ordinal)
+            );
     }
 
     [Test]

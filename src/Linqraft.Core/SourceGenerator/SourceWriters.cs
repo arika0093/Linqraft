@@ -257,13 +257,14 @@ internal static class SourceWriters
                         ? "global::System.Func<object> capture"
                         : "object capture";
                 var helperType = $"global::{generatorOptions.SupportNamespace}.IProjectionHelper";
-                var selectorType = request.OperationKind == ProjectionOperationKind.GroupBy
-                    ? request.UsesProjectionHelperParameter
-                        ? $"global::System.Func<global::System.Linq.IGrouping<TKey, TIn>, {helperType}, {selectorResultType}>"
-                        : $"global::System.Func<global::System.Linq.IGrouping<TKey, TIn>, {selectorResultType}>"
-                    : request.UsesProjectionHelperParameter
-                        ? $"global::System.Func<TIn, {helperType}, {selectorResultType}>"
-                        : $"global::System.Func<TIn, {selectorResultType}>";
+                var selectorType =
+                    request.OperationKind == ProjectionOperationKind.GroupBy
+                        ? request.UsesProjectionHelperParameter
+                            ? $"global::System.Func<global::System.Linq.IGrouping<TKey, TIn>, {helperType}, {selectorResultType}>"
+                            : $"global::System.Func<global::System.Linq.IGrouping<TKey, TIn>, {selectorResultType}>"
+                        : request.UsesProjectionHelperParameter
+                            ? $"global::System.Func<TIn, {helperType}, {selectorResultType}>"
+                            : $"global::System.Func<TIn, {selectorResultType}>";
                 var signature = request.OperationKind switch
                 {
                     ProjectionOperationKind.Select => request.Captures.Length == 0
