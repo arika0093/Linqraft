@@ -4,7 +4,6 @@
     <id>Linqraft.Core</id>
     <version>$version$</version>
     <authors>arika0093</authors>
-    <includeBuildOutput>false</includeBuildOutput>
     <developmentDependency>true</developmentDependency>
     <license type="expression">Apache-2.0</license>
     <icon>linqraft.png</icon>

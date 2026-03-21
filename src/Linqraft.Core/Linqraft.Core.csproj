@@ -11,28 +11,17 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <PackageReference Include="lint4sg" Version="0.1.4">
+    <PackageReference Include="lint4sg" Version="0.1.5">
       <PrivateAssets>all</PrivateAssets>
       <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
     </PackageReference>
-    <PackageReference
-      Include="Microsoft.CodeAnalysis.CSharp"
-      Version="$(MicrosoftCodeAnalysisCSharpPackageVersion)"
-    />
-    <PackageReference
-      Include="PolySharp"
-      Version="$(PolySharpPackageVersion)"
-      Condition="!Exists('packages.config')"
-    >
+    <PackageReference Include="Microsoft.CodeAnalysis.CSharp" Version="$(MicrosoftCodeAnalysisCSharpPackageVersion)" />
+    <PackageReference Include="PolySharp" Version="$(PolySharpPackageVersion)" Condition="!Exists('packages.config')">
       <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
     </PackageReference>
   </ItemGroup>
 
-  <Target
-    Name="SetLinqraftCoreNuspecProperties"
-    BeforeTargets="GenerateNuspec"
-    DependsOnTargets="GetBuildVersion"
-  >
+  <Target Name="SetLinqraftCoreNuspecProperties" BeforeTargets="GenerateNuspec" DependsOnTargets="GetBuildVersion">
     <PropertyGroup>
       <NuspecProperties>version=$(PackageVersion);microsoftCodeAnalysisCSharpDependencyVersion=[$(MicrosoftCodeAnalysisCSharpPackageVersion)];polySharpDependencyVersion=[$(PolySharpPackageVersion)]</NuspecProperties>
     </PropertyGroup>
