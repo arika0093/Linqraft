@@ -286,6 +286,10 @@ public sealed class SourceGeneratorSmokeTests
             .ShouldContain("internal partial interface IProjectionHelper");
         generatedSources["CustomHook.Declarations.g.cs"]
             .ShouldContain("T InlineProjectable<T>(T value);");
+        generatedSources
+            .Where(pair => pair.Key.StartsWith("ProjectExpr_", StringComparison.Ordinal))
+            .Select(pair => pair.Value)
+            .ShouldContain(source => !source.Contains("InlineProjectable(", StringComparison.Ordinal));
     }
 
     [Test]

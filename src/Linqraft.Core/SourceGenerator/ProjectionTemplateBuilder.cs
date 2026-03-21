@@ -309,7 +309,8 @@ internal static class ProjectionTemplateBuilder
             semanticModel,
             captureEntries,
             cancellationToken,
-            generatorOptions
+            generatorOptions,
+            GetProjectionHelperParameterName(lambdas[0])
         );
         var analyzedProjection = operationKind.Value switch
         {
@@ -371,6 +372,7 @@ internal static class ProjectionTemplateBuilder
                 ResultTypeTemplate = analyzedProjection.ResultTypeTemplate,
                 SelectorParameterName = analyzedProjection.SelectorParameterName,
                 UsesProjectionHelperParameter = analyzedProjection.UsesProjectionHelperParameter,
+                ProjectionHelperParameterName = analyzedProjection.ProjectionHelperParameterName,
                 KeySelectorParameterName = analyzedProjection.KeySelectorParameterName,
                 KeySelectorBodyTemplate = analyzedProjection.KeySelectorBodyTemplate,
                 UseObjectSelectorSignature = analyzedProjection.UseObjectSelectorSignature,
@@ -607,6 +609,7 @@ internal static class ProjectionTemplateBuilder
             ResultTypeTemplate = resultTypeTemplate,
             SelectorParameterName = GetLambdaParameterName(selectorLambda),
             UsesProjectionHelperParameter = UsesProjectionHelperParameter(selectorLambda),
+            ProjectionHelperParameterName = GetProjectionHelperParameterName(selectorLambda),
             KeySelectorParameterName = null,
             KeySelectorBodyTemplate = null,
             UseObjectSelectorSignature = useObjectSelectorSignature,
@@ -719,6 +722,7 @@ internal static class ProjectionTemplateBuilder
             ResultTypeTemplate = resultTypeTemplate,
             SelectorParameterName = GetLambdaParameterName(selectorLambda),
             UsesProjectionHelperParameter = UsesProjectionHelperParameter(selectorLambda),
+            ProjectionHelperParameterName = GetProjectionHelperParameterName(selectorLambda),
             KeySelectorParameterName = null,
             KeySelectorBodyTemplate = null,
             UseObjectSelectorSignature = pattern == ProjectionPattern.ExplicitDto,
@@ -811,7 +815,8 @@ internal static class ProjectionTemplateBuilder
             semanticModel,
             captureEntries,
             cancellationToken,
-            generatorOptions
+            generatorOptions,
+            projectionHelperParameterName: null
         );
         var existingProperties = new HashSet<string>(
             rootDto
@@ -873,6 +878,8 @@ internal static class ProjectionTemplateBuilder
 
         public required bool UsesProjectionHelperParameter { get; init; }
 
+        public string? ProjectionHelperParameterName { get; init; }
+
         public required string? KeySelectorParameterName { get; init; }
 
         public required string? KeySelectorBodyTemplate { get; init; }
@@ -890,6 +897,7 @@ internal static class ProjectionTemplateBuilder
         private readonly IReadOnlyList<ProjectionExpressionEmitter.CaptureEntry> _captureEntries;
         private readonly CancellationToken _cancellationToken;
         private readonly LinqraftGeneratorOptionsCore _generatorOptions;
+        private readonly string? _projectionHelperParameterName;
         private readonly Dictionary<string, GeneratedDtoTemplateModel> _generatedDtos = new(
             StringComparer.Ordinal
         );
@@ -898,13 +906,15 @@ internal static class ProjectionTemplateBuilder
             SemanticModel semanticModel,
             IReadOnlyList<ProjectionExpressionEmitter.CaptureEntry> captureEntries,
             CancellationToken cancellationToken,
-            LinqraftGeneratorOptionsCore generatorOptions
+            LinqraftGeneratorOptionsCore generatorOptions,
+            string? projectionHelperParameterName
         )
         {
             _semanticModel = semanticModel;
             _captureEntries = captureEntries;
             _cancellationToken = cancellationToken;
             _generatorOptions = generatorOptions;
+            _projectionHelperParameterName = projectionHelperParameterName;
         }
 
         public LinqraftGeneratorOptionsCore GeneratorOptions => _generatorOptions;
@@ -1434,6 +1444,7 @@ internal static class ProjectionTemplateBuilder
                 rootTypeName,
                 useEmptyCollectionFallback,
                 _generatorOptions,
+                _projectionHelperParameterName,
                 replacementTypes,
                 _captureEntries
             );
@@ -1513,7 +1524,8 @@ internal static class ProjectionTemplateBuilder
                 syntax,
                 rootTypeName,
                 useEmptyCollectionFallback: false,
-                _generatorOptions
+                _generatorOptions,
+                _projectionHelperParameterName
             );
             return emitter.Emit(syntax, cancellationToken);
         }
@@ -2261,7 +2273,15 @@ internal static class ProjectionTemplateBuilder
     private static bool UsesProjectionHelperParameter(LambdaExpressionSyntax lambda)
     {
         return lambda is ParenthesizedLambdaExpressionSyntax parenthesized
-            && parenthesized.ParameterList.Parameters.Count >= 2;
+            && parenthesized.ParameterList.Parameters.Count == 2;
+    }
+
+    private static string? GetProjectionHelperParameterName(LambdaExpressionSyntax lambda)
+    {
+        return lambda is ParenthesizedLambdaExpressionSyntax parenthesized
+            && parenthesized.ParameterList.Parameters.Count == 2
+            ? parenthesized.ParameterList.Parameters[1].Identifier.ValueText
+            : null;
     }
 
     private static ReceiverKind? ResolveReceiverKind(ITypeSymbol? receiverType)

@@ -58,6 +58,7 @@ internal sealed class ProjectionExpressionEmitter
     private readonly IReadOnlyList<CaptureEntry> _captureEntries;
     private readonly LinqraftGeneratorOptionsCore _generatorOptions;
     private readonly HashSet<ISymbol> _activeProjectableSymbols;
+    private readonly string? _projectionHelperParameterName;
 
     public ProjectionExpressionEmitter(
         SemanticModel semanticModel,
@@ -65,6 +66,7 @@ internal sealed class ProjectionExpressionEmitter
         string rootTypeName,
         bool useEmptyCollectionFallback,
         LinqraftGeneratorOptionsCore generatorOptions,
+        string? projectionHelperParameterName = null,
         IReadOnlyDictionary<TextSpan, string>? replacementTypes = null,
         IReadOnlyList<CaptureEntry>? captureEntries = null,
         HashSet<ISymbol>? activeProjectableSymbols = null
@@ -75,6 +77,7 @@ internal sealed class ProjectionExpressionEmitter
         _rootTypeName = rootTypeName;
         _useEmptyCollectionFallback = useEmptyCollectionFallback;
         _generatorOptions = generatorOptions;
+        _projectionHelperParameterName = projectionHelperParameterName;
         _replacementTypes = replacementTypes ?? new Dictionary<TextSpan, string>();
         _captureEntries = captureEntries ?? global::System.Array.Empty<CaptureEntry>();
         _activeProjectableSymbols =
@@ -404,6 +407,7 @@ internal sealed class ProjectionExpressionEmitter
             rootTypeName,
             useEmptyCollectionFallback: true,
             _generatorOptions,
+            _projectionHelperParameterName,
             _replacementTypes,
             _captureEntries,
             _activeProjectableSymbols
@@ -648,6 +652,7 @@ internal sealed class ProjectionExpressionEmitter
             rootTypeName,
             ShouldUseCollectionFallback(expression, expressionType),
             _generatorOptions,
+            _projectionHelperParameterName,
             _replacementTypes,
             _captureEntries,
             _activeProjectableSymbols
@@ -1783,11 +1788,21 @@ internal sealed class ProjectionExpressionEmitter
         CancellationToken cancellationToken = default
     )
     {
-        cancellationToken = ResolveCancellationToken(cancellationToken);
+        if (_projectionHelperParameterName is null)
+        {
+            return false;
+        }
+
         var hook = _generatorOptions.FindProjectionHook(GetInvocationName(invocation.Expression));
         return hook?.Kind == kind
-            && invocation.Expression is MemberAccessExpressionSyntax
-            && invocation.ArgumentList.Arguments.Count != 0;
+            && invocation.Expression is MemberAccessExpressionSyntax memberAccess
+            && memberAccess.Expression is IdentifierNameSyntax identifier
+            && string.Equals(
+                identifier.Identifier.ValueText,
+                _projectionHelperParameterName,
+                global::System.StringComparison.Ordinal
+            )
+            && invocation.ArgumentList.Arguments.Count == 1;
     }
 
     private bool ContainsProjectionHook(

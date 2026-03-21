@@ -156,6 +156,8 @@ internal sealed record ProjectionRequestTemplate
 
     public required bool UsesProjectionHelperParameter { get; init; }
 
+    public string? ProjectionHelperParameterName { get; init; }
+
     public string? KeySelectorParameterName { get; init; }
 
     public string? KeySelectorBodyTemplate { get; init; }
@@ -294,6 +296,8 @@ internal sealed record ProjectionRequest
     public required string SelectorParameterName { get; init; }
 
     public required bool UsesProjectionHelperParameter { get; init; }
+
+    public string? ProjectionHelperParameterName { get; init; }
 
     public string? KeySelectorParameterName { get; init; }
 
