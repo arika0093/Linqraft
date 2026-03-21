@@ -1,17 +1,13 @@
 <Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
-    <TargetFramework>netstandard2.0</TargetFramework>
-    <LangVersion>latest</LangVersion>
-    <Nullable>enable</Nullable>
     <!-- Source-only packaging intentionally has no lib/ref assets, so NuGet's dependency-group/lib matching warning is expected. -->
-    <NoWarn>$(NoWarn);RSEXPERIMENTAL002;NU5128</NoWarn>
+    <NoWarn>$(NoWarn);NU5128</NoWarn>
     <MicrosoftCodeAnalysisCSharpPackageVersion>4.11.0</MicrosoftCodeAnalysisCSharpPackageVersion>
-    <MicrosoftCodeAnalysisCSharpDependencyVersion>[4.11.0]</MicrosoftCodeAnalysisCSharpDependencyVersion>
     <PolySharpPackageVersion>1.15.0</PolySharpPackageVersion>
-    <PolySharpDependencyVersion>[1.15.0]</PolySharpDependencyVersion>
     <IncludeBuildOutput>false</IncludeBuildOutput>
     <DevelopmentDependency>true</DevelopmentDependency>
     <GeneratePackageOnBuild>true</GeneratePackageOnBuild>
+    <NuspecFile>Linqraft.Core.nuspec</NuspecFile>
   </PropertyGroup>
 
   <ItemGroup>
@@ -32,103 +28,13 @@
     </PackageReference>
   </ItemGroup>
 
-  <ItemGroup>
-    <None
-      Include="Linqraft.Core.targets"
-      Pack="true"
-      PackagePath="build/Linqraft.Core.targets"
-      Visible="false"
-    />
-    <None
-      Include="**\*.cs"
-      Exclude="bin\**\*.cs;obj\**\*.cs;InternalsVisibleTo.cs"
-      Pack="true"
-      PackagePath="contentFiles/cs/netstandard2.0/Linqraft.Core/%(RecursiveDir)%(Filename)%(Extension)"
-      Visible="false"
-    />
-  </ItemGroup>
-
-  <UsingTask
-    TaskName="RewritePackedNuspec"
-    TaskFactory="RoslynCodeTaskFactory"
-    AssemblyFile="$(MSBuildToolsPath)/Microsoft.Build.Tasks.Core.dll"
+  <Target
+    Name="SetLinqraftCoreNuspecProperties"
+    BeforeTargets="GenerateNuspec"
+    DependsOnTargets="GetBuildVersion"
   >
-    <ParameterGroup>
-      <PackagePath ParameterType="System.String" Required="true" />
-      <TemplatePath ParameterType="System.String" Required="true" />
-      <MicrosoftCodeAnalysisCSharpDependencyVersion ParameterType="System.String" Required="true" />
-      <PolySharpDependencyVersion ParameterType="System.String" Required="true" />
-    </ParameterGroup>
-    <Task>
-      <Using Namespace="System" />
-      <Using Namespace="System.IO" />
-      <Using Namespace="System.IO.Compression" />
-      <Using Namespace="System.Linq" />
-      <Using Namespace="System.Text.RegularExpressions" />
-      <Code Type="Fragment" Language="cs">
-        <![CDATA[
-        try
-        {
-            var template = File.ReadAllText(TemplatePath);
-            using var stream = new FileStream(PackagePath, FileMode.Open, FileAccess.ReadWrite, FileShare.Read);
-            using var archive = new ZipArchive(stream, ZipArchiveMode.Update);
-            var nuspecEntry = archive.Entries.FirstOrDefault(entry =>
-                entry.FullName.EndsWith(".nuspec", StringComparison.OrdinalIgnoreCase));
-
-            if (nuspecEntry is null)
-            {
-                throw new InvalidOperationException($"Could not find a .nuspec entry in '{PackagePath}'.");
-            }
-
-            string currentNuspec;
-            using (var nuspecStream = nuspecEntry.Open())
-            using (var reader = new StreamReader(nuspecStream))
-            {
-                currentNuspec = reader.ReadToEnd();
-            }
-
-            var versionMatch = Regex.Match(
-                currentNuspec,
-                @"<version>(?<value>[^<]+)</version>",
-                RegexOptions.CultureInvariant);
-            var version = versionMatch.Success ? versionMatch.Groups["value"].Value.Trim() : null;
-
-            if (string.IsNullOrEmpty(version))
-            {
-                throw new InvalidOperationException($"Could not determine the package version from '{PackagePath}'.");
-            }
-
-            var updatedNuspec = template
-                .Replace("$version$", version)
-                .Replace(
-                    "$microsoftCodeAnalysisCSharpDependencyVersion$",
-                    MicrosoftCodeAnalysisCSharpDependencyVersion)
-                .Replace("$polySharpDependencyVersion$", PolySharpDependencyVersion);
-            var nuspecPath = nuspecEntry.FullName;
-            nuspecEntry.Delete();
-
-            var replacementEntry = archive.CreateEntry(nuspecPath, CompressionLevel.Optimal);
-            using var writer = new StreamWriter(replacementEntry.Open());
-            writer.Write(updatedNuspec);
-        }
-        catch (Exception ex)
-        {
-            throw new InvalidOperationException(
-                $"Failed to rewrite the packed nuspec for '{PackagePath}' using template '{TemplatePath}'.",
-                ex);
-        }
-      ]]>
-      </Code>
-    </Task>
-  </UsingTask>
-
-  <Target Name="RewritePackedLinqraftCoreNuspec" AfterTargets="Pack">
-    <RewritePackedNuspec
-      PackagePath="%(NuGetPackOutput.Identity)"
-      TemplatePath="$(MSBuildProjectDirectory)/Linqraft.Core.nuspec"
-      MicrosoftCodeAnalysisCSharpDependencyVersion="$(MicrosoftCodeAnalysisCSharpDependencyVersion)"
-      PolySharpDependencyVersion="$(PolySharpDependencyVersion)"
-      Condition="'%(NuGetPackOutput.Extension)' == '.nupkg'"
-    />
+    <PropertyGroup>
+      <NuspecProperties>version=$(PackageVersion);microsoftCodeAnalysisCSharpDependencyVersion=[$(MicrosoftCodeAnalysisCSharpPackageVersion)];polySharpDependencyVersion=[$(PolySharpPackageVersion)]</NuspecProperties>
+    </PropertyGroup>
   </Target>
 </Project>

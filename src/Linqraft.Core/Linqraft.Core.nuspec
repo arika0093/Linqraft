@@ -11,7 +11,7 @@
     <readme>README.nuget.md</readme>
     <projectUrl>https://github.com/arika0093/Linqraft</projectUrl>
     <requireLicenseAcceptance>false</requireLicenseAcceptance>
-    <description>Write Select queries easily with on-demand DTO generation and null-propagation operators.</description>
+    <description>Source-only building block for Linqraft generators. NuGet restores Microsoft.CodeAnalysis.CSharp and PolySharp automatically.</description>
     <repository type="git" url="https://github.com/arika0093/Linqraft" />
     <contentFiles>
       <files include="cs/netstandard2.0/Linqraft.Core/**/*.cs" buildAction="None" />
