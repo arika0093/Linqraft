@@ -98,7 +98,7 @@ internal static class LinqraftGeneratorPipeline
         var projectionModels = projectionTemplates
             .Combine(configuration)
             .Select(
-                (data, cancellationToken) =>
+                static (data, cancellationToken) =>
                     ProjectionModelFinalizer.FinalizeProjection(
                         data.Left,
                         data.Right,
@@ -108,7 +108,7 @@ internal static class LinqraftGeneratorPipeline
         var objectGenerationModels = objectGenerationTemplates
             .Combine(configuration)
             .Select(
-                (data, cancellationToken) =>
+				static (data, cancellationToken) =>
                     ProjectionModelFinalizer.FinalizeObjectGeneration(
                         data.Left,
                         data.Right,
@@ -118,7 +118,7 @@ internal static class LinqraftGeneratorPipeline
         var mappingClassModels = mappingClassTemplates
             .Combine(configuration)
             .Select(
-                (data, cancellationToken) =>
+				static (data, cancellationToken) =>
                     ProjectionModelFinalizer.FinalizeMapping(
                         data.Left,
                         data.Right,
@@ -128,7 +128,7 @@ internal static class LinqraftGeneratorPipeline
         var mappingMethodModels = mappingMethodTemplates
             .Combine(configuration)
             .Select(
-                (data, cancellationToken) =>
+				static (data, cancellationToken) =>
                     ProjectionModelFinalizer.FinalizeMapping(
                         data.Left,
                         data.Right,
@@ -204,7 +204,7 @@ internal static class LinqraftGeneratorPipeline
                     }
             )
             .Select(
-                (buildContext, cancellationToken) =>
+				static (buildContext, cancellationToken) =>
                     BuildGeneratedSources(buildContext, cancellationToken)
             );
         var generatedSourceFiles = generatedSources.SelectMany(
