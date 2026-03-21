@@ -121,7 +121,7 @@ The generated code looks like this:
 ```csharp
 namespace Linqraft
 {
-    internal static partial class SelectExprExtensions
+    file static partial class SelectExprInterceptExtensions
     {
         [global::System.Runtime.CompilerServices.InterceptsLocationAttribute(1, "zoTX6YMzp8cIf98imvJzs8YBAABUdXRvcmlhbENhc2VUZXN0LmNz")]
         public static global::System.Linq.IQueryable<TResult> SelectExpr_55AF867EC668046B<TIn, TResult>(this global::System.Linq.IQueryable<TIn> query, global::System.Func<TIn, object> selector) where TIn : class

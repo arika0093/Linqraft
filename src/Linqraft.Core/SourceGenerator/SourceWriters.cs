@@ -225,7 +225,7 @@ internal static class SourceWriters
         using (builder.Indent())
         {
             builder.AppendLine(
-                $"internal static partial class {GetProjectionSupportClassName(request.OperationKind, generatorOptions)}",
+                $"file static partial class {GetProjectionInterceptorClassName(request.OperationKind, generatorOptions)}",
                 cancellationToken
             );
             builder.AppendLine("{", cancellationToken);
@@ -585,6 +585,17 @@ internal static class SourceWriters
                 $"Unsupported projection operation '{operationKind}'."
             ),
         };
+    }
+
+    private static string GetProjectionInterceptorClassName(
+        ProjectionOperationKind operationKind,
+        LinqraftGeneratorOptionsCore generatorOptions
+    )
+    {
+        var className = GetProjectionSupportClassName(operationKind, generatorOptions);
+        return className.EndsWith("Extensions", StringComparison.Ordinal)
+            ? $"{className[..^"Extensions".Length]}InterceptExtensions"
+            : $"{className}Interceptors";
     }
 
     private static string GetReceiverTypeName(ReceiverKind receiverKind)

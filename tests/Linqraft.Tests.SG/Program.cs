@@ -46,6 +46,45 @@ public sealed class SourceGeneratorSmokeTests
     }
 
     [Test]
+    public void Generator_emits_projection_interceptors_in_file_local_classes()
+    {
+        var driver = CreateDriver();
+        var compilation = CreateCompilation(
+            CreateProjectionTree(),
+            CreateMarkerTree("file-local-interceptor")
+        );
+
+        driver = driver.RunGeneratorsAndUpdateCompilation(
+            compilation,
+            out var outputCompilation,
+            out var diagnostics
+        );
+
+        diagnostics.ShouldBeEmpty();
+        outputCompilation
+            .GetDiagnostics()
+            .Where(diagnostic =>
+                diagnostic.Severity == DiagnosticSeverity.Error && diagnostic.Id != "CS9137"
+            )
+            .ShouldBeEmpty();
+
+        var generatedSources = GetGeneratedSourceMap(driver.GetRunResult());
+        var interceptorSource = generatedSources.Values.First(source =>
+            source.Contains(
+                "[global::System.Runtime.CompilerServices.InterceptsLocationAttribute",
+                StringComparison.Ordinal
+            )
+            && source.Contains("SelectExpr_", StringComparison.Ordinal)
+            && source.Contains("SmokeOrderSummaryDto", StringComparison.Ordinal)
+        );
+
+        interceptorSource.ShouldContain(
+            "file static partial class SelectExprInterceptExtensions"
+        );
+        interceptorSource.ShouldNotContain("internal static partial class SelectExprExtensions");
+    }
+
+    [Test]
     public void Generator_emits_global_using_by_default_and_can_opt_out()
     {
         var defaultDriver = CreateDriver();
