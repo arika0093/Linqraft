@@ -1,22 +1,22 @@
 # Projection Hooks
 
-Projection hooks are explicit no-op marker methods that let you ask Linqraft to rewrite a specific part of a generated projection body.
+Projection hooks are exposed through the `IProjectionHelper` selector parameter so you can ask Linqraft to rewrite a specific part of a generated projection body.
 
 They follow this flow:
 
-`anonymous projection -> hook marker -> generated *Expr rewrite`
+`anonymous projection -> helper hook -> generated *Expr rewrite`
 
 ## Available Hooks
 
-### `AsLeftJoin()`
+### `helper.AsLeftJoin(value)`
 
-Use `AsLeftJoin()` when you want a nullable navigation access to be emitted as an explicit left-join-style null guard inside generated projection code.
+Use `helper.AsLeftJoin(value)` when you want a nullable navigation access to be emitted as an explicit left-join-style null guard inside generated projection code.
 
 ```csharp
 var result = dbContext.Orders
-    .SelectExpr<Order, OrderRowDto>(order => new
+    .SelectExpr<Order, OrderRowDto>((order, helper) => new
     {
-        CustomerName = order.Customer.AsLeftJoin().Name,
+        CustomerName = helper.AsLeftJoin(order.Customer).Name,
     })
     .ToListAsync();
 ```
@@ -29,9 +29,9 @@ CustomerName = order.Customer != null ? order.Customer.Name : null
 
 This is useful when the provider would otherwise translate a navigation access into a more restrictive join shape than you want.
 
-### `AsProjectable()`
+### `helper.AsProjectable(value)`
 
-Use `AsProjectable()` when a selector references a computed instance property or method that should be inlined into the generated projection.
+Use `helper.AsProjectable(value)` when a selector references a computed instance property or method that should be inlined into the generated projection.
 
 ```csharp
 public sealed class Order
@@ -46,9 +46,9 @@ public sealed class Order
 }
 
 var result = dbContext.Orders
-    .SelectExpr<Order, OrderRowDto>(order => new
+    .SelectExpr<Order, OrderRowDto>((order, helper) => new
     {
-        FirstLargeItemProductName = order.FirstLargeItemProductName.AsProjectable(),
+        FirstLargeItemProductName = helper.AsProjectable(order.FirstLargeItemProductName),
     })
     .ToListAsync();
 ```
@@ -57,28 +57,28 @@ Linqraft rewrites the hook as though the property body had been written directly
 
 ## Important Constraints
 
-### Hooks only work inside generated projection contexts
+### Hooks are available through the generated selector helper
 
-Projection hooks are only recognized inside:
+`SelectExpr(...)`, `SelectManyExpr(...)`, and `GroupByExpr(...)` provide an `IProjectionHelper` instance as the selector's second parameter when you need hook rewrites:
 
-- `SelectExpr(...)`
-- `SelectManyExpr(...)`
-- `GroupByExpr(...)`
-- `LinqraftKit.Generate(...)`
+```csharp
+query.SelectExpr((entity, helper) => new
+{
+    Name = helper.AsLeftJoin(entity.Child).Name,
+});
+```
 
-Using them outside those contexts triggers analyzer error [LQRE003](../analyzers/LQRE003.md).
+### `helper.AsProjectable(value)` bodies must not be recursive
 
-### `AsProjectable()` bodies must not be recursive
-
-`AsProjectable()` can inline instance properties and methods, but recursive expansions are rejected.
+`helper.AsProjectable(value)` can inline instance properties and methods, but recursive expansions are rejected.
 
 For example, this is unsupported:
 
 ```csharp
-public int Recursive => this.Recursive.AsProjectable();
+public int Recursive(IProjectionHelper helper) => helper.AsProjectable(this.Recursive(helper));
 ```
 
-Linqraft detects recursive `AsProjectable()` expansion and stops generation with a clear error message instead of recursing forever.
+Linqraft detects recursive `AsProjectable` expansion and stops generation with a clear error message instead of recursing forever.
 
 ### Hook names must be unique
 
@@ -91,7 +91,7 @@ The built-in options expose `ProjectionHooks`, so custom generator implementatio
 ```csharp
 public override IReadOnlyList<LinqraftProjectionHookDefinition> ProjectionHooks =>
 [
-    new("InlineProjectable", LinqraftProjectionHookKind.Projectable, "CustomProjectionHooks"),
+    new("InlineProjectable", LinqraftProjectionHookKind.Projectable),
 ];
 ```
 

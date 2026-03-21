@@ -30,44 +30,42 @@ internal abstract class ProjectionSupportExtensionClassGenerator
             "\n\n",
             Generators
                 .Select(generator => generator.CreateDeclaration(generatorOptions))
-                .Concat(CreateHookDeclarations(generatorOptions))
+                .Concat(CreateProjectionHelperDeclarations(generatorOptions))
         );
     }
 
-    private static IEnumerable<string> CreateHookDeclarations(
+    private static IEnumerable<string> CreateProjectionHelperDeclarations(
         LinqraftGeneratorOptionsCore generatorOptions
     )
     {
-        foreach (var hook in generatorOptions.GetValidatedProjectionHooks())
+        var builder = new IndentedStringBuilder();
+        builder.AppendLines(
+            """
+            /// <summary>
+            /// Provides projection helper hooks that generated selectors can use to request special rewrite behavior.
+            /// </summary>
+            [global::Microsoft.CodeAnalysis.EmbeddedAttribute]
+            internal partial interface IProjectionHelper
+            {
+            """
+        );
+        using (builder.Indent())
         {
-            var builder = new IndentedStringBuilder();
-            builder.AppendLines(
-                $$"""
-                /// <summary>
-                /// Provides the {{hook.MethodName}} projection hook that {{generatorOptions.GeneratorDisplayName}} rewrites inside generated projections.
-                /// </summary>
-                [global::Microsoft.CodeAnalysis.EmbeddedAttribute]
-                internal static partial class {{LinqraftGeneratorOptionsCore.GetProjectionHookClassName(
-                    hook
-                )}}
-                {
-                """
-            );
-            using (builder.Indent())
+            foreach (var hook in generatorOptions.GetValidatedProjectionHooks())
             {
                 builder.AppendLines(
                     $$"""
                     /// <summary>
-                    /// No-op marker used by generated projections to trigger the {{hook.Kind}} rewrite behavior.
+                    /// Marker used by generated projections to trigger the {{hook.Kind}} rewrite behavior.
                     /// </summary>
-                    public static T {{hook.MethodName}}<T>(this T value) => value;
+                    T {{hook.MethodName}}<T>(T value);
                     """
                 );
             }
-
-            builder.AppendLine("}");
-            yield return builder.ToString().TrimEnd();
         }
+
+        builder.AppendLine("}");
+        yield return builder.ToString().TrimEnd();
     }
 
     private string CreateDeclaration(LinqraftGeneratorOptionsCore generatorOptions)
@@ -179,6 +177,7 @@ internal abstract class ProjectionSupportExtensionClassGenerator
                             receiver.TypeName,
                             resultTypeFactory(generatorOptions),
                             selectorUsesObjectResult: false,
+                            usesProjectionHelperParameter: false,
                             capture.Parameter,
                             hasKeySelector,
                             generatorOptions
@@ -195,6 +194,43 @@ internal abstract class ProjectionSupportExtensionClassGenerator
                             receiver.TypeName,
                             resultTypeFactory(generatorOptions),
                             selectorUsesObjectResult: true,
+                            usesProjectionHelperParameter: false,
+                            capture.Parameter,
+                            hasKeySelector,
+                            generatorOptions
+                        ),
+                    CreateObsoleteMessage = _ => capture.ObsoleteMessage,
+                    IsLowPriority = true,
+                };
+
+                yield return new SupportMethodSignature
+                {
+                    CreateSummary = _ =>
+                        $"{capture.Summary} Accepts a projection helper as the selector's second parameter.",
+                    CreateSignature = generatorOptions =>
+                        CreateMethodSignature(
+                            receiver.TypeName,
+                            resultTypeFactory(generatorOptions),
+                            selectorUsesObjectResult: false,
+                            usesProjectionHelperParameter: true,
+                            capture.Parameter,
+                            hasKeySelector,
+                            generatorOptions
+                        ),
+                    CreateObsoleteMessage = _ => capture.ObsoleteMessage,
+                    IsLowPriority = false,
+                };
+
+                yield return new SupportMethodSignature
+                {
+                    CreateSummary = _ =>
+                        $"{capture.Summary} Accepts a projection helper as the selector's second parameter.",
+                    CreateSignature = generatorOptions =>
+                        CreateMethodSignature(
+                            receiver.TypeName,
+                            resultTypeFactory(generatorOptions),
+                            selectorUsesObjectResult: true,
+                            usesProjectionHelperParameter: true,
                             capture.Parameter,
                             hasKeySelector,
                             generatorOptions
@@ -210,24 +246,32 @@ internal abstract class ProjectionSupportExtensionClassGenerator
         string receiverType,
         string resultType,
         bool selectorUsesObjectResult,
+        bool usesProjectionHelperParameter,
         string? captureParameter,
         bool hasKeySelector,
         LinqraftGeneratorOptionsCore generatorOptions
     )
     {
         var selectorReturnType = selectorUsesObjectResult ? "object" : resultType;
+        var selectorType = hasKeySelector
+            ? usesProjectionHelperParameter
+                ? $"global::System.Func<global::System.Linq.IGrouping<TKey, TIn>, global::{generatorOptions.SupportNamespace}.IProjectionHelper, {selectorReturnType}>"
+                : $"global::System.Func<global::System.Linq.IGrouping<TKey, TIn>, {selectorReturnType}>"
+            : usesProjectionHelperParameter
+                ? $"global::System.Func<TIn, global::{generatorOptions.SupportNamespace}.IProjectionHelper, {selectorReturnType}>"
+                : $"global::System.Func<TIn, {selectorReturnType}>";
         var parameters = hasKeySelector
             ? new[]
             {
                 $"this {receiverType}<TIn> query",
                 "global::System.Func<TIn, TKey> keySelector",
-                $"global::System.Func<global::System.Linq.IGrouping<TKey, TIn>, {selectorReturnType}> selector",
+                $"{selectorType} selector",
                 captureParameter,
             }
             : new[]
             {
                 $"this {receiverType}<TIn> query",
-                $"global::System.Func<TIn, {selectorReturnType}> selector",
+                $"{selectorType} selector",
                 captureParameter,
             };
         var filteredParameters = parameters.Where(parameter => parameter is not null);

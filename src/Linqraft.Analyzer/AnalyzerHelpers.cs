@@ -11,12 +11,6 @@ namespace Linqraft.Analyzer;
 
 internal static class AnalyzerHelpers
 {
-    private static readonly HashSet<string> ProjectionHookNames = new(StringComparer.Ordinal)
-    {
-        "AsLeftJoin",
-        "AsProjectable",
-    };
-
     private static readonly Regex HashNamespacePattern = new(
         @"(^|\.)(LinqraftGenerated_[A-Za-z0-9]{8,})($|\.)",
         RegexOptions.Compiled
@@ -37,52 +31,6 @@ internal static class AnalyzerHelpers
             is "SelectExpr"
                 or "SelectManyExpr"
                 or "GroupByExpr";
-    }
-
-    public static bool IsProjectionHookInvocation(
-        InvocationExpressionSyntax invocation,
-        SemanticModel semanticModel,
-        CancellationToken cancellationToken
-    )
-    {
-        var targetMethod = GetLinqraftMethodSymbol(invocation, semanticModel, cancellationToken);
-        return targetMethod is not null
-            && ProjectionHookNames.Contains(targetMethod.Name)
-            && targetMethod.ContainingType.Name == $"{targetMethod.Name}Extensions";
-    }
-
-    public static bool IsInsideProjectionHookContext(
-        SyntaxNode node,
-        SemanticModel semanticModel,
-        CancellationToken cancellationToken
-    )
-    {
-        return node.AncestorsAndSelf()
-            .OfType<InvocationExpressionSyntax>()
-            .Any(invocation =>
-                GetLinqraftMethodSymbol(invocation, semanticModel, cancellationToken) is { } method
-                && (
-                    method.Name is "SelectExpr" or "SelectManyExpr" or "GroupByExpr"
-                        && method.ContainingType.Name == $"{method.Name}Extensions"
-                    || method.Name == "Generate" && method.ContainingType.Name == "LinqraftKit"
-                )
-            );
-    }
-
-    private static IMethodSymbol? GetLinqraftMethodSymbol(
-        InvocationExpressionSyntax invocation,
-        SemanticModel semanticModel,
-        CancellationToken cancellationToken
-    )
-    {
-        var symbolInfo = semanticModel.GetSymbolInfo(invocation, cancellationToken);
-        var method =
-            symbolInfo.Symbol as IMethodSymbol
-            ?? symbolInfo.CandidateSymbols.OfType<IMethodSymbol>().FirstOrDefault();
-        var targetMethod = method?.ReducedFrom ?? method;
-        return targetMethod?.ContainingNamespace.ToDisplayString() == "Linqraft"
-            ? targetMethod
-            : null;
     }
 
     public static bool IsQueryableSelectInvocation(

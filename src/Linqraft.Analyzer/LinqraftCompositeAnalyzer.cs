@@ -39,7 +39,6 @@ public sealed class LinqraftCompositeAnalyzer : DiagnosticAnalyzer
     private static void AnalyzeInvocation(SyntaxNodeAnalysisContext context)
     {
         var invocation = (InvocationExpressionSyntax)context.Node;
-        AnalyzeProjectionHookUsage(context, invocation);
         AnalyzeAnonymousCapturePattern(context, invocation);
 
         if (AnalyzerHelpers.IsSelectExprInvocation(invocation))
@@ -111,36 +110,6 @@ public sealed class LinqraftCompositeAnalyzer : DiagnosticAnalyzer
                 )
             );
         }
-    }
-
-    private static void AnalyzeProjectionHookUsage(
-        SyntaxNodeAnalysisContext context,
-        InvocationExpressionSyntax invocation
-    )
-    {
-        if (
-            !AnalyzerHelpers.IsProjectionHookInvocation(
-                invocation,
-                context.SemanticModel,
-                context.CancellationToken
-            )
-            || AnalyzerHelpers.IsInsideProjectionHookContext(
-                invocation,
-                context.SemanticModel,
-                context.CancellationToken
-            )
-        )
-        {
-            return;
-        }
-
-        context.ReportDiagnostic(
-            Diagnostic.Create(
-                DiagnosticDescriptors.ProjectionHookUsage,
-                invocation.GetLocation(),
-                AnalyzerHelpers.GetInvocationName(invocation.Expression)
-            )
-        );
     }
 
     private static void AnalyzeAnonymousCapturePattern(

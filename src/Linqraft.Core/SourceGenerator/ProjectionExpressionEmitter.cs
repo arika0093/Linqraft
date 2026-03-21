@@ -58,6 +58,8 @@ internal sealed class ProjectionExpressionEmitter
     private readonly IReadOnlyList<CaptureEntry> _captureEntries;
     private readonly LinqraftGeneratorOptionsCore _generatorOptions;
     private readonly HashSet<ISymbol> _activeProjectableSymbols;
+    private readonly string? _projectionHelperParameterName;
+    private readonly string? _projectionHelperParameterTypeName;
 
     public ProjectionExpressionEmitter(
         SemanticModel semanticModel,
@@ -65,6 +67,8 @@ internal sealed class ProjectionExpressionEmitter
         string rootTypeName,
         bool useEmptyCollectionFallback,
         LinqraftGeneratorOptionsCore generatorOptions,
+        string? projectionHelperParameterName = null,
+        string? projectionHelperParameterTypeName = null,
         IReadOnlyDictionary<TextSpan, string>? replacementTypes = null,
         IReadOnlyList<CaptureEntry>? captureEntries = null,
         HashSet<ISymbol>? activeProjectableSymbols = null
@@ -75,6 +79,8 @@ internal sealed class ProjectionExpressionEmitter
         _rootTypeName = rootTypeName;
         _useEmptyCollectionFallback = useEmptyCollectionFallback;
         _generatorOptions = generatorOptions;
+        _projectionHelperParameterName = projectionHelperParameterName;
+        _projectionHelperParameterTypeName = projectionHelperParameterTypeName;
         _replacementTypes = replacementTypes ?? new Dictionary<TextSpan, string>();
         _captureEntries = captureEntries ?? global::System.Array.Empty<CaptureEntry>();
         _activeProjectableSymbols =
@@ -404,6 +410,8 @@ internal sealed class ProjectionExpressionEmitter
             rootTypeName,
             useEmptyCollectionFallback: true,
             _generatorOptions,
+            _projectionHelperParameterName,
+            _projectionHelperParameterTypeName,
             _replacementTypes,
             _captureEntries,
             _activeProjectableSymbols
@@ -648,6 +656,8 @@ internal sealed class ProjectionExpressionEmitter
             rootTypeName,
             ShouldUseCollectionFallback(expression, expressionType),
             _generatorOptions,
+            _projectionHelperParameterName,
+            _projectionHelperParameterTypeName,
             _replacementTypes,
             _captureEntries,
             _activeProjectableSymbols
@@ -1071,7 +1081,7 @@ internal sealed class ProjectionExpressionEmitter
     {
         cancellationToken = ResolveCancellationToken(cancellationToken);
         rewritten = string.Empty;
-        if (!ContainsProjectionHook(expression, LinqraftProjectionHookKind.LeftJoin))
+        if (!ContainsProjectionHook(expression, LinqraftProjectionHookKind.LeftJoin, cancellationToken))
         {
             return false;
         }
@@ -1097,16 +1107,20 @@ internal sealed class ProjectionExpressionEmitter
         switch (expression)
         {
             case InvocationExpressionSyntax invocation
-                when IsProjectionHookInvocation(invocation, LinqraftProjectionHookKind.LeftJoin):
+                when IsProjectionHookInvocation(
+                    invocation,
+                    LinqraftProjectionHookKind.LeftJoin,
+                    cancellationToken
+                ):
             {
-                var receiverExpression = GetHookReceiverExpression(invocation);
-                if (receiverExpression is null)
+                var targetExpression = GetHookTargetExpression(invocation);
+                if (targetExpression is null)
                 {
                     rewritten = string.Empty;
                     return false;
                 }
 
-                var receiver = Emit(receiverExpression, cancellationToken);
+                var receiver = Emit(targetExpression, cancellationToken);
                 var access = applyTail(receiver);
                 var expressionType = GetExpressionType(rootLeftJoinExpression, cancellationToken);
                 var expressionTypeName = GetExpressionTypeName(
@@ -1138,7 +1152,8 @@ internal sealed class ProjectionExpressionEmitter
             case MemberAccessExpressionSyntax memberAccess
                 when ContainsProjectionHook(
                     memberAccess.Expression,
-                    LinqraftProjectionHookKind.LeftJoin
+                    LinqraftProjectionHookKind.LeftJoin,
+                    cancellationToken
                 ):
                 return TryBuildLeftJoinConditional(
                     memberAccess.Expression,
@@ -1151,7 +1166,8 @@ internal sealed class ProjectionExpressionEmitter
                 when invocation.Expression is MemberAccessExpressionSyntax memberInvocation
                     && ContainsProjectionHook(
                         memberInvocation.Expression,
-                        LinqraftProjectionHookKind.LeftJoin
+                        LinqraftProjectionHookKind.LeftJoin,
+                        cancellationToken
                     ):
                 return TryBuildLeftJoinConditional(
                     memberInvocation.Expression,
@@ -1171,7 +1187,8 @@ internal sealed class ProjectionExpressionEmitter
             case ElementAccessExpressionSyntax elementAccess
                 when ContainsProjectionHook(
                     elementAccess.Expression,
-                    LinqraftProjectionHookKind.LeftJoin
+                    LinqraftProjectionHookKind.LeftJoin,
+                    cancellationToken
                 ):
                 return TryBuildLeftJoinConditional(
                     elementAccess.Expression,
@@ -1235,7 +1252,13 @@ internal sealed class ProjectionExpressionEmitter
     {
         cancellationToken = ResolveCancellationToken(cancellationToken);
         rewritten = string.Empty;
-        if (!IsProjectionHookInvocation(invocation, LinqraftProjectionHookKind.Projectable))
+        if (
+            !IsProjectionHookInvocation(
+                invocation,
+                LinqraftProjectionHookKind.Projectable,
+                cancellationToken
+            )
+        )
         {
             return false;
         }
@@ -1320,7 +1343,7 @@ internal sealed class ProjectionExpressionEmitter
     )
     {
         cancellationToken = ResolveCancellationToken(cancellationToken);
-        var targetExpression = GetHookReceiverExpression(invocation);
+        var targetExpression = GetHookTargetExpression(invocation);
         if (targetExpression is null)
         {
             expanded = invocation;
@@ -1642,12 +1665,18 @@ internal sealed class ProjectionExpressionEmitter
             )
             {
                 cancellationToken.ThrowIfCancellationRequested();
-                if (!IsProjectionHookInvocation(invocation, LinqraftProjectionHookKind.Projectable))
+                if (
+                    !IsProjectionHookInvocation(
+                        invocation,
+                        LinqraftProjectionHookKind.Projectable,
+                        cancellationToken
+                    )
+                )
                 {
                     continue;
                 }
 
-                var targetExpression = GetHookReceiverExpression(invocation);
+                var targetExpression = GetHookTargetExpression(invocation);
                 if (
                     targetExpression is null
                     || !TryGetProjectableTargetSymbol(
@@ -1760,33 +1789,71 @@ internal sealed class ProjectionExpressionEmitter
 
     private bool IsProjectionHookInvocation(
         InvocationExpressionSyntax invocation,
-        LinqraftProjectionHookKind kind
+        LinqraftProjectionHookKind kind,
+        CancellationToken cancellationToken = default
     )
     {
+        if (_projectionHelperParameterName is null)
+        {
+            return false;
+        }
+
         var hook = _generatorOptions.FindProjectionHook(GetInvocationName(invocation.Expression));
-        return hook?.Kind == kind;
+        if (hook?.Kind != kind || invocation.ArgumentList.Arguments.Count != 1)
+        {
+            return false;
+        }
+
+        if (
+            invocation.Expression is not MemberAccessExpressionSyntax memberAccess
+            || memberAccess.Expression is not IdentifierNameSyntax identifier
+        )
+        {
+            return false;
+        }
+
+        var symbolInfo = _semanticModel.GetSymbolInfo(identifier, cancellationToken);
+        var parameterSymbol =
+            symbolInfo.Symbol as IParameterSymbol
+            ?? symbolInfo.CandidateSymbols.OfType<IParameterSymbol>().FirstOrDefault();
+        if (parameterSymbol is null)
+        {
+            return false;
+        }
+
+        return string.Equals(
+                parameterSymbol.Name,
+                _projectionHelperParameterName,
+                global::System.StringComparison.Ordinal
+            )
+            && (
+                _projectionHelperParameterTypeName is null
+                || string.Equals(
+                    parameterSymbol.Type.ToFullyQualifiedTypeName(),
+                    _projectionHelperParameterTypeName,
+                    global::System.StringComparison.Ordinal
+                )
+            );
     }
 
     private bool ContainsProjectionHook(
         ExpressionSyntax expression,
-        LinqraftProjectionHookKind kind
+        LinqraftProjectionHookKind kind,
+        CancellationToken cancellationToken = default
     )
     {
+        cancellationToken = ResolveCancellationToken(cancellationToken);
         return expression
             .DescendantNodesAndSelf()
             .OfType<InvocationExpressionSyntax>()
-            .Any(invocation => IsProjectionHookInvocation(invocation, kind));
+            .Any(invocation => IsProjectionHookInvocation(invocation, kind, cancellationToken));
     }
 
-    private static ExpressionSyntax? GetHookReceiverExpression(
+    private static ExpressionSyntax? GetHookTargetExpression(
         InvocationExpressionSyntax invocation
     )
     {
-        return invocation.Expression switch
-        {
-            MemberAccessExpressionSyntax memberAccess => memberAccess.Expression,
-            _ => null,
-        };
+        return invocation.ArgumentList.Arguments.FirstOrDefault()?.Expression;
     }
 
     private bool TryEmitCaptureReplacement(

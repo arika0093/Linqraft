@@ -305,11 +305,16 @@ internal static class ProjectionTemplateBuilder
         );
         var effectiveOwnerHintName =
             ownerHintName ?? $"{GetInvocationName(invocation.Expression)}_{methodHash}";
+        var selectorLambda = operationKind.Value == ProjectionOperationKind.GroupBy && lambdas.Length >= 2
+            ? lambdas[1]
+            : lambdas[0];
         var buildContext = new ProjectionBuildContext(
             semanticModel,
             captureEntries,
             cancellationToken,
-            generatorOptions
+            generatorOptions,
+            GetProjectionHelperParameterName(selectorLambda),
+            GetProjectionHelperParameterTypeName(selectorLambda, semanticModel, cancellationToken)
         );
         var analyzedProjection = operationKind.Value switch
         {
@@ -370,6 +375,9 @@ internal static class ProjectionTemplateBuilder
                 SourceTypeName = sourceType.ToFullyQualifiedTypeName(),
                 ResultTypeTemplate = analyzedProjection.ResultTypeTemplate,
                 SelectorParameterName = analyzedProjection.SelectorParameterName,
+                UsesProjectionHelperParameter = analyzedProjection.UsesProjectionHelperParameter,
+                ProjectionHelperParameterName = analyzedProjection.ProjectionHelperParameterName,
+                ProjectionHelperParameterTypeName = analyzedProjection.ProjectionHelperParameterTypeName,
                 KeySelectorParameterName = analyzedProjection.KeySelectorParameterName,
                 KeySelectorBodyTemplate = analyzedProjection.KeySelectorBodyTemplate,
                 UseObjectSelectorSignature = analyzedProjection.UseObjectSelectorSignature,
@@ -605,6 +613,13 @@ internal static class ProjectionTemplateBuilder
                     : ProjectionPattern.Anonymous,
             ResultTypeTemplate = resultTypeTemplate,
             SelectorParameterName = GetLambdaParameterName(selectorLambda),
+            UsesProjectionHelperParameter = UsesProjectionHelperParameter(selectorLambda),
+            ProjectionHelperParameterName = GetProjectionHelperParameterName(selectorLambda),
+            ProjectionHelperParameterTypeName = GetProjectionHelperParameterTypeName(
+                selectorLambda,
+                semanticModel,
+                cancellationToken
+            ),
             KeySelectorParameterName = null,
             KeySelectorBodyTemplate = null,
             UseObjectSelectorSignature = useObjectSelectorSignature,
@@ -716,6 +731,13 @@ internal static class ProjectionTemplateBuilder
             Pattern = pattern,
             ResultTypeTemplate = resultTypeTemplate,
             SelectorParameterName = GetLambdaParameterName(selectorLambda),
+            UsesProjectionHelperParameter = UsesProjectionHelperParameter(selectorLambda),
+            ProjectionHelperParameterName = GetProjectionHelperParameterName(selectorLambda),
+            ProjectionHelperParameterTypeName = GetProjectionHelperParameterTypeName(
+                selectorLambda,
+                semanticModel,
+                cancellationToken
+            ),
             KeySelectorParameterName = null,
             KeySelectorBodyTemplate = null,
             UseObjectSelectorSignature = pattern == ProjectionPattern.ExplicitDto,
@@ -808,7 +830,9 @@ internal static class ProjectionTemplateBuilder
             semanticModel,
             captureEntries,
             cancellationToken,
-            generatorOptions
+            generatorOptions,
+            projectionHelperParameterName: null,
+            projectionHelperParameterTypeName: null
         );
         var existingProperties = new HashSet<string>(
             rootDto
@@ -868,6 +892,12 @@ internal static class ProjectionTemplateBuilder
 
         public required string SelectorParameterName { get; init; }
 
+        public required bool UsesProjectionHelperParameter { get; init; }
+
+        public string? ProjectionHelperParameterName { get; init; }
+
+        public string? ProjectionHelperParameterTypeName { get; init; }
+
         public required string? KeySelectorParameterName { get; init; }
 
         public required string? KeySelectorBodyTemplate { get; init; }
@@ -885,6 +915,8 @@ internal static class ProjectionTemplateBuilder
         private readonly IReadOnlyList<ProjectionExpressionEmitter.CaptureEntry> _captureEntries;
         private readonly CancellationToken _cancellationToken;
         private readonly LinqraftGeneratorOptionsCore _generatorOptions;
+        private readonly string? _projectionHelperParameterName;
+        private readonly string? _projectionHelperParameterTypeName;
         private readonly Dictionary<string, GeneratedDtoTemplateModel> _generatedDtos = new(
             StringComparer.Ordinal
         );
@@ -893,13 +925,17 @@ internal static class ProjectionTemplateBuilder
             SemanticModel semanticModel,
             IReadOnlyList<ProjectionExpressionEmitter.CaptureEntry> captureEntries,
             CancellationToken cancellationToken,
-            LinqraftGeneratorOptionsCore generatorOptions
+            LinqraftGeneratorOptionsCore generatorOptions,
+            string? projectionHelperParameterName,
+            string? projectionHelperParameterTypeName
         )
         {
             _semanticModel = semanticModel;
             _captureEntries = captureEntries;
             _cancellationToken = cancellationToken;
             _generatorOptions = generatorOptions;
+            _projectionHelperParameterName = projectionHelperParameterName;
+            _projectionHelperParameterTypeName = projectionHelperParameterTypeName;
         }
 
         public LinqraftGeneratorOptionsCore GeneratorOptions => _generatorOptions;
@@ -1429,6 +1465,8 @@ internal static class ProjectionTemplateBuilder
                 rootTypeName,
                 useEmptyCollectionFallback,
                 _generatorOptions,
+                _projectionHelperParameterName,
+                _projectionHelperParameterTypeName,
                 replacementTypes,
                 _captureEntries
             );
@@ -1508,7 +1546,9 @@ internal static class ProjectionTemplateBuilder
                 syntax,
                 rootTypeName,
                 useEmptyCollectionFallback: false,
-                _generatorOptions
+                _generatorOptions,
+                _projectionHelperParameterName,
+                _projectionHelperParameterTypeName
             );
             return emitter.Emit(syntax, cancellationToken);
         }
@@ -2251,6 +2291,42 @@ internal static class ProjectionTemplateBuilder
                 ?? "x",
             _ => "x",
         };
+    }
+
+    private static bool UsesProjectionHelperParameter(LambdaExpressionSyntax lambda)
+    {
+        return lambda is ParenthesizedLambdaExpressionSyntax parenthesized
+            && parenthesized.ParameterList.Parameters.Count == 2;
+    }
+
+    private static string? GetProjectionHelperParameterName(LambdaExpressionSyntax lambda)
+    {
+        return lambda is ParenthesizedLambdaExpressionSyntax parenthesized
+            && parenthesized.ParameterList.Parameters.Count == 2
+            ? parenthesized.ParameterList.Parameters[1].Identifier.ValueText
+            : null;
+    }
+
+    private static string? GetProjectionHelperParameterTypeName(
+        LambdaExpressionSyntax lambda,
+        SemanticModel semanticModel,
+        CancellationToken cancellationToken
+    )
+    {
+        if (
+            lambda is not ParenthesizedLambdaExpressionSyntax parenthesized
+            || parenthesized.ParameterList.Parameters.Count != 2
+        )
+        {
+            return null;
+        }
+
+        return semanticModel.GetDeclaredSymbol(
+                parenthesized.ParameterList.Parameters[1],
+                cancellationToken
+            ) is IParameterSymbol symbol
+            ? symbol.Type.ToFullyQualifiedTypeName()
+            : null;
     }
 
     private static ReceiverKind? ResolveReceiverKind(ITypeSymbol? receiverType)

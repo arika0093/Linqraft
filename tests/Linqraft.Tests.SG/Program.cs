@@ -182,13 +182,15 @@ public sealed class SourceGeneratorSmokeTests
 
         var generatedSources = GetGeneratedSourceMap(driver.GetRunResult());
         generatedSources["Linqraft.Declarations.g.cs"]
-            .ShouldContain("internal static partial class AsLeftJoinExtensions");
+            .ShouldContain("internal partial interface IProjectionHelper");
         generatedSources["Linqraft.Declarations.g.cs"]
-            .ShouldContain("public static T AsLeftJoin<T>(this T value) => value;");
+            .ShouldContain("T AsLeftJoin<T>(T value);");
         generatedSources["Linqraft.Declarations.g.cs"]
-            .ShouldContain("internal static partial class AsProjectableExtensions");
+            .ShouldContain("T AsProjectable<T>(T value);");
         generatedSources["Linqraft.Declarations.g.cs"]
-            .ShouldContain("public static T AsProjectable<T>(this T value) => value;");
+            .ShouldContain(
+                "public static global::System.Linq.IQueryable<TResult> SelectExpr<TIn, TResult>(this global::System.Linq.IQueryable<TIn> query, global::System.Func<TIn, global::Linqraft.IProjectionHelper, TResult> selector) where TIn : class"
+            );
     }
 
     [Test]
@@ -281,9 +283,13 @@ public sealed class SourceGeneratorSmokeTests
 
         var generatedSources = GetGeneratedSourceMap(driver.GetRunResult());
         generatedSources["CustomHook.Declarations.g.cs"]
-            .ShouldContain("internal static partial class CustomProjectionHooks");
+            .ShouldContain("internal partial interface IProjectionHelper");
         generatedSources["CustomHook.Declarations.g.cs"]
-            .ShouldContain("public static T InlineProjectable<T>(this T value) => value;");
+            .ShouldContain("T InlineProjectable<T>(T value);");
+        generatedSources
+            .Where(pair => pair.Key.StartsWith("ProjectExpr_", StringComparison.Ordinal))
+            .Select(pair => pair.Value)
+            .ShouldContain(source => !source.Contains("InlineProjectable(", StringComparison.Ordinal));
     }
 
     [Test]
@@ -842,9 +848,9 @@ public sealed class SourceGeneratorSmokeTests
             public static class HookQueries
             {
                 public static IQueryable<HookDto> Run(IQueryable<HookEntity> query)
-                    => query.SelectExpr<HookEntity, HookDto>(x => new
+                    => query.SelectExpr<HookEntity, HookDto>((x, helper) => new
                     {
-                        ChildName = x.Child!.Name,
+                        ChildName = helper.AsLeftJoin(x.Child).Name,
                     });
             }
             """;
@@ -894,6 +900,8 @@ public sealed class SourceGeneratorSmokeTests
             public sealed class CustomHookEntity
             {
                 public int Value { get; set; }
+
+                public int Computed => this.Value + 1;
             }
 
             public partial class CustomHookDto;
@@ -901,9 +909,9 @@ public sealed class SourceGeneratorSmokeTests
             public static class CustomHookQueries
             {
                 public static IQueryable<CustomHookDto> Run(IQueryable<CustomHookEntity> query)
-                    => query.ProjectExpr<CustomHookEntity, CustomHookDto>(x => new
+                    => query.ProjectExpr<CustomHookEntity, CustomHookDto>((x, helper) => new
                     {
-                        Value = x.Value,
+                        Value = helper.InlineProjectable(x.Computed),
                     });
             }
             """;
@@ -927,7 +935,7 @@ public sealed class SourceGeneratorSmokeTests
             {
                 public int Value { get; set; }
 
-                public int Recursive() => Recursive().AsProjectable();
+                public int Recursive(IProjectionHelper helper) => helper.AsProjectable(Recursive(helper));
             }
 
             public partial class RecursiveDto;
@@ -935,9 +943,9 @@ public sealed class SourceGeneratorSmokeTests
             public static class RecursiveQueries
             {
                 public static IQueryable<RecursiveDto> Run(IQueryable<RecursiveEntity> query)
-                    => query.SelectExpr<RecursiveEntity, RecursiveDto>(x => new
+                    => query.SelectExpr<RecursiveEntity, RecursiveDto>((x, helper) => new
                     {
-                        Value = x.Recursive().AsProjectable(),
+                        Value = helper.AsProjectable(x.Recursive(helper)),
                     });
             }
             """;
