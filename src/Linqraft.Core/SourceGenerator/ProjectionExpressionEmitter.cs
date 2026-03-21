@@ -1071,7 +1071,7 @@ internal sealed class ProjectionExpressionEmitter
     {
         cancellationToken = ResolveCancellationToken(cancellationToken);
         rewritten = string.Empty;
-        if (!ContainsProjectionHook(expression, LinqraftProjectionHookKind.LeftJoin))
+        if (!ContainsProjectionHook(expression, LinqraftProjectionHookKind.LeftJoin, cancellationToken))
         {
             return false;
         }
@@ -1097,16 +1097,20 @@ internal sealed class ProjectionExpressionEmitter
         switch (expression)
         {
             case InvocationExpressionSyntax invocation
-                when IsProjectionHookInvocation(invocation, LinqraftProjectionHookKind.LeftJoin):
+                when IsProjectionHookInvocation(
+                    invocation,
+                    LinqraftProjectionHookKind.LeftJoin,
+                    cancellationToken
+                ):
             {
-                var receiverExpression = GetHookReceiverExpression(invocation);
-                if (receiverExpression is null)
+                var targetExpression = GetHookTargetExpression(invocation);
+                if (targetExpression is null)
                 {
                     rewritten = string.Empty;
                     return false;
                 }
 
-                var receiver = Emit(receiverExpression, cancellationToken);
+                var receiver = Emit(targetExpression, cancellationToken);
                 var access = applyTail(receiver);
                 var expressionType = GetExpressionType(rootLeftJoinExpression, cancellationToken);
                 var expressionTypeName = GetExpressionTypeName(
@@ -1138,7 +1142,8 @@ internal sealed class ProjectionExpressionEmitter
             case MemberAccessExpressionSyntax memberAccess
                 when ContainsProjectionHook(
                     memberAccess.Expression,
-                    LinqraftProjectionHookKind.LeftJoin
+                    LinqraftProjectionHookKind.LeftJoin,
+                    cancellationToken
                 ):
                 return TryBuildLeftJoinConditional(
                     memberAccess.Expression,
@@ -1151,7 +1156,8 @@ internal sealed class ProjectionExpressionEmitter
                 when invocation.Expression is MemberAccessExpressionSyntax memberInvocation
                     && ContainsProjectionHook(
                         memberInvocation.Expression,
-                        LinqraftProjectionHookKind.LeftJoin
+                        LinqraftProjectionHookKind.LeftJoin,
+                        cancellationToken
                     ):
                 return TryBuildLeftJoinConditional(
                     memberInvocation.Expression,
@@ -1171,7 +1177,8 @@ internal sealed class ProjectionExpressionEmitter
             case ElementAccessExpressionSyntax elementAccess
                 when ContainsProjectionHook(
                     elementAccess.Expression,
-                    LinqraftProjectionHookKind.LeftJoin
+                    LinqraftProjectionHookKind.LeftJoin,
+                    cancellationToken
                 ):
                 return TryBuildLeftJoinConditional(
                     elementAccess.Expression,
@@ -1235,7 +1242,13 @@ internal sealed class ProjectionExpressionEmitter
     {
         cancellationToken = ResolveCancellationToken(cancellationToken);
         rewritten = string.Empty;
-        if (!IsProjectionHookInvocation(invocation, LinqraftProjectionHookKind.Projectable))
+        if (
+            !IsProjectionHookInvocation(
+                invocation,
+                LinqraftProjectionHookKind.Projectable,
+                cancellationToken
+            )
+        )
         {
             return false;
         }
@@ -1320,7 +1333,7 @@ internal sealed class ProjectionExpressionEmitter
     )
     {
         cancellationToken = ResolveCancellationToken(cancellationToken);
-        var targetExpression = GetHookReceiverExpression(invocation);
+        var targetExpression = GetHookTargetExpression(invocation);
         if (targetExpression is null)
         {
             expanded = invocation;
@@ -1642,12 +1655,18 @@ internal sealed class ProjectionExpressionEmitter
             )
             {
                 cancellationToken.ThrowIfCancellationRequested();
-                if (!IsProjectionHookInvocation(invocation, LinqraftProjectionHookKind.Projectable))
+                if (
+                    !IsProjectionHookInvocation(
+                        invocation,
+                        LinqraftProjectionHookKind.Projectable,
+                        cancellationToken
+                    )
+                )
                 {
                     continue;
                 }
 
-                var targetExpression = GetHookReceiverExpression(invocation);
+                var targetExpression = GetHookTargetExpression(invocation);
                 if (
                     targetExpression is null
                     || !TryGetProjectableTargetSymbol(
@@ -1760,33 +1779,35 @@ internal sealed class ProjectionExpressionEmitter
 
     private bool IsProjectionHookInvocation(
         InvocationExpressionSyntax invocation,
-        LinqraftProjectionHookKind kind
+        LinqraftProjectionHookKind kind,
+        CancellationToken cancellationToken = default
     )
     {
+        cancellationToken = ResolveCancellationToken(cancellationToken);
         var hook = _generatorOptions.FindProjectionHook(GetInvocationName(invocation.Expression));
-        return hook?.Kind == kind;
+        return hook?.Kind == kind
+            && invocation.Expression is MemberAccessExpressionSyntax
+            && invocation.ArgumentList.Arguments.Count != 0;
     }
 
     private bool ContainsProjectionHook(
         ExpressionSyntax expression,
-        LinqraftProjectionHookKind kind
+        LinqraftProjectionHookKind kind,
+        CancellationToken cancellationToken = default
     )
     {
+        cancellationToken = ResolveCancellationToken(cancellationToken);
         return expression
             .DescendantNodesAndSelf()
             .OfType<InvocationExpressionSyntax>()
-            .Any(invocation => IsProjectionHookInvocation(invocation, kind));
+            .Any(invocation => IsProjectionHookInvocation(invocation, kind, cancellationToken));
     }
 
-    private static ExpressionSyntax? GetHookReceiverExpression(
+    private static ExpressionSyntax? GetHookTargetExpression(
         InvocationExpressionSyntax invocation
     )
     {
-        return invocation.Expression switch
-        {
-            MemberAccessExpressionSyntax memberAccess => memberAccess.Expression,
-            _ => null,
-        };
+        return invocation.ArgumentList.Arguments.FirstOrDefault()?.Expression;
     }
 
     private bool TryEmitCaptureReplacement(

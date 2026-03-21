@@ -370,6 +370,7 @@ internal static class ProjectionTemplateBuilder
                 SourceTypeName = sourceType.ToFullyQualifiedTypeName(),
                 ResultTypeTemplate = analyzedProjection.ResultTypeTemplate,
                 SelectorParameterName = analyzedProjection.SelectorParameterName,
+                UsesProjectionHelperParameter = analyzedProjection.UsesProjectionHelperParameter,
                 KeySelectorParameterName = analyzedProjection.KeySelectorParameterName,
                 KeySelectorBodyTemplate = analyzedProjection.KeySelectorBodyTemplate,
                 UseObjectSelectorSignature = analyzedProjection.UseObjectSelectorSignature,
@@ -605,6 +606,7 @@ internal static class ProjectionTemplateBuilder
                     : ProjectionPattern.Anonymous,
             ResultTypeTemplate = resultTypeTemplate,
             SelectorParameterName = GetLambdaParameterName(selectorLambda),
+            UsesProjectionHelperParameter = UsesProjectionHelperParameter(selectorLambda),
             KeySelectorParameterName = null,
             KeySelectorBodyTemplate = null,
             UseObjectSelectorSignature = useObjectSelectorSignature,
@@ -716,6 +718,7 @@ internal static class ProjectionTemplateBuilder
             Pattern = pattern,
             ResultTypeTemplate = resultTypeTemplate,
             SelectorParameterName = GetLambdaParameterName(selectorLambda),
+            UsesProjectionHelperParameter = UsesProjectionHelperParameter(selectorLambda),
             KeySelectorParameterName = null,
             KeySelectorBodyTemplate = null,
             UseObjectSelectorSignature = pattern == ProjectionPattern.ExplicitDto,
@@ -867,6 +870,8 @@ internal static class ProjectionTemplateBuilder
         public required string ResultTypeTemplate { get; init; }
 
         public required string SelectorParameterName { get; init; }
+
+        public required bool UsesProjectionHelperParameter { get; init; }
 
         public required string? KeySelectorParameterName { get; init; }
 
@@ -2251,6 +2256,12 @@ internal static class ProjectionTemplateBuilder
                 ?? "x",
             _ => "x",
         };
+    }
+
+    private static bool UsesProjectionHelperParameter(LambdaExpressionSyntax lambda)
+    {
+        return lambda is ParenthesizedLambdaExpressionSyntax parenthesized
+            && parenthesized.ParameterList.Parameters.Count >= 2;
     }
 
     private static ReceiverKind? ResolveReceiverKind(ITypeSymbol? receiverType)

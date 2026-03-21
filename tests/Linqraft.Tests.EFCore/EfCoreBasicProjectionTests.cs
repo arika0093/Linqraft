@@ -263,10 +263,10 @@ public sealed class EfCoreBasicProjectionTests
             .ToListAsync();
 
         var result = await query
-            .SelectExpr(order => new
+            .SelectExpr((order, helper) => new
             {
                 order.OrderNumber,
-                CustomerName = order.Customer!.AsLeftJoin().Name,
+                CustomerName = helper.AsLeftJoin(order.Customer!).Name,
             })
             .ToListAsync();
 
@@ -299,10 +299,10 @@ public sealed class EfCoreBasicProjectionTests
             .ToListAsync();
 
         var result = await query
-            .SelectExpr(order => new
+            .SelectExpr((order, helper) => new
             {
                 order.OrderNumber,
-                FirstLargeItemProductName = order.FirstLargeItemProductName.AsProjectable(),
+                FirstLargeItemProductName = helper.AsProjectable(order.FirstLargeItemProductName),
             })
             .ToListAsync();
 

@@ -96,17 +96,17 @@ Linqraft also supports explicit projection hooks for cases where you want the ge
 
 ```csharp
 var rows = dbContext.Orders
-    .SelectExpr(order => new
+    .SelectExpr((order, helper) => new
     {
-        CustomerName = order.Customer.AsLeftJoin().Name,
-        FirstLargeItem = order.FirstLargeItemProductName.AsProjectable(),
+        CustomerName = helper.AsLeftJoin(order.Customer).Name,
+        FirstLargeItem = helper.AsProjectable(order.FirstLargeItemProductName),
     });
 ```
 
 Currently, the following hooks are available:
 
-* `AsLeftJoin()`: It generates queries that behave like a `LEFT JOIN`.
-* `AsProjectable()`: It realizes the behavior like [EntityFrameworkCore.Projectables](https://github.com/EFNext/EntityFrameworkCore.Projectables). That is, the query logic inside properties like `FirstLargeItemProductName` will be expanded as if it were written inline inside the SelectExpr.
+* `helper.AsLeftJoin(value)`: It generates queries that behave like a `LEFT JOIN`.
+* `helper.AsProjectable(value)`: It realizes the behavior like [EntityFrameworkCore.Projectables](https://github.com/EFNext/EntityFrameworkCore.Projectables). That is, the query logic inside properties like `FirstLargeItemProductName` will be expanded as if it were written inline inside the SelectExpr.
 
 ### No Dependencies 
 
