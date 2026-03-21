@@ -4,7 +4,7 @@
     <LangVersion>latest</LangVersion>
     <Nullable>enable</Nullable>
     <!-- Source-only packaging intentionally has no lib/ref assets, so NuGet's dependency-group/lib matching warning is expected. -->
-    <NoWarn>$(NoWarn);RSEXPERIMENTAL002;NU5128;LSG008</NoWarn>
+    <NoWarn>$(NoWarn);RSEXPERIMENTAL002;NU5128</NoWarn>
     <MicrosoftCodeAnalysisCSharpPackageVersion>4.11.0</MicrosoftCodeAnalysisCSharpPackageVersion>
     <MicrosoftCodeAnalysisCSharpDependencyVersion>[4.11.0]</MicrosoftCodeAnalysisCSharpDependencyVersion>
     <PolySharpPackageVersion>1.15.0</PolySharpPackageVersion>
@@ -15,7 +15,7 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <PackageReference Include="lint4sg" Version="0.1.2">
+    <PackageReference Include="lint4sg" Version="0.1.3">
       <PrivateAssets>all</PrivateAssets>
       <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
     </PackageReference>
