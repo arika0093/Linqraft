@@ -78,9 +78,7 @@ public sealed class SourceGeneratorSmokeTests
             && source.Contains("SmokeOrderSummaryDto", StringComparison.Ordinal)
         );
 
-        interceptorSource.ShouldContain(
-            "file static partial class SelectExprInterceptExtensions"
-        );
+        interceptorSource.ShouldContain("file static partial class SelectExprInterceptExtensions");
         interceptorSource.ShouldNotContain("internal static partial class SelectExprExtensions");
     }
 
