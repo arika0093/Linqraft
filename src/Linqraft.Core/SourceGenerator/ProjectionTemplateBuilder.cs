@@ -404,6 +404,7 @@ internal static class ProjectionTemplateBuilder
                 CaptureTransportTypeName = captureInfo.TransportTypeName,
                 Projection = analyzedProjection.ProjectionTemplate,
                 ProjectionBodyTemplate = analyzedProjection.ProjectionBodyTemplate,
+                InnerJoinFilterBodyTemplate = analyzedProjection.InnerJoinFilterTemplate,
             },
             GeneratedDtos = buildContext.GetGeneratedDtos(),
         };
@@ -627,6 +628,10 @@ internal static class ProjectionTemplateBuilder
             UseObjectSelectorSignature = useObjectSelectorSignature,
             ProjectionTemplate = null,
             ProjectionBodyTemplate = bodyTemplate,
+            InnerJoinFilterTemplate = buildContext.CreateInnerJoinFilterTemplate(
+                selectorBody,
+                cancellationToken
+            ),
         };
     }
 
@@ -745,6 +750,10 @@ internal static class ProjectionTemplateBuilder
             UseObjectSelectorSignature = pattern == ProjectionPattern.ExplicitDto,
             ProjectionTemplate = projectionTemplate,
             ProjectionBodyTemplate = null,
+            InnerJoinFilterTemplate = buildContext.CreateInnerJoinFilterTemplate(
+                selectorBody,
+                cancellationToken
+            ),
         };
     }
 
@@ -909,6 +918,8 @@ internal static class ProjectionTemplateBuilder
         public ProjectionTemplateModel? ProjectionTemplate { get; init; }
 
         public string? ProjectionBodyTemplate { get; init; }
+
+        public string? InnerJoinFilterTemplate { get; init; }
     }
 
     private sealed class ProjectionBuildContext
@@ -1114,6 +1125,71 @@ internal static class ProjectionTemplateBuilder
             );
         }
 
+        public string? CreateInnerJoinFilterTemplate(
+            ExpressionSyntax expression,
+            CancellationToken cancellationToken = default
+        )
+        {
+            cancellationToken = ResolveCancellationToken(cancellationToken);
+            var conditions = new List<string>();
+            var seenConditions = new HashSet<string>(StringComparer.Ordinal);
+            foreach (
+                var invocation in expression.DescendantNodesAndSelf(
+                    descendIntoChildren: node => node is not LambdaExpressionSyntax
+                ).OfType<InvocationExpressionSyntax>()
+            )
+            {
+                cancellationToken.ThrowIfCancellationRequested();
+                if (
+                    !ProjectionHookSyntaxHelper.TryGetHookInvocation(
+                        invocation,
+                        _semanticModel,
+                        _generatorOptions,
+                        _projectionHelperParameterName,
+                        _projectionHelperParameterTypeName,
+                        LinqraftProjectionHookKind.InnerJoin,
+                        out var hookInvocation,
+                        cancellationToken
+                    )
+                )
+                {
+                    continue;
+                }
+
+                var targetType = _semanticModel
+                    .GetTypeInfo(hookInvocation.TargetExpression, cancellationToken)
+                    .Type;
+                if (
+                    targetType is { IsValueType: true }
+                    && targetType.OriginalDefinition.SpecialType
+                        != SpecialType.System_Nullable_T
+                )
+                {
+                    continue;
+                }
+
+                var targetTypeName = targetType?.ToFullyQualifiedTypeName() ?? "object";
+                var condition = $"{CreateValueTemplate(
+                    hookInvocation.TargetExpression,
+                    targetTypeName,
+                    useEmptyCollectionFallback: false,
+                    new Dictionary<TextSpan, string>(),
+                    cancellationToken
+                )} != null";
+                if (seenConditions.Add(condition))
+                {
+                    conditions.Add(condition);
+                }
+            }
+
+            return conditions.Count switch
+            {
+                0 => null,
+                1 => conditions[0],
+                _ => string.Join(" && ", conditions),
+            };
+        }
+
         public void RegisterDto(
             GeneratedDtoTemplateModel dtoTemplate,
             CancellationToken cancellationToken = default
@@ -1156,6 +1232,39 @@ internal static class ProjectionTemplateBuilder
             if (replacementTypes.TryGetValue(expression.Span, out var existingReplacement))
             {
                 return existingReplacement;
+            }
+
+            if (
+                TryAnalyzeAsProjection(
+                    expression,
+                    namedContext,
+                    defaultNamespace,
+                    useGlobalNamespaceFallback,
+                    ownerHintName,
+                    replacementTypes,
+                    out var asProjectionType,
+                    cancellationToken
+                )
+            )
+            {
+                return asProjectionType;
+            }
+
+            if (
+                TryAnalyzeProjectedValueSelection(
+                    expression,
+                    memberName,
+                    namedContext,
+                    defaultNamespace,
+                    useGlobalNamespaceFallback,
+                    ownerHintName,
+                    replacementTypes,
+                    out var projectedValueSelectionType,
+                    cancellationToken
+                )
+            )
+            {
+                return projectedValueSelectionType;
             }
 
             if (
@@ -1473,6 +1582,372 @@ internal static class ProjectionTemplateBuilder
                 _captureEntries
             );
             return emitter.Emit(expression, cancellationToken);
+        }
+
+        private bool TryAnalyzeAsProjection(
+            ExpressionSyntax expression,
+            bool namedContext,
+            string defaultNamespace,
+            bool useGlobalNamespaceFallback,
+            string ownerHintName,
+            Dictionary<TextSpan, string> replacementTypes,
+            out string typeTemplate,
+            CancellationToken cancellationToken = default
+        )
+        {
+            cancellationToken = ResolveCancellationToken(cancellationToken);
+            typeTemplate = string.Empty;
+            if (
+                expression is not InvocationExpressionSyntax invocation
+                || !ProjectionHookSyntaxHelper.TryGetHookInvocation(
+                    invocation,
+                    _semanticModel,
+                    _generatorOptions,
+                    _projectionHelperParameterName,
+                    _projectionHelperParameterTypeName,
+                    LinqraftProjectionHookKind.Projection,
+                    out var hookInvocation,
+                    cancellationToken
+                )
+            )
+            {
+                return false;
+            }
+
+            var targetType = GetProjectionSourceType(hookInvocation.TargetExpression, cancellationToken);
+            if (targetType is null)
+            {
+                return false;
+            }
+
+            if (!namedContext && hookInvocation.GenericTypeArgument is null)
+            {
+                typeTemplate = "object";
+                return true;
+            }
+
+            GeneratedDtoTemplateModel dtoTemplate;
+            HashSet<string> existingPropertyNames;
+            if (hookInvocation.GenericTypeArgument is { } explicitResultType)
+            {
+                dtoTemplate = CreateRootDtoTemplate(
+                    explicitResultType,
+                    _semanticModel,
+                    invocation,
+                    targetType,
+                    ownerHintName,
+                    cancellationToken,
+                    _generatorOptions
+                );
+                existingPropertyNames = new HashSet<string>(
+                    dtoTemplate
+                        .Properties.Where(property => property.IsSuppressed)
+                        .Select(property => property.Name),
+                    StringComparer.Ordinal
+                );
+            }
+            else
+            {
+                dtoTemplate = CreateGeneratedNamedDtoTemplate(
+                    CreateProjectionDtoName(targetType.Name),
+                    defaultNamespace,
+                    useGlobalNamespaceFallback,
+                    ownerHintName,
+                    invocation,
+                    targetType,
+                    cancellationToken
+                );
+                existingPropertyNames = new HashSet<string>(StringComparer.Ordinal);
+            }
+
+            replacementTypes[expression.Span] = dtoTemplate.PlaceholderToken;
+            var properties = CreateProjectionProperties(targetType, existingPropertyNames);
+            RegisterDto(
+                dtoTemplate with
+                {
+                    Properties = properties,
+                    ShapeSignature = BuildGeneratedDtoShapeSignature(
+                        dtoTemplate.TemplateId,
+                        properties
+                    ),
+                },
+                cancellationToken
+            );
+            typeTemplate = ApplyExpressionNullability(
+                dtoTemplate.PlaceholderToken,
+                GetExpressionType(hookInvocation.TargetExpression, cancellationToken)
+            );
+            return true;
+        }
+
+        private bool TryAnalyzeProjectedValueSelection(
+            ExpressionSyntax expression,
+            string memberName,
+            bool namedContext,
+            string defaultNamespace,
+            bool useGlobalNamespaceFallback,
+            string ownerHintName,
+            Dictionary<TextSpan, string> replacementTypes,
+            out string typeTemplate,
+            CancellationToken cancellationToken = default
+        )
+        {
+            cancellationToken = ResolveCancellationToken(cancellationToken);
+            typeTemplate = string.Empty;
+            if (
+                expression is not InvocationExpressionSyntax invocation
+                || !ProjectionHookSyntaxHelper.TryGetProjectedValueSelection(
+                    invocation,
+                    _semanticModel,
+                    _generatorOptions,
+                    _projectionHelperParameterName,
+                    _projectionHelperParameterTypeName,
+                    out var selectionInfo,
+                    cancellationToken
+                )
+            )
+            {
+                return false;
+            }
+
+            var targetExpressionType = GetExpressionType(
+                selectionInfo.ProjectInvocation.TargetExpression,
+                cancellationToken
+            );
+            var selectorBody = selectionInfo.SelectorBody;
+            if (selectorBody is AnonymousObjectCreationExpressionSyntax anonymousBody)
+            {
+                if (!namedContext && selectionInfo.ProjectInvocation.GenericTypeArgument is null)
+                {
+                    var inferredAnonymousType = _semanticModel.GetTypeInfo(
+                        anonymousBody,
+                        cancellationToken
+                    ).Type;
+                    typeTemplate = ApplyExpressionNullability(
+                        inferredAnonymousType?.ToFullyQualifiedTypeName() ?? "object",
+                        targetExpressionType
+                    );
+                    return true;
+                }
+
+                GeneratedDtoTemplateModel dtoTemplate;
+                if (selectionInfo.ProjectInvocation.GenericTypeArgument is { } nameHintType)
+                {
+                    dtoTemplate = CreateGeneratedNamedDtoTemplate(
+                        CreateProjectionDtoName(GetUnqualifiedTypeName(nameHintType)),
+                        defaultNamespace,
+                        useGlobalNamespaceFallback,
+                        ownerHintName,
+                        selectionInfo.SelectionInvocation,
+                        GetProjectionSourceType(
+                            selectionInfo.ProjectInvocation.TargetExpression,
+                            cancellationToken
+                        ),
+                        cancellationToken
+                    );
+                }
+                else
+                {
+                    dtoTemplate = CreateNestedDtoTemplate(
+                        memberName,
+                        anonymousBody,
+                        defaultNamespace,
+                        useGlobalNamespaceFallback,
+                        ownerHintName,
+                        cancellationToken
+                    );
+                }
+
+                replacementTypes[anonymousBody.Span] = dtoTemplate.PlaceholderToken;
+                var buildResult = BuildProjectionTemplate(
+                    anonymousBody,
+                    dtoTemplate.PlaceholderToken,
+                    dtoTemplate,
+                    existingPropertyNames: null,
+                    namedContext: true,
+                    defaultNamespace: dtoTemplate.PreferredNamespace,
+                    useGlobalNamespaceFallback: dtoTemplate.UseGlobalNamespaceFallback,
+                    ownerHintName: ownerHintName,
+                    cancellationToken: cancellationToken
+                );
+                MergeReplacementTypes(
+                    replacementTypes,
+                    buildResult.ReplacementTypes,
+                    cancellationToken
+                );
+                RegisterDto(buildResult.DtoTemplate!, cancellationToken);
+                typeTemplate = ApplyExpressionNullability(
+                    dtoTemplate.PlaceholderToken,
+                    targetExpressionType
+                );
+                return true;
+            }
+
+            if (selectorBody is ObjectCreationExpressionSyntax namedBody)
+            {
+                foreach (var nestedMember in GetProjectionMembers(namedBody))
+                {
+                    cancellationToken.ThrowIfCancellationRequested();
+                    AnalyzeMemberType(
+                        nestedMember.Expression,
+                        nestedMember.Name,
+                        replacementTypes,
+                        namedContext: true,
+                        defaultNamespace,
+                        useGlobalNamespaceFallback,
+                        ownerHintName,
+                        cancellationToken
+                    );
+                }
+
+                var namedBodyType = ResolveNamedType(
+                    namedBody.Type,
+                    _semanticModel,
+                    defaultNamespace,
+                    cancellationToken
+                )
+                    ?? _semanticModel.GetTypeInfo(namedBody.Type, cancellationToken).Type
+                        ?.ToFullyQualifiedTypeName()
+                    ?? namedBody.Type.ToString();
+                typeTemplate = ApplyExpressionNullability(namedBodyType, targetExpressionType);
+                return true;
+            }
+
+            typeTemplate = ApplyExpressionNullability(
+                AnalyzeMemberType(
+                    selectorBody,
+                    memberName,
+                    replacementTypes,
+                    namedContext,
+                    defaultNamespace,
+                    useGlobalNamespaceFallback,
+                    ownerHintName,
+                    cancellationToken
+                ),
+                targetExpressionType
+            );
+            return true;
+        }
+
+        private GeneratedDtoTemplateModel CreateGeneratedNamedDtoTemplate(
+            string dtoName,
+            string defaultNamespace,
+            bool useGlobalNamespaceFallback,
+            string ownerHintName,
+            SyntaxNode origin,
+            INamedTypeSymbol? sourceType,
+            CancellationToken cancellationToken = default
+        )
+        {
+            cancellationToken = ResolveCancellationToken(cancellationToken);
+            var templateId = $"root:{defaultNamespace}||{dtoName}";
+            return new GeneratedDtoTemplateModel
+            {
+                TemplateId = templateId,
+                PlaceholderToken = CreateDtoPlaceholderToken(
+                    templateId,
+                    _generatorOptions,
+                    cancellationToken
+                ),
+                Kind = GeneratedDtoTemplateKind.RootExplicit,
+                PreferredNamespace = defaultNamespace,
+                UseGlobalNamespaceFallback = useGlobalNamespaceFallback,
+                Name = dtoName,
+                ShapeHash = string.Empty,
+                AccessibilityKeyword = IsPubliclyAccessible(sourceType) ? "public" : "internal",
+                DeclaredIsRecord = null,
+                IsRoot = true,
+                IsAutoGeneratedNested = false,
+                Documentation = DocumentationExtractor.GetTypeDocumentation(
+                    sourceType,
+                    LinqraftCommentOutput.All,
+                    cancellationToken
+                ),
+                OwnerHintName = ownerHintName,
+                Origins = new[] { CreateOrigin(origin) },
+                ShapeSignature = templateId,
+                ContainingTypes = Array.Empty<ContainingTypeInfo>(),
+                Properties = Array.Empty<GeneratedPropertyTemplateModel>(),
+            };
+        }
+
+        private INamedTypeSymbol? GetProjectionSourceType(
+            ExpressionSyntax expression,
+            CancellationToken cancellationToken = default
+        )
+        {
+            cancellationToken = ResolveCancellationToken(cancellationToken);
+            var type = GetExpressionType(expression, cancellationToken);
+            return type switch
+            {
+                INamedTypeSymbol namedType
+                    when namedType.OriginalDefinition.SpecialType == SpecialType.System_Nullable_T =>
+                    namedType.TypeArguments[0] as INamedTypeSymbol,
+                INamedTypeSymbol namedType => namedType,
+                _ => null,
+            };
+        }
+
+        private ITypeSymbol? GetExpressionType(
+            ExpressionSyntax expression,
+            CancellationToken cancellationToken = default
+        )
+        {
+            cancellationToken = ResolveCancellationToken(cancellationToken);
+            var typeInfo = _semanticModel.GetTypeInfo(expression, cancellationToken);
+            return typeInfo.Type ?? typeInfo.ConvertedType;
+        }
+
+        private EquatableArray<GeneratedPropertyTemplateModel> CreateProjectionProperties(
+            INamedTypeSymbol sourceType,
+            ISet<string> existingPropertyNames
+        )
+        {
+            return sourceType
+                .GetMembers()
+                .OfType<IPropertySymbol>()
+                .Where(property =>
+                    !property.IsStatic
+                    && property.GetMethod is not null
+                    && property.Parameters.Length == 0
+                    && property.DeclaredAccessibility == Accessibility.Public
+                    && IsProjectionLeafType(property.Type)
+                )
+                .GroupBy(property => property.Name, StringComparer.Ordinal)
+                .Select(group => group.First())
+                .OrderBy(property => property.Name, StringComparer.Ordinal)
+                .Select(property =>
+                    new GeneratedPropertyTemplateModel
+                    {
+                        Name = property.Name,
+                        TypeTemplate = property.Type.ToFullyQualifiedTypeName(),
+                        FallbackTypeTemplate = property.Type.ToFullyQualifiedTypeName(),
+                        Documentation = null,
+                        IsSuppressed = existingPropertyNames.Contains(property.Name),
+                    }
+                )
+                .ToArray();
+        }
+
+        private static bool IsProjectionLeafType(ITypeSymbol type)
+        {
+            return type.SpecialType == SpecialType.System_String
+                || type.TypeKind == TypeKind.Enum
+                || type.IsValueType;
+        }
+
+        private static string BuildGeneratedDtoShapeSignature(
+            string templateId,
+            IEnumerable<GeneratedPropertyTemplateModel> properties
+        )
+        {
+            return
+                $"{templateId}|{string.Join(";", properties.Select(property => $"{property.Name}:{property.TypeTemplate}:{property.FallbackTypeTemplate}:{property.IsSuppressed}"))}";
+        }
+
+        private static string CreateProjectionDtoName(string name)
+        {
+            return name.EndsWith("Dto", StringComparison.Ordinal) ? name : $"{name}Dto";
         }
 
         private static void MergeReplacementTypes(

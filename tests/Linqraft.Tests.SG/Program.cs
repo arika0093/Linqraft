@@ -184,12 +184,60 @@ public sealed class SourceGeneratorSmokeTests
         generatedSources["Linqraft.Declarations.g.cs"]
             .ShouldContain("internal partial interface IProjectionHelper");
         generatedSources["Linqraft.Declarations.g.cs"].ShouldContain("T AsLeftJoin<T>(T value);");
+        generatedSources["Linqraft.Declarations.g.cs"].ShouldContain("T AsInnerJoin<T>(T value);");
         generatedSources["Linqraft.Declarations.g.cs"]
             .ShouldContain("T AsProjectable<T>(T value);");
+        generatedSources["Linqraft.Declarations.g.cs"]
+            .ShouldContain("TResult AsProjection<TResult>(object value);");
+        generatedSources["Linqraft.Declarations.g.cs"]
+            .ShouldContain("object AsProjection(object value);");
+        generatedSources["Linqraft.Declarations.g.cs"]
+            .ShouldContain("internal partial interface IProjectedValue<T>");
+        generatedSources["Linqraft.Declarations.g.cs"]
+            .ShouldContain("TResult Select<TResult>(global::System.Func<T, TResult> selector);");
+        generatedSources["Linqraft.Declarations.g.cs"]
+            .ShouldContain("IProjectedValue<T> Project<T>(T value);");
         generatedSources["Linqraft.Declarations.g.cs"]
             .ShouldContain(
                 "public static global::System.Linq.IQueryable<TResult> SelectExpr<TIn, TResult>(this global::System.Linq.IQueryable<TIn> query, global::System.Func<TIn, global::Linqraft.IProjectionHelper, TResult> selector) where TIn : class"
             );
+    }
+
+    [Test]
+    public void Generator_rewrites_inner_join_projection_and_project_helpers()
+    {
+        var driver = CreateDriver();
+        var compilation = CreateCompilation(
+            CreateHookProjectionTree(),
+            CreateMarkerTree("hook-rewrites")
+        );
+
+        driver = driver.RunGeneratorsAndUpdateCompilation(
+            compilation,
+            out var outputCompilation,
+            out var diagnostics
+        );
+
+        diagnostics.ShouldBeEmpty();
+        outputCompilation
+            .GetDiagnostics()
+            .Where(diagnostic =>
+                diagnostic.Severity == DiagnosticSeverity.Error && diagnostic.Id != "CS9137"
+            )
+            .ShouldBeEmpty();
+
+        var generatedSources = GetGeneratedSourceMap(driver.GetRunResult());
+        var projectionSource = generatedSources.Values.Single(source =>
+            source.Contains("SelectExpr_", StringComparison.Ordinal)
+            && source.Contains("HookDto", StringComparison.Ordinal)
+            && source.Contains("RequiredChildName", StringComparison.Ordinal)
+            && source.Contains("SelectedChild", StringComparison.Ordinal)
+        );
+
+        projectionSource.ShouldContain(".Where(");
+        projectionSource.ShouldContain("x.Child != null");
+        projectionSource.ShouldContain("ProjectedChild = new global::HookFixture.HookProjectedChildDto");
+        projectionSource.ShouldContain("SelectedChild = new global::HookFixture.HookChildDto");
     }
 
     [Test]
@@ -845,6 +893,7 @@ public sealed class SourceGeneratorSmokeTests
             }
 
             public partial class HookDto;
+            public partial class HookProjectedChildDto;
 
             public static class HookQueries
             {
@@ -852,6 +901,12 @@ public sealed class SourceGeneratorSmokeTests
                     => query.SelectExpr<HookEntity, HookDto>((x, helper) => new
                     {
                         ChildName = helper.AsLeftJoin(x.Child).Name,
+                        RequiredChildName = helper.AsInnerJoin(x.Child!).Name,
+                        ProjectedChild = x.Child!.AsProjection<HookProjectedChildDto>(),
+                        SelectedChild = helper.Project<HookChild>(x.Child!).Select(child => new
+                        {
+                            child.Name,
+                        }),
                     });
             }
             """;

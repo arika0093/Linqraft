@@ -324,14 +324,20 @@ internal static class SourceWriters
                         && request.ReceiverKind == ReceiverKind.IQueryable
                             ? expressionFieldName
                             : lambda;
+                    var querySource = $"(({matchedQueryType})(object)query)";
+                    if (request.InnerJoinFilterBodyText is { } innerJoinFilterBodyText)
+                    {
+                        querySource =
+                            $"{querySource}.Where({ProjectionBodyEmitter.AppendValueInline($"{request.SelectorParameterName} => ", innerJoinFilterBodyText)})";
+                    }
                     var convertedInvocation = request.OperationKind switch
                     {
                         ProjectionOperationKind.Select =>
-                            $"(({matchedQueryType})(object)query).Select({selectArgument})",
+                            $"{querySource}.Select({selectArgument})",
                         ProjectionOperationKind.SelectMany =>
-                            $"(({matchedQueryType})(object)query).SelectMany({lambda})",
+                            $"{querySource}.SelectMany({lambda})",
                         ProjectionOperationKind.GroupBy =>
-                            $"(({matchedQueryType})(object)query).GroupBy({ProjectionBodyEmitter.AppendValueInline($"{request.KeySelectorParameterName} => ", request.KeySelectorBodyText ?? "default!")}).Select({lambda})",
+                            $"{querySource}.GroupBy({ProjectionBodyEmitter.AppendValueInline($"{request.KeySelectorParameterName} => ", request.KeySelectorBodyText ?? "default!")}).Select({lambda})",
                         _ => throw new InvalidOperationException(
                             $"Unsupported projection operation '{request.OperationKind}'."
                         ),

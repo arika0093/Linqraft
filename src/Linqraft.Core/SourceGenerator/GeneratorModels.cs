@@ -164,6 +164,8 @@ internal sealed record ProjectionRequestTemplate
 
     public string? KeySelectorBodyTemplate { get; init; }
 
+    public string? InnerJoinFilterBodyTemplate { get; init; }
+
     public required bool UseObjectSelectorSignature { get; init; }
 
     public required bool CanUsePrebuiltExpressionWhenConfigured { get; init; }
@@ -306,6 +308,8 @@ internal sealed record ProjectionRequest
     public string? KeySelectorParameterName { get; init; }
 
     public string? KeySelectorBodyText { get; init; }
+
+    public string? InnerJoinFilterBodyText { get; init; }
 
     public required bool UseObjectSelectorSignature { get; init; }
 

@@ -15,9 +15,24 @@ public enum LinqraftProjectionHookKind
     LeftJoin,
 
     /// <summary>
+    /// Rewrites a nullable navigation access chain without adding null-guards so providers can keep inner-join semantics.
+    /// </summary>
+    InnerJoin,
+
+    /// <summary>
     /// Inlines the body of a source-defined computed property or method into the generated projection.
     /// </summary>
     Projectable,
+
+    /// <summary>
+    /// Creates an explicit DTO projection from a member access instead of exposing the source member type directly.
+    /// </summary>
+    Projection,
+
+    /// <summary>
+    /// Creates a single-value projection context so a nested member can be shaped with a local Select expression.
+    /// </summary>
+    Project,
 }
 
 /// <summary>
@@ -41,7 +56,10 @@ public abstract class LinqraftGeneratorOptionsCore
         new List<LinqraftProjectionHookDefinition>
         {
             new("AsLeftJoin", LinqraftProjectionHookKind.LeftJoin),
+            new("AsInnerJoin", LinqraftProjectionHookKind.InnerJoin),
             new("AsProjectable", LinqraftProjectionHookKind.Projectable),
+            new("AsProjection", LinqraftProjectionHookKind.Projection),
+            new("Project", LinqraftProjectionHookKind.Project),
         }.AsReadOnly();
 
     /// <summary>
