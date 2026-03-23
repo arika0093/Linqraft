@@ -242,6 +242,57 @@ public sealed class SourceGeneratorSmokeTests
     }
 
     [Test]
+    public void Generator_emits_property_types_for_undeclared_explicit_dto_with_required_members()
+    {
+        var driver = CreateDriver(
+            new LinqraftGenerator(),
+            new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
+            {
+                ["build_property.RootNamespace"] = "SmokeFixture",
+                ["build_property.InterceptorsNamespaces"] = "Linqraft",
+                ["build_property.InterceptorsPreviewNamespaces"] = "Linqraft",
+                ["build_property.LinqraftCommentOutput"] = "None",
+                ["build_property.LinqraftHasRequired"] = "true",
+                ["build_property.LinqraftUsePrebuildExpression"] = "true",
+                ["build_property.LinqraftGlobalUsing"] = "true",
+            }
+        );
+        var compilation = CreateCompilation(
+            [CreateUndeclaredExplicitDtoProjectionTree(), CreateMarkerTree("undeclared-explicit-dto-required")],
+            outputKind: OutputKind.ConsoleApplication
+        );
+
+        driver = driver.RunGeneratorsAndUpdateCompilation(
+            compilation,
+            out var outputCompilation,
+            out var diagnostics
+        );
+
+        diagnostics.ShouldBeEmpty();
+        outputCompilation
+            .GetDiagnostics()
+            .Where(diagnostic =>
+                diagnostic.Severity == DiagnosticSeverity.Error && diagnostic.Id != "CS9137"
+            )
+            .ShouldBeEmpty();
+
+        var generatedSources = GetGeneratedSourceMap(driver.GetRunResult());
+        var dtoSource = generatedSources.Values.Single(source =>
+            source.Contains(
+                "public partial class AutoSettingConditionInfoDto",
+                StringComparison.Ordinal
+            )
+        );
+
+        dtoSource.ShouldContain("public required global::System.Int32 Id { get; set; }");
+        dtoSource.ShouldContain("public required global::System.String Key { get; set; }");
+        dtoSource.ShouldContain("public required global::System.String Name { get; set; }");
+        dtoSource.ShouldContain(
+            "public required global::System.Boolean Available { get; set; }"
+        );
+    }
+
+    [Test]
     public void Generator_core_allows_overriding_linqraft_specific_options()
     {
         var driver = CreateDriver(
@@ -737,7 +788,8 @@ public sealed class SourceGeneratorSmokeTests
 
     private static CSharpCompilation CreateCompilation(
         IReadOnlyList<SyntaxTree> syntaxTrees,
-        bool treatWarningsAsErrors = false
+        bool treatWarningsAsErrors = false,
+        OutputKind outputKind = OutputKind.DynamicallyLinkedLibrary
     )
     {
         return CSharpCompilation.Create(
@@ -745,7 +797,7 @@ public sealed class SourceGeneratorSmokeTests
             syntaxTrees: syntaxTrees,
             references: GetMetadataReferences(),
             options: new CSharpCompilationOptions(
-                OutputKind.DynamicallyLinkedLibrary,
+                outputKind,
                 nullableContextOptions: NullableContextOptions.Enable,
                 generalDiagnosticOption: treatWarningsAsErrors
                     ? ReportDiagnostic.Error
@@ -831,6 +883,74 @@ public sealed class SourceGeneratorSmokeTests
             SourceText.From(source),
             new CSharpParseOptions(LanguageVersion.Preview),
             path: "SmokeProjection.cs"
+        );
+    }
+
+    private static SyntaxTree CreateUndeclaredExplicitDtoProjectionTree()
+    {
+        const string source = """
+            using System.Linq;
+            using Linqraft;
+
+            var dbContext = new DbContextMock();
+            var key = "test";
+            _ = dbContext
+                .TestRepos.Where(repo => repo.Key == key)
+                .SelectExpr<TestRepo, AutoSettingConditionInfoDto>(repo => new
+                {
+                    repo.Id,
+                    repo.Key,
+                    Name = repo.Data.TestRepoInfo.CommonName,
+                    Available = repo.Data.SomeInfo != null,
+                })
+                .FirstOrDefault();
+
+            public class DbContextMock
+            {
+                public IQueryable<TestRepo> TestRepos =>
+                    new[]
+                    {
+                        new TestRepo
+                        {
+                            Id = 1,
+                            Key = "test",
+                            Data = new TestRepoData
+                            {
+                                TestRepoInfo = new TestRepoInfo { CommonName = "common name" },
+                                SomeInfo = new TestRepoSomeInfo { Id = 1 },
+                            },
+                        },
+                    }.AsQueryable();
+            }
+
+            public class TestRepo
+            {
+                public int Id { get; set; }
+                public string Key { get; set; } = string.Empty;
+                public TestRepoData Data { get; set; } = new();
+            }
+
+            public class TestRepoData
+            {
+                public TestRepoInfo TestRepoInfo { get; set; } = new();
+                public TestRepoSomeInfo? SomeInfo { get; set; }
+            }
+
+            public class TestRepoInfo
+            {
+                public string CommonName { get; set; } = string.Empty;
+            }
+
+            public class TestRepoSomeInfo
+            {
+                public int Id { get; set; }
+            }
+            """;
+
+        return CSharpSyntaxTree.ParseText(
+            SourceText.From(source),
+            new CSharpParseOptions(LanguageVersion.Preview),
+            path: "SmokeProjection.UndeclaredExplicitDto.cs"
         );
     }
 
