@@ -636,23 +636,15 @@ internal abstract class ProjectionSupportExtensionClassGenerator
         int signatureIndex
     )
     {
-        (string Name, string Description)[]? typeParameters;
-        if (hook.Kind == LinqraftProjectionHookKind.Projection && signatureIndex == 0)
+        var typeParameters = hook.Kind switch
         {
-            typeParameters = [("TResult", "The nested DTO type to generate.")];
-        }
-        else if (hook.Kind == LinqraftProjectionHookKind.Project)
-        {
-            typeParameters = [("T", "The source value type exposed to the nested selector.")];
-        }
-        else if (hook.Kind == LinqraftProjectionHookKind.Projection)
-        {
-            typeParameters = null;
-        }
-        else
-        {
-            typeParameters = [("T", "The source value type being marked for rewrite.")];
-        }
+            LinqraftProjectionHookKind.Projection when signatureIndex == 0 =>
+                new[] { ("TResult", "The nested DTO type to generate.") },
+            LinqraftProjectionHookKind.Projection => null,
+            LinqraftProjectionHookKind.Project =>
+                [("T", "The source value type exposed to the nested selector.")],
+            _ => [("T", "The source value type being marked for rewrite.")],
+        };
 
         var (summary, returnDescription, example) = hook.Kind switch
         {
