@@ -14,9 +14,8 @@ public class TutorialCaseTest
     {
         var orders = Orders
             .AsTestQueryable()
-            // Order: input entity type
-            // OrderDto: output DTO type (auto-generated)
-            .SelectExpr<Order, OrderDto>(o => new
+            .UseLinqraft()
+            .Select<OrderDto>(o => new
             {
                 o.Id,
                 CustomerName = o.Customer?.Name,
