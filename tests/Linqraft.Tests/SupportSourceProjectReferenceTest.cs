@@ -103,9 +103,3 @@ public sealed class SupportSourceProjectReferenceTest
             .PropertyType.ShouldBe(typeof(IEnumerable<ReferencedOrderItem>));
     }
 }
-
-public partial class ReferencedOrderFromCurrentProjectDto;
-
-public partial class ReferencedOrderWithExternalTypesDto;
-
-public partial class ReferencedOrderWithConstructedExternalTypesDto;

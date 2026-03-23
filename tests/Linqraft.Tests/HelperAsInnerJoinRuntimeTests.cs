@@ -48,5 +48,3 @@ public sealed class HelperAsInnerJoinRuntimeTests
             .ShouldBe(new[] { new { Id = 1, CustomerName = "Ada" } });
     }
 }
-
-public partial class HelperAsInnerJoinOrderDto;

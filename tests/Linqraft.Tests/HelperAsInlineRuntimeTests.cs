@@ -54,5 +54,3 @@ public sealed class HelperAsInlineRuntimeTests
             );
     }
 }
-
-public partial class HelperAsInlineOrderDto;

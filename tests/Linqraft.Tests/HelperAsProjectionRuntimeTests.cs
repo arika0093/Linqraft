@@ -76,8 +76,4 @@ public sealed class HelperAsProjectionRuntimeTests
     }
 }
 
-public partial class HelperAsProjectionExplicitOrderDto;
-
 public partial class HelperExplicitProjectedCustomerDto;
-
-public partial class HelperAsProjectionImplicitOrderDto;

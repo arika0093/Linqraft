@@ -36,5 +36,3 @@ public sealed class ReferencedOrderItem
 {
     public int Quantity { get; set; }
 }
-
-public partial class ReferencedOrderFromDependencyDto;

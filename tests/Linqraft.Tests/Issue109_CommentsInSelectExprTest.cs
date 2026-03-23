@@ -153,5 +153,3 @@ internal class TestForIssue109Child
     public required string Description { get; set; }
     public bool IsActive { get; set; }
 }
-
-internal partial class TestForIssue109Dto { }

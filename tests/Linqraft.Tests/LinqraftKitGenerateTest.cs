@@ -89,11 +89,3 @@ public sealed class GenerateSourceInvoice
     public int Id { get; set; }
     public decimal Total { get; set; }
 }
-
-public partial class GenerateAnonymousOrderDto;
-
-public partial class GenerateProjectionBundleDto;
-
-public partial class GenerateProjectionOrderRowDto;
-
-public partial class GenerateCapturedOrderDto;

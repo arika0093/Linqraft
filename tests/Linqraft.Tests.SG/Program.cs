@@ -874,9 +874,6 @@ public sealed class SourceGeneratorSmokeTests
                 public int Quantity { get; set; }
             }
 
-            public partial class SmokeOrderSummaryDto;
-
-            public partial class SmokeOrderTotalsDto;
             """;
 
         return CSharpSyntaxTree.ParseText(
@@ -1356,7 +1353,6 @@ public sealed class SourceGeneratorSmokeTests
                 }
             }
 
-            public partial class GeneratedCaptureDto;
             """;
 
         return CSharpSyntaxTree.ParseText(
@@ -1393,7 +1389,6 @@ public sealed class SourceGeneratorSmokeTests
                 public required string CustomerName { get; set; }
             }
 
-            public partial class UnresolvedQualifiedExternalTypeOrderDto;
             """;
 
         return CSharpSyntaxTree.ParseText(

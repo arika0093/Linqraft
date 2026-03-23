@@ -252,10 +252,6 @@ public partial class ProjectionDeclaredOrderDto
     public int Id { get; private set; }
 }
 
-public partial class ProjectionOrderFluentDto { }
-
-public partial class ProjectionOrderEnumerableFluentDto { }
-
 internal static class TrackingQueryable
 {
     public static TrackingQueryable<T> Create<T>()
