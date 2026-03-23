@@ -243,5 +243,4 @@ public sealed class EfCoreBasicProjectionTests
             .ToList()
             .ShouldBe(expected);
     }
-
 }

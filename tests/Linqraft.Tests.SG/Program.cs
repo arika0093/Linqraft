@@ -236,7 +236,9 @@ public sealed class SourceGeneratorSmokeTests
 
         projectionSource.ShouldContain(".Where(");
         projectionSource.ShouldContain("x.Child! != null");
-        projectionSource.ShouldContain("ProjectedChild = new global::HookFixture.HookProjectedChildDto");
+        projectionSource.ShouldContain(
+            "ProjectedChild = new global::HookFixture.HookProjectedChildDto"
+        );
         projectionSource.ShouldContain("SelectedChild = new global::HookFixture.HookChildDto");
     }
 

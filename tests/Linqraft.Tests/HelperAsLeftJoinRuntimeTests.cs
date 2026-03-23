@@ -38,11 +38,7 @@ public sealed class HelperAsLeftJoinRuntimeTests
             .OrderBy(order => order.Id)
             .SelectExpr<HelperProjectionOrder, HelperAsLeftJoinOrderDto>(
                 (order, helper) =>
-                    new
-                    {
-                        order.Id,
-                        CustomerName = helper.AsLeftJoin(order.Customer!).Name,
-                    }
+                    new { order.Id, CustomerName = helper.AsLeftJoin(order.Customer!).Name }
             )
             .ToList();
 

@@ -38,11 +38,7 @@ public sealed class HelperAsInnerJoinRuntimeTests
             .OrderBy(order => order.Id)
             .SelectExpr<HelperProjectionOrder, HelperAsInnerJoinOrderDto>(
                 (order, helper) =>
-                    new
-                    {
-                        order.Id,
-                        CustomerName = helper.AsInnerJoin(order.Customer!).Name,
-                    }
+                    new { order.Id, CustomerName = helper.AsInnerJoin(order.Customer!).Name }
             )
             .ToList();
 

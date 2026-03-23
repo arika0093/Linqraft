@@ -1124,7 +1124,12 @@ internal sealed class ProjectionExpressionEmitter
             return false;
         }
 
-        return TryBuildInnerJoinAccess(expression, value => value, out rewritten, cancellationToken);
+        return TryBuildInnerJoinAccess(
+            expression,
+            value => value,
+            out rewritten,
+            cancellationToken
+        );
     }
 
     private bool TryBuildInnerJoinAccess(
@@ -1372,9 +1377,7 @@ internal sealed class ProjectionExpressionEmitter
         var useAnonymousProjection =
             !_replacementTypes.TryGetValue(expression.Span, out var replacementType)
             && hookInvocation.GenericTypeArgument is null;
-        var dtoTypeName = useAnonymousProjection
-            ? "object"
-            : replacementType;
+        var dtoTypeName = useAnonymousProjection ? "object" : replacementType;
         if (!useAnonymousProjection && hookInvocation.GenericTypeArgument is not null)
         {
             dtoTypeName = QualifyType(hookInvocation.GenericTypeArgument, cancellationToken);
@@ -1400,11 +1403,7 @@ internal sealed class ProjectionExpressionEmitter
         rewritten = string.Empty;
         if (
             expression is not InvocationExpressionSyntax invocation
-            || !TryGetProjectedValueSelection(
-                invocation,
-                out var selectionInfo,
-                cancellationToken
-            )
+            || !TryGetProjectedValueSelection(invocation, out var selectionInfo, cancellationToken)
         )
         {
             return false;
@@ -1485,9 +1484,7 @@ internal sealed class ProjectionExpressionEmitter
         var receiver = Emit(targetExpression, cancellationToken);
         var receiverForAccess = WrapMemberAccessReceiver(receiver);
         var assignments = GetReadableProjectionProperties(targetType)
-            .Select(property =>
-                $"{property.Name} = {receiverForAccess}.{property.Name}"
-            )
+            .Select(property => $"{property.Name} = {receiverForAccess}.{property.Name}")
             .ToList();
         var projection = useAnonymousProjection
             ? BuildInitializerExpression("new", assignments, cancellationToken)
@@ -1568,11 +1565,7 @@ internal sealed class ProjectionExpressionEmitter
             })
             .ToList();
 
-        return BuildInitializerExpression(
-            $"new {projectedType}",
-            initializers,
-            cancellationToken
-        );
+        return BuildInitializerExpression($"new {projectedType}", initializers, cancellationToken);
     }
 
     private Dictionary<ISymbol, ExpressionSyntax> BuildLambdaParameterBindings(
@@ -1602,7 +1595,8 @@ internal sealed class ProjectionExpressionEmitter
         {
             SimpleLambdaExpressionSyntax simple => [simple.Parameter],
             ParenthesizedLambdaExpressionSyntax parenthesized => parenthesized
-                .ParameterList.Parameters,
+                .ParameterList
+                .Parameters,
             _ => [],
         };
     }
@@ -2247,12 +2241,7 @@ internal sealed class ProjectionExpressionEmitter
         CancellationToken cancellationToken = default
     )
     {
-        return TryGetProjectionHookInvocation(
-            invocation,
-            kind,
-            out _,
-            cancellationToken
-        );
+        return TryGetProjectionHookInvocation(invocation, kind, out _, cancellationToken);
     }
 
     private bool ContainsProjectionHook(
@@ -2275,13 +2264,18 @@ internal sealed class ProjectionExpressionEmitter
     {
         cancellationToken = ResolveCancellationToken(cancellationToken);
         foreach (
-            LinqraftProjectionHookKind kind in Enum.GetValues(
-                typeof(LinqraftProjectionHookKind)
-            )
+            LinqraftProjectionHookKind kind in Enum.GetValues(typeof(LinqraftProjectionHookKind))
         )
         {
             cancellationToken.ThrowIfCancellationRequested();
-            if (TryGetProjectionHookInvocation(invocation, kind, out var hookInvocation, cancellationToken))
+            if (
+                TryGetProjectionHookInvocation(
+                    invocation,
+                    kind,
+                    out var hookInvocation,
+                    cancellationToken
+                )
+            )
             {
                 return hookInvocation.TargetExpression;
             }

@@ -18,11 +18,7 @@ public sealed class HelperAsInnerJoinTests
 
         var expected = await query
             .Where(order => order.Customer != null)
-            .Select(order => new
-            {
-                order.OrderNumber,
-                CustomerName = order.Customer!.Name,
-            })
+            .Select(order => new { order.OrderNumber, CustomerName = order.Customer!.Name })
             .ToListAsync();
 
         var result = await query
@@ -36,9 +32,6 @@ public sealed class HelperAsInnerJoinTests
             )
             .ToListAsync();
 
-        result
-            .Select(row => new { row.OrderNumber, row.CustomerName })
-            .ToList()
-            .ShouldBe(expected);
+        result.Select(row => new { row.OrderNumber, row.CustomerName }).ToList().ShouldBe(expected);
     }
 }

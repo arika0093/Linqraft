@@ -67,11 +67,9 @@ public sealed class HelperProjectTests
                     new
                     {
                         order.OrderNumber,
-                        SelectedCustomer = helper.Project(order.Customer!).Select(customer => new
-                        {
-                            customer.Id,
-                            customer.Name,
-                        }),
+                        SelectedCustomer = helper
+                            .Project(order.Customer!)
+                            .Select(customer => new { customer.Id, customer.Name }),
                     }
             )
             .SingleAsync();

@@ -188,7 +188,8 @@ internal static class ProjectionHookSyntaxHelper
 
     private static TypeSyntax? GetSingleGenericTypeArgument(ExpressionSyntax expression)
     {
-        return GetInvocationNameSyntax(expression) is GenericNameSyntax genericName
+        return
+            GetInvocationNameSyntax(expression) is GenericNameSyntax genericName
             && genericName.TypeArgumentList.Arguments.Count == 1
             ? genericName.TypeArgumentList.Arguments[0]
             : null;

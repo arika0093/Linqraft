@@ -11,11 +11,12 @@ public sealed class HelperProjectionOrder
 
     public List<HelperProjectionItem> Items { get; set; } = [];
 
-    public string? FirstLargeItemName => this
-        .Items.Where(item => item.Quantity >= 2)
-        .OrderBy(item => item.Name)
-        .Select(item => item.Name)
-        .FirstOrDefault();
+    public string? FirstLargeItemName =>
+        this
+            .Items.Where(item => item.Quantity >= 2)
+            .OrderBy(item => item.Name)
+            .Select(item => item.Name)
+            .FirstOrDefault();
 }
 
 public sealed class HelperProjectionCustomer

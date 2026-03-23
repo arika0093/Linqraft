@@ -62,12 +62,7 @@ public sealed class HelperAsProjectionRuntimeTests
             .AsTestQueryable()
             .Where(order => order.Customer != null)
             .SelectExpr<HelperProjectionOrder, HelperAsProjectionImplicitOrderDto>(
-                (order, helper) =>
-                    new
-                    {
-                        order.Id,
-                        Customer = helper.AsProjection(order.Customer!),
-                    }
+                (order, helper) => new { order.Id, Customer = helper.AsProjection(order.Customer!) }
             )
             .ToList();
 

@@ -64,11 +64,7 @@ public sealed class HelperAsProjectionTests
             .Where(order => order.OrderNumber == "ORD-001")
             .SelectExpr<EfOrder, EfHelperAsProjectionImplicitOrderDto>(
                 (order, helper) =>
-                    new
-                    {
-                        order.OrderNumber,
-                        Customer = helper.AsProjection(order.Customer!),
-                    }
+                    new { order.OrderNumber, Customer = helper.AsProjection(order.Customer!) }
             )
             .SingleAsync();
 

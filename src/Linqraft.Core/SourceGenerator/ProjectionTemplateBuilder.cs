@@ -1136,9 +1136,11 @@ internal static class ProjectionTemplateBuilder
             var conditions = new List<string>();
             var seenConditions = new HashSet<string>(StringComparer.Ordinal);
             foreach (
-                var invocation in expression.DescendantNodesAndSelf(
-                    descendIntoChildren: node => node is not LambdaExpressionSyntax
-                ).OfType<InvocationExpressionSyntax>()
+                var invocation in expression
+                    .DescendantNodesAndSelf(descendIntoChildren: node =>
+                        node is not LambdaExpressionSyntax
+                    )
+                    .OfType<InvocationExpressionSyntax>()
             )
             {
                 cancellationToken.ThrowIfCancellationRequested();
@@ -1163,15 +1165,15 @@ internal static class ProjectionTemplateBuilder
                     .Type;
                 if (
                     targetType is { IsValueType: true }
-                    && targetType.OriginalDefinition.SpecialType
-                        != SpecialType.System_Nullable_T
+                    && targetType.OriginalDefinition.SpecialType != SpecialType.System_Nullable_T
                 )
                 {
                     continue;
                 }
 
                 var targetTypeName = targetType?.ToFullyQualifiedTypeName() ?? "object";
-                var condition = $"{CreateValueTemplate(
+                var condition =
+                    $"{CreateValueTemplate(
                     hookInvocation.TargetExpression,
                     targetTypeName,
                     useEmptyCollectionFallback: false,
@@ -1616,7 +1618,10 @@ internal static class ProjectionTemplateBuilder
                 return false;
             }
 
-            var targetType = GetProjectionSourceType(hookInvocation.TargetExpression, cancellationToken);
+            var targetType = GetProjectionSourceType(
+                hookInvocation.TargetExpression,
+                cancellationToken
+            );
             if (targetType is null)
             {
                 return false;
@@ -1721,10 +1726,9 @@ internal static class ProjectionTemplateBuilder
             {
                 if (!namedContext && selectionInfo.ProjectInvocation.GenericTypeArgument is null)
                 {
-                    var inferredAnonymousType = _semanticModel.GetTypeInfo(
-                        anonymousBody,
-                        cancellationToken
-                    ).Type;
+                    var inferredAnonymousType = _semanticModel
+                        .GetTypeInfo(anonymousBody, cancellationToken)
+                        .Type;
                     typeTemplate = ApplyExpressionNullability(
                         inferredAnonymousType?.ToFullyQualifiedTypeName() ?? "object",
                         targetExpressionType
@@ -1802,14 +1806,16 @@ internal static class ProjectionTemplateBuilder
                     );
                 }
 
-                var namedBodyType = ResolveNamedType(
-                    namedBody.Type,
-                    _semanticModel,
-                    defaultNamespace,
-                    cancellationToken
-                )
-                    ?? _semanticModel.GetTypeInfo(namedBody.Type, cancellationToken).Type
-                        ?.ToFullyQualifiedTypeName()
+                var namedBodyType =
+                    ResolveNamedType(
+                        namedBody.Type,
+                        _semanticModel,
+                        defaultNamespace,
+                        cancellationToken
+                    )
+                    ?? _semanticModel
+                        .GetTypeInfo(namedBody.Type, cancellationToken)
+                        .Type?.ToFullyQualifiedTypeName()
                     ?? namedBody.Type.ToString();
                 typeTemplate = ApplyExpressionNullability(namedBodyType, targetExpressionType);
                 return true;
@@ -1883,8 +1889,9 @@ internal static class ProjectionTemplateBuilder
             return type switch
             {
                 INamedTypeSymbol namedType
-                    when namedType.OriginalDefinition.SpecialType == SpecialType.System_Nullable_T =>
-                    namedType.TypeArguments[0] as INamedTypeSymbol,
+                    when namedType.OriginalDefinition.SpecialType
+                        == SpecialType.System_Nullable_T => namedType.TypeArguments[0]
+                    as INamedTypeSymbol,
                 INamedTypeSymbol namedType => namedType,
                 _ => null,
             };
@@ -1918,16 +1925,14 @@ internal static class ProjectionTemplateBuilder
                 .GroupBy(property => property.Name, StringComparer.Ordinal)
                 .Select(group => group.First())
                 .OrderBy(property => property.Name, StringComparer.Ordinal)
-                .Select(property =>
-                    new GeneratedPropertyTemplateModel
-                    {
-                        Name = property.Name,
-                        TypeTemplate = property.Type.ToFullyQualifiedTypeName(),
-                        FallbackTypeTemplate = property.Type.ToFullyQualifiedTypeName(),
-                        Documentation = null,
-                        IsSuppressed = existingPropertyNames.Contains(property.Name),
-                    }
-                )
+                .Select(property => new GeneratedPropertyTemplateModel
+                {
+                    Name = property.Name,
+                    TypeTemplate = property.Type.ToFullyQualifiedTypeName(),
+                    FallbackTypeTemplate = property.Type.ToFullyQualifiedTypeName(),
+                    Documentation = null,
+                    IsSuppressed = existingPropertyNames.Contains(property.Name),
+                })
                 .ToArray();
         }
 
@@ -1943,8 +1948,7 @@ internal static class ProjectionTemplateBuilder
             IEnumerable<GeneratedPropertyTemplateModel> properties
         )
         {
-            return
-                $"{templateId}|{string.Join(";", properties.Select(property => $"{property.Name}:{property.TypeTemplate}:{property.FallbackTypeTemplate}:{property.IsSuppressed}"))}";
+            return $"{templateId}|{string.Join(";", properties.Select(property => $"{property.Name}:{property.TypeTemplate}:{property.FallbackTypeTemplate}:{property.IsSuppressed}"))}";
         }
 
         private static string CreateProjectionDtoName(string name)

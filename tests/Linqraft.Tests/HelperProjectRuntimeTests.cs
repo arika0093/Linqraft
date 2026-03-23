@@ -43,7 +43,12 @@ public sealed class HelperProjectRuntimeTests
                         order.Id,
                         SelectedCustomer = helper
                             .Project<HelperProjectionCustomer>(order.Customer!)
-                            .Select(customer => new { customer.Id, customer.Name, customer.Tier }),
+                            .Select(customer => new
+                            {
+                                customer.Id,
+                                customer.Name,
+                                customer.Tier,
+                            }),
                     }
             )
             .ToList();
@@ -66,11 +71,9 @@ public sealed class HelperProjectRuntimeTests
                     new
                     {
                         order.Id,
-                        SelectedCustomer = helper.Project(order.Customer!).Select(customer => new
-                        {
-                            customer.Id,
-                            customer.Name,
-                        }),
+                        SelectedCustomer = helper
+                            .Project(order.Customer!)
+                            .Select(customer => new { customer.Id, customer.Name }),
                     }
             )
             .ToList();

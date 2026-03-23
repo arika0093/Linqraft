@@ -11,11 +11,7 @@ public static partial class MappingHelperTestQueries
     ) =>
         source.SelectExpr<MappingHelperOrder, MappingHelperLeftJoinOrderDto>(
             (order, helper) =>
-                new
-                {
-                    order.Id,
-                    CustomerName = helper.AsLeftJoin(order.Customer!).Name,
-                }
+                new { order.Id, CustomerName = helper.AsLeftJoin(order.Customer!).Name }
         );
 
     [LinqraftMappingGenerate("ProjectToHelperInnerJoinDto")]
@@ -24,11 +20,7 @@ public static partial class MappingHelperTestQueries
     ) =>
         source.SelectExpr<MappingHelperOrder, MappingHelperInnerJoinOrderDto>(
             (order, helper) =>
-                new
-                {
-                    order.Id,
-                    CustomerName = helper.AsInnerJoin(order.Customer!).Name,
-                }
+                new { order.Id, CustomerName = helper.AsInnerJoin(order.Customer!).Name }
         );
 }
 
@@ -41,11 +33,7 @@ public sealed class HelperWithMappingGenerateTest
             Id = 1,
             Customer = new MappingHelperCustomer { Name = "Ada" },
         },
-        new()
-        {
-            Id = 2,
-            Customer = null,
-        },
+        new() { Id = 2, Customer = null },
     ];
 
     [Test]

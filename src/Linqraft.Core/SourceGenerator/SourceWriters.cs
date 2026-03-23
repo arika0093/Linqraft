@@ -335,10 +335,8 @@ internal static class SourceWriters
                     }
                     var convertedInvocation = request.OperationKind switch
                     {
-                        ProjectionOperationKind.Select =>
-                            $"{querySource}.Select({selectArgument})",
-                        ProjectionOperationKind.SelectMany =>
-                            $"{querySource}.SelectMany({lambda})",
+                        ProjectionOperationKind.Select => $"{querySource}.Select({selectArgument})",
+                        ProjectionOperationKind.SelectMany => $"{querySource}.SelectMany({lambda})",
                         ProjectionOperationKind.GroupBy =>
                             $"{querySource}.GroupBy({ProjectionBodyEmitter.AppendValueInline($"{request.KeySelectorParameterName} => ", request.KeySelectorBodyText ?? "default!")}).Select({lambda})",
                         _ => throw new InvalidOperationException(
