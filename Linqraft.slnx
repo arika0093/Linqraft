@@ -14,6 +14,7 @@
   </Folder>
   <Folder Name="/src/">
     <File Path="src/Directory.Build.props" />
+    <File Path="version.json" />
     <Project Path="src/Linqraft.Analyzer/Linqraft.Analyzer.csproj" />
     <Project Path="src/Linqraft.Core/Linqraft.Core.csproj" />
     <Project Path="src/Linqraft.Generator/Linqraft.Generator.csproj" />
