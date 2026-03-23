@@ -28,7 +28,8 @@ public partial class Issue239_DuplicateChildDtoTest
         // This should generate only ONE ItemDto class definition, not two
         var result1 = _testData
             .AsTestQueryable()
-            .SelectExpr(x => new
+            .UseLinqraft()
+            .Select(x => new
             {
                 x.Id,
                 x.Name,
@@ -39,7 +40,8 @@ public partial class Issue239_DuplicateChildDtoTest
 
         var result2 = _testData
             .AsTestQueryable()
-            .SelectExpr(x => new
+            .UseLinqraft()
+            .Select(x => new
             {
                 x.Id,
                 x.Name,

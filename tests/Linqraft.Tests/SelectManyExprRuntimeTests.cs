@@ -71,6 +71,77 @@ public sealed class SelectManyExprRuntimeTests
     }
 
     [Test]
+    public void UseLinqraft_SelectMany_projects_flattened_rows()
+    {
+        var result = Parents
+            .AsTestQueryable()
+            .UseLinqraft()
+            .SelectMany<SelectManyExprFluentChildRowDto>(parent =>
+                parent.Children.Select(child => new
+                {
+                    ParentId = parent.Id,
+                    ChildId = child.Id,
+                    ChildName = child.Name,
+                })
+            )
+            .OrderBy(x => x.ChildId)
+            .ToList();
+
+        result.Count.ShouldBe(3);
+        result[0].ParentId.ShouldBe(10);
+        result[0].ChildName.ShouldBe("ChildA-1");
+        result[2].ParentId.ShouldBe(20);
+        result[2].ChildId.ShouldBe(201);
+    }
+
+    [Test]
+    public void IEnumerable_UseLinqraft_SelectMany_projects_flattened_rows()
+    {
+        var result = Parents
+            .UseLinqraft()
+            .SelectMany<SelectManyExprFluentChildRowDto>(parent =>
+                parent.Children.Select(child => new
+                {
+                    ParentId = parent.Id,
+                    ChildId = child.Id,
+                    ChildName = child.Name,
+                })
+            )
+            .OrderBy(x => x.ChildId)
+            .ToList();
+
+        result.Count.ShouldBe(3);
+        result[0].ParentId.ShouldBe(10);
+        result[2].ChildId.ShouldBe(201);
+    }
+
+    [Test]
+    public void UseLinqraft_SelectMany_supports_delegate_capture()
+    {
+        var minimumGrandChildren = 1;
+        var result = Parents
+            .AsTestQueryable()
+            .UseLinqraft()
+            .SelectMany<SelectManyExprFluentChildRowDto>(
+                parent =>
+                    parent.Children
+                        .Where(child => child.GrandChildren.Count >= minimumGrandChildren)
+                        .Select(child => new
+                        {
+                            ParentId = parent.Id,
+                            ChildId = child.Id,
+                            ChildName = child.Name,
+                        }),
+                capture: () => minimumGrandChildren
+            )
+            .OrderBy(x => x.ChildId)
+            .ToList();
+
+        result.Count.ShouldBe(2);
+        result.Select(x => x.ChildId).ShouldBe([101, 102]);
+    }
+
+    [Test]
     public void SelectManyExpr_supports_internal_select_in_projected_members()
     {
         var result = Parents
@@ -135,6 +206,8 @@ public sealed class SelectManyExprGrandChild
 }
 
 public partial class SelectManyExprChildRowDto;
+
+public partial class SelectManyExprFluentChildRowDto;
 
 public partial class SelectManyExprGrandChildListDto;
 

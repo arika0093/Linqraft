@@ -27,7 +27,7 @@ public class Issue239_MinimalReproTest
 
         // result1 and result2 use the exact same anonymous structure
         // They should share the same ItemTitlesDto definition
-        var result1 = data.SelectExpr(x => new
+        var result1 = data.UseLinqraft().Select(x => new
             {
                 x.Id,
                 x.Name,
@@ -36,7 +36,7 @@ public class Issue239_MinimalReproTest
             })
             .ToList();
 
-        var result2 = data.SelectExpr(x => new
+        var result2 = data.UseLinqraft().Select(x => new
             {
                 x.Id,
                 x.Name,

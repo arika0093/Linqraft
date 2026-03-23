@@ -1,6 +1,6 @@
 # Usage Patterns
 
-Linqraft provides several usage patterns for different scenarios. This guide explains when and how to use each pattern, including `SelectExpr`-based projections and `LinqraftKit.Generate` for non-query object generation.
+Linqraft provides several usage patterns for different scenarios. This guide explains when and how to use each pattern, including the recommended `UseLinqraft().Select<TDto>(...)` query style, `SelectExpr`-based projections, and `LinqraftKit.Generate` for non-query object generation.
 
 ## Overview
 
@@ -15,7 +15,7 @@ Linqraft provides several usage patterns for different scenarios. This guide exp
 
 ## Anonymous Pattern
 
-Use `SelectExpr` without generic type parameters to get an anonymous-type projection.
+Use `UseLinqraft().Select(...)` without generic type parameters to get an anonymous-type projection.
 
 ### When to Use
 * Quick data exploration
@@ -26,7 +26,8 @@ Use `SelectExpr` without generic type parameters to get an anonymous-type projec
 
 ```csharp
 var orders = await dbContext.Orders
-    .SelectExpr(o => new
+    .UseLinqraft()
+    .Select(o => new
     {
         o.Id,
         CustomerName = o.Customer?.Name,
@@ -51,7 +52,7 @@ var orders = await dbContext.Orders
 
 ## Explicit DTO Pattern
 
-Specify the input entity type and output DTO type as generic parameters. Linqraft automatically generates the DTO class based on your selector.
+Use `UseLinqraft().Select<TDto>(...)` so the source type is inferred from the query and Linqraft automatically generates the DTO class based on your selector.
 
 ### When to Use
 * API endpoints
@@ -63,9 +64,9 @@ Specify the input entity type and output DTO type as generic parameters. Linqraf
 
 ```csharp
 var orders = await dbContext.Orders
-    // Order: input entity type
     // OrderDto: output DTO type (auto-generated)
-    .SelectExpr<Order, OrderDto>(o => new
+    .UseLinqraft()
+    .Select<OrderDto>(o => new
     {
         o.Id,
         CustomerName = o.Customer?.Name,
@@ -80,6 +81,8 @@ var orders = await dbContext.Orders
 
 // Result type: List<OrderDto>
 ```
+
+`SelectExpr<Order, OrderDto>(...)` remains supported, but the fluent `UseLinqraft().Select<OrderDto>(...)` form is recommended because it makes the Linqraft-specific projection explicit while still inferring the source type from the query.
 
 ### Generated Code
 
@@ -107,11 +110,12 @@ namespace LinqraftGenerated_HASH
 
 ### Working with IEnumerable
 
-You can also use `SelectExpr` with `IEnumerable<T>` for in-memory collections:
+You can also use `UseLinqraft().Select<TDto>(...)` with `IEnumerable<T>` for in-memory collections:
 
 ```csharp
 var orders = myList
-    .SelectExpr<Order, OrderDto>(o => new
+    .UseLinqraft()
+    .Select<OrderDto>(o => new
     {
         o.Id,
         CustomerName = o.Customer?.Name,
@@ -151,7 +155,7 @@ public partial class OrderDto
 
 ## Pre-existing DTO Pattern
 
-Use your own pre-defined DTO classes with `SelectExpr`. This pattern doesn't generate DTOs but still provides null-propagation support.
+Use your own pre-defined DTO classes with `UseLinqraft().Select(...)`. This pattern doesn't generate DTOs but still provides null-propagation support.
 
 ### When to Use
 * When you already have DTO classes
@@ -174,9 +178,10 @@ public class OrderDto
     public decimal TotalAmount { get; set; }
 }
 
-// Use SelectExpr with your DTO
+// Use UseLinqraft().Select with your DTO
 var orders = await dbContext.Orders
-    .SelectExpr(o => new OrderDto
+    .UseLinqraft()
+    .Select(o => new OrderDto
     {
         Id = o.Id,
         CustomerName = o.Customer?.Name, // null-propagation still works
@@ -201,15 +206,16 @@ var orders = await dbContext.Orders
 
 ## Aggregation & Flattening Helpers
 
-`GroupByExpr` and `SelectManyExpr` reuse the same DTO-generation pipeline as `SelectExpr`, but let you skip manual intermediate `GroupBy(...).Select(...)` and `SelectMany(...).Select(...)` steps.
+`UseLinqraft().GroupBy(...)` / `UseLinqraft().SelectMany(...)` (recommended) and `GroupByExpr` / `SelectManyExpr` reuse the same DTO-generation pipeline as `SelectExpr`, but let you skip manual intermediate `GroupBy(...).Select(...)` and `SelectMany(...).Select(...)` steps.
 
 ### GroupByExpr
 
-Use `GroupByExpr` when the final result is a projection over an `IGrouping<TKey, TSource>`.
+Use `UseLinqraft().GroupBy(...)` when the final result is a projection over an `IGrouping<TKey, TSource>`.
 
 ```csharp
 var result = dbContext.HealthChecks
-    .GroupByExpr<HealthCheck, string, HealthSummaryDto>(
+    .UseLinqraft()
+    .GroupBy<string, HealthSummaryDto>(
         check => check.Region,
         group => new
         {
@@ -226,11 +232,12 @@ var result = dbContext.HealthChecks
 
 ### SelectManyExpr
 
-Use `SelectManyExpr` when the end result is a flattened projection.
+Use `UseLinqraft().SelectMany(...)` when the end result is a flattened projection.
 
 ```csharp
 var rows = dbContext.Orders
-    .SelectManyExpr<Order, OrderItemRow>(order =>
+    .UseLinqraft()
+    .SelectMany<OrderItemRow>(order =>
         order.Items.Select(item => new
         {
             OrderId = order.Id,

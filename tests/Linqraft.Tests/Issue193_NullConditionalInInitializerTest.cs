@@ -31,7 +31,8 @@ public class Issue193_NullConditionalInInitializerTest
     {
         var result = _data
             .AsTestQueryable()
-            .SelectExpr(x => new Issue193_EntityDto
+            .UseLinqraft()
+            .Select(x => new Issue193_EntityDto
             {
                 Id = x.Id,
                 Name = x.Name,
@@ -85,7 +86,8 @@ public class Issue193_NullConditionalInInitializerTest
         };
 
         var result = data.AsTestQueryable()
-            .SelectExpr(x => new Issue193_EntityWithNullableItemsDto
+            .UseLinqraft()
+            .Select(x => new Issue193_EntityWithNullableItemsDto
             {
                 Id = x.Id,
                 Name = x.Name,
@@ -135,7 +137,8 @@ public class Issue193_NullConditionalInInitializerTest
         };
 
         var result = data.AsTestQueryable()
-            .SelectExpr(x => new Issue193_EntityWithNullableItemsDto
+            .UseLinqraft()
+            .Select(x => new Issue193_EntityWithNullableItemsDto
             {
                 Id = x.Id,
                 Name = x.Name,

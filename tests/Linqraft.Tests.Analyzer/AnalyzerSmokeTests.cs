@@ -306,6 +306,65 @@ public sealed class AnalyzerSmokeTests
     }
 
     [Test]
+    public async Task UseLinqraft_select_does_not_report_queryable_select_diagnostic()
+    {
+        const string source = """
+            using System;
+            using System.Linq;
+            using Linqraft;
+
+            namespace Linqraft
+            {
+                public interface IProjectionHelper
+                {
+                }
+
+                public sealed class LinqraftQuery<T>
+                    where T : class
+                {
+                    public IQueryable<TResult> Select<TResult>(Func<T, TResult> selector) => throw null!;
+                    public IQueryable<TResult> Select<TResult>(Func<T, IProjectionHelper, TResult> selector) => throw null!;
+                    public IQueryable<TResult> Select<TResult>(Func<T, TResult> selector, Func<object> capture) => throw null!;
+                    public IQueryable<TResult> Select<TResult>(Func<T, IProjectionHelper, TResult> selector, Func<object> capture) => throw null!;
+                }
+
+                public static class LinqraftQueryExtensions
+                {
+                    public static LinqraftQuery<T> UseLinqraft<T>(this IQueryable<T> query)
+                        where T : class => throw null!;
+                }
+            }
+
+            public class Entity
+            {
+                public int Id { get; set; }
+            }
+
+            public class EntityDto
+            {
+                public int Id { get; set; }
+            }
+
+            public class QueryHolder
+            {
+                public IQueryable<EntityDto> Project(IQueryable<Entity> source)
+                {
+                    return source
+                        .UseLinqraft()
+                        .Select<EntityDto>(entity => new
+                        {
+                            entity.Id,
+                        });
+                }
+            }
+            """;
+
+        var diagnostics = await GetDiagnosticsAsync(source);
+        diagnostics.Select(diagnostic => diagnostic.Id).ShouldNotContain("LQRS003");
+        diagnostics.Select(diagnostic => diagnostic.Id).ShouldNotContain("LQRS002");
+    }
+
+    [Test]
     public async Task Queryable_select_named_reports_LQRS003()
     {
         const string source = """

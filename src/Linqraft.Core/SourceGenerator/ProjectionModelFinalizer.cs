@@ -41,6 +41,7 @@ internal static class ProjectionModelFinalizer
                 Origin = requestTemplate.Origin,
                 OperationKind = requestTemplate.OperationKind,
                 ReceiverKind = requestTemplate.ReceiverKind,
+                UsesFluentQuerySyntax = requestTemplate.UsesFluentQuerySyntax,
                 Pattern = requestTemplate.Pattern,
                 SourceTypeName = requestTemplate.SourceTypeName,
                 ResultTypeName = resultTypeName,

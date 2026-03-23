@@ -12,6 +12,7 @@
     <PackageReadmeFile>README.nuget.md</PackageReadmeFile>
     <PackageIcon>linqraft.png</PackageIcon>
     <GenerateDocumentationFile>false</GenerateDocumentationFile>
+    <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
     <NoWarn>$(NoWarn);RSEXPERIMENTAL002</NoWarn>
   </PropertyGroup>
   <ItemGroup>

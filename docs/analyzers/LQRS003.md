@@ -5,7 +5,7 @@
 **Default:** Enabled
 
 ## Description
-Detects `System.Linq` `Select` invocations on `IQueryable<T>` whose selector creates an instance of a named type (e.g. `new SomeDto { ... }`). Such projections can be converted to Linqraft's `SelectExpr` to benefit from Linqraft projection semantics.
+Detects `System.Linq` `Select` invocations on `IQueryable<T>` whose selector creates an instance of a named type (e.g. `new SomeDto { ... }`). Such projections can be converted to Linqraft's `UseLinqraft().Select(...)` forms to benefit from Linqraft projection semantics.
 
 ## When It Triggers
 - The `Select` method is invoked from `System.Linq`.
@@ -21,21 +21,21 @@ Detects `System.Linq` `Select` invocations on `IQueryable<T>` whose selector cre
 ## Code Fixes
 `SelectToSelectExprNamedCodeFixProvider` registers three distinct fixes (titles shown are from the provider):
 
-- **Convert to SelectExpr<T, TDto>**
-  - Converts the `Select` method to a generic `SelectExpr<TSource, TDto>` and **converts the named object creation into an anonymous object**. This variant recursively converts nested object creations as well (deep conversion). It also runs the ternary-null simplifier on the generated anonymous structures, converting patterns like `x.A != null ? x.A.B : null` to `x.A?.B`.
+- **Convert to UseLinqraft().Select<TDto>()**
+  - Converts the `Select` method to a generic `UseLinqraft().Select<TDto>()` call and **converts the named object creation into an anonymous object**. This variant recursively converts nested object creations as well (deep conversion). It also runs the ternary-null simplifier on the generated anonymous structures, converting patterns like `x.A != null ? x.A.B : null` to `x.A?.B`.
 
-- **Convert to SelectExpr<T, TDto> (strict)**
+- **Convert to UseLinqraft().Select<TDto>() (strict)**
   - Similar to the above, but **does NOT apply ternary null check simplification**. This preserves the original ternary patterns (e.g., `x.A != null ? x.A.B : null` remains unchanged). Useful when you want to maintain the exact nullability structure of the original code. You can apply [LQRS004](LQRS004.md) manually afterward if needed.
 
-- **Convert to SelectExpr (use predefined classes)**
-  - Replaces the method name `Select` with `SelectExpr` (no generic type arguments) and preserves the existing named DTO type in the selector. This variant **does NOT apply ternary null check simplification**, preserving the original ternary patterns. You can apply [LQRS004](LQRS004.md) manually afterward if needed.
+- **Convert to UseLinqraft().Select() (use predefined classes)**
+  - Replaces the method name `Select` with `UseLinqraft().Select` (no generic type arguments) and preserves the existing named DTO type in the selector. This variant **does NOT apply ternary null check simplification**, preserving the original ternary patterns. You can apply [LQRS004](LQRS004.md) manually afterward if needed.
 
 All three conversions also add the required `capture:` entries automatically when the selector uses outer variables.
 
 ### Automatic Ternary Null Check Simplification
 Selectors that contain these patterns are reported as [LQRS006](./LQRS006.md), but they reuse the same code-fix family.
 
-The first code fix option **automatically simplifies ternary null check patterns**. When converting `Select` to `SelectExpr`, patterns like:
+The first code fix option **automatically simplifies ternary null check patterns**. When converting `Select` to `UseLinqraft().Select(...)`, patterns like:
 
 ```csharp
 prop = x.A != null ? x.A.B : null
@@ -54,7 +54,7 @@ These three options map directly to the code-fix implementations: `ConvertToSele
 ## Examples
 The examples below show the concrete transformations performed by each fix.
 
-1) Convert to `SelectExpr<T, TDto>` (with ternary simplification)
+1) Convert to `UseLinqraft().Select<TDto>()` (with ternary simplification)
 
 Before:
 ```csharp
@@ -73,7 +73,7 @@ After:
 ```csharp
 var result = query
     .SelectMany(g => g.Items)
-    .SelectExpr<Product, ResultDto_HASH>(x => new // root converted to anonymous
+    .UseLinqraft().Select<ResultDto_HASH>(x => new // root converted to anonymous
     {
         Id = x.Id,
         Name = x.Name,
@@ -87,7 +87,7 @@ Notes:
 - Ternary null check patterns are simplified to null-conditional operators.
 - A DTO name (e.g. `ResultDto_HASH`) is generated for the generic type argument.
 
-2) Convert to `SelectExpr<T, TDto>` (struct - no ternary simplification)
+2) Convert to `UseLinqraft().Select<TDto>()` (strict - no ternary simplification)
 
 Before:
 ```csharp
@@ -106,7 +106,7 @@ After (struct fix):
 ```csharp
 var result = query
     .Where(p => p.IsActive)
-    .SelectExpr<Product, ResultDto_HASH>(x => new // root converted to anonymous
+    .UseLinqraft().Select<ResultDto_HASH>(x => new // root converted to anonymous
     {
         Id = x.Id,
         Name = x.Name,
@@ -120,7 +120,7 @@ Notes:
 - Ternary null check patterns are **preserved** - no simplification is applied.
 - Use this option when you need to maintain the exact nullability structure.
 
-3) Convert to `SelectExpr` (predefined)
+3) Convert to `UseLinqraft().Select()` (predefined)
 
 Before:
 ```csharp
@@ -135,7 +135,7 @@ var result = query.Select(x => new ProductDto
 
 After (predefined fix):
 ```csharp
-var result = query.SelectExpr(x => new ProductDto // named DTO preserved
+var result = query.UseLinqraft().Select(x => new ProductDto // named DTO preserved
 {
     Id = x.Id,
     Name = x.Name,
@@ -144,6 +144,6 @@ var result = query.SelectExpr(x => new ProductDto // named DTO preserved
 ```
 
 Notes:
-- This variant preserves the named DTO (`ProductDto`) and only changes the method to `SelectExpr`.
+- This variant preserves the named DTO (`ProductDto`) and only changes the call to `UseLinqraft().Select(...)`.
 - Ternary null check patterns are **preserved** - no simplification is applied.
 - You can apply [LQRS004](LQRS004.md) manually afterward if you want the simplified form.

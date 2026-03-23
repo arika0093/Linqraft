@@ -361,6 +361,17 @@ internal static class LinqraftGeneratorPipeline
     {
         return invocation.Expression switch
         {
+            MemberAccessExpressionSyntax
+            {
+                Name.Identifier.ValueText: "Select" or "SelectMany" or "GroupBy",
+                Expression: InvocationExpressionSyntax
+                {
+                    Expression: MemberAccessExpressionSyntax
+                    {
+                        Name.Identifier.ValueText: "UseLinqraft"
+                    }
+                }
+            } => true,
             MemberAccessExpressionSyntax memberAccess
                 when memberAccess.Name.Identifier.ValueText is var methodName
                     && (

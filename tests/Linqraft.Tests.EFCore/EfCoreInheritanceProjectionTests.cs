@@ -37,7 +37,8 @@ public sealed class EfCoreInheritanceProjectionTests
             .ToListAsync();
 
         var result = await query
-            .SelectExpr(order => new
+            .UseLinqraft()
+            .Select(order => new
             {
                 order.OrderNumber,
                 CardPaymentCount = order.Payments.OfType<EfCardPayment>().Count(),
@@ -95,7 +96,8 @@ public sealed class EfCoreInheritanceProjectionTests
             .ToListAsync();
 
         var result = await query
-            .SelectExpr(customer => new
+            .UseLinqraft()
+            .Select(customer => new
             {
                 customer.Name,
                 PointsTotal = customer
@@ -146,7 +148,8 @@ public sealed class EfCoreInheritanceProjectionTests
             .ToListAsync();
 
         var result = await query
-            .SelectExpr(payment => new
+            .UseLinqraft()
+            .Select(payment => new
             {
                 payment.Order.OrderNumber,
                 payment.Last4,
@@ -196,7 +199,8 @@ public sealed class EfCoreInheritanceProjectionTests
             .ToListAsync();
 
         var result = await query
-            .SelectExpr(reward => new
+            .UseLinqraft()
+            .Select(reward => new
             {
                 CustomerName = reward.Customer.Name,
                 reward.CouponCode,

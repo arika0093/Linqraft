@@ -79,11 +79,54 @@ public sealed class GeneratedProjectionRuntimeTests
     }
 
     [Test]
+    public void UseLinqraft_select_explicit_dto_projection_runs()
+    {
+        var result = Orders
+            .AsTestQueryable()
+            .UseLinqraft()
+            .Select<ProjectionOrderFluentDto>(order => new
+            {
+                order.Id,
+                CustomerName = order.Customer?.Name,
+                ItemCount = order.Items.Count,
+            })
+            .ToList();
+
+        result.Count.ShouldBe(2);
+        result[0].Id.ShouldBe(1);
+        result[0].CustomerName.ShouldBe("Ada");
+        result[0].ItemCount.ShouldBe(1);
+        result[1].CustomerName.ShouldBe("Grace");
+        result[1].ItemCount.ShouldBe(2);
+    }
+
+    [Test]
+    public void UseLinqraft_select_explicit_dto_projection_runs_for_enumerable()
+    {
+        var result = Orders
+            .UseLinqraft()
+            .Select<ProjectionOrderEnumerableFluentDto>(order => new
+            {
+                order.Id,
+                CustomerName = order.Customer?.Name,
+                ItemCount = order.Items.Count,
+            })
+            .OrderBy(order => order.Id)
+            .ToList();
+
+        result.Count.ShouldBe(2);
+        result[0].Id.ShouldBe(1);
+        result[0].CustomerName.ShouldBe("Ada");
+        result[1].ItemCount.ShouldBe(2);
+    }
+
+    [Test]
     public void Predefined_dto_projection_runs()
     {
         var result = Products
             .AsTestQueryable()
-            .SelectExpr(product => new ProjectionProductRow
+            .UseLinqraft()
+            .Select(product => new ProjectionProductRow
             {
                 Id = product.Id,
                 DisplayName = product.Name + "!",
@@ -101,7 +144,8 @@ public sealed class GeneratedProjectionRuntimeTests
     {
         var result = People
             .AsTestQueryable()
-            .SelectExpr(person => new
+            .UseLinqraft()
+            .Select(person => new
             {
                 person.Id,
                 DisplayName = person.FirstName + " " + person.LastName,
@@ -117,7 +161,8 @@ public sealed class GeneratedProjectionRuntimeTests
     public void IEnumerable_projection_runs()
     {
         var result = People
-            .SelectExpr<ProjectionPerson, ProjectionPersonListRow>(person => new
+            .UseLinqraft()
+            .Select<ProjectionPersonListRow>(person => new
             {
                 person.Id,
                 DisplayName = person.LastName + ", " + person.FirstName,
@@ -206,6 +251,10 @@ public partial class ProjectionDeclaredOrderDto
 {
     public int Id { get; private set; }
 }
+
+public partial class ProjectionOrderFluentDto { }
+
+public partial class ProjectionOrderEnumerableFluentDto { }
 
 internal static class TrackingQueryable
 {

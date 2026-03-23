@@ -83,7 +83,8 @@ public class TernaryNestedDtoTest
 
         var result = testData
             .AsTestQueryable()
-            .SelectExpr(p => new
+            .UseLinqraft()
+            .Select(p => new
             {
                 p.Id,
                 ChildItemInfo = p.Child != null ? new { Name = p.Child.Name } : null,

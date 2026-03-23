@@ -40,7 +40,8 @@ public class Issue172_PredefinedNestedNamedTypesTest
     {
         var result = _data
             .AsTestQueryable()
-            .SelectExpr(x => new Issue172_EntityDto
+            .UseLinqraft()
+            .Select(x => new Issue172_EntityDto
             {
                 Id = x.Id,
                 Name = x.Name,
@@ -80,7 +81,8 @@ public class Issue172_PredefinedNestedNamedTypesTest
     {
         var result = _data
             .AsTestQueryable()
-            .SelectExpr(x => new Issue172_EntityDto
+            .UseLinqraft()
+            .Select(x => new Issue172_EntityDto
             {
                 Id = x.Id,
                 Name = x.Name,
@@ -107,7 +109,8 @@ public class Issue172_PredefinedNestedNamedTypesTest
     {
         var result = _data
             .AsTestQueryable()
-            .SelectExpr(x => new Issue172_EntityDto
+            .UseLinqraft()
+            .Select(x => new Issue172_EntityDto
             {
                 Id = x.Id,
                 Name = x.Name,

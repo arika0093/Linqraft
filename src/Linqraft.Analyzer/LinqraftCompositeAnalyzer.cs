@@ -130,6 +130,9 @@ public sealed class LinqraftCompositeAnalyzer : DiagnosticAnalyzer
         if (
             reducedMethod?.Name
                 is not "SelectExpr"
+                    and not "Select"
+                    and not "SelectMany"
+                    and not "GroupBy"
                     and not "SelectManyExpr"
                     and not "GroupByExpr"
                     and not "Generate"
@@ -389,7 +392,7 @@ public sealed class LinqraftCompositeAnalyzer : DiagnosticAnalyzer
                 AnalyzerHelpers.IsSelectExprInvocation(invocation)
                 && AnalyzerHelpers.GetInvocationNameSyntax(invocation.Expression)
                     is GenericNameSyntax genericName
-                && genericName.TypeArgumentList.Arguments.Count >= 2
+                && genericName.TypeArgumentList.Arguments.Count >= 1
             );
 
         if (selectExpr is null)
@@ -399,7 +402,7 @@ public sealed class LinqraftCompositeAnalyzer : DiagnosticAnalyzer
 
         var generic = (GenericNameSyntax)
             AnalyzerHelpers.GetInvocationNameSyntax(selectExpr.Expression)!;
-        var dtoName = generic.TypeArgumentList.Arguments[1].ToString();
+        var dtoName = generic.TypeArgumentList.Arguments.Last().ToString();
         context.ReportDiagnostic(
             Diagnostic.Create(
                 DiagnosticDescriptors.ApiControllerProducesResponseType,
