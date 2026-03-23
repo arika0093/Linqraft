@@ -31,16 +31,17 @@ public sealed class HelperAsProjectionTests
                     {
                         order.OrderNumber,
                         Customer = helper.AsProjection<EfHelperProjectedCustomerDto>(
-                            order.Customer!
+                            order.Customer
                         ),
                     }
             )
             .SingleAsync();
 
-        result.Customer.GetType().ShouldBe(typeof(EfHelperProjectedCustomerDto));
+        var customer = result.Customer.ShouldNotBeNull();
+        customer.GetType().ShouldBe(typeof(EfHelperProjectedCustomerDto));
         result.OrderNumber.ShouldBe(expected.OrderNumber);
-        result.Customer.Id.ShouldBe(expected.CustomerId);
-        result.Customer.Name.ShouldBe(expected.CustomerName);
+        customer.Id.ShouldBe(expected.CustomerId);
+        customer.Name.ShouldBe(expected.CustomerName);
     }
 
     [Test]
@@ -63,15 +64,15 @@ public sealed class HelperAsProjectionTests
             .Context.Orders.AsNoTracking()
             .Where(order => order.OrderNumber == "ORD-001")
             .SelectExpr<EfOrder, EfHelperAsProjectionImplicitOrderDto>(
-                (order, helper) =>
-                    new { order.OrderNumber, Customer = helper.AsProjection(order.Customer!) }
+                (order, helper) => new { order.OrderNumber, Customer = helper.AsProjection(order.Customer) }
             )
             .SingleAsync();
 
-        result.Customer.GetType().Name.ShouldBe("EfCustomerDto");
+        var customer = result.Customer.ShouldNotBeNull();
+        customer.GetType().Name.ShouldBe("EfCustomerDto");
         result.OrderNumber.ShouldBe(expected.OrderNumber);
-        result.Customer.Id.ShouldBe(expected.CustomerId);
-        result.Customer.Name.ShouldBe(expected.CustomerName);
+        customer.Id.ShouldBe(expected.CustomerId);
+        customer.Name.ShouldBe(expected.CustomerName);
     }
 }
 

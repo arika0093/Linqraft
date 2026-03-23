@@ -126,34 +126,37 @@ Linqraft also supports explicit projection helpers for cases where you want the 
 var rows = dbContext.Orders
     .SelectExpr<Order, OrderRowDto>((o, helper) => new
     {
-        CustomerName = helper.AsLeftJoin(o.Customer!).Name,
-        RequiredCustomerName = helper.AsInnerJoin(o.Customer!).Name,
-        Customer = o.Customer!.AsProjection<CustomerDto>(),
-        CustomerSummary = helper.Project(o.Customer!).Select(customer => new
+        CustomerName = helper.AsLeftJoin(o.Customer).Name,
+        RequiredCustomerName = helper.AsInnerJoin(o.Customer).Name,
+        Customer = helper.AsProjection<CustomerDto>(o.Customer),
+        CustomerSummary = helper.Project(o.Customer).Select(customer => new
         {
             customer.Id,
             customer.Name,
         }),
-        FirstLargeItem = helper.AsProjectable(o.FirstLargeItemProductName),
+        FirstLargeItem = helper.AsInline(o.FirstLargeItemProductName),
     });
 ```
 
-Currently, the following helpers are available:
+<details>
+<summary>Currently, the following helpers are available</summary>
 
 * `AsLeftJoin(query)`
   * It generates queries that behave like a `LEFT JOIN`.
 * `AsInnerJoin(query)`
-  * It generates queries that behave like an `INNER JOIN` by filtering out rows where the hooked value is `null` before the generated projection runs.
-* `AsProjectable(query)`
+  * It generates queries that behave like an `INNER JOIN` by filtering out rows where the helper target is `null` before the generated projection runs.
+* `AsInline(query)`
   * It realizes the behavior like [EntityFrameworkCore.Projectables](https://github.com/EFNext/EntityFrameworkCore.Projectables).
   * That is, the query logic inside properties like `FirstLargeItemProductName` will be expanded as if it were written inline inside the SelectExpr.
-* `AsProjection<TDto>(query)` / `query.AsProjection<TDto>()`
+* `helper.AsProjection<TDto>(query)`
   * It creates a nested DTO explicitly instead of exposing the original member type directly.
   * If you omit `TDto`, Linqraft uses `[SourceTypeName]Dto`.
   * The generated nested DTO currently copies scalar, enum, string, and value-type members.
 * `Project<T>(query).Select(...)`
   * It shapes a nested projection without repeating the full member path.
   * If you omit `T`, Linqraft uses the destination member name and generates `[MemberName]Dto`.
+
+</details>
 
 ### No Dependencies 
 
@@ -299,7 +302,7 @@ For more usage patterns and examples, see the [Usage Patterns Guide](./docs/libr
 * **[Partial Classes](./docs/library/partial-classes.md)** - Extending generated DTOs
 * **[Nested DTO Naming](./docs/library/nested-dto-naming.md)** - Customizing nested DTO names
 * **[Mapping Methods](./docs/library/mapping-methods.md)** - Generating mapping methods to class instead of interceptors
-* **[Projection Hooks](./docs/library/projection-hooks.md)** - Customizing projection behavior with hooks
+* **[Projection Helpers](./docs/library/projection-helpers.md)** - Customizing projection behavior with helpers
 * **[Nested SelectExpr](./docs/library/nested-selectexpr.md) (beta)** - Using nested SelectExpr for reusable DTOs
 * **[Auto-Generated Comments](./docs/library/auto-generated-comments.md)** - XML documentation generation
 * **[Global Properties](./docs/library/global-properties.md)** - MSBuild configuration options

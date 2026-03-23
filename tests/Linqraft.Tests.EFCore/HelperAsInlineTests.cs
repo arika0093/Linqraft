@@ -4,10 +4,10 @@ using Microsoft.EntityFrameworkCore;
 
 namespace Linqraft.Tests.EFCore;
 
-public sealed class HelperAsProjectableTests
+public sealed class HelperAsInlineTests
 {
     [Test]
-    public async Task Helper_AsProjectable_inlines_computed_property_over_sqlite()
+    public async Task Helper_AsInline_inlines_computed_property_over_sqlite()
     {
         await using var database = await SqliteTestDatabase.CreateAsync();
 
@@ -34,7 +34,7 @@ public sealed class HelperAsProjectableTests
                     new
                     {
                         order.OrderNumber,
-                        FirstLargeItemProductName = helper.AsProjectable(
+                        FirstLargeItemProductName = helper.AsInline(
                             order.FirstLargeItemProductName
                         ),
                     }
@@ -42,7 +42,13 @@ public sealed class HelperAsProjectableTests
             .ToListAsync();
 
         result
-            .Select(row => new { row.OrderNumber, row.FirstLargeItemProductName })
+            .Select(
+                row => new
+                {
+                    row.OrderNumber,
+                    FirstLargeItemProductName = (string?)row.FirstLargeItemProductName,
+                }
+            )
             .ToList()
             .ShouldBe(expected);
     }

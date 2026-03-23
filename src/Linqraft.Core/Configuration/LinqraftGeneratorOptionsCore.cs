@@ -57,7 +57,7 @@ public abstract class LinqraftGeneratorOptionsCore
         {
             new("AsLeftJoin", LinqraftProjectionHookKind.LeftJoin),
             new("AsInnerJoin", LinqraftProjectionHookKind.InnerJoin),
-            new("AsProjectable", LinqraftProjectionHookKind.Projectable),
+            new("AsInline", LinqraftProjectionHookKind.Projectable),
             new("AsProjection", LinqraftProjectionHookKind.Projection),
             new("Project", LinqraftProjectionHookKind.Project),
         }.AsReadOnly();

@@ -1727,7 +1727,7 @@ internal sealed class ProjectionExpressionEmitter
         if (expandedSymbol is not null && !_activeProjectableSymbols.Add(expandedSymbol))
         {
             throw new global::System.InvalidOperationException(
-                $"Detected recursive AsProjectable expansion for '{expandedSymbol.ToDisplayString()}'."
+                $"Detected recursive AsInline expansion for '{expandedSymbol.ToDisplayString()}'."
             );
         }
 
@@ -2100,7 +2100,7 @@ internal sealed class ProjectionExpressionEmitter
         if (!activeSymbols.Add(symbol))
         {
             throw new global::System.InvalidOperationException(
-                $"Detected recursive AsProjectable expansion for '{symbol.ToDisplayString()}'."
+                $"Detected recursive AsInline expansion for '{symbol.ToDisplayString()}'."
             );
         }
 

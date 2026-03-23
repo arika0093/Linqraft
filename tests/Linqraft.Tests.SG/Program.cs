@@ -183,20 +183,20 @@ public sealed class SourceGeneratorSmokeTests
         var generatedSources = GetGeneratedSourceMap(driver.GetRunResult());
         generatedSources["Linqraft.Declarations.g.cs"]
             .ShouldContain("internal partial interface IProjectionHelper");
-        generatedSources["Linqraft.Declarations.g.cs"].ShouldContain("T AsLeftJoin<T>(T value);");
-        generatedSources["Linqraft.Declarations.g.cs"].ShouldContain("T AsInnerJoin<T>(T value);");
+        generatedSources["Linqraft.Declarations.g.cs"].ShouldContain("T AsLeftJoin<T>(T? value);");
+        generatedSources["Linqraft.Declarations.g.cs"].ShouldContain("T AsInnerJoin<T>(T? value);");
         generatedSources["Linqraft.Declarations.g.cs"]
-            .ShouldContain("T AsProjectable<T>(T value);");
+            .ShouldContain("T AsInline<T>(T? value);");
         generatedSources["Linqraft.Declarations.g.cs"]
-            .ShouldContain("TResult AsProjection<TResult>(object value);");
+            .ShouldContain("TResult AsProjection<TResult>(object? value);");
         generatedSources["Linqraft.Declarations.g.cs"]
-            .ShouldContain("object AsProjection(object value);");
+            .ShouldContain("object AsProjection(object? value);");
         generatedSources["Linqraft.Declarations.g.cs"]
             .ShouldContain("internal partial interface IProjectedValue<T>");
         generatedSources["Linqraft.Declarations.g.cs"]
             .ShouldContain("TResult Select<TResult>(global::System.Func<T, TResult> selector);");
         generatedSources["Linqraft.Declarations.g.cs"]
-            .ShouldContain("IProjectedValue<T> Project<T>(T value);");
+            .ShouldContain("IProjectedValue<T> Project<T>(T? value);");
         generatedSources["Linqraft.Declarations.g.cs"]
             .ShouldContain(
                 "public static global::System.Linq.IQueryable<TResult> SelectExpr<TIn, TResult>(this global::System.Linq.IQueryable<TIn> query, global::System.Func<TIn, global::Linqraft.IProjectionHelper, TResult> selector) where TIn : class"
@@ -334,7 +334,7 @@ public sealed class SourceGeneratorSmokeTests
         generatedSources["CustomHook.Declarations.g.cs"]
             .ShouldContain("internal partial interface IProjectionHelper");
         generatedSources["CustomHook.Declarations.g.cs"]
-            .ShouldContain("T InlineProjectable<T>(T value);");
+            .ShouldContain("T InlineProjectable<T>(T? value);");
         generatedSources
             .Where(pair => pair.Key.StartsWith("ProjectExpr_", StringComparison.Ordinal))
             .Select(pair => pair.Value)
@@ -362,7 +362,7 @@ public sealed class SourceGeneratorSmokeTests
             .Select(diagnostic => diagnostic.GetMessage())
             .Any(message =>
                 message.Contains(
-                    "Detected recursive AsProjectable expansion",
+                    "Detected recursive AsInline expansion",
                     StringComparison.Ordinal
                 )
             )
@@ -993,7 +993,7 @@ public sealed class SourceGeneratorSmokeTests
             {
                 public int Value { get; set; }
 
-                public int Recursive(IProjectionHelper helper) => helper.AsProjectable(Recursive(helper));
+                public int Recursive(IProjectionHelper helper) => helper.AsInline(Recursive(helper));
             }
 
             public partial class RecursiveDto;
@@ -1003,7 +1003,7 @@ public sealed class SourceGeneratorSmokeTests
                 public static IQueryable<RecursiveDto> Run(IQueryable<RecursiveEntity> query)
                     => query.SelectExpr<RecursiveEntity, RecursiveDto>((x, helper) => new
                     {
-                        Value = helper.AsProjectable(x.Recursive(helper)),
+                        Value = helper.AsInline(x.Recursive(helper)),
                     });
             }
             """;

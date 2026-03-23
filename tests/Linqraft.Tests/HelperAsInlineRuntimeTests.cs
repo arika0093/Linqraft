@@ -3,7 +3,7 @@ using System.Linq;
 
 namespace Linqraft.Tests;
 
-public sealed class HelperAsProjectableRuntimeTests
+public sealed class HelperAsInlineRuntimeTests
 {
     private static readonly List<HelperProjectionOrder> Orders =
     [
@@ -31,23 +31,23 @@ public sealed class HelperAsProjectableRuntimeTests
     ];
 
     [Test]
-    public void Helper_AsProjectable_inlines_computed_property()
+    public void Helper_AsInline_inlines_computed_property()
     {
         var result = Orders
             .AsTestQueryable()
             .OrderBy(order => order.Id)
-            .SelectExpr<HelperProjectionOrder, HelperAsProjectableOrderDto>(
+            .SelectExpr<HelperProjectionOrder, HelperAsInlineOrderDto>(
                 (order, helper) =>
                     new
                     {
                         order.Id,
-                        FirstLargeItemName = helper.AsProjectable(order.FirstLargeItemName),
+                        FirstLargeItemName = helper.AsInline(order.FirstLargeItemName),
                     }
             )
             .ToList();
 
         result
-            .Select(row => new { row.Id, row.FirstLargeItemName })
+            .Select(row => new { row.Id, FirstLargeItemName = (string?)row.FirstLargeItemName })
             .ToList()
             .ShouldBe(
                 new[]
@@ -59,4 +59,4 @@ public sealed class HelperAsProjectableRuntimeTests
     }
 }
 
-public partial class HelperAsProjectableOrderDto;
+public partial class HelperAsInlineOrderDto;

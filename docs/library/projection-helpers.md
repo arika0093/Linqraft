@@ -1,14 +1,14 @@
-# Projection Hooks
+# Projection Helpers
 
-Projection hooks are exposed through the `IProjectionHelper` selector parameter so you can ask Linqraft to rewrite a specific fragment inside a generated projection body.
+Projection helpers are exposed through the `IProjectionHelper` selector parameter so you can ask Linqraft to rewrite a specific fragment inside a generated projection body.
 
-After support code is generated, the same hooks are also available as generated extension methods, so `helper.AsProjection(order.Customer!)` and `order.Customer!.AsProjection()` are equivalent shapes.
+After support code is generated, matching extension methods are also available, but the examples below use the `helper` parameter so nullable navigation members do not need `!`.
 
 They follow this flow:
 
-`anonymous projection -> helper hook -> generated *Expr rewrite`
+`anonymous projection -> helper call -> generated *Expr rewrite`
 
-## Available Hooks
+## Available Helpers
 
 ### `helper.AsLeftJoin(value)`
 
@@ -18,7 +18,7 @@ Use `helper.AsLeftJoin(value)` when you want a nullable navigation access to be 
 var result = dbContext.Orders
     .SelectExpr<Order, OrderRowDto>((order, helper) => new
     {
-        CustomerName = helper.AsLeftJoin(order.Customer!).Name,
+        CustomerName = helper.AsLeftJoin(order.Customer).Name,
     })
     .ToListAsync();
 ```
@@ -33,22 +33,22 @@ This is useful when the provider would otherwise translate a navigation access i
 
 ### `helper.AsInnerJoin(value)`
 
-Use `helper.AsInnerJoin(value)` when the generated query should behave like an `INNER JOIN` for the hooked value.
+Use `helper.AsInnerJoin(value)` when the generated query should behave like an `INNER JOIN` for the helper target.
 
 ```csharp
 var result = dbContext.Orders
     .SelectExpr<Order, OrderRowDto>((order, helper) => new
     {
-        CustomerName = helper.AsInnerJoin(order.Customer!).Name,
+        CustomerName = helper.AsInnerJoin(order.Customer).Name,
     })
     .ToListAsync();
 ```
 
-Linqraft rewrites the query so rows where the hooked value is `null` are filtered out before the generated projection runs.
+Linqraft rewrites the query so rows where the helper target is `null` are filtered out before the generated projection runs.
 
-### `helper.AsProjectable(value)`
+### `helper.AsInline(value)`
 
-Use `helper.AsProjectable(value)` when a selector references a computed instance property or method that should be inlined into the generated projection.
+Use `helper.AsInline(value)` when a selector references a computed instance property or method that should be inlined into the generated projection.
 
 ```csharp
 public sealed class Order
@@ -65,23 +65,23 @@ public sealed class Order
 var result = dbContext.Orders
     .SelectExpr<Order, OrderRowDto>((order, helper) => new
     {
-        FirstLargeItemProductName = helper.AsProjectable(order.FirstLargeItemProductName),
+        FirstLargeItemProductName = helper.AsInline(order.FirstLargeItemProductName),
     })
     .ToListAsync();
 ```
 
-Linqraft rewrites the hook as though the property body had been written directly inside the selector.
+Linqraft rewrites the helper call as though the property body had been written directly inside the selector.
 
-### `helper.AsProjection<TDto>(value)` / `value.AsProjection<TDto>()`
+### `helper.AsProjection<TDto>(value)`
 
-Use `AsProjection<TDto>()` when you want a nested member to become a DTO explicitly instead of exposing the original entity or complex type.
+Use `helper.AsProjection<TDto>(value)` when you want a nested member to become a DTO explicitly instead of exposing the original entity or complex type.
 
 ```csharp
 var result = dbContext.Orders
-    .SelectExpr<Order, OrderRowDto>(order => new
+    .SelectExpr<Order, OrderRowDto>((order, helper) => new
     {
         order.Id,
-        Customer = order.Customer!.AsProjection<CustomerSummaryDto>(),
+        Customer = helper.AsProjection<CustomerSummaryDto>(order.Customer),
     })
     .ToListAsync();
 ```
@@ -93,7 +93,7 @@ var result = dbContext.Orders
     .SelectExpr<Order, OrderRowDto>((order, helper) => new
     {
         order.Id,
-        Customer = helper.AsProjection(order.Customer!),
+        Customer = helper.AsProjection(order.Customer),
     })
     .ToListAsync();
 ```
@@ -112,7 +112,7 @@ var result = dbContext.Orders
     {
         order.Id,
         Customer = helper
-            .Project<Customer>(order.Customer!)
+            .Project<Customer>(order.Customer)
             .Select(customer => new { customer.Id, customer.Name }),
     })
     .ToListAsync();
@@ -127,7 +127,7 @@ var result = dbContext.Orders
     .SelectExpr<Order, OrderRowDto>((order, helper) => new
     {
         order.Id,
-        SelectedCustomer = helper.Project(order.Customer!).Select(customer => new
+        SelectedCustomer = helper.Project(order.Customer).Select(customer => new
         {
             customer.Id,
             customer.Name,
@@ -140,36 +140,36 @@ In that case, Linqraft generates `SelectedCustomerDto`.
 
 ## Important Constraints
 
-### Hooks are available through the generated selector helper
+### Helpers are available through the generated selector helper
 
-`SelectExpr(...)`, `SelectManyExpr(...)`, and `GroupByExpr(...)` provide an `IProjectionHelper` instance as the selector's second parameter when you need hook rewrites:
+`SelectExpr(...)`, `SelectManyExpr(...)`, and `GroupByExpr(...)` provide an `IProjectionHelper` instance as the selector's second parameter when you need helper rewrites:
 
 ```csharp
 query.SelectExpr((entity, helper) => new
 {
-    Name = helper.AsLeftJoin(entity.Child!).Name,
+    Name = helper.AsLeftJoin(entity.Child).Name,
 });
 ```
 
-### `helper.AsProjectable(value)` bodies must not be recursive
+### `helper.AsInline(value)` bodies must not be recursive
 
-`helper.AsProjectable(value)` can inline instance properties and methods, but recursive expansions are rejected.
+`helper.AsInline(value)` can inline instance properties and methods, but recursive expansions are rejected.
 
 For example, this is unsupported:
 
 ```csharp
-public int Recursive(IProjectionHelper helper) => helper.AsProjectable(this.Recursive(helper));
+public int Recursive(IProjectionHelper helper) => helper.AsInline(this.Recursive(helper));
 ```
 
-Linqraft detects recursive `AsProjectable` expansion and stops generation with a clear error message instead of recursing forever.
+Linqraft detects recursive `AsInline` expansion and stops generation with a clear error message instead of recursing forever.
 
-### Hook names must be unique
+### Helper names must be unique
 
-If you customize `ProjectionHooks`, each hook method name must be unique. Duplicate method names are rejected during generation.
+If you customize `ProjectionHooks`, each helper method name must be unique. Duplicate method names are rejected during generation.
 
-## Custom Hooks
+## Custom Helpers
 
-The built-in options expose `ProjectionHooks`, so custom generator implementations can replace or extend the default hook list.
+The built-in options expose `ProjectionHooks`, so custom generator implementations can replace or extend the default helper list.
 
 ```csharp
 public override IReadOnlyList<LinqraftProjectionHookDefinition> ProjectionHooks =>
