@@ -24,7 +24,8 @@ public sealed class EfCoreNullableProjectionTests
         var expected = await CreateExpectedRowsAsync(query);
 
         var result = await query
-            .SelectExpr(order => new
+            .UseLinqraft()
+            .Select(order => new
             {
                 order.OrderNumber,
                 CarrierName = order.Shipment?.CarrierName,

@@ -319,15 +319,9 @@ public sealed class AnalyzerSmokeTests
                 {
                 }
 
-                public sealed class LinqraftQuery<T> : IQueryable<T>
+                public sealed class LinqraftQuery<T>
                     where T : class
                 {
-                    public Type ElementType => throw null!;
-                    public System.Linq.Expressions.Expression Expression => throw null!;
-                    public IQueryProvider Provider => throw null!;
-                    public IEnumerator<T> GetEnumerator() => throw null!;
-                    System.Collections.IEnumerator System.Collections.IEnumerable.GetEnumerator() => GetEnumerator();
-
                     public IQueryable<TResult> Select<TResult>(Func<T, TResult> selector) => throw null!;
                     public IQueryable<TResult> Select<TResult>(Func<T, IProjectionHelper, TResult> selector) => throw null!;
                 }

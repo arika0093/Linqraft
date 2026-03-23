@@ -42,7 +42,8 @@ public class Issue159_NestedObjectCreationTest
     {
         var result = _datas
             .AsTestQueryable()
-            .SelectExpr(d => new
+            .UseLinqraft()
+            .Select(d => new
             {
                 TestData = d.InnerData?.Childs.Select(c => new
                 {
@@ -71,7 +72,8 @@ public class Issue159_NestedObjectCreationTest
     {
         var result = _datas
             .AsTestQueryable()
-            .SelectExpr(d => new
+            .UseLinqraft()
+            .Select(d => new
             {
                 TestData = d.InnerData?.Childs.Select(c => new
                 {
@@ -102,7 +104,8 @@ public class Issue159_NestedObjectCreationTest
     {
         var result = _datas
             .AsTestQueryable()
-            .SelectExpr<Issue159_TestData, Issue159TestDtoShouldPreserveOriginal>(d => new
+            .UseLinqraft()
+            .Select<Issue159TestDtoShouldPreserveOriginal>(d => new
             {
                 TestData = d.InnerData?.Childs.Select(c => new
                 {
@@ -131,7 +134,8 @@ public class Issue159_NestedObjectCreationTest
     {
         var result = _datas
             .AsTestQueryable()
-            .SelectExpr<Issue159_TestData, Issue159TestDtoShouldUseFullyQualifiedNames>(d => new
+            .UseLinqraft()
+            .Select<Issue159TestDtoShouldUseFullyQualifiedNames>(d => new
             {
                 TestData = d.InnerData?.Childs.Select(c => new
                 {

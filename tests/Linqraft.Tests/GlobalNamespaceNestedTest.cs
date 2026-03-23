@@ -14,7 +14,8 @@ public class GlobalNamespaceNestedTest
     {
         var result = SampleData
             .AsTestQueryable()
-            .SelectExpr<GlobalParentClass, GlobalParentDto>(s => new
+            .UseLinqraft()
+            .Select<GlobalParentDto>(s => new
             {
                 s.Id,
                 s.Name,
@@ -36,7 +37,8 @@ public class GlobalNamespaceNestedTest
     {
         var result = SampleData
             .AsTestQueryable()
-            .SelectExpr(s => new
+            .UseLinqraft()
+            .Select(s => new
             {
                 s.Id,
                 s.Name,

@@ -318,7 +318,7 @@ internal static class SourceWriters
                 using (builder.Indent())
                 {
                     var matchedQueryType = request.UsesFluentQuerySyntax
-                        ? $"global::System.Linq.IQueryable<{request.SourceTypeName}>"
+                        ? $"{GetReceiverTypeName(request.ReceiverKind)}<{request.SourceTypeName}>"
                         : $"{receiverType}<{request.SourceTypeName}>";
 
                     if (request.Captures.Length != 0)
@@ -342,15 +342,15 @@ internal static class SourceWriters
                     {
                         ProjectionOperationKind.Select =>
                             request.UsesFluentQuerySyntax
-                                ? $"(({matchedQueryType})(object)query.Query).Select({selectArgument})"
+                                ? $"(({matchedQueryType})(object)query.GetSource()).Select({selectArgument})"
                                 : $"(({matchedQueryType})(object)query).Select({selectArgument})",
                         ProjectionOperationKind.SelectMany =>
                             request.UsesFluentQuerySyntax
-                                ? $"(({matchedQueryType})(object)query.Query).SelectMany({lambda})"
+                                ? $"(({matchedQueryType})(object)query.GetSource()).SelectMany({lambda})"
                                 : $"(({matchedQueryType})(object)query).SelectMany({lambda})",
                         ProjectionOperationKind.GroupBy =>
                             request.UsesFluentQuerySyntax
-                                ? $"(({matchedQueryType})(object)query.Query).GroupBy({ProjectionBodyEmitter.AppendValueInline($"{request.KeySelectorParameterName} => ", request.KeySelectorBodyText ?? "default!")}).Select({lambda})"
+                                ? $"(({matchedQueryType})(object)query.GetSource()).GroupBy({ProjectionBodyEmitter.AppendValueInline($"{request.KeySelectorParameterName} => ", request.KeySelectorBodyText ?? "default!")}).Select({lambda})"
                                 : $"(({matchedQueryType})(object)query).GroupBy({ProjectionBodyEmitter.AppendValueInline($"{request.KeySelectorParameterName} => ", request.KeySelectorBodyText ?? "default!")}).Select({lambda})",
                         _ => throw new InvalidOperationException(
                             $"Unsupported projection operation '{request.OperationKind}'."
@@ -362,7 +362,7 @@ internal static class SourceWriters
                         cancellationToken
                     );
                     var returnStatement = request.UsesFluentQuerySyntax
-                        ? "return (global::System.Linq.IQueryable<TResult>)(object)converted;"
+                        ? $"return ({GetReceiverTypeName(request.ReceiverKind)}<TResult>)(object)converted;"
                         : $"return ({receiverType}<TResult>)(object)converted;";
                     builder.AppendLine(returnStatement, cancellationToken);
                 }
@@ -642,7 +642,9 @@ internal static class SourceWriters
     {
         if (usesFluentQuerySyntax)
         {
-            return $"global::{generatorOptions.SupportNamespace}.LinqraftQuery";
+            return receiverKind == ReceiverKind.IQueryable
+                ? $"global::{generatorOptions.SupportNamespace}.LinqraftQuery"
+                : $"global::{generatorOptions.SupportNamespace}.LinqraftEnumerable";
         }
 
         return receiverKind == ReceiverKind.IQueryable
@@ -659,17 +661,18 @@ internal static class SourceWriters
     )
     {
         cancellationToken.ThrowIfCancellationRequested();
+        var fluentReturnType = GetReceiverTypeName(request.ReceiverKind);
         return request.OperationKind switch
         {
             ProjectionOperationKind.Select => request.Captures.Length == 0
-                ? $"public static global::System.Linq.IQueryable<TResult> {request.MethodName}<TIn, TResult>(this {receiverType}<TIn> query, {selectorType} selector)"
-                : $"public static global::System.Linq.IQueryable<TResult> {request.MethodName}<TIn, TResult>(this {receiverType}<TIn> query, {selectorType} selector, {captureParameter})",
+                ? $"public static {fluentReturnType}<TResult> {request.MethodName}<TIn, TResult>(this {receiverType}<TIn> query, {selectorType} selector)"
+                : $"public static {fluentReturnType}<TResult> {request.MethodName}<TIn, TResult>(this {receiverType}<TIn> query, {selectorType} selector, {captureParameter})",
             ProjectionOperationKind.SelectMany => request.Captures.Length == 0
-                ? $"public static global::System.Linq.IQueryable<TResult> {request.MethodName}<TIn, TResult>(this {receiverType}<TIn> query, {selectorType} selector)"
-                : $"public static global::System.Linq.IQueryable<TResult> {request.MethodName}<TIn, TResult>(this {receiverType}<TIn> query, {selectorType} selector, {captureParameter})",
+                ? $"public static {fluentReturnType}<TResult> {request.MethodName}<TIn, TResult>(this {receiverType}<TIn> query, {selectorType} selector)"
+                : $"public static {fluentReturnType}<TResult> {request.MethodName}<TIn, TResult>(this {receiverType}<TIn> query, {selectorType} selector, {captureParameter})",
             ProjectionOperationKind.GroupBy => request.Captures.Length == 0
-                ? $"public static global::System.Linq.IQueryable<TResult> {request.MethodName}<TIn, TKey, TResult>(this {receiverType}<TIn> query, global::System.Func<TIn, TKey> keySelector, {selectorType} selector)"
-                : $"public static global::System.Linq.IQueryable<TResult> {request.MethodName}<TIn, TKey, TResult>(this {receiverType}<TIn> query, global::System.Func<TIn, TKey> keySelector, {selectorType} selector, {captureParameter})",
+                ? $"public static {fluentReturnType}<TResult> {request.MethodName}<TIn, TKey, TResult>(this {receiverType}<TIn> query, global::System.Func<TIn, TKey> keySelector, {selectorType} selector)"
+                : $"public static {fluentReturnType}<TResult> {request.MethodName}<TIn, TKey, TResult>(this {receiverType}<TIn> query, global::System.Func<TIn, TKey> keySelector, {selectorType} selector, {captureParameter})",
             _ => throw new InvalidOperationException(
                 $"Fluent query syntax is not supported for projection operation '{request.OperationKind}'."
             ),

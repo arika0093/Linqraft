@@ -43,7 +43,8 @@ public class CrossNamespaceTest
     {
         var rst = SampleData
             .AsTestQueryable()
-            .SelectExpr(s => new PredefinedDto { Name = s.Name, Value = s.Id })
+            .UseLinqraft()
+            .Select(s => new PredefinedDto { Name = s.Name, Value = s.Id })
             .First();
 
         rst.Name.ShouldBe("Test");

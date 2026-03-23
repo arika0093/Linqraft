@@ -146,7 +146,8 @@ public sealed class EfCoreBasicProjectionTests
             .ToListAsync();
 
         var result = await query
-            .SelectExpr(order => new
+            .UseLinqraft()
+            .Select(order => new
             {
                 order.OrderNumber,
                 CustomerName = order.Customer!.Name,
@@ -207,7 +208,8 @@ public sealed class EfCoreBasicProjectionTests
             .ToListAsync();
 
         var result = await query
-            .SelectExpr(customer => new
+            .UseLinqraft()
+            .Select(customer => new
             {
                 customer.Name,
                 FlattenedItemCount = customer
@@ -270,7 +272,8 @@ public sealed class EfCoreBasicProjectionTests
             .ToListAsync();
 
         var result = await query
-            .SelectExpr(customer => new
+            .UseLinqraft()
+            .Select(customer => new
             {
                 customer.Name,
                 OrderCount = customer.Orders.Count,
@@ -322,7 +325,8 @@ public sealed class EfCoreBasicProjectionTests
             .ToListAsync();
 
         var result = await query
-            .SelectExpr(
+            .UseLinqraft()
+            .Select(
                 (order, helper) =>
                     new
                     {
@@ -361,7 +365,8 @@ public sealed class EfCoreBasicProjectionTests
             .ToListAsync();
 
         var result = await query
-            .SelectExpr(
+            .UseLinqraft()
+            .Select(
                 (order, helper) =>
                     new
                     {

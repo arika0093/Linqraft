@@ -95,6 +95,27 @@ public sealed class SelectManyExprRuntimeTests
     }
 
     [Test]
+    public void IEnumerable_UseLinqraft_selectmany_projects_flattened_rows()
+    {
+        var result = Parents
+            .UseLinqraft()
+            .SelectMany<SelectManyExprFluentChildRowDto>(parent =>
+                parent.Children.Select(child => new
+                {
+                    ParentId = parent.Id,
+                    ChildId = child.Id,
+                    ChildName = child.Name,
+                })
+            )
+            .OrderBy(x => x.ChildId)
+            .ToList();
+
+        result.Count.ShouldBe(3);
+        result[0].ParentId.ShouldBe(10);
+        result[2].ChildId.ShouldBe(201);
+    }
+
+    [Test]
     public void SelectManyExpr_supports_internal_select_in_projected_members()
     {
         var result = Parents

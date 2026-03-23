@@ -64,7 +64,8 @@ public class NestedCaseTest
     {
         var converted = NestData
             .AsTestQueryable()
-            .SelectExpr(s => new
+            .UseLinqraft()
+            .Select(s => new
             {
                 s.Id,
                 s.Name,
@@ -105,7 +106,8 @@ public class NestedCaseTest
     {
         var converted = NestData
             .AsTestQueryable()
-            .SelectExpr<NestBase, NestBaseDto>(s => new
+            .UseLinqraft()
+            .Select<NestBaseDto>(s => new
             {
                 s.Id,
                 s.Name,
@@ -173,7 +175,8 @@ public class NestedCaseTest
 
         var converted = testData
             .AsTestQueryable()
-            .SelectExpr(s => new NestBasePredefinedDto
+            .UseLinqraft()
+            .Select(s => new NestBasePredefinedDto
             {
                 Id = s.Id,
                 Name = s.Name,
@@ -234,7 +237,8 @@ public class NestedCaseTest
         // Use predefined DTO in nested Select (not anonymous type)
         var converted = testData
             .AsTestQueryable()
-            .SelectExpr(s => new NestBaseWithNamedChildrenDto
+            .UseLinqraft()
+            .Select(s => new NestBaseWithNamedChildrenDto
             {
                 Id = s.Id,
                 Name = s.Name,

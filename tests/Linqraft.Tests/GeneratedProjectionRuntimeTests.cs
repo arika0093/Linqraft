@@ -125,7 +125,8 @@ public sealed class GeneratedProjectionRuntimeTests
     {
         var result = Products
             .AsTestQueryable()
-            .SelectExpr(product => new ProjectionProductRow
+            .UseLinqraft()
+            .Select(product => new ProjectionProductRow
             {
                 Id = product.Id,
                 DisplayName = product.Name + "!",
@@ -143,7 +144,8 @@ public sealed class GeneratedProjectionRuntimeTests
     {
         var result = People
             .AsTestQueryable()
-            .SelectExpr(person => new
+            .UseLinqraft()
+            .Select(person => new
             {
                 person.Id,
                 DisplayName = person.FirstName + " " + person.LastName,
@@ -159,7 +161,8 @@ public sealed class GeneratedProjectionRuntimeTests
     public void IEnumerable_projection_runs()
     {
         var result = People
-            .SelectExpr<ProjectionPerson, ProjectionPersonListRow>(person => new
+            .UseLinqraft()
+            .Select<ProjectionPersonListRow>(person => new
             {
                 person.Id,
                 DisplayName = person.LastName + ", " + person.FirstName,

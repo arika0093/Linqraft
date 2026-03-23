@@ -49,8 +49,7 @@ internal abstract class ProjectionSupportExtensionClassGenerator
             $$"""
             /// <summary>
             /// Starts the recommended fluent {{generatorOptions.GeneratorDisplayName}} projection style
-            /// for queryable sources and enumerable sources that are normalized via
-            /// <see cref="global::System.Linq.Queryable.AsQueryable{TElement}(global::System.Collections.Generic.IEnumerable{TElement})"/>.
+            /// for queryable and enumerable sources.
             /// </summary>
             [global::Microsoft.CodeAnalysis.EmbeddedAttribute]
             internal static partial class LinqraftQueryExtensions
@@ -58,40 +57,56 @@ internal abstract class ProjectionSupportExtensionClassGenerator
                 public static global::{{generatorOptions.SupportNamespace}}.LinqraftQuery<TIn> UseLinqraft<TIn>(this global::System.Linq.IQueryable<TIn> query)
                     => new(query);
 
-                [global::System.Diagnostics.CodeAnalysis.UnconditionalSuppressMessage("Trimming", "IL2026", Justification = "Fluent IEnumerable support normalizes the source via AsQueryable inside Linqraft query aids.")]
-                [global::System.Diagnostics.CodeAnalysis.UnconditionalSuppressMessage("AOT", "IL3050", Justification = "Fluent IEnumerable support normalizes the source via AsQueryable inside Linqraft query aids.")]
-                public static global::{{generatorOptions.SupportNamespace}}.LinqraftQuery<TIn> UseLinqraft<TIn>(this global::System.Collections.Generic.IEnumerable<TIn> query)
+                public static global::{{generatorOptions.SupportNamespace}}.LinqraftEnumerable<TIn> UseLinqraft<TIn>(this global::System.Collections.Generic.IEnumerable<TIn> query)
                     => new(query);
             }
             """
         );
         yield return extensionBuilder.ToString().TrimEnd();
 
-        var queryBuilder = new IndentedStringBuilder();
-        queryBuilder.AppendLines(
+        yield return CreateFluentWrapperDeclaration(
+            "LinqraftQuery",
+            ReceiverKind.IQueryable,
+            "query",
+            generatorOptions
+        );
+        yield return CreateFluentWrapperDeclaration(
+            "LinqraftEnumerable",
+            ReceiverKind.IEnumerable,
+            "enumerable",
+            generatorOptions
+        );
+    }
+
+    private static string CreateFluentWrapperDeclaration(
+        string className,
+        ReceiverKind receiverKind,
+        string sourceParameterName,
+        LinqraftGeneratorOptionsCore generatorOptions
+    )
+    {
+        var builder = new IndentedStringBuilder();
+        builder.AppendLines(
             $$"""
             /// <summary>
-            /// Wraps a query source so only fluent {{generatorOptions.GeneratorDisplayName}} projection members are available.
+            /// Wraps a {{(receiverKind == ReceiverKind.IQueryable ? "queryable" : "enumerable")}} source so only fluent {{generatorOptions.GeneratorDisplayName}} projection members are available.
             /// </summary>
             [global::Microsoft.CodeAnalysis.EmbeddedAttribute]
-            internal sealed class LinqraftQuery<TIn>
+            internal sealed class {{className}}<TIn>
             {
                 private static global::System.InvalidOperationException ThrowInterceptionRequired => new global::System.InvalidOperationException("{{generatorOptions.GeneratorDisplayName}} source generator should replace UseLinqraft projection invocations before execution.");
 
-                public LinqraftQuery(global::System.Linq.IQueryable<TIn> query)
+                public {{className}}({{GetNonFluentReceiverTypeName(receiverKind)}}<TIn> {{sourceParameterName}})
                 {
-                    Query = query;
+                    _source = {{sourceParameterName}};
                 }
 
-                [global::System.Diagnostics.CodeAnalysis.UnconditionalSuppressMessage("Trimming", "IL2026", Justification = "Fluent IEnumerable support normalizes the source via AsQueryable inside Linqraft query aids.")]
-                [global::System.Diagnostics.CodeAnalysis.UnconditionalSuppressMessage("AOT", "IL3050", Justification = "Fluent IEnumerable support normalizes the source via AsQueryable inside Linqraft query aids.")]
-                public LinqraftQuery(global::System.Collections.Generic.IEnumerable<TIn> query)
-                    : this(query.AsQueryable()) { }
+                private {{GetNonFluentReceiverTypeName(receiverKind)}}<TIn> _source { get; }
 
-                internal global::System.Linq.IQueryable<TIn> Query { get; }
+                internal {{GetNonFluentReceiverTypeName(receiverKind)}}<TIn> GetSource() => _source;
             """
         );
-        using (queryBuilder.Indent())
+        using (builder.Indent())
         {
             foreach (
                 var operation in new[]
@@ -114,8 +129,9 @@ internal abstract class ProjectionSupportExtensionClassGenerator
                 }
             )
             {
-                WriteLinqraftQueryMethodFamily(
-                    queryBuilder,
+                WriteFluentWrapperMethodFamily(
+                    builder,
+                    receiverKind,
                     operation.Kind,
                     operation.Description,
                     generatorOptions
@@ -123,12 +139,13 @@ internal abstract class ProjectionSupportExtensionClassGenerator
             }
         }
 
-        queryBuilder.AppendLine("}");
-        yield return queryBuilder.ToString().TrimEnd();
+        builder.AppendLine("}");
+        return builder.ToString().TrimEnd();
     }
 
-    private static void WriteLinqraftQueryMethodFamily(
+    private static void WriteFluentWrapperMethodFamily(
         IndentedStringBuilder builder,
+        ReceiverKind receiverKind,
         ProjectionOperationKind operationKind,
         string operationDescription,
         LinqraftGeneratorOptionsCore generatorOptions
@@ -139,6 +156,7 @@ internal abstract class ProjectionSupportExtensionClassGenerator
             WriteLinqraftQueryMethod(
                 builder,
                 summary: $"Interception stub for fluent Linqraft {operationDescription} {capture.SummarySuffix}.",
+                receiverKind,
                 operationKind,
                 selectorUsesObjectResult: false,
                 usesProjectionHelperParameter: false,
@@ -150,6 +168,7 @@ internal abstract class ProjectionSupportExtensionClassGenerator
             WriteLinqraftQueryMethod(
                 builder,
                 summary: $"Interception stub for fluent Linqraft {operationDescription} {capture.SummarySuffix}.",
+                receiverKind,
                 operationKind,
                 selectorUsesObjectResult: true,
                 usesProjectionHelperParameter: false,
@@ -161,6 +180,7 @@ internal abstract class ProjectionSupportExtensionClassGenerator
             WriteLinqraftQueryMethod(
                 builder,
                 summary: $"Interception stub for fluent Linqraft {operationDescription} {capture.SummarySuffix}. Accepts a projection helper as the selector's second parameter.",
+                receiverKind,
                 operationKind,
                 selectorUsesObjectResult: false,
                 usesProjectionHelperParameter: true,
@@ -172,6 +192,7 @@ internal abstract class ProjectionSupportExtensionClassGenerator
             WriteLinqraftQueryMethod(
                 builder,
                 summary: $"Interception stub for fluent Linqraft {operationDescription} {capture.SummarySuffix}. Accepts a projection helper as the selector's second parameter.",
+                receiverKind,
                 operationKind,
                 selectorUsesObjectResult: true,
                 usesProjectionHelperParameter: true,
@@ -186,6 +207,7 @@ internal abstract class ProjectionSupportExtensionClassGenerator
     private static void WriteLinqraftQueryMethod(
         IndentedStringBuilder builder,
         string summary,
+        ReceiverKind receiverKind,
         ProjectionOperationKind operationKind,
         bool selectorUsesObjectResult,
         bool usesProjectionHelperParameter,
@@ -213,6 +235,7 @@ internal abstract class ProjectionSupportExtensionClassGenerator
 
         builder.AppendLine(
             CreateLinqraftQueryMethodSignature(
+                receiverKind,
                 operationKind,
                 selectorUsesObjectResult,
                 usesProjectionHelperParameter,
@@ -469,6 +492,7 @@ internal abstract class ProjectionSupportExtensionClassGenerator
     }
 
     private static string CreateLinqraftQueryMethodSignature(
+        ReceiverKind receiverKind,
         ProjectionOperationKind operationKind,
         bool selectorUsesObjectResult,
         bool usesProjectionHelperParameter,
@@ -508,7 +532,14 @@ internal abstract class ProjectionSupportExtensionClassGenerator
         var typeParameters = operationKind == ProjectionOperationKind.GroupBy
             ? "<TKey, TResult>"
             : "<TResult>";
-        return $"public global::System.Linq.IQueryable<TResult> {methodName}{typeParameters}({string.Join(", ", parameters.Where(parameter => parameter is not null))})";
+        return $"public {GetNonFluentReceiverTypeName(receiverKind)}<TResult> {methodName}{typeParameters}({string.Join(", ", parameters.Where(parameter => parameter is not null))})";
+    }
+
+    private static string GetNonFluentReceiverTypeName(ReceiverKind receiverKind)
+    {
+        return receiverKind == ReceiverKind.IQueryable
+            ? "global::System.Linq.IQueryable"
+            : "global::System.Collections.Generic.IEnumerable";
     }
 
     protected sealed record SupportMethodSignature
