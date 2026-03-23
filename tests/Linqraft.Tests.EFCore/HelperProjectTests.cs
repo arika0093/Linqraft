@@ -80,7 +80,3 @@ public sealed class HelperProjectTests
         result.SelectedCustomer.Name.ShouldBe(expected.CustomerName);
     }
 }
-
-public partial class EfHelperProjectExplicitOrderDto;
-
-public partial class EfHelperProjectImplicitOrderDto;

@@ -77,8 +77,4 @@ public sealed class HelperAsProjectionTests
     }
 }
 
-public partial class EfHelperAsProjectionExplicitOrderDto;
-
 public partial class EfHelperProjectedCustomerDto;
-
-public partial class EfHelperAsProjectionImplicitOrderDto;

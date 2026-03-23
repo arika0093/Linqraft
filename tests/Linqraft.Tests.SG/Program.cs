@@ -768,7 +768,8 @@ public sealed class SourceGeneratorSmokeTests
 
     private static CSharpCompilation CreateCompilation(
         IReadOnlyList<SyntaxTree> syntaxTrees,
-        bool treatWarningsAsErrors = false
+        bool treatWarningsAsErrors = false,
+        OutputKind outputKind = OutputKind.DynamicallyLinkedLibrary
     )
     {
         return CSharpCompilation.Create(
@@ -776,7 +777,7 @@ public sealed class SourceGeneratorSmokeTests
             syntaxTrees: syntaxTrees,
             references: GetMetadataReferences(),
             options: new CSharpCompilationOptions(
-                OutputKind.DynamicallyLinkedLibrary,
+                outputKind,
                 nullableContextOptions: NullableContextOptions.Enable,
                 generalDiagnosticOption: treatWarningsAsErrors
                     ? ReportDiagnostic.Error
@@ -853,9 +854,6 @@ public sealed class SourceGeneratorSmokeTests
                 public int Quantity { get; set; }
             }
 
-            public partial class SmokeOrderSummaryDto;
-
-            public partial class SmokeOrderTotalsDto;
             """;
 
         return CSharpSyntaxTree.ParseText(
@@ -1267,7 +1265,6 @@ public sealed class SourceGeneratorSmokeTests
                 }
             }
 
-            public partial class GeneratedCaptureDto;
             """;
 
         return CSharpSyntaxTree.ParseText(
@@ -1304,7 +1301,6 @@ public sealed class SourceGeneratorSmokeTests
                 public required string CustomerName { get; set; }
             }
 
-            public partial class UnresolvedQualifiedExternalTypeOrderDto;
             """;
 
         return CSharpSyntaxTree.ParseText(

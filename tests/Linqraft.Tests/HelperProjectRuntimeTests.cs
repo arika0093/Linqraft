@@ -84,7 +84,3 @@ public sealed class HelperProjectRuntimeTests
         result[0].SelectedCustomer.Name.ShouldBe("Ada");
     }
 }
-
-public partial class HelperProjectExplicitOrderDto;
-
-public partial class HelperProjectImplicitOrderDto;

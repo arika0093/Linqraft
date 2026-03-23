@@ -55,6 +55,4 @@ public sealed class HelperAsLeftJoinRuntimeTests
     }
 }
 
-public partial class HelperAsLeftJoinOrderDto;
-
 public sealed record HelperAsLeftJoinExpectation(int Id, string? CustomerName);

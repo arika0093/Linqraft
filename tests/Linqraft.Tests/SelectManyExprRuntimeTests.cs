@@ -204,11 +204,3 @@ public sealed class SelectManyExprGrandChild
     public int Id { get; set; }
     public string Description { get; set; } = string.Empty;
 }
-
-public partial class SelectManyExprChildRowDto;
-
-public partial class SelectManyExprFluentChildRowDto;
-
-public partial class SelectManyExprGrandChildListDto;
-
-public partial class SelectManyExprGrandChildRowDto;

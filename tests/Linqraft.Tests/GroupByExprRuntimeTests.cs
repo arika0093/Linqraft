@@ -191,11 +191,3 @@ public sealed class GroupByExprRecord
     public string Status { get; set; } = string.Empty;
     public int Score { get; set; }
 }
-
-public partial class GroupByExprSummaryDto;
-
-public partial class GroupByExprFluentSummaryDto;
-
-public partial class GroupByExprNestedDto;
-
-public partial class GroupByExprScoreDto;

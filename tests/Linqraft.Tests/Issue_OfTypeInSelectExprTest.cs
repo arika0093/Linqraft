@@ -59,5 +59,3 @@ public class Issue_OfTypeInSelectExprTest
         result[1].AItems.Count.ShouldBe(0);
     }
 }
-
-public partial class OfTypeResultDto;
