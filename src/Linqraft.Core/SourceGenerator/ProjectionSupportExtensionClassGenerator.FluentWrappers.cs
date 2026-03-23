@@ -290,5 +290,4 @@ internal abstract partial class ProjectionSupportExtensionClassGenerator
         }
         builder.AppendLine();
     }
-
 }

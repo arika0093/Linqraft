@@ -114,4 +114,5 @@ internal abstract partial class ProjectionSupportExtensionClassGenerator
                 hasKeySelector: true,
                 includeAnonymousObjectPattern: false
             );
-    }}
+    }
+}

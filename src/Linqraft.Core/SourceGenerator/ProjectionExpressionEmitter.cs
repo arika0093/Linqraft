@@ -1670,5 +1670,4 @@ internal sealed partial class ProjectionExpressionEmitter
 
         return BuildInitializerExpression($"new {projectedType}", initializers, cancellationToken);
     }
-
 }

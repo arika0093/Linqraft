@@ -404,5 +404,4 @@ internal abstract partial class ProjectionSupportExtensionClassGenerator
         string SummarySuffix,
         string? ObsoleteMessage
     );
-
 }

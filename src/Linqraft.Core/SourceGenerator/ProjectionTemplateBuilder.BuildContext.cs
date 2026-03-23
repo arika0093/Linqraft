@@ -1677,5 +1677,4 @@ internal static partial class ProjectionTemplateBuilder
             return nullableAnnotation == NullableAnnotation.Annotated ? "?" : string.Empty;
         }
     }
-
 }

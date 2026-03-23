@@ -1073,4 +1073,5 @@ internal sealed partial class ProjectionExpressionEmitter
         public required ISymbol? RootSymbol { get; init; }
 
         public string? ValueAccessor { get; init; }
-    }}
+    }
+}

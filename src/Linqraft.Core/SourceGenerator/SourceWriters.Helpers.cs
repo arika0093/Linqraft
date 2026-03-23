@@ -242,4 +242,5 @@ internal static partial class SourceWriters
         return string.IsNullOrEmpty(propertyName)
             ? "value"
             : char.ToLowerInvariant(propertyName[0]) + propertyName[1..];
-    }}
+    }
+}

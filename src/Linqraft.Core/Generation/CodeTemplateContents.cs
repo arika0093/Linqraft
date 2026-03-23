@@ -16,19 +16,18 @@ internal static class CodeTemplateContents
             // </auto-generated>
             """;
 
-    public const string EmbeddedAttribute =
-		"[global::Microsoft.CodeAnalysis.EmbeddedAttribute]";
+    public const string EmbeddedAttribute = "[global::Microsoft.CodeAnalysis.EmbeddedAttribute]";
 
-	public const string ClassAndMethodAttributes =
+    public const string ClassAndMethodAttributes =
         "[global::System.AttributeUsage(global::System.AttributeTargets.Class | global::System.AttributeTargets.Method, AllowMultiple = false, Inherited = false)]";
 
     public const string ClassAttributes =
         "[global::System.AttributeUsage(global::System.AttributeTargets.Class, AllowMultiple = false, Inherited = false)]";
 
-	public const string MethodAttributes =
+    public const string MethodAttributes =
         "[global::System.AttributeUsage(global::System.AttributeTargets.Method, AllowMultiple = false, Inherited = false)]";
 
-	public const string EditorBrowsableNeverAttribute =
+    public const string EditorBrowsableNeverAttribute =
         "[global::System.ComponentModel.EditorBrowsable(global::System.ComponentModel.EditorBrowsableState.Never)]";
 
     public const string DynamicallyAccessedPublicProperties =

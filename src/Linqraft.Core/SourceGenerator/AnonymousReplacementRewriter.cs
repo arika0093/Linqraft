@@ -60,4 +60,3 @@ internal sealed class AnonymousReplacementRewriter : CSharpSyntaxRewriter
             ?? AnonymousMemberNameResolver.Get(initializer.Expression);
     }
 }
-

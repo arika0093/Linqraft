@@ -298,5 +298,4 @@ internal static partial class SourceWriters
             ),
         };
     }
-
 }

@@ -849,5 +849,4 @@ internal sealed partial class ProjectionExpressionEmitter
             cancellationToken
         );
     }
-
 }

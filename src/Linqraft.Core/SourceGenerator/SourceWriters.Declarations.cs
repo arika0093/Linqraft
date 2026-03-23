@@ -489,5 +489,4 @@ internal static partial class SourceWriters
             builder.AppendLine("}", cancellationToken);
         }
     }
-
 }

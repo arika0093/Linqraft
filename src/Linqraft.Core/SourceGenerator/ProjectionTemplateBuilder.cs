@@ -1010,5 +1010,4 @@ internal static partial class ProjectionTemplateBuilder
 
         public string? InnerJoinFilterTemplate { get; init; }
     }
-
 }

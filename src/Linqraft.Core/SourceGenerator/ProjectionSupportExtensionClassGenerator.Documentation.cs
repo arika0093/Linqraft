@@ -440,5 +440,4 @@ internal abstract partial class ProjectionSupportExtensionClassGenerator
 
         return $"<code>var projected = {invocation};</code>";
     }
-
 }

@@ -1345,4 +1345,5 @@ internal static partial class ProjectionTemplateBuilder
         public required GeneratedDtoTemplateModel? DtoTemplate { get; init; }
 
         public required IReadOnlyDictionary<TextSpan, string> ReplacementTypes { get; init; }
-    }}
+    }
+}

@@ -152,5 +152,4 @@ internal abstract partial class ProjectionSupportExtensionClassGenerator
             ),
         };
     }
-
 }
