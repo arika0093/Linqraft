@@ -13,6 +13,19 @@ Linqraft provides several usage patterns for different scenarios. This guide exp
 | [Projection Helpers](./projection-helpers.md) | Rewritten selector fragments | Opt into helper-driven `AsLeftJoin`, `AsInnerJoin`, `AsProjection`, `Project(...).Select(...)`, and `AsInline` rewrites inside generated projections |
 | [LinqraftKit.Generate](#linqraftkitgenerate) | Auto-generated DTO | Building generated DTOs from runtime objects outside `IEnumerable` / `IQueryable` pipelines |
 
+## How to Write Projections
+
+Currently, you can use either of the following two styles, which have equivalent functionality:
+
+* `UseLinqraft().Select<TDto>(...)`
+  * Makes it clear that you're using the Linqraft API. In other words, it's more verbose.
+  * When generating DTOs, you can omit the input type specification.
+* `SelectExpr<TIn, TDto>(...)`
+  * It's not obvious that you're using the Linqraft API. In exchange, it's more concise.
+  * When generating DTOs, you need to specify both the input and output types.
+
+You can use either style, but the documentation will use the more explicit `UseLinqraft().Select<TDto>(...)` style.
+
 ## Anonymous Pattern
 
 Use `UseLinqraft().Select(...)` without generic type parameters to get an anonymous-type projection.
@@ -81,8 +94,6 @@ var orders = await dbContext.Orders
 
 // Result type: List<OrderDto>
 ```
-
-`SelectExpr<Order, OrderDto>(...)` remains supported, but the fluent `UseLinqraft().Select<OrderDto>(...)` form is recommended because it makes the Linqraft-specific projection explicit while still inferring the source type from the query.
 
 ### Generated Code
 
@@ -205,8 +216,6 @@ var orders = await dbContext.Orders
 * Changes to query require updating the DTO
 
 ## Aggregation & Flattening Helpers
-
-`UseLinqraft().GroupBy(...)` / `UseLinqraft().SelectMany(...)` (recommended) and `GroupByExpr` / `SelectManyExpr` reuse the same DTO-generation pipeline as `SelectExpr`, but let you skip manual intermediate `GroupBy(...).Select(...)` and `SelectMany(...).Select(...)` steps.
 
 ### GroupByExpr
 

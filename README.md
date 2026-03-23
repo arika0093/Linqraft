@@ -14,7 +14,7 @@
 
 ### Query-based automatic DTO generation
 
-You can write projections with `UseLinqraft().Select<TDto>(...)` (recommended) or `SelectExpr` and get DTOs generated automatically based on the shape of your selector expression.
+You can write projections with `UseLinqraft().Select<TDto>(...)` and get DTOs generated automatically based on the shape of your selector expression.
 This allows for *"what you see is what you get"* declarations, unifying DTO definition and query writing.
 Complex queries are fully supported, including nested DTOs, collections, and calculated fields.
 
@@ -145,7 +145,7 @@ var rows = dbContext.Orders
 ```
 
 <details>
-<summary>Currently, the following helpers are available</summary>
+<summary>the following helpers are available</summary>
 
 * `AsLeftJoin(query)`
   * It generates queries that behave like a `LEFT JOIN`.
@@ -178,10 +178,10 @@ namespace Linqraft
 {
     file static partial class SelectExprInterceptExtensions
     {
-        [global::System.Runtime.CompilerServices.InterceptsLocationAttribute(1, "zoTX6YMzp8cIf98imvJzs8YBAABUdXRvcmlhbENhc2VUZXN0LmNz")]
-        public static global::System.Linq.IQueryable<TResult> SelectExpr_55AF867EC668046B<TIn, TResult>(this global::System.Linq.IQueryable<TIn> query, global::System.Func<TIn, object> selector) where TIn : class
+        [global::System.Runtime.CompilerServices.InterceptsLocationAttribute(1, "qfSAs0Q48gqm9UOXhtgXLG0BAABUdXRvcmlhbENhc2VUZXN0LmNz")]
+        public static global::System.Linq.IQueryable<TResult> Select_0A972FCF98437ABE<TIn, TResult>(this global::Linqraft.LinqraftQuery<TIn> query, global::System.Func<TIn, object> selector) where TIn : class
         {
-            var converted = ((global::System.Linq.IQueryable<global::Tutorial.Order>)(object)query).Select(o => new global::Tutorial.OrderDto() {
+            var converted = ((global::System.Linq.IQueryable<global::Tutorial.Order>)(object)query.GetSource()).Select(o => new global::Tutorial.OrderDto() {
                 Id = o.Id,
                 CustomerName = o.Customer != null ? (global::System.String?)(o.Customer.Name) : null,
                 CustomerCountry = o.Customer != null && o.Customer.Address != null && o.Customer.Address.Country != null ? (global::System.String?)(o.Customer.Address.Country.Name) : null,
@@ -242,8 +242,6 @@ The most basic usage pattern, with automatic DTO generation.
 ```csharp
 // orders: List<OrderDto✨️>
 var orders = await dbContext.Orders
-    // Recommended: opt into Linqraft explicitly and
-    // specify only the output DTO type.
     .UseLinqraft()
     .Select<OrderDto>(o => new
     {
@@ -254,8 +252,20 @@ var orders = await dbContext.Orders
     .ToListAsync();
 ```
 
-`SelectExpr<Order, OrderDto>(...)` remains available, but `UseLinqraft().Select<OrderDto>(...)` is the preferred style because the source type is inferred and the Linqraft-specific behavior is more obvious at the call site.
+Alternatively, you can also write it like this, which is functionally identical.
+But without `UseLinqraft()` and requires specifying both `<TIn, TResult>`.
 
+```csharp
+// orders: List<OrderDto✨️>
+var orders = await dbContext.Orders
+    .SelectExpr<Order, OrderDto>(o => new
+    {
+        Id = o.Id,
+        CustomerName = o.Customer?.Name,
+        // ...
+    })
+    .ToListAsync();
+```
 
 ### Anonymous pattern
 

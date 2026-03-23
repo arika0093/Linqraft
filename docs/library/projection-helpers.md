@@ -4,10 +4,6 @@ Projection helpers are exposed through the `IProjectionHelper` selector paramete
 
 After support code is generated, matching extension methods are also available, but the examples below use the `helper` parameter so nullable navigation members do not need `!`.
 
-They follow this flow:
-
-`anonymous projection -> helper call -> generated *Expr rewrite`
-
 ## Available Helpers
 
 ### `helper.AsLeftJoin(value)`
@@ -16,7 +12,8 @@ Use `helper.AsLeftJoin(value)` when you want a nullable navigation access to be 
 
 ```csharp
 var result = dbContext.Orders
-    .SelectExpr<Order, OrderRowDto>((order, helper) => new
+    .UseLinqraft()
+    .Select<OrderRowDto>((order, helper) => new
     {
         CustomerName = helper.AsLeftJoin(order.Customer).Name,
     })
@@ -37,7 +34,8 @@ Use `helper.AsInnerJoin(value)` when the generated query should behave like an `
 
 ```csharp
 var result = dbContext.Orders
-    .SelectExpr<Order, OrderRowDto>((order, helper) => new
+    .UseLinqraft()
+    .Select<OrderRowDto>((order, helper) => new
     {
         CustomerName = helper.AsInnerJoin(order.Customer).Name,
     })
@@ -63,7 +61,8 @@ public sealed class Order
 }
 
 var result = dbContext.Orders
-    .SelectExpr<Order, OrderRowDto>((order, helper) => new
+    .UseLinqraft()
+    .Select<OrderRowDto>((order, helper) => new
     {
         FirstLargeItemProductName = helper.AsInline(order.FirstLargeItemProductName),
     })
@@ -78,7 +77,8 @@ Use `helper.AsProjection<TDto>(value)` when you want a nested member to become a
 
 ```csharp
 var result = dbContext.Orders
-    .SelectExpr<Order, OrderRowDto>((order, helper) => new
+    .UseLinqraft()
+    .Select<OrderRowDto>((order, helper) => new
     {
         order.Id,
         Customer = helper.AsProjection<CustomerSummaryDto>(order.Customer),
@@ -90,7 +90,8 @@ If you omit the generic argument, Linqraft uses `[SourceTypeName]Dto`:
 
 ```csharp
 var result = dbContext.Orders
-    .SelectExpr<Order, OrderRowDto>((order, helper) => new
+    .UseLinqraft()
+    .Select<OrderRowDto>((order, helper) => new
     {
         order.Id,
         Customer = helper.AsProjection(order.Customer),
@@ -108,7 +109,8 @@ Use `Project(...).Select(...)` when you want to shape a nested projection withou
 
 ```csharp
 var result = dbContext.Orders
-    .SelectExpr<Order, OrderRowDto>((order, helper) => new
+    .UseLinqraft()
+    .Select<OrderRowDto>((order, helper) => new
     {
         order.Id,
         Customer = helper
@@ -124,7 +126,8 @@ If you omit the generic argument, Linqraft uses the destination member name:
 
 ```csharp
 var result = dbContext.Orders
-    .SelectExpr<Order, OrderRowDto>((order, helper) => new
+    .UseLinqraft()
+    .Select<OrderRowDto>((order, helper) => new
     {
         order.Id,
         SelectedCustomer = helper.Project(order.Customer).Select(customer => new
