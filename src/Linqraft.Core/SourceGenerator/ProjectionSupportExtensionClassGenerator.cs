@@ -192,25 +192,20 @@ internal abstract class ProjectionSupportExtensionClassGenerator
             LinqraftProjectionHookKind.LeftJoin
             or LinqraftProjectionHookKind.InnerJoin
             or LinqraftProjectionHookKind.Projectable =>
-                [$"{prefix}T {hook.MethodName}<T>({GetValueParameter(interfaceMethod, "T value")}){suffix}"],
+                [$"{prefix}T {hook.MethodName}<T>(T value){suffix}"],
             LinqraftProjectionHookKind.Projection =>
                 [
-                    $"{prefix}TResult {hook.MethodName}<TResult>({GetValueParameter(interfaceMethod, "object value")}){suffix}",
-                    $"{prefix}object {hook.MethodName}({GetValueParameter(interfaceMethod, "object value")}){suffix}",
+                    $"{prefix}TResult {hook.MethodName}<TResult>(object value){suffix}",
+                    $"{prefix}object {hook.MethodName}(object value){suffix}",
                 ],
             LinqraftProjectionHookKind.Project =>
                 [
-                    $"{prefix}IProjectedValue<T> {hook.MethodName}<T>({GetValueParameter(interfaceMethod, "T value")}){suffix}",
+                    $"{prefix}IProjectedValue<T> {hook.MethodName}<T>(T value){suffix}",
                 ],
             _ => throw new InvalidOperationException(
                 $"Unsupported projection hook kind '{hook.Kind}'."
             ),
         };
-    }
-
-    private static string GetValueParameter(bool interfaceMethod, string parameter)
-    {
-        return interfaceMethod ? parameter : $"this {parameter}";
     }
 
     private string CreateDeclaration(LinqraftGeneratorOptionsCore generatorOptions)

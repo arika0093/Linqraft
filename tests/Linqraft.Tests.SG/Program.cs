@@ -235,7 +235,7 @@ public sealed class SourceGeneratorSmokeTests
         );
 
         projectionSource.ShouldContain(".Where(");
-        projectionSource.ShouldContain("x.Child != null");
+        projectionSource.ShouldContain("x.Child! != null");
         projectionSource.ShouldContain("ProjectedChild = new global::HookFixture.HookProjectedChildDto");
         projectionSource.ShouldContain("SelectedChild = new global::HookFixture.HookChildDto");
     }
@@ -902,7 +902,7 @@ public sealed class SourceGeneratorSmokeTests
                     {
                         ChildName = helper.AsLeftJoin(x.Child).Name,
                         RequiredChildName = helper.AsInnerJoin(x.Child!).Name,
-                        ProjectedChild = x.Child!.AsProjection<HookProjectedChildDto>(),
+                        ProjectedChild = helper.AsProjection<HookProjectedChildDto>(x.Child!),
                         SelectedChild = helper.Project<HookChild>(x.Child!).Select(child => new
                         {
                             child.Name,
