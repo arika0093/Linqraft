@@ -338,6 +338,15 @@ internal static class SourceWriters
                         && request.ReceiverKind == ReceiverKind.IQueryable
                             ? expressionFieldName
                             : lambda;
+                    var querySource = $"(({matchedQueryType})(object)query)";
+                    if (
+                        request.InnerJoinFilterBodyText is { } innerJoinFilterBodyText
+                        && request.OperationKind != ProjectionOperationKind.GroupBy
+                    )
+                    {
+                        querySource =
+                            $"{querySource}.Where({ProjectionBodyEmitter.AppendValueInline($"{request.SelectorParameterName} => ", innerJoinFilterBodyText)})";
+                    }
                     var convertedInvocation = request.OperationKind switch
                     {
                         ProjectionOperationKind.Select =>
@@ -524,16 +533,22 @@ internal static class SourceWriters
                     && request.ReceiverKind == ReceiverKind.IQueryable
                 )
                 {
+                    var querySource = request.InnerJoinFilterBodyText is { } innerJoinFilterBodyText
+                        ? $"source.Where({ProjectionBodyEmitter.AppendValueInline($"{request.SelectorParameterName} => ", innerJoinFilterBodyText)})"
+                        : "source";
                     builder.AppendLine(
-                        $"return source.Select({expressionFieldName});",
+                        $"return {querySource}.Select({expressionFieldName});",
                         cancellationToken
                     );
                 }
                 else
                 {
+                    var querySource = request.InnerJoinFilterBodyText is { } innerJoinFilterBodyText
+                        ? $"source.Where({ProjectionBodyEmitter.AppendValueInline($"{request.SelectorParameterName} => ", innerJoinFilterBodyText)})"
+                        : "source";
                     AppendMultilineLine(
                         builder,
-                        $"return source.Select({lambda});",
+                        $"return {querySource}.Select({lambda});",
                         cancellationToken
                     );
                 }

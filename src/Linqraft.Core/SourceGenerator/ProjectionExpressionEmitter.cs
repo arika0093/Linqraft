@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading;
@@ -1070,6 +1071,9 @@ internal sealed class ProjectionExpressionEmitter
     {
         cancellationToken = ResolveCancellationToken(cancellationToken);
         return TryEmitLeftJoinHook(expression, out rewritten, cancellationToken)
+            || TryEmitInnerJoinHook(expression, out rewritten, cancellationToken)
+            || TryEmitAsProjectionHook(expression, out rewritten, cancellationToken)
+            || TryEmitProjectedValueSelection(expression, out rewritten, cancellationToken)
             || TryEmitProjectableHook(expression, out rewritten, cancellationToken);
     }
 
@@ -1101,6 +1105,114 @@ internal sealed class ProjectionExpressionEmitter
         );
     }
 
+    private bool TryEmitInnerJoinHook(
+        ExpressionSyntax expression,
+        out string rewritten,
+        CancellationToken cancellationToken = default
+    )
+    {
+        cancellationToken = ResolveCancellationToken(cancellationToken);
+        rewritten = string.Empty;
+        if (
+            !ContainsProjectionHook(
+                expression,
+                LinqraftProjectionHookKind.InnerJoin,
+                cancellationToken
+            )
+        )
+        {
+            return false;
+        }
+
+        return TryBuildInnerJoinAccess(
+            expression,
+            value => value,
+            out rewritten,
+            cancellationToken
+        );
+    }
+
+    private bool TryBuildInnerJoinAccess(
+        ExpressionSyntax expression,
+        global::System.Func<string, string> applyTail,
+        out string rewritten,
+        CancellationToken cancellationToken = default
+    )
+    {
+        cancellationToken = ResolveCancellationToken(cancellationToken);
+        switch (expression)
+        {
+            case InvocationExpressionSyntax invocation
+                when IsProjectionHookInvocation(
+                    invocation,
+                    LinqraftProjectionHookKind.InnerJoin,
+                    cancellationToken
+                ):
+            {
+                var targetExpression = GetHookTargetExpression(invocation, cancellationToken);
+                if (targetExpression is null)
+                {
+                    rewritten = string.Empty;
+                    return false;
+                }
+
+                rewritten = applyTail(Emit(targetExpression, cancellationToken));
+                return true;
+            }
+            case MemberAccessExpressionSyntax memberAccess
+                when ContainsProjectionHook(
+                    memberAccess.Expression,
+                    LinqraftProjectionHookKind.InnerJoin,
+                    cancellationToken
+                ):
+                return TryBuildInnerJoinAccess(
+                    memberAccess.Expression,
+                    value => applyTail($"{value}.{EmitSimpleName(memberAccess.Name)}"),
+                    out rewritten,
+                    cancellationToken
+                );
+            case InvocationExpressionSyntax invocation
+                when invocation.Expression is MemberAccessExpressionSyntax memberInvocation
+                    && ContainsProjectionHook(
+                        memberInvocation.Expression,
+                        LinqraftProjectionHookKind.InnerJoin,
+                        cancellationToken
+                    ):
+                return TryBuildInnerJoinAccess(
+                    memberInvocation.Expression,
+                    value =>
+                        applyTail(
+                            EmitInvocationFromReceiver(
+                                invocation,
+                                memberInvocation.Name,
+                                value,
+                                cancellationToken
+                            )
+                        ),
+                    out rewritten,
+                    cancellationToken
+                );
+            case ElementAccessExpressionSyntax elementAccess
+                when ContainsProjectionHook(
+                    elementAccess.Expression,
+                    LinqraftProjectionHookKind.InnerJoin,
+                    cancellationToken
+                ):
+                return TryBuildInnerJoinAccess(
+                    elementAccess.Expression,
+                    value =>
+                        applyTail(
+                            $"{value}{EmitBracketArguments(elementAccess.ArgumentList, cancellationToken)}"
+                        ),
+                    out rewritten,
+                    cancellationToken
+                );
+            default:
+                rewritten = string.Empty;
+                return false;
+        }
+    }
+
     private bool TryBuildLeftJoinConditional(
         ExpressionSyntax expression,
         global::System.Func<string, string> applyTail,
@@ -1119,7 +1231,7 @@ internal sealed class ProjectionExpressionEmitter
                     cancellationToken
                 ):
             {
-                var targetExpression = GetHookTargetExpression(invocation);
+                var targetExpression = GetHookTargetExpression(invocation, cancellationToken);
                 if (targetExpression is null)
                 {
                     rewritten = string.Empty;
@@ -1232,6 +1344,336 @@ internal sealed class ProjectionExpressionEmitter
             : $"default({expressionTypeName})";
     }
 
+    private bool TryEmitAsProjectionHook(
+        ExpressionSyntax expression,
+        out string rewritten,
+        CancellationToken cancellationToken = default
+    )
+    {
+        cancellationToken = ResolveCancellationToken(cancellationToken);
+        rewritten = string.Empty;
+        if (
+            expression is not InvocationExpressionSyntax invocation
+            || !TryGetProjectionHookInvocation(
+                invocation,
+                LinqraftProjectionHookKind.Projection,
+                out var hookInvocation,
+                cancellationToken
+            )
+        )
+        {
+            return false;
+        }
+
+        var targetType = GetProjectionSourceType(
+            hookInvocation.TargetExpression,
+            cancellationToken
+        );
+        if (targetType is null)
+        {
+            return false;
+        }
+
+        var useAnonymousProjection =
+            !_replacementTypes.TryGetValue(expression.Span, out var replacementType)
+            && hookInvocation.GenericTypeArgument is null;
+        var dtoTypeName = useAnonymousProjection ? "object" : replacementType;
+        if (!useAnonymousProjection && hookInvocation.GenericTypeArgument is not null)
+        {
+            dtoTypeName = QualifyType(hookInvocation.GenericTypeArgument, cancellationToken);
+        }
+
+        rewritten = BuildAsProjectionExpression(
+            hookInvocation.TargetExpression,
+            targetType,
+            dtoTypeName,
+            useAnonymousProjection,
+            cancellationToken
+        );
+        return true;
+    }
+
+    private bool TryEmitProjectedValueSelection(
+        ExpressionSyntax expression,
+        out string rewritten,
+        CancellationToken cancellationToken = default
+    )
+    {
+        cancellationToken = ResolveCancellationToken(cancellationToken);
+        rewritten = string.Empty;
+        if (
+            expression is not InvocationExpressionSyntax invocation
+            || !TryGetProjectedValueSelection(invocation, out var selectionInfo, cancellationToken)
+        )
+        {
+            return false;
+        }
+
+        var targetExpression = selectionInfo.ProjectInvocation.TargetExpression;
+        var targetType = GetExpressionType(targetExpression, cancellationToken);
+        if (targetType is null)
+        {
+            return false;
+        }
+
+        var declarationModel = _semanticModel.Compilation.GetSemanticModel(
+            selectionInfo.SelectorBody.SyntaxTree
+        );
+        var targetNamedType =
+            GetProjectionSourceType(targetExpression, cancellationToken)
+            ?? _semanticModel.Compilation.ObjectType;
+        var parameterBindings = BuildLambdaParameterBindings(
+            selectionInfo.Selector,
+            declarationModel,
+            targetExpression.WithoutTrivia(),
+            cancellationToken
+        );
+        var rewriter = new ProjectableInliningRewriter(
+            declarationModel,
+            targetNamedType,
+            receiverExpression: null,
+            parameterBindings
+        );
+        var expandedBody =
+            (ExpressionSyntax?)rewriter.Visit(selectionInfo.SelectorBody)
+            ?? selectionInfo.SelectorBody;
+        var emittedBody =
+            selectionInfo.SelectorBody is AnonymousObjectCreationExpressionSyntax originalAnonymous
+            && _replacementTypes.TryGetValue(originalAnonymous.Span, out var projectedType)
+            && expandedBody is AnonymousObjectCreationExpressionSyntax expandedAnonymous
+                ? EmitProjectedAnonymousObject(expandedAnonymous, projectedType, cancellationToken)
+                : Emit(expandedBody, cancellationToken);
+        if (targetType.NullableAnnotation != NullableAnnotation.Annotated)
+        {
+            rewritten = emittedBody;
+            return true;
+        }
+
+        var receiver = Emit(targetExpression, cancellationToken);
+        var fallback = CreateProjectedValueFallback(
+            selectionInfo.SelectionInvocation,
+            selectionInfo.SelectorBody,
+            cancellationToken
+        );
+        if (ContainsLineBreak(emittedBody) || ContainsLineBreak(fallback))
+        {
+            rewritten = string.Join(
+                "\n",
+                $"{receiver} != null",
+                IndentAllLines(AppendValueWithContinuation("? ", emittedBody)),
+                IndentAllLines(AppendValueWithContinuation(": ", fallback))
+            );
+        }
+        else
+        {
+            rewritten = $"{receiver} != null ? {emittedBody} : {fallback}";
+        }
+
+        return true;
+    }
+
+    private string BuildAsProjectionExpression(
+        ExpressionSyntax targetExpression,
+        INamedTypeSymbol targetType,
+        string dtoTypeName,
+        bool useAnonymousProjection,
+        CancellationToken cancellationToken = default
+    )
+    {
+        cancellationToken = ResolveCancellationToken(cancellationToken);
+        var receiver = Emit(targetExpression, cancellationToken);
+        var receiverForAccess = WrapMemberAccessReceiver(receiver);
+        var assignments = GetReadableProjectionProperties(targetType)
+            .Select(property => $"{property.Name} = {receiverForAccess}.{property.Name}")
+            .ToList();
+        var projection = useAnonymousProjection
+            ? BuildInitializerExpression("new", assignments, cancellationToken)
+            : BuildInitializerExpression(
+                $"new {RemoveNullableAnnotation(dtoTypeName)}",
+                assignments,
+                cancellationToken
+            );
+        if (useAnonymousProjection)
+        {
+            projection = WrapCastExpression("(object)", projection);
+        }
+        var targetExpressionType = GetExpressionType(targetExpression, cancellationToken);
+        if (targetExpressionType?.NullableAnnotation != NullableAnnotation.Annotated)
+        {
+            return projection;
+        }
+
+        if (ContainsLineBreak(projection))
+        {
+            return string.Join(
+                "\n",
+                $"{receiver} != null",
+                IndentAllLines(AppendValueWithContinuation("? ", projection)),
+                IndentAllLines(": null")
+            );
+        }
+
+        return $"{receiver} != null ? {projection} : null";
+    }
+
+    private string CreateProjectedValueFallback(
+        InvocationExpressionSyntax selectionInvocation,
+        ExpressionSyntax selectorBody,
+        CancellationToken cancellationToken = default
+    )
+    {
+        cancellationToken = ResolveCancellationToken(cancellationToken);
+        if (_replacementTypes.TryGetValue(selectorBody.Span, out _))
+        {
+            return "null";
+        }
+
+        var selectorBodyType = GetExpressionType(selectorBody, cancellationToken);
+        if (
+            selectorBodyType?.IsReferenceType == true
+            || selectorBodyType?.NullableAnnotation == NullableAnnotation.Annotated
+        )
+        {
+            return "null";
+        }
+
+        var expressionTypeName = GetExpressionTypeName(
+            selectionInvocation,
+            GetExpressionType(selectionInvocation, cancellationToken),
+            out _
+        );
+        return $"default({RemoveNullableAnnotation(expressionTypeName)})";
+    }
+
+    private string EmitProjectedAnonymousObject(
+        AnonymousObjectCreationExpressionSyntax anonymousObject,
+        string projectedType,
+        CancellationToken cancellationToken = default
+    )
+    {
+        cancellationToken = ResolveCancellationToken(cancellationToken);
+        var initializers = anonymousObject
+            .Initializers.Select(initializer =>
+            {
+                var memberName =
+                    initializer.NameEquals?.Name.Identifier.ValueText
+                    ?? GetAnonymousMemberName(initializer);
+                return AppendValueWithContinuation(
+                    $"{memberName} = ",
+                    EmitNestedExpression(initializer.Expression, cancellationToken)
+                );
+            })
+            .ToList();
+
+        return BuildInitializerExpression($"new {projectedType}", initializers, cancellationToken);
+    }
+
+    private Dictionary<ISymbol, ExpressionSyntax> BuildLambdaParameterBindings(
+        LambdaExpressionSyntax lambda,
+        SemanticModel declarationModel,
+        ExpressionSyntax replacementExpression,
+        CancellationToken cancellationToken = default
+    )
+    {
+        cancellationToken = ResolveCancellationToken(cancellationToken);
+        var bindings = new Dictionary<ISymbol, ExpressionSyntax>(SymbolEqualityComparer.Default);
+        foreach (var parameter in GetLambdaParameters(lambda))
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            if (declarationModel.GetDeclaredSymbol(parameter, cancellationToken) is { } symbol)
+            {
+                bindings[symbol] = replacementExpression;
+            }
+        }
+
+        return bindings;
+    }
+
+    private static IEnumerable<ParameterSyntax> GetLambdaParameters(LambdaExpressionSyntax lambda)
+    {
+        return lambda switch
+        {
+            SimpleLambdaExpressionSyntax simple => [simple.Parameter],
+            ParenthesizedLambdaExpressionSyntax parenthesized => parenthesized
+                .ParameterList
+                .Parameters,
+            _ => [],
+        };
+    }
+
+    private static IReadOnlyList<IPropertySymbol> GetReadableProjectionProperties(
+        INamedTypeSymbol sourceType
+    )
+    {
+        return sourceType
+            .GetMembers()
+            .OfType<IPropertySymbol>()
+            .Where(property =>
+                !property.IsStatic
+                && property.GetMethod is not null
+                && property.Parameters.Length == 0
+                && property.DeclaredAccessibility == Accessibility.Public
+                && IsProjectionLeafType(property.Type)
+            )
+            .GroupBy(property => property.Name, StringComparer.Ordinal)
+            .Select(group => group.First())
+            .OrderBy(property => property.Name, StringComparer.Ordinal)
+            .ToArray();
+    }
+
+    private static bool IsProjectionLeafType(ITypeSymbol type)
+    {
+        return type.SpecialType == SpecialType.System_String
+            || type.TypeKind == TypeKind.Enum
+            || type.IsValueType;
+    }
+
+    private INamedTypeSymbol? GetProjectionSourceType(
+        ExpressionSyntax expression,
+        CancellationToken cancellationToken = default
+    )
+    {
+        cancellationToken = ResolveCancellationToken(cancellationToken);
+        var type = GetExpressionType(expression, cancellationToken);
+        return type switch
+        {
+            INamedTypeSymbol namedType
+                when namedType.OriginalDefinition.SpecialType == SpecialType.System_Nullable_T =>
+                namedType.TypeArguments[0] as INamedTypeSymbol,
+            INamedTypeSymbol namedType => namedType,
+            _ => null,
+        };
+    }
+
+    private static string WrapMemberAccessReceiver(string receiver)
+    {
+        if (
+            !ContainsLineBreak(receiver)
+            && (
+                receiver.Length == 0
+                || receiver.All(character =>
+                    char.IsLetterOrDigit(character)
+                    || character is '_' or '.' or '[' or ']' or '!' or '?'
+                )
+            )
+        )
+        {
+            return receiver;
+        }
+
+        if (!ContainsLineBreak(receiver))
+        {
+            return $"({receiver})";
+        }
+
+        return string.Join("\n", "(", IndentAllLines(receiver), ")");
+    }
+
+    private static string RemoveNullableAnnotation(string typeName)
+    {
+        return typeName.EndsWith("?", StringComparison.Ordinal) ? typeName[..^1] : typeName;
+    }
+
     private bool TryEmitProjectableHook(
         ExpressionSyntax expression,
         out string rewritten,
@@ -1285,7 +1727,7 @@ internal sealed class ProjectionExpressionEmitter
         if (expandedSymbol is not null && !_activeProjectableSymbols.Add(expandedSymbol))
         {
             throw new global::System.InvalidOperationException(
-                $"Detected recursive AsProjectable expansion for '{expandedSymbol.ToDisplayString()}'."
+                $"Detected recursive projectable helper expansion for '{expandedSymbol.ToDisplayString()}'."
             );
         }
 
@@ -1349,7 +1791,7 @@ internal sealed class ProjectionExpressionEmitter
     )
     {
         cancellationToken = ResolveCancellationToken(cancellationToken);
-        var targetExpression = GetHookTargetExpression(invocation);
+        var targetExpression = GetHookTargetExpression(invocation, cancellationToken);
         if (targetExpression is null)
         {
             expanded = invocation;
@@ -1658,7 +2100,7 @@ internal sealed class ProjectionExpressionEmitter
         if (!activeSymbols.Add(symbol))
         {
             throw new global::System.InvalidOperationException(
-                $"Detected recursive AsProjectable expansion for '{symbol.ToDisplayString()}'."
+                $"Detected recursive projectable helper expansion for '{symbol.ToDisplayString()}'."
             );
         }
 
@@ -1682,7 +2124,7 @@ internal sealed class ProjectionExpressionEmitter
                     continue;
                 }
 
-                var targetExpression = GetHookTargetExpression(invocation);
+                var targetExpression = GetHookTargetExpression(invocation, cancellationToken);
                 if (
                     targetExpression is null
                     || !TryGetProjectableTargetSymbol(
@@ -1799,47 +2241,7 @@ internal sealed class ProjectionExpressionEmitter
         CancellationToken cancellationToken = default
     )
     {
-        if (_projectionHelperParameterName is null)
-        {
-            return false;
-        }
-
-        var hook = _generatorOptions.FindProjectionHook(GetInvocationName(invocation.Expression));
-        if (hook?.Kind != kind || invocation.ArgumentList.Arguments.Count != 1)
-        {
-            return false;
-        }
-
-        if (
-            invocation.Expression is not MemberAccessExpressionSyntax memberAccess
-            || memberAccess.Expression is not IdentifierNameSyntax identifier
-        )
-        {
-            return false;
-        }
-
-        var symbolInfo = _semanticModel.GetSymbolInfo(identifier, cancellationToken);
-        var parameterSymbol =
-            symbolInfo.Symbol as IParameterSymbol
-            ?? symbolInfo.CandidateSymbols.OfType<IParameterSymbol>().FirstOrDefault();
-        if (parameterSymbol is null)
-        {
-            return false;
-        }
-
-        return string.Equals(
-                parameterSymbol.Name,
-                _projectionHelperParameterName,
-                global::System.StringComparison.Ordinal
-            )
-            && (
-                _projectionHelperParameterTypeName is null
-                || string.Equals(
-                    parameterSymbol.Type.ToFullyQualifiedTypeName(),
-                    _projectionHelperParameterTypeName,
-                    global::System.StringComparison.Ordinal
-                )
-            );
+        return TryGetProjectionHookInvocation(invocation, kind, out _, cancellationToken);
     }
 
     private bool ContainsProjectionHook(
@@ -1855,9 +2257,69 @@ internal sealed class ProjectionExpressionEmitter
             .Any(invocation => IsProjectionHookInvocation(invocation, kind, cancellationToken));
     }
 
-    private static ExpressionSyntax? GetHookTargetExpression(InvocationExpressionSyntax invocation)
+    private ExpressionSyntax? GetHookTargetExpression(
+        InvocationExpressionSyntax invocation,
+        CancellationToken cancellationToken = default
+    )
     {
+        cancellationToken = ResolveCancellationToken(cancellationToken);
+        foreach (
+            LinqraftProjectionHookKind kind in Enum.GetValues(typeof(LinqraftProjectionHookKind))
+        )
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            if (
+                TryGetProjectionHookInvocation(
+                    invocation,
+                    kind,
+                    out var hookInvocation,
+                    cancellationToken
+                )
+            )
+            {
+                return hookInvocation.TargetExpression;
+            }
+        }
+
         return invocation.ArgumentList.Arguments.FirstOrDefault()?.Expression;
+    }
+
+    private bool TryGetProjectionHookInvocation(
+        InvocationExpressionSyntax invocation,
+        LinqraftProjectionHookKind kind,
+        out ProjectionHookSyntaxHelper.HookInvocationInfo hookInvocation,
+        CancellationToken cancellationToken = default
+    )
+    {
+        cancellationToken = ResolveCancellationToken(cancellationToken);
+        return ProjectionHookSyntaxHelper.TryGetHookInvocation(
+            invocation,
+            _semanticModel,
+            _generatorOptions,
+            _projectionHelperParameterName,
+            _projectionHelperParameterTypeName,
+            kind,
+            out hookInvocation,
+            cancellationToken
+        );
+    }
+
+    private bool TryGetProjectedValueSelection(
+        InvocationExpressionSyntax invocation,
+        out ProjectionHookSyntaxHelper.ProjectedValueSelectionInfo selectionInfo,
+        CancellationToken cancellationToken = default
+    )
+    {
+        cancellationToken = ResolveCancellationToken(cancellationToken);
+        return ProjectionHookSyntaxHelper.TryGetProjectedValueSelection(
+            invocation,
+            _semanticModel,
+            _generatorOptions,
+            _projectionHelperParameterName,
+            _projectionHelperParameterTypeName,
+            out selectionInfo,
+            cancellationToken
+        );
     }
 
     private bool TryEmitCaptureReplacement(

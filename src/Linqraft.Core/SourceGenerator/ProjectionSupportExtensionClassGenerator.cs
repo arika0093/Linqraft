@@ -254,11 +254,13 @@ internal abstract class ProjectionSupportExtensionClassGenerator
         LinqraftGeneratorOptionsCore generatorOptions
     )
     {
+        var hooks = generatorOptions.GetValidatedProjectionHooks();
+
         var builder = new IndentedStringBuilder();
         builder.AppendLines(
             """
             /// <summary>
-            /// Provides projection helper hooks that generated selectors can use to request special rewrite behavior.
+            /// Provides projection helper methods that generated selectors can use to request special rewrite behavior.
             /// </summary>
             [global::Microsoft.CodeAnalysis.EmbeddedAttribute]
             internal partial interface IProjectionHelper
@@ -267,21 +269,162 @@ internal abstract class ProjectionSupportExtensionClassGenerator
         );
         using (builder.Indent())
         {
-            foreach (var hook in generatorOptions.GetValidatedProjectionHooks())
+            foreach (var hook in hooks)
+            {
+                AppendProjectionHookInterfaceMethods(builder, hook);
+            }
+        }
+
+        builder.AppendLine("}");
+        yield return builder.ToString().TrimEnd();
+
+        if (hooks.Any(hook => hook.Kind == LinqraftProjectionHookKind.Project))
+        {
+            yield return CreateProjectedValueInterface().TrimEnd();
+        }
+
+        foreach (
+            var group in hooks.GroupBy(
+                LinqraftGeneratorOptionsCore.GetProjectionHookClassName,
+                StringComparer.Ordinal
+            )
+        )
+        {
+            yield return CreateProjectionHookExtensionClass(
+                    group.Key,
+                    group.ToArray(),
+                    generatorOptions
+                )
+                .TrimEnd();
+        }
+    }
+
+    private static void AppendProjectionHookInterfaceMethods(
+        IndentedStringBuilder builder,
+        LinqraftProjectionHookDefinition hook
+    )
+    {
+        builder.AppendLines(
+            $$"""
+            /// <summary>
+            /// Marker used by generated projections to trigger the {{hook.Kind}} rewrite behavior.
+            /// </summary>
+            """
+        );
+        foreach (var signature in GetProjectionHookMethodSignatures(hook, interfaceMethod: true))
+        {
+            builder.AppendLine(signature);
+        }
+    }
+
+    private static string CreateProjectedValueInterface()
+    {
+        var builder = new IndentedStringBuilder();
+        builder.AppendLines(
+            """
+            /// <summary>
+            /// Represents a single projection target that can be shaped with a local Select expression.
+            /// </summary>
+            [global::Microsoft.CodeAnalysis.EmbeddedAttribute]
+            internal partial interface IProjectedValue<T>
+            {
+            """
+        );
+        using (builder.Indent())
+        {
+            builder.AppendLines(
+                """
+                /// <summary>
+                /// Shapes the wrapped projection target into a new result.
+                /// </summary>
+                TResult Select<TResult>(global::System.Func<T, TResult> selector);
+                """
+            );
+        }
+
+        builder.AppendLine("}");
+        return builder.ToString();
+    }
+
+    private static string CreateProjectionHookExtensionClass(
+        string className,
+        IReadOnlyList<LinqraftProjectionHookDefinition> hooks,
+        LinqraftGeneratorOptionsCore generatorOptions
+    )
+    {
+        var builder = new IndentedStringBuilder();
+        builder.AppendLines(
+            $$"""
+            /// <summary>
+            /// Provides marker extension methods for projection helper rewrites.
+            /// </summary>
+            [global::Microsoft.CodeAnalysis.EmbeddedAttribute]
+            internal static partial class {{className}}
+            {
+            """
+        );
+        using (builder.Indent())
+        {
+            builder.AppendLine(
+                $"private static global::System.InvalidOperationException ThrowInterceptionRequired => new global::System.InvalidOperationException(\"{generatorOptions.GeneratorDisplayName} source generator should replace projection helper invocations before execution.\");"
+            );
+            builder.AppendLine();
+
+            foreach (var hook in hooks)
             {
                 builder.AppendLines(
                     $$"""
                     /// <summary>
                     /// Marker used by generated projections to trigger the {{hook.Kind}} rewrite behavior.
                     /// </summary>
-                    T {{hook.MethodName}}<T>(T value);
                     """
                 );
+                foreach (
+                    var signature in GetProjectionHookMethodSignatures(hook, interfaceMethod: false)
+                )
+                {
+                    builder.AppendLine(signature);
+                    using (builder.Indent())
+                    {
+                        builder.AppendLine("=> throw ThrowInterceptionRequired;");
+                    }
+                    builder.AppendLine();
+                }
             }
         }
 
         builder.AppendLine("}");
-        yield return builder.ToString().TrimEnd();
+        return builder.ToString();
+    }
+
+    private static IEnumerable<string> GetProjectionHookMethodSignatures(
+        LinqraftProjectionHookDefinition hook,
+        bool interfaceMethod
+    )
+    {
+        var prefix = interfaceMethod ? string.Empty : "public static ";
+        var suffix = interfaceMethod ? ";" : string.Empty;
+        return hook.Kind switch
+        {
+            LinqraftProjectionHookKind.LeftJoin
+            or LinqraftProjectionHookKind.InnerJoin
+            or LinqraftProjectionHookKind.Projectable =>
+            [
+                $"{prefix}T {hook.MethodName}<T>(T? value){suffix}",
+            ],
+            LinqraftProjectionHookKind.Projection =>
+            [
+                $"{prefix}TResult {hook.MethodName}<TResult>(object? value){suffix}",
+                $"{prefix}object {hook.MethodName}(object? value){suffix}",
+            ],
+            LinqraftProjectionHookKind.Project =>
+            [
+                $"{prefix}IProjectedValue<T> {hook.MethodName}<T>(T? value){suffix}",
+            ],
+            _ => throw new InvalidOperationException(
+                $"Unsupported projection helper kind '{hook.Kind}'."
+            ),
+        };
     }
 
     private string CreateDeclaration(LinqraftGeneratorOptionsCore generatorOptions)
