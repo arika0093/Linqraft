@@ -697,9 +697,7 @@ internal static class SourceWriters
         string captureParameter
     )
     {
-        var signatureSuffix = request.Captures.Length == 0
-            ? string.Empty
-            : $", {captureParameter}";
+        var signatureSuffix = request.Captures.Length == 0 ? string.Empty : $", {captureParameter}";
         return request.OperationKind switch
         {
             ProjectionOperationKind.Select =>

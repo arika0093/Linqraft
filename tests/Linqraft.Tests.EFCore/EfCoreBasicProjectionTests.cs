@@ -44,13 +44,14 @@ public sealed class EfCoreBasicProjectionTests
             .OrderBy(order => order.OrderNumber)
             .UseLinqraft()
             .Select<EfFluentSqliteOrderRow>(
-                (order, helper) => new
-                {
-                    order.Id,
-                    order.OrderNumber,
-                    CustomerName = helper.AsLeftJoin(order.Customer).Name,
-                    ItemCount = order.Items.Count,
-                }
+                (order, helper) =>
+                    new
+                    {
+                        order.Id,
+                        order.OrderNumber,
+                        CustomerName = helper.AsLeftJoin(order.Customer).Name,
+                        ItemCount = order.Items.Count,
+                    }
             )
             .ToListAsync();
 
@@ -412,17 +413,17 @@ public sealed class EfCoreBasicProjectionTests
             .ToListAsync();
 
         result
-            .Select(row =>
-                new EfOrderInlineExpectation(row.OrderNumber, (string?)row.FirstLargeItemProductName)
-            )
+            .Select(row => new EfOrderInlineExpectation(
+                row.OrderNumber,
+                (string?)row.FirstLargeItemProductName
+            ))
             .ToList()
             .ShouldBe(
-                expected.Select(row =>
-                        new EfOrderInlineExpectation(
-                            row.OrderNumber,
-                            row.FirstLargeItemProductName
-                        )
-                    )
+                expected
+                    .Select(row => new EfOrderInlineExpectation(
+                        row.OrderNumber,
+                        row.FirstLargeItemProductName
+                    ))
                     .ToList()
             );
     }
@@ -469,4 +470,7 @@ public partial class EfFluentSqliteOrderRow { }
 
 public partial class EfFluentSqliteOrderGroupRow { }
 
-public sealed record EfOrderInlineExpectation(string OrderNumber, string? FirstLargeItemProductName);
+public sealed record EfOrderInlineExpectation(
+    string OrderNumber,
+    string? FirstLargeItemProductName
+);

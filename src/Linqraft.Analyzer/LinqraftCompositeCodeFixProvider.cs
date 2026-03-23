@@ -1225,12 +1225,12 @@ public sealed class LinqraftCompositeCodeFixProvider : CodeFixProvider
             ? SyntaxFactory.IdentifierName("Select")
             : SyntaxFactory.GenericName(
                 SyntaxFactory.Identifier("Select"),
-                    SyntaxFactory.TypeArgumentList(
-                        SyntaxFactory.SingletonSeparatedList<TypeSyntax>(
-                            SyntaxFactory.ParseTypeName(dtoName!)
-                        )
+                SyntaxFactory.TypeArgumentList(
+                    SyntaxFactory.SingletonSeparatedList<TypeSyntax>(
+                        SyntaxFactory.ParseTypeName(dtoName!)
                     )
-                );
+                )
+            );
         return invocation.WithExpression(
             SyntaxFactory.MemberAccessExpression(
                 SyntaxKind.SimpleMemberAccessExpression,

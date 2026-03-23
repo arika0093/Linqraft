@@ -124,8 +124,8 @@ public sealed class SelectManyExprRuntimeTests
             .UseLinqraft()
             .SelectMany<SelectManyExprFluentChildRowDto>(
                 parent =>
-                    parent.Children
-                        .Where(child => child.GrandChildren.Count >= minimumGrandChildren)
+                    parent
+                        .Children.Where(child => child.GrandChildren.Count >= minimumGrandChildren)
                         .Select(child => new
                         {
                             ParentId = parent.Id,

@@ -367,11 +367,7 @@ public sealed class AnalyzerCodeFixSmokeTests
             }
             """;
 
-        var result = await ApplyFixAsync(
-            source,
-            "LQRS002",
-            "Convert to UseLinqraft().Select()"
-        );
+        var result = await ApplyFixAsync(source, "LQRS002", "Convert to UseLinqraft().Select()");
         var fixedText = result.PrimaryDocumentText;
         var compilationErrors = await GetCompilationErrorsAsync(result.ChangedSolution);
 
@@ -418,11 +414,7 @@ public sealed class AnalyzerCodeFixSmokeTests
             }
             """;
 
-        var result = await ApplyFixAsync(
-            source,
-            "LQRS005",
-            "Convert to UseLinqraft().Select()"
-        );
+        var result = await ApplyFixAsync(source, "LQRS005", "Convert to UseLinqraft().Select()");
         var fixedText = result.PrimaryDocumentText;
         var compilationErrors = await GetCompilationErrorsAsync(result.ChangedSolution);
 
@@ -469,11 +461,7 @@ public sealed class AnalyzerCodeFixSmokeTests
             }
             """;
 
-        var result = await ApplyFixAsync(
-            source,
-            "LQRS002",
-            "Convert to UseLinqraft().Select()"
-        );
+        var result = await ApplyFixAsync(source, "LQRS002", "Convert to UseLinqraft().Select()");
         var fixedText = result.PrimaryDocumentText;
         var compilationErrors = await GetCompilationErrorsAsync(result.ChangedSolution);
 
@@ -675,11 +663,7 @@ public sealed class AnalyzerCodeFixSmokeTests
             }
             """;
 
-        var result = await ApplyFixAsync(
-            source,
-            "LQRS005",
-            "Convert to UseLinqraft().Select()"
-        );
+        var result = await ApplyFixAsync(source, "LQRS005", "Convert to UseLinqraft().Select()");
         var fixedText = result.PrimaryDocumentText;
         var compilationErrors = await GetCompilationErrorsAsync(result.ChangedSolution);
 
@@ -1086,9 +1070,7 @@ public sealed class AnalyzerCodeFixSmokeTests
         var compilationErrors = await GetCompilationErrorsAsync(result.ChangedSolution);
 
         compilationErrors.ShouldBeEmpty();
-        fixedText.ShouldContain(
-            "source.UseLinqraft().Select<ManualSampleClassDto>(s => new"
-        );
+        fixedText.ShouldContain("source.UseLinqraft().Select<ManualSampleClassDto>(s => new");
         fixedText.ShouldContain("Childs = s.Childs.Select(c => new");
         fixedText.ShouldContain("ChildId = c.Child?.Id");
         fixedText.ShouldContain("ChildQux = c.Child?.Qux");

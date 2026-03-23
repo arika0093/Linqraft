@@ -91,7 +91,9 @@ internal abstract class ProjectionSupportExtensionClassGenerator
         builder.AppendLines(
             $$"""
             /// <summary>
-            /// Wraps a {{(receiverKind == ReceiverKind.IQueryable ? "queryable" : "enumerable")}} source so only fluent {{generatorOptions.GeneratorDisplayName}} projection members are available.
+            /// Wraps a {{(
+                receiverKind == ReceiverKind.IQueryable ? "queryable" : "enumerable"
+            )}} source so only fluent {{generatorOptions.GeneratorDisplayName}} projection members are available.
             /// </summary>
             [global::Microsoft.CodeAnalysis.EmbeddedAttribute]
             internal sealed class {{className}}<TIn>
@@ -99,7 +101,9 @@ internal abstract class ProjectionSupportExtensionClassGenerator
             {
                 private static global::System.InvalidOperationException ThrowInterceptionRequired => new global::System.InvalidOperationException("{{generatorOptions.GeneratorDisplayName}} source generator should replace UseLinqraft projection invocations before execution.");
 
-                public {{className}}({{GetNonFluentReceiverTypeName(receiverKind)}}<TIn> {{sourceParameterName}})
+                public {{className}}({{GetNonFluentReceiverTypeName(
+                receiverKind
+            )}}<TIn> {{sourceParameterName}})
                 {
                     _source = {{sourceParameterName}};
                 }
@@ -576,9 +580,11 @@ internal abstract class ProjectionSupportExtensionClassGenerator
         }
     }
 
-    private static IEnumerable<(string? Parameter, string SummarySuffix, string? ObsoleteMessage)> GetCapturePatterns(
-        bool includeAnonymousObjectPattern = true
-    )
+    private static IEnumerable<(
+        string? Parameter,
+        string SummarySuffix,
+        string? ObsoleteMessage
+    )> GetCapturePatterns(bool includeAnonymousObjectPattern = true)
     {
         yield return (null, "without captures", null);
         if (includeAnonymousObjectPattern)
@@ -683,12 +689,17 @@ internal abstract class ProjectionSupportExtensionClassGenerator
                 $"global::System.Func<TIn, {helperType}, {selectorResultType}>",
             _ => $"global::System.Func<TIn, {selectorResultType}>",
         };
-        var parameters = operationKind == ProjectionOperationKind.GroupBy
-            ? new[] { "global::System.Func<TIn, TKey> keySelector", $"{selectorType} selector", captureParameter }
-            : new[] { $"{selectorType} selector", captureParameter };
-        var typeParameters = operationKind == ProjectionOperationKind.GroupBy
-            ? "<TKey, TResult>"
-            : "<TResult>";
+        var parameters =
+            operationKind == ProjectionOperationKind.GroupBy
+                ? new[]
+                {
+                    "global::System.Func<TIn, TKey> keySelector",
+                    $"{selectorType} selector",
+                    captureParameter,
+                }
+                : new[] { $"{selectorType} selector", captureParameter };
+        var typeParameters =
+            operationKind == ProjectionOperationKind.GroupBy ? "<TKey, TResult>" : "<TResult>";
         return $"public {GetNonFluentReceiverTypeName(receiverKind)}<TResult> {methodName}{typeParameters}({string.Join(", ", parameters.Where(parameter => parameter is not null))})";
     }
 

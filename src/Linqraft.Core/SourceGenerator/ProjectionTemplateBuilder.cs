@@ -659,10 +659,9 @@ internal static class ProjectionTemplateBuilder
 
         return new AnalyzedProjection
         {
-            Pattern =
-                hasExplicitResultType
-                    ? ProjectionPattern.ExplicitDto
-                    : ProjectionPattern.Anonymous,
+            Pattern = hasExplicitResultType
+                ? ProjectionPattern.ExplicitDto
+                : ProjectionPattern.Anonymous,
             ResultTypeTemplate = resultTypeTemplate,
             SelectorParameterName = GetLambdaParameterName(selectorLambda),
             HasProjectionHelperParameter = UsesProjectionHelperParameter(selectorLambda),
@@ -2857,11 +2856,11 @@ internal static class ProjectionTemplateBuilder
     )
     {
         return GetUseLinqraftProjectionOperationKind(
-                invocation,
-                semanticModel,
-                generatorOptions,
-                cancellationToken
-            )
+            invocation,
+            semanticModel,
+            generatorOptions,
+            cancellationToken
+        )
             is not null;
     }
 
@@ -3038,7 +3037,8 @@ internal static class ProjectionTemplateBuilder
                 semanticModel,
                 generatorOptions,
                 cancellationToken
-            ) is { } useLinqraftOperationKind
+            ) is
+            { } useLinqraftOperationKind
         )
         {
             return useLinqraftOperationKind == ProjectionOperationKind.GroupBy ? 2 : 1;
@@ -3295,7 +3295,8 @@ internal static class ProjectionTemplateBuilder
                 semanticModel,
                 generatorOptions,
                 cancellationToken
-            ) is { } useLinqraftOperationKind
+            ) is
+            { } useLinqraftOperationKind
         )
         {
             return useLinqraftOperationKind;
@@ -3399,8 +3400,11 @@ internal static class ProjectionTemplateBuilder
     )
     {
         if (
-            invocation.Expression is not MemberAccessExpressionSyntax
-            { Expression: InvocationExpressionSyntax receiverInvocation }
+            invocation.Expression
+                is not MemberAccessExpressionSyntax
+                {
+                    Expression: InvocationExpressionSyntax receiverInvocation
+                }
             || !IsUseLinqraftInvocation(
                 receiverInvocation,
                 semanticModel,
@@ -3439,7 +3443,8 @@ internal static class ProjectionTemplateBuilder
             return false;
         }
 
-        var methodSymbol = semanticModel.GetSymbolInfo(invocation, cancellationToken).Symbol as IMethodSymbol;
+        var methodSymbol =
+            semanticModel.GetSymbolInfo(invocation, cancellationToken).Symbol as IMethodSymbol;
         if (methodSymbol is null)
         {
             return false;
@@ -3450,8 +3455,7 @@ internal static class ProjectionTemplateBuilder
                 targetMethod.ContainingType.ToDisplayString(),
                 $"{generatorOptions.SupportNamespace}.LinqraftQueryExtensions",
                 StringComparison.Ordinal
-            )
-            && string.Equals(targetMethod.Name, "UseLinqraft", StringComparison.Ordinal);
+            ) && string.Equals(targetMethod.Name, "UseLinqraft", StringComparison.Ordinal);
     }
 
     private static bool IsInsideMappingDeclaration(
@@ -3493,8 +3497,7 @@ internal static class ProjectionTemplateBuilder
             {
                 Expression: InvocationExpressionSyntax receiverInvocation
             }
-                when receiverInvocation.Expression is MemberAccessExpressionSyntax
-                    memberAccess
+                when receiverInvocation.Expression is MemberAccessExpressionSyntax memberAccess
                     && IsUseLinqraftInvocation(
                         receiverInvocation,
                         semanticModel,

@@ -22,13 +22,15 @@ internal static class AnalyzerHelpers
                 GetInvocationName(invocation.Expression),
                 "SelectExpr",
                 StringComparison.Ordinal
-            )
-            || IsUseLinqraftSelectInvocation(invocation);
+            ) || IsUseLinqraftSelectInvocation(invocation);
     }
 
     public static bool IsProjectionExprInvocation(InvocationExpressionSyntax invocation)
     {
-        return GetInvocationName(invocation.Expression) is "SelectExpr" or "SelectManyExpr" or "GroupByExpr"
+        return GetInvocationName(invocation.Expression)
+                is "SelectExpr"
+                    or "SelectManyExpr"
+                    or "GroupByExpr"
             || GetUseLinqraftProjectionMethodName(invocation) is not null;
     }
 
@@ -462,7 +464,9 @@ internal static class AnalyzerHelpers
         if (
             invocation.Expression
                 is not MemberAccessExpressionSyntax
-                { Expression: InvocationExpressionSyntax receiverInvocation }
+                {
+                    Expression: InvocationExpressionSyntax receiverInvocation
+                }
             || !string.Equals(
                 GetInvocationName(receiverInvocation.Expression),
                 "UseLinqraft",
