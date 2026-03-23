@@ -173,10 +173,7 @@ public partial class InMemoryEnumerableBenchmark
                 s.Id,
                 s.Foo,
                 s.Bar,
-                Childs = s.Childs.SelectExpr<
-                    SampleChildClass,
-                    InMemoryEnumerableLinqraftSampleChildClassDto
-                >(c => new
+                Childs = s.Childs.Select(c => new
                 {
                     c.Id,
                     c.Baz,
