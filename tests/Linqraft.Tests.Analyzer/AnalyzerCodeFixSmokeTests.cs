@@ -17,7 +17,7 @@ namespace Linqraft.Tests.Analyzer;
 
 public sealed class AnalyzerCodeFixSmokeTests
 {
-    private const string FluentLinqraftSupportSource = """
+    private const string LinqraftTestSupportSource = """
         using System;
         using System.Linq;
 
@@ -1498,7 +1498,7 @@ public sealed class AnalyzerCodeFixSmokeTests
         solution = solution.AddDocument(
             DocumentId.CreateNewId(projectId),
             "LinqraftFluentSupport.cs",
-            SourceText.From(FluentLinqraftSupportSource)
+            SourceText.From(LinqraftTestSupportSource)
         );
         return solution.GetDocument(documentId)!;
     }

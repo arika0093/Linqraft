@@ -48,7 +48,9 @@ internal abstract class ProjectionSupportExtensionClassGenerator
         extensionBuilder.AppendLines(
             $$"""
             /// <summary>
-            /// Starts the recommended fluent {{generatorOptions.GeneratorDisplayName}} projection style for queryable sources and enumerable sources that are normalized via <see cref="global::System.Linq.Queryable.AsQueryable{TElement}(global::System.Collections.Generic.IEnumerable{TElement})"/>.
+            /// Starts the recommended fluent {{generatorOptions.GeneratorDisplayName}} projection style
+            /// for queryable sources and enumerable sources that are normalized via
+            /// <see cref="global::System.Linq.Queryable.AsQueryable{TElement}(global::System.Collections.Generic.IEnumerable{TElement})"/>.
             /// </summary>
             [global::Microsoft.CodeAnalysis.EmbeddedAttribute]
             internal static partial class LinqraftQueryExtensions
