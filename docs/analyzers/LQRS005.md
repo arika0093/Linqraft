@@ -14,8 +14,8 @@ Detects `IQueryable<T>.Select(...)` calls whose selector returns an anonymous ob
 
 ## Code Fixes
 LQRS005 reuses the same code-fix family as [LQRS002](./LQRS002.md):
-- **Convert to SelectExpr**
-- **Convert to SelectExpr<TSource, TDto>**
+- **Convert to UseLinqraft().Select()**
+- **Convert to UseLinqraft().Select<TDto>()**
 
 Those fixes also:
 - simplify the matching null ternary automatically
@@ -32,7 +32,7 @@ var result = query.Select(x => new
 
 After:
 ```csharp
-var result = query.SelectExpr(x => new
+var result = query.UseLinqraft().Select(x => new
 {
     ChildData = new { Name = x.Child?.Name }
 });

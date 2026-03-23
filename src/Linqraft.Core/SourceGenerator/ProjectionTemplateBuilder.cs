@@ -245,6 +245,8 @@ internal static class ProjectionTemplateBuilder
             return null;
         }
 
+        var usesFluentQuerySyntax = GetUseLinqraftProjectionOperationKind(invocation) is not null;
+
         if (allowInterceptor && IsInsideMappingDeclaration(invocation, generatorOptions))
         {
             return null;
@@ -282,7 +284,7 @@ internal static class ProjectionTemplateBuilder
         var sourceType = ResolveSourceType(
             semanticModel,
             receiverType,
-            typeArguments,
+            usesFluentQuerySyntax ? default : typeArguments,
             cancellationToken
         );
         if (sourceType is null)
@@ -372,7 +374,7 @@ internal static class ProjectionTemplateBuilder
                 Origin = CreateOrigin(invocation),
                 OperationKind = operationKind.Value,
                 ReceiverKind = receiverKind.Value,
-                UsesFluentQuerySyntax = IsUseLinqraftSelectInvocation(invocation),
+                UsesFluentQuerySyntax = usesFluentQuerySyntax,
                 Pattern = analyzedProjection.Pattern,
                 SourceTypeName = sourceType.ToFullyQualifiedTypeName(),
                 ResultTypeTemplate = analyzedProjection.ResultTypeTemplate,
@@ -469,7 +471,8 @@ internal static class ProjectionTemplateBuilder
             return null;
         }
 
-        var pattern = ResolveProjectionPattern(selectorBody, typeArguments.Count);
+        var hasExplicitResultType = HasExplicitResultType(invocation, typeArguments.Count);
+        var pattern = ResolveProjectionPattern(selectorBody, hasExplicitResultType ? 1 : 0);
         if (pattern is null)
         {
             return null;
@@ -531,9 +534,10 @@ internal static class ProjectionTemplateBuilder
         var replacementTypes = new Dictionary<TextSpan, string>();
         string resultTypeTemplate;
         var useObjectSelectorSignature = false;
-        if (typeArguments.Count >= 2)
+        var hasExplicitResultType = HasExplicitResultType(invocation, typeArguments.Count);
+        if (hasExplicitResultType)
         {
-            var explicitTypeSyntax = typeArguments[1];
+            var explicitTypeSyntax = typeArguments[^1];
             resultTypeTemplate =
                 ResolveNamedType(
                     explicitTypeSyntax,
@@ -595,7 +599,7 @@ internal static class ProjectionTemplateBuilder
             selectorBody,
             memberName: "Item",
             replacementTypes,
-            namedContext: typeArguments.Count >= 2,
+            namedContext: hasExplicitResultType,
             defaultNamespace: callerNamespace,
             useGlobalNamespaceFallback: string.IsNullOrWhiteSpace(callerNamespace),
             ownerHintName: ownerHintName,
@@ -611,7 +615,7 @@ internal static class ProjectionTemplateBuilder
         return new AnalyzedProjection
         {
             Pattern =
-                typeArguments.Count >= 2
+                hasExplicitResultType
                     ? ProjectionPattern.ExplicitDto
                     : ProjectionPattern.Anonymous,
             ResultTypeTemplate = resultTypeTemplate,
@@ -2278,6 +2282,30 @@ internal static class ProjectionTemplateBuilder
         return null;
     }
 
+    private static bool HasExplicitResultType(
+        InvocationExpressionSyntax invocation,
+        int typeArgumentCount
+    )
+    {
+        if (!IsUseLinqraftInvocationCandidate(invocation))
+        {
+            return typeArgumentCount >= 2;
+        }
+
+        return GetUseLinqraftProjectionOperationKind(invocation) switch
+        {
+            ProjectionOperationKind.GroupBy => typeArgumentCount >= 2,
+            ProjectionOperationKind.Select or ProjectionOperationKind.SelectMany =>
+                typeArgumentCount >= 1,
+            _ => false,
+        };
+    }
+
+    private static bool IsUseLinqraftInvocationCandidate(InvocationExpressionSyntax invocation)
+    {
+        return GetUseLinqraftProjectionOperationKind(invocation) is not null;
+    }
+
     private static ExpressionSyntax? GetLambdaBodyExpression(LambdaExpressionSyntax lambda)
     {
         return lambda.Body as ExpressionSyntax;
@@ -2436,9 +2464,9 @@ internal static class ProjectionTemplateBuilder
         LinqraftGeneratorOptionsCore generatorOptions
     )
     {
-        if (IsUseLinqraftSelectInvocation(invocation))
+        if (GetUseLinqraftProjectionOperationKind(invocation) is { } useLinqraftOperationKind)
         {
-            return 1;
+            return useLinqraftOperationKind == ProjectionOperationKind.GroupBy ? 2 : 1;
         }
 
         return GetInvocationName(invocation.Expression) switch
@@ -2684,9 +2712,9 @@ internal static class ProjectionTemplateBuilder
         LinqraftGeneratorOptionsCore generatorOptions
     )
     {
-        if (IsUseLinqraftSelectInvocation(invocation))
+        if (GetUseLinqraftProjectionOperationKind(invocation) is { } useLinqraftOperationKind)
         {
-            return ProjectionOperationKind.Select;
+            return useLinqraftOperationKind;
         }
 
         return GetInvocationName(invocation.Expression) switch
@@ -2759,9 +2787,29 @@ internal static class ProjectionTemplateBuilder
 
     private static bool IsUseLinqraftSelectInvocation(InvocationExpressionSyntax invocation)
     {
-        return string.Equals(GetInvocationName(invocation.Expression), "Select", StringComparison.Ordinal)
-            && GetReceiverExpression(invocation) is InvocationExpressionSyntax receiverInvocation
-            && IsUseLinqraftInvocation(receiverInvocation);
+        return GetUseLinqraftProjectionOperationKind(invocation) == ProjectionOperationKind.Select;
+    }
+
+    private static ProjectionOperationKind? GetUseLinqraftProjectionOperationKind(
+        InvocationExpressionSyntax invocation
+    )
+    {
+        if (
+            invocation.Expression is not MemberAccessExpressionSyntax
+            { Expression: InvocationExpressionSyntax receiverInvocation }
+            || !IsUseLinqraftInvocation(receiverInvocation)
+        )
+        {
+            return null;
+        }
+
+        return GetInvocationName(invocation.Expression) switch
+        {
+            "Select" => ProjectionOperationKind.Select,
+            "SelectMany" => ProjectionOperationKind.SelectMany,
+            "GroupBy" => ProjectionOperationKind.GroupBy,
+            _ => null,
+        };
     }
 
     private static bool IsUseLinqraftInvocation(InvocationExpressionSyntax invocation)
@@ -2803,6 +2851,13 @@ internal static class ProjectionTemplateBuilder
     {
         return invocation.Expression switch
         {
+            MemberAccessExpressionSyntax
+            {
+                Expression: InvocationExpressionSyntax receiverInvocation
+            }
+                when receiverInvocation.Expression is MemberAccessExpressionSyntax
+                    memberAccess
+                    && IsUseLinqraftInvocation(receiverInvocation) => memberAccess.Expression,
             MemberAccessExpressionSyntax memberAccess => memberAccess.Expression,
             MemberBindingExpressionSyntax => null,
             _ => null,

@@ -14,9 +14,9 @@ Detects `IQueryable<T>.Select(...)` calls whose selector returns a named object 
 
 ## Code Fixes
 LQRS006 reuses the same code-fix family as [LQRS003](./LQRS003.md):
-- **Convert to SelectExpr<T, TDto>**
-- **Convert to SelectExpr<T, TDto> (strict)**
-- **Convert to SelectExpr (use predefined classes)**
+- **Convert to UseLinqraft().Select<TDto>()**
+- **Convert to UseLinqraft().Select<TDto>() (strict)**
+- **Convert to UseLinqraft().Select() (use predefined classes)**
 
 The first option simplifies the null ternary automatically. All three options also add any required `capture:` entries automatically when outer variables are referenced.
 
@@ -29,9 +29,9 @@ var result = query.Select(x => new ProductDto
 });
 ```
 
-After (`Convert to SelectExpr<T, TDto>`):
+After (`Convert to UseLinqraft().Select<TDto>()`):
 ```csharp
-var result = query.SelectExpr<Product, ProductDto>(x => new
+var result = query.UseLinqraft().Select<ProductDto>(x => new
 {
     ChildData = new { Name = x.Child?.Name }
 });

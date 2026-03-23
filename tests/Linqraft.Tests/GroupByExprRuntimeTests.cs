@@ -64,6 +64,31 @@ public sealed class GroupByExprRuntimeTests
     }
 
     [Test]
+    public void UseLinqraft_groupby_projects_aggregates()
+    {
+        var result = Records
+            .AsTestQueryable()
+            .UseLinqraft()
+            .GroupBy<string, GroupByExprFluentSummaryDto>(
+                record => record.Region,
+                group => new
+                {
+                    Region = group.Key,
+                    ScoreTotal = group.Sum(x => x.Score),
+                    Count = group.Count(),
+                }
+            )
+            .OrderBy(x => x.Region)
+            .ToList();
+
+        result.Count.ShouldBe(2);
+        result[0].Region.ShouldBe("North");
+        result[0].ScoreTotal.ShouldBe(30);
+        result[1].Region.ShouldBe("South");
+        result[1].Count.ShouldBe(2);
+    }
+
+    [Test]
     public void IEnumerable_GroupByExpr_supports_nested_object_and_internal_select()
     {
         var result = Records.GroupByExpr<GroupByExprRecord, string, GroupByExprNestedDto>(
@@ -118,6 +143,8 @@ public sealed class GroupByExprRecord
 }
 
 public partial class GroupByExprSummaryDto;
+
+public partial class GroupByExprFluentSummaryDto;
 
 public partial class GroupByExprNestedDto;
 

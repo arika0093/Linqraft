@@ -64,6 +64,35 @@ public sealed class EfCoreBasicProjectionTests
     }
 
     [Test]
+    public async Task UseLinqraft_groupby_projects_order_summaries_over_sqlite()
+    {
+        await using var database = await SqliteTestDatabase.CreateAsync();
+
+        var result = await database
+            .Context.Orders.AsNoTracking()
+            .Where(order => order.OrderNumber == "ORD-001" || order.OrderNumber == "ORD-002")
+            .UseLinqraft()
+            .GroupBy<string, EfFluentSqliteOrderGroupRow>(
+                order => order.Customer != null ? order.Customer.Name : "Guest",
+                group => new
+                {
+                    CustomerName = group.Key,
+                    OrderCount = group.Count(),
+                    ItemCount = group.Sum(order => order.Items.Count),
+                }
+            )
+            .OrderBy(row => row.CustomerName)
+            .ToListAsync();
+
+        result.Count.ShouldBe(2);
+        result[0].CustomerName.ShouldBe("Ada");
+        result[0].OrderCount.ShouldBe(1);
+        result[0].ItemCount.ShouldBe(2);
+        result[1].CustomerName.ShouldBe("Guest");
+        result[1].ItemCount.ShouldBe(1);
+    }
+
+    [Test]
     public async Task Generated_mapping_method_projects_over_sqlite()
     {
         await using var database = await SqliteTestDatabase.CreateAsync();
@@ -352,3 +381,5 @@ public sealed class EfCoreBasicProjectionTests
 }
 
 public partial class EfFluentSqliteOrderRow { }
+
+public partial class EfFluentSqliteOrderGroupRow { }

@@ -48,12 +48,17 @@ internal abstract class ProjectionSupportExtensionClassGenerator
         extensionBuilder.AppendLines(
             $$"""
             /// <summary>
-            /// Starts the recommended fluent {{generatorOptions.GeneratorDisplayName}} projection style for <see cref="global::System.Linq.IQueryable{T}"/>.
+            /// Starts the recommended fluent {{generatorOptions.GeneratorDisplayName}} projection style for queryable and enumerable sources.
             /// </summary>
             [global::Microsoft.CodeAnalysis.EmbeddedAttribute]
             internal static partial class LinqraftQueryExtensions
             {
                 public static global::{{generatorOptions.SupportNamespace}}.LinqraftQuery<TIn> UseLinqraft<TIn>(this global::System.Linq.IQueryable<TIn> query)
+                    => new(query);
+
+                [global::System.Diagnostics.CodeAnalysis.UnconditionalSuppressMessage("Trimming", "IL2026", Justification = "Fluent IEnumerable support normalizes the source via AsQueryable inside Linqraft query aids.")]
+                [global::System.Diagnostics.CodeAnalysis.UnconditionalSuppressMessage("AOT", "IL3050", Justification = "Fluent IEnumerable support normalizes the source via AsQueryable inside Linqraft query aids.")]
+                public static global::{{generatorOptions.SupportNamespace}}.LinqraftQuery<TIn> UseLinqraft<TIn>(this global::System.Collections.Generic.IEnumerable<TIn> query)
                     => new(query);
             }
             """
@@ -64,93 +69,53 @@ internal abstract class ProjectionSupportExtensionClassGenerator
         queryBuilder.AppendLines(
             $$"""
             /// <summary>
-            /// Wraps an <see cref="global::System.Linq.IQueryable{T}"/> so Linqraft's fluent projection members can be used.
+            /// Wraps a query source so only fluent {{generatorOptions.GeneratorDisplayName}} projection members are available.
             /// </summary>
             [global::Microsoft.CodeAnalysis.EmbeddedAttribute]
-            internal sealed class LinqraftQuery<TIn> : global::System.Linq.IQueryable<TIn>
+            internal sealed class LinqraftQuery<TIn>
             {
-                private static global::System.InvalidOperationException ThrowInterceptionRequired => new global::System.InvalidOperationException("{{generatorOptions.GeneratorDisplayName}} source generator should replace UseLinqraft().Select invocations before execution.");
+                private static global::System.InvalidOperationException ThrowInterceptionRequired => new global::System.InvalidOperationException("{{generatorOptions.GeneratorDisplayName}} source generator should replace UseLinqraft projection invocations before execution.");
 
                 public LinqraftQuery(global::System.Linq.IQueryable<TIn> query)
                 {
                     Query = query;
                 }
 
+                [global::System.Diagnostics.CodeAnalysis.UnconditionalSuppressMessage("Trimming", "IL2026", Justification = "Fluent IEnumerable support normalizes the source via AsQueryable inside Linqraft query aids.")]
+                [global::System.Diagnostics.CodeAnalysis.UnconditionalSuppressMessage("AOT", "IL3050", Justification = "Fluent IEnumerable support normalizes the source via AsQueryable inside Linqraft query aids.")]
+                public LinqraftQuery(global::System.Collections.Generic.IEnumerable<TIn> query)
+                    : this(query.AsQueryable()) { }
+
                 internal global::System.Linq.IQueryable<TIn> Query { get; }
-
-                public global::System.Type ElementType => Query.ElementType;
-
-                public global::System.Linq.Expressions.Expression Expression => Query.Expression;
-
-                public global::System.Linq.IQueryProvider Provider => Query.Provider;
-
-                public global::System.Collections.Generic.IEnumerator<TIn> GetEnumerator() => Query.GetEnumerator();
-
-                global::System.Collections.IEnumerator global::System.Collections.IEnumerable.GetEnumerator() => GetEnumerator();
-
             """
         );
         using (queryBuilder.Indent())
         {
             foreach (
-                var capture in new[]
+                var operation in new[]
                 {
                     new
                     {
-                        Parameter = (string?)null,
-                        Summary = "Interception stub for fluent Linqraft query projections without captures.",
-                        ObsoleteMessage = (string?)null,
+                        Kind = ProjectionOperationKind.Select,
+                        Description = "query projections",
                     },
                     new
                     {
-                        Parameter = (string?)"object capture",
-                        Summary = "Interception stub for fluent Linqraft query projections with anonymous-object captures.",
-                        ObsoleteMessage = (string?)
-                            "Anonymous-object capture is obsolete. Use the delegate-based capture pattern instead.",
+                        Kind = ProjectionOperationKind.SelectMany,
+                        Description = "collection-flattening projections",
                     },
                     new
                     {
-                        Parameter = (string?)"global::System.Func<object> capture",
-                        Summary = "Interception stub for fluent Linqraft query projections with NativeAOT-safe delegate captures.",
-                        ObsoleteMessage = (string?)null,
+                        Kind = ProjectionOperationKind.GroupBy,
+                        Description = "grouped projections",
                     },
                 }
             )
             {
-                WriteLinqraftQuerySelectMethod(
+                WriteLinqraftQueryMethodFamily(
                     queryBuilder,
-                    summary: capture.Summary,
-                    selectorType: "global::System.Func<TIn, TResult>",
-                    captureParameter: capture.Parameter,
-                    obsoleteMessage: capture.ObsoleteMessage,
-                    isLowPriority: false,
-                    generatorOptions
-                );
-                WriteLinqraftQuerySelectMethod(
-                    queryBuilder,
-                    summary: capture.Summary,
-                    selectorType: "global::System.Func<TIn, object>",
-                    captureParameter: capture.Parameter,
-                    obsoleteMessage: capture.ObsoleteMessage,
-                    isLowPriority: true,
-                    generatorOptions
-                );
-                WriteLinqraftQuerySelectMethod(
-                    queryBuilder,
-                    summary: $"{capture.Summary} Accepts a projection helper as the selector's second parameter.",
-                    selectorType: $"global::System.Func<TIn, global::{generatorOptions.SupportNamespace}.IProjectionHelper, TResult>",
-                    captureParameter: capture.Parameter,
-                    obsoleteMessage: capture.ObsoleteMessage,
-                    isLowPriority: false,
-                    generatorOptions
-                );
-                WriteLinqraftQuerySelectMethod(
-                    queryBuilder,
-                    summary: $"{capture.Summary} Accepts a projection helper as the selector's second parameter.",
-                    selectorType: $"global::System.Func<TIn, global::{generatorOptions.SupportNamespace}.IProjectionHelper, object>",
-                    captureParameter: capture.Parameter,
-                    obsoleteMessage: capture.ObsoleteMessage,
-                    isLowPriority: true,
+                    operation.Kind,
+                    operation.Description,
                     generatorOptions
                 );
             }
@@ -160,10 +125,68 @@ internal abstract class ProjectionSupportExtensionClassGenerator
         yield return queryBuilder.ToString().TrimEnd();
     }
 
-    private static void WriteLinqraftQuerySelectMethod(
+    private static void WriteLinqraftQueryMethodFamily(
+        IndentedStringBuilder builder,
+        ProjectionOperationKind operationKind,
+        string operationDescription,
+        LinqraftGeneratorOptionsCore generatorOptions
+    )
+    {
+        foreach (var capture in GetCapturePatterns())
+        {
+            WriteLinqraftQueryMethod(
+                builder,
+                summary: $"Interception stub for fluent Linqraft {operationDescription} {capture.SummarySuffix}.",
+                operationKind,
+                selectorUsesObjectResult: false,
+                usesProjectionHelperParameter: false,
+                capture.Parameter,
+                capture.ObsoleteMessage,
+                isLowPriority: false,
+                generatorOptions
+            );
+            WriteLinqraftQueryMethod(
+                builder,
+                summary: $"Interception stub for fluent Linqraft {operationDescription} {capture.SummarySuffix}.",
+                operationKind,
+                selectorUsesObjectResult: true,
+                usesProjectionHelperParameter: false,
+                capture.Parameter,
+                capture.ObsoleteMessage,
+                isLowPriority: true,
+                generatorOptions
+            );
+            WriteLinqraftQueryMethod(
+                builder,
+                summary: $"Interception stub for fluent Linqraft {operationDescription} {capture.SummarySuffix}. Accepts a projection helper as the selector's second parameter.",
+                operationKind,
+                selectorUsesObjectResult: false,
+                usesProjectionHelperParameter: true,
+                capture.Parameter,
+                capture.ObsoleteMessage,
+                isLowPriority: false,
+                generatorOptions
+            );
+            WriteLinqraftQueryMethod(
+                builder,
+                summary: $"Interception stub for fluent Linqraft {operationDescription} {capture.SummarySuffix}. Accepts a projection helper as the selector's second parameter.",
+                operationKind,
+                selectorUsesObjectResult: true,
+                usesProjectionHelperParameter: true,
+                capture.Parameter,
+                capture.ObsoleteMessage,
+                isLowPriority: true,
+                generatorOptions
+            );
+        }
+    }
+
+    private static void WriteLinqraftQueryMethod(
         IndentedStringBuilder builder,
         string summary,
-        string selectorType,
+        ProjectionOperationKind operationKind,
+        bool selectorUsesObjectResult,
+        bool usesProjectionHelperParameter,
         string? captureParameter,
         string? obsoleteMessage,
         bool isLowPriority,
@@ -186,11 +209,14 @@ internal abstract class ProjectionSupportExtensionClassGenerator
             builder.AppendLine(OverloadResolutionLowPriority);
         }
 
-        var parameters = new[] { $"{selectorType} selector", captureParameter }.Where(parameter =>
-            parameter is not null
-        );
         builder.AppendLine(
-            $"public global::System.Linq.IQueryable<TResult> Select<TResult>({string.Join(", ", parameters)})"
+            CreateLinqraftQueryMethodSignature(
+                operationKind,
+                selectorUsesObjectResult,
+                usesProjectionHelperParameter,
+                captureParameter,
+                generatorOptions
+            )
         );
         using (builder.Indent())
         {
@@ -302,34 +328,12 @@ internal abstract class ProjectionSupportExtensionClassGenerator
     {
         foreach (var receiver in GetReceivers(includeEnumerable))
         {
-            foreach (
-                var capture in new[]
-                {
-                    new
-                    {
-                        Parameter = (string?)null,
-                        Summary = $"Interception stub for {receiver.Kind} projections without captures.",
-                        ObsoleteMessage = (string?)null,
-                    },
-                    new
-                    {
-                        Parameter = (string?)"object capture",
-                        Summary = $"Interception stub for {receiver.Kind} projections with anonymous-object captures.",
-                        ObsoleteMessage = (string?)
-                            "Anonymous-object capture is obsolete. Use the delegate-based capture pattern instead.",
-                    },
-                    new
-                    {
-                        Parameter = (string?)"global::System.Func<object> capture",
-                        Summary = $"Interception stub for {receiver.Kind} projections with NativeAOT-safe delegate captures.",
-                        ObsoleteMessage = (string?)null,
-                    },
-                }
-            )
+            foreach (var capture in GetCapturePatterns())
             {
                 yield return new SupportMethodSignature
                 {
-                    CreateSummary = _ => capture.Summary,
+                    CreateSummary = _ =>
+                        $"Interception stub for {receiver.Kind} projections {capture.SummarySuffix}.",
                     CreateSignature = generatorOptions =>
                         CreateMethodSignature(
                             receiver.TypeName,
@@ -346,7 +350,8 @@ internal abstract class ProjectionSupportExtensionClassGenerator
 
                 yield return new SupportMethodSignature
                 {
-                    CreateSummary = _ => capture.Summary,
+                    CreateSummary = _ =>
+                        $"Interception stub for {receiver.Kind} projections {capture.SummarySuffix}.",
                     CreateSignature = generatorOptions =>
                         CreateMethodSignature(
                             receiver.TypeName,
@@ -364,7 +369,7 @@ internal abstract class ProjectionSupportExtensionClassGenerator
                 yield return new SupportMethodSignature
                 {
                     CreateSummary = _ =>
-                        $"{capture.Summary} Accepts a projection helper as the selector's second parameter.",
+                        $"Interception stub for {receiver.Kind} projections {capture.SummarySuffix}. Accepts a projection helper as the selector's second parameter.",
                     CreateSignature = generatorOptions =>
                         CreateMethodSignature(
                             receiver.TypeName,
@@ -382,7 +387,7 @@ internal abstract class ProjectionSupportExtensionClassGenerator
                 yield return new SupportMethodSignature
                 {
                     CreateSummary = _ =>
-                        $"{capture.Summary} Accepts a projection helper as the selector's second parameter.",
+                        $"Interception stub for {receiver.Kind} projections {capture.SummarySuffix}. Accepts a projection helper as the selector's second parameter.",
                     CreateSignature = generatorOptions =>
                         CreateMethodSignature(
                             receiver.TypeName,
@@ -398,6 +403,21 @@ internal abstract class ProjectionSupportExtensionClassGenerator
                 };
             }
         }
+    }
+
+    private static IEnumerable<(string? Parameter, string SummarySuffix, string? ObsoleteMessage)> GetCapturePatterns()
+    {
+        yield return (null, "without captures", null);
+        yield return (
+            "object capture",
+            "with anonymous-object captures",
+            "Anonymous-object capture is obsolete. Use the delegate-based capture pattern instead."
+        );
+        yield return (
+            "global::System.Func<object> capture",
+            "with NativeAOT-safe delegate captures",
+            null
+        );
     }
 
     private static IEnumerable<(string TypeName, string Kind)> GetReceivers(bool includeEnumerable)
@@ -444,6 +464,49 @@ internal abstract class ProjectionSupportExtensionClassGenerator
         var filteredParameters = parameters.Where(parameter => parameter is not null);
         var typeParameters = hasKeySelector ? "<TIn, TKey, TResult>" : "<TIn, TResult>";
         return $"public static {receiverType}<TResult> {GetMethodName(generatorOptions)}{typeParameters}({string.Join(", ", filteredParameters)}) where TIn : class";
+    }
+
+    private static string CreateLinqraftQueryMethodSignature(
+        ProjectionOperationKind operationKind,
+        bool selectorUsesObjectResult,
+        bool usesProjectionHelperParameter,
+        string? captureParameter,
+        LinqraftGeneratorOptionsCore generatorOptions
+    )
+    {
+        var selectorResultType = operationKind switch
+        {
+            ProjectionOperationKind.SelectMany when !selectorUsesObjectResult =>
+                "global::System.Collections.Generic.IEnumerable<TResult>",
+            _ => selectorUsesObjectResult ? "object" : "TResult",
+        };
+        var methodName = operationKind switch
+        {
+            ProjectionOperationKind.Select => "Select",
+            ProjectionOperationKind.SelectMany => "SelectMany",
+            ProjectionOperationKind.GroupBy => "GroupBy",
+            _ => throw new InvalidOperationException(
+                $"Unsupported projection operation '{operationKind}'."
+            ),
+        };
+        var helperType = $"global::{generatorOptions.SupportNamespace}.IProjectionHelper";
+        var selectorType = operationKind switch
+        {
+            ProjectionOperationKind.GroupBy when usesProjectionHelperParameter =>
+                $"global::System.Func<global::System.Linq.IGrouping<TKey, TIn>, {helperType}, {selectorResultType}>",
+            ProjectionOperationKind.GroupBy =>
+                $"global::System.Func<global::System.Linq.IGrouping<TKey, TIn>, {selectorResultType}>",
+            _ when usesProjectionHelperParameter =>
+                $"global::System.Func<TIn, {helperType}, {selectorResultType}>",
+            _ => $"global::System.Func<TIn, {selectorResultType}>",
+        };
+        var parameters = operationKind == ProjectionOperationKind.GroupBy
+            ? new[] { "global::System.Func<TIn, TKey> keySelector", $"{selectorType} selector", captureParameter }
+            : new[] { $"{selectorType} selector", captureParameter };
+        var typeParameters = operationKind == ProjectionOperationKind.GroupBy
+            ? "<TKey, TResult>"
+            : "<TResult>";
+        return $"public global::System.Linq.IQueryable<TResult> {methodName}{typeParameters}({string.Join(", ", parameters.Where(parameter => parameter is not null))})";
     }
 
     protected sealed record SupportMethodSignature

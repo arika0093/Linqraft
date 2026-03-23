@@ -345,9 +345,13 @@ internal static class SourceWriters
                                 ? $"(({matchedQueryType})(object)query.Query).Select({selectArgument})"
                                 : $"(({matchedQueryType})(object)query).Select({selectArgument})",
                         ProjectionOperationKind.SelectMany =>
-                            $"(({matchedQueryType})(object)query).SelectMany({lambda})",
+                            request.UsesFluentQuerySyntax
+                                ? $"(({matchedQueryType})(object)query.Query).SelectMany({lambda})"
+                                : $"(({matchedQueryType})(object)query).SelectMany({lambda})",
                         ProjectionOperationKind.GroupBy =>
-                            $"(({matchedQueryType})(object)query).GroupBy({ProjectionBodyEmitter.AppendValueInline($"{request.KeySelectorParameterName} => ", request.KeySelectorBodyText ?? "default!")}).Select({lambda})",
+                            request.UsesFluentQuerySyntax
+                                ? $"(({matchedQueryType})(object)query.Query).GroupBy({ProjectionBodyEmitter.AppendValueInline($"{request.KeySelectorParameterName} => ", request.KeySelectorBodyText ?? "default!")}).Select({lambda})"
+                                : $"(({matchedQueryType})(object)query).GroupBy({ProjectionBodyEmitter.AppendValueInline($"{request.KeySelectorParameterName} => ", request.KeySelectorBodyText ?? "default!")}).Select({lambda})",
                         _ => throw new InvalidOperationException(
                             $"Unsupported projection operation '{request.OperationKind}'."
                         ),
@@ -660,6 +664,12 @@ internal static class SourceWriters
             ProjectionOperationKind.Select => request.Captures.Length == 0
                 ? $"public static global::System.Linq.IQueryable<TResult> {request.MethodName}<TIn, TResult>(this {receiverType}<TIn> query, {selectorType} selector)"
                 : $"public static global::System.Linq.IQueryable<TResult> {request.MethodName}<TIn, TResult>(this {receiverType}<TIn> query, {selectorType} selector, {captureParameter})",
+            ProjectionOperationKind.SelectMany => request.Captures.Length == 0
+                ? $"public static global::System.Linq.IQueryable<TResult> {request.MethodName}<TIn, TResult>(this {receiverType}<TIn> query, {selectorType} selector)"
+                : $"public static global::System.Linq.IQueryable<TResult> {request.MethodName}<TIn, TResult>(this {receiverType}<TIn> query, {selectorType} selector, {captureParameter})",
+            ProjectionOperationKind.GroupBy => request.Captures.Length == 0
+                ? $"public static global::System.Linq.IQueryable<TResult> {request.MethodName}<TIn, TKey, TResult>(this {receiverType}<TIn> query, global::System.Func<TIn, TKey> keySelector, {selectorType} selector)"
+                : $"public static global::System.Linq.IQueryable<TResult> {request.MethodName}<TIn, TKey, TResult>(this {receiverType}<TIn> query, global::System.Func<TIn, TKey> keySelector, {selectorType} selector, {captureParameter})",
             _ => throw new InvalidOperationException(
                 $"Fluent query syntax is not supported for projection operation '{request.OperationKind}'."
             ),

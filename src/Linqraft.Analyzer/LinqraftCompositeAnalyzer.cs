@@ -131,6 +131,8 @@ public sealed class LinqraftCompositeAnalyzer : DiagnosticAnalyzer
             reducedMethod?.Name
                 is not "SelectExpr"
                     and not "Select"
+                    and not "SelectMany"
+                    and not "GroupBy"
                     and not "SelectManyExpr"
                     and not "GroupByExpr"
                     and not "Generate"

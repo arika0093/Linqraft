@@ -17,6 +17,40 @@ namespace Linqraft.Tests.Analyzer;
 
 public sealed class AnalyzerCodeFixSmokeTests
 {
+    private const string FluentLinqraftSupportSource = """
+        using System;
+        using System.Linq;
+
+        namespace Linqraft
+        {
+            public interface IProjectionHelper
+            {
+            }
+
+            public sealed class LinqraftQuery<T>
+            {
+                public LinqraftQuery(IQueryable<T> query)
+                {
+                    Query = query;
+                }
+
+                internal IQueryable<T> Query { get; }
+
+                public IQueryable<TResult> Select<TResult>(Func<T, TResult> selector) => throw null!;
+                public IQueryable<TResult> Select<TResult>(Func<T, object> selector) => throw null!;
+                public IQueryable<TResult> Select<TResult>(Func<T, TResult> selector, object capture) => throw null!;
+                public IQueryable<TResult> Select<TResult>(Func<T, TResult> selector, Func<object> capture) => throw null!;
+                public IQueryable<TResult> Select<TResult>(Func<T, object> selector, object capture) => throw null!;
+                public IQueryable<TResult> Select<TResult>(Func<T, object> selector, Func<object> capture) => throw null!;
+            }
+
+            public static class LinqraftQueryExtensions
+            {
+                public static LinqraftQuery<T> UseLinqraft<T>(this IQueryable<T> query) => new(query);
+            }
+        }
+        """;
+
     [Test]
     public async Task Missing_capture_code_fix_adds_capture_argument()
     {
@@ -333,12 +367,12 @@ public sealed class AnalyzerCodeFixSmokeTests
             }
             """;
 
-        var result = await ApplyFixAsync(source, "LQRS002", "Convert to SelectExpr");
+        var result = await ApplyFixAsync(source, "LQRS002", "UseLinqraft().Select()");
         var fixedText = result.PrimaryDocumentText;
         var compilationErrors = await GetCompilationErrorsAsync(result.ChangedSolution);
 
         compilationErrors.ShouldBeEmpty();
-        fixedText.ShouldContain("source.SelectExpr(entity => new { entity.Id })");
+        fixedText.ShouldContain("source.UseLinqraft().Select(entity => new { entity.Id })");
     }
 
     [Test]
@@ -380,7 +414,7 @@ public sealed class AnalyzerCodeFixSmokeTests
             }
             """;
 
-        var result = await ApplyFixAsync(source, "LQRS005", "Convert to SelectExpr");
+        var result = await ApplyFixAsync(source, "LQRS005", "UseLinqraft().Select()");
         var fixedText = result.PrimaryDocumentText;
         var compilationErrors = await GetCompilationErrorsAsync(result.ChangedSolution);
 
@@ -427,7 +461,7 @@ public sealed class AnalyzerCodeFixSmokeTests
             }
             """;
 
-        var result = await ApplyFixAsync(source, "LQRS002", "Convert to SelectExpr");
+        var result = await ApplyFixAsync(source, "LQRS002", "UseLinqraft().Select()");
         var fixedText = result.PrimaryDocumentText;
         var compilationErrors = await GetCompilationErrorsAsync(result.ChangedSolution);
 
@@ -471,13 +505,13 @@ public sealed class AnalyzerCodeFixSmokeTests
             }
             """;
 
-        var result = await ApplyFixAsync(source, "LQRS002", "SelectExpr<T, TDto>");
+        var result = await ApplyFixAsync(source, "LQRS002", "UseLinqraft().Select<TDto>()");
         var fixedText = result.PrimaryDocumentText;
         var compilationErrors = await GetCompilationErrorsAsync(result.ChangedSolution);
 
         compilationErrors.ShouldBeEmpty();
         fixedText.ShouldContain(
-            "source.SelectExpr<Entity, ProjectDto>(entity => new { entity.Id })"
+            "source.UseLinqraft().Select<ProjectDto>(entity => new { entity.Id })"
         );
     }
 
@@ -525,12 +559,12 @@ public sealed class AnalyzerCodeFixSmokeTests
             }
             """;
 
-        var result = await ApplyFixAsync(source, "LQRS005", "SelectExpr<T, TDto>");
+        var result = await ApplyFixAsync(source, "LQRS005", "UseLinqraft().Select<TDto>()");
         var fixedText = result.PrimaryDocumentText;
         var compilationErrors = await GetCompilationErrorsAsync(result.ChangedSolution);
 
         compilationErrors.ShouldBeEmpty();
-        fixedText.ShouldContain("source.SelectExpr<Entity, ProjectDto>(entity => new");
+        fixedText.ShouldContain("source.UseLinqraft().Select<ProjectDto>(entity => new");
         fixedText.ShouldContain("ChildData = new { Id = entity.Child?.Id }");
     }
 
@@ -621,12 +655,12 @@ public sealed class AnalyzerCodeFixSmokeTests
             }
             """;
 
-        var result = await ApplyFixAsync(source, "LQRS005", "Convert to SelectExpr");
+        var result = await ApplyFixAsync(source, "LQRS005", "UseLinqraft().Select()");
         var fixedText = result.PrimaryDocumentText;
         var compilationErrors = await GetCompilationErrorsAsync(result.ChangedSolution);
 
         compilationErrors.ShouldBeEmpty();
-        fixedText.ShouldContain("source.SelectExpr(s => new");
+        fixedText.ShouldContain("source.UseLinqraft().Select(s => new");
         fixedText.ShouldContain("Childs = s.Childs.Select(c => new");
         fixedText.ShouldContain("ChildId = c.Child?.Id");
         fixedText.ShouldContain("ChildQux = c.Child?.Qux");
@@ -840,12 +874,12 @@ public sealed class AnalyzerCodeFixSmokeTests
             }
             """;
 
-        var result = await ApplyFixAsync(source, "LQRS006", "Convert to SelectExpr<T, TDto>");
+        var result = await ApplyFixAsync(source, "LQRS006", "UseLinqraft().Select<TDto>()");
         var fixedText = result.PrimaryDocumentText;
         var compilationErrors = await GetCompilationErrorsAsync(result.ChangedSolution);
 
         compilationErrors.ShouldBeEmpty();
-        fixedText.ShouldContain("source.SelectExpr<Entity, ProjectDto>(entity => new");
+        fixedText.ShouldContain("source.UseLinqraft().Select<ProjectDto>(entity => new");
         fixedText.ShouldContain("ChildData = new { Name = entity.Child?.Name }");
     }
 
@@ -894,7 +928,7 @@ public sealed class AnalyzerCodeFixSmokeTests
             }
             """;
 
-        var result = await ApplyFixAsync(source, "LQRS003", "Convert to SelectExpr<T, TDto>");
+        var result = await ApplyFixAsync(source, "LQRS003", "UseLinqraft().Select<TDto>()");
         var fixedText = result.PrimaryDocumentText;
         var compilationErrors = await GetCompilationErrorsAsync(result.ChangedSolution);
 
@@ -1011,12 +1045,14 @@ public sealed class AnalyzerCodeFixSmokeTests
             }
             """;
 
-        var result = await ApplyFixAsync(source, "LQRS006", "Convert to SelectExpr<T, TDto>");
+        var result = await ApplyFixAsync(source, "LQRS006", "UseLinqraft().Select<TDto>()");
         var fixedText = result.PrimaryDocumentText;
         var compilationErrors = await GetCompilationErrorsAsync(result.ChangedSolution);
 
         compilationErrors.ShouldBeEmpty();
-        fixedText.ShouldContain("source.SelectExpr<SampleClass, ManualSampleClassDto>(s => new");
+        fixedText.ShouldContain(
+            "source.UseLinqraft().Select<ManualSampleClassDto>(s => new"
+        );
         fixedText.ShouldContain("Childs = s.Childs.Select(c => new");
         fixedText.ShouldContain("ChildId = c.Child?.Id");
         fixedText.ShouldContain("ChildQux = c.Child?.Qux");
@@ -1228,7 +1264,7 @@ public sealed class AnalyzerCodeFixSmokeTests
         var compilationErrors = await GetCompilationErrorsAsync(result.ChangedSolution);
 
         compilationErrors.ShouldBeEmpty();
-        fixedText.ShouldContain("source.SelectExpr(entity => new EntityDto");
+        fixedText.ShouldContain("source.UseLinqraft().Select(entity => new EntityDto");
     }
 
     [Test]
@@ -1423,6 +1459,11 @@ public sealed class AnalyzerCodeFixSmokeTests
         }
 
         solution = solution.AddDocument(documentId, "Test0.cs", SourceText.From(source));
+        solution = solution.AddDocument(
+            DocumentId.CreateNewId(projectId),
+            "LinqraftFluentSupport.cs",
+            SourceText.From(FluentLinqraftSupportSource)
+        );
         return solution.GetDocument(documentId)!;
     }
 

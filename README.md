@@ -240,14 +240,15 @@ var orders = await dbContext.Orders
 
 ### Anonymous pattern
 
-Use `SelectExpr` without generics to get an anonymous-type projection.
+Use `UseLinqraft().Select(...)` without generics to get an anonymous-type projection.
 
 ```csharp
 // orders: List<{anonymous type}>
 var orders = await dbContext.Orders
-    // without generic arguments, the DTO type will be an anonymous type 
+    .UseLinqraft()
+    // without generic arguments, the DTO type will be an anonymous type
     // generated based on the selector body.
-    .SelectExpr(o => new
+    .Select(o => new
     {
         Id = o.Id,
         // you can also use null-propagation operator
@@ -264,7 +265,8 @@ Use your existing DTO classes:
 ```csharp
 // orders: List<MyOrderDto>
 var orders = await dbContext.Orders
-    .SelectExpr(o => new MyOrderDto
+    .UseLinqraft()
+    .Select(o => new MyOrderDto
     {
         Id = o.Id,
         // of course, null-propagation operator is supported as well.

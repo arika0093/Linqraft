@@ -29,7 +29,7 @@ internal static class AnalyzerHelpers
     public static bool IsProjectionExprInvocation(InvocationExpressionSyntax invocation)
     {
         return GetInvocationName(invocation.Expression) is "SelectExpr" or "SelectManyExpr" or "GroupByExpr"
-            || IsUseLinqraftSelectInvocation(invocation);
+            || GetUseLinqraftProjectionMethodName(invocation) is not null;
     }
 
     public static bool IsQueryableSelectInvocation(
@@ -437,9 +437,9 @@ internal static class AnalyzerHelpers
 
     private static int? GetPositionalCaptureArgumentIndex(InvocationExpressionSyntax invocation)
     {
-        if (IsUseLinqraftSelectInvocation(invocation))
+        if (GetUseLinqraftProjectionMethodName(invocation) is { } useLinqraftMethodName)
         {
-            return 1;
+            return useLinqraftMethodName == "GroupBy" ? 2 : 1;
         }
 
         return GetInvocationName(invocation.Expression) switch
@@ -454,13 +454,28 @@ internal static class AnalyzerHelpers
 
     private static bool IsUseLinqraftSelectInvocation(InvocationExpressionSyntax invocation)
     {
-        return string.Equals(GetInvocationName(invocation.Expression), "Select", StringComparison.Ordinal)
-            && invocation.Expression is MemberAccessExpressionSyntax { Expression: InvocationExpressionSyntax receiverInvocation }
-            && string.Equals(
+        return GetUseLinqraftProjectionMethodName(invocation) == "Select";
+    }
+
+    private static string? GetUseLinqraftProjectionMethodName(InvocationExpressionSyntax invocation)
+    {
+        if (
+            invocation.Expression
+                is not MemberAccessExpressionSyntax
+                { Expression: InvocationExpressionSyntax receiverInvocation }
+            || !string.Equals(
                 GetInvocationName(receiverInvocation.Expression),
                 "UseLinqraft",
                 StringComparison.Ordinal
-            );
+            )
+        )
+        {
+            return null;
+        }
+
+        return GetInvocationName(invocation.Expression) is "Select" or "SelectMany" or "GroupBy"
+            ? GetInvocationName(invocation.Expression)
+            : null;
     }
 
     private static bool IsCaptureArgumentExpression(ExpressionSyntax expression)

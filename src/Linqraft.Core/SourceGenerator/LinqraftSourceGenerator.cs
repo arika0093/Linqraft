@@ -363,7 +363,7 @@ internal static class LinqraftGeneratorPipeline
         {
             MemberAccessExpressionSyntax
             {
-                Name.Identifier.ValueText: "Select",
+                Name.Identifier.ValueText: "Select" or "SelectMany" or "GroupBy",
                 Expression: InvocationExpressionSyntax
                 {
                     Expression: MemberAccessExpressionSyntax
