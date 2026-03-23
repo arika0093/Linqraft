@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using Linqraft.Core.Configuration;
 using Linqraft.Core.Formatting;
+using Linqraft.Core.Generation;
 using static Linqraft.Core.Generation.CodeTemplateContents;
 
 namespace Linqraft.SourceGenerator;
@@ -139,7 +140,9 @@ internal abstract class ProjectionSupportExtensionClassGenerator
 
                 private {{GetNonFluentReceiverTypeName(receiverKind)}}<TIn> _source { get; }
 
+                {{CodeTemplateContents.EditorBrowsableNeverAttribute}}
                 internal {{GetNonFluentReceiverTypeName(receiverKind)}}<TIn> GetSource() => _source;
+                
             """
         );
         using (builder.Indent())
@@ -351,6 +354,7 @@ internal abstract class ProjectionSupportExtensionClassGenerator
         {
             AppendProjectionHookInterfaceMethodDocumentation(builder, hook, signature.Index);
             builder.AppendLine(signature.Signature);
+            builder.AppendLine("");
         }
     }
 
@@ -492,9 +496,7 @@ internal abstract class ProjectionSupportExtensionClassGenerator
         builder.AppendLine(signature.CreateSignature(generatorOptions));
         using (builder.Indent())
         {
-            builder.AppendLine(
-                $"=> throw {ThrowHelperClassName}.ForProjectionMethod(\"{signature.CreateMethodName(generatorOptions)}\");"
-            );
+            builder.AppendLine($"=> throw {ThrowHelperClassName}.ForProjectionMethod();");
         }
     }
 

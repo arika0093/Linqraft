@@ -748,8 +748,8 @@ internal static class SourceWriters
                 cancellationToken
             );
         }
-    }
 #pragma warning restore LSG013
+    }
 
     private static void WriteDelegateCaptureExtraction(
         IndentedStringBuilder builder,

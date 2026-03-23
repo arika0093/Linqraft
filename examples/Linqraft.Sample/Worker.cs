@@ -20,7 +20,8 @@ public class Worker(IDbContextFactory<SampleDbContext> dbContextFactory, ILogger
 
             // get sample data
             var sample = await dbContext
-                .SampleClasses.SelectExpr<SampleClass, SampleClassDto>(s => new
+                .SampleClasses.UseLinqraft()
+                .Select<SampleClassDto>(s => new
                 {
                     s.Id,
                     s.Foo,
