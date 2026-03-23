@@ -148,7 +148,7 @@ var rows = dbContext.Orders
 * `AsInline(query)`
   * It realizes the behavior like [EntityFrameworkCore.Projectables](https://github.com/EFNext/EntityFrameworkCore.Projectables).
   * That is, the query logic inside properties like `FirstLargeItemProductName` will be expanded as if it were written inline inside the SelectExpr.
-* `helper.AsProjection<TDto>(query)`
+* `AsProjection<TDto>(query)`
   * It creates a nested DTO explicitly instead of exposing the original member type directly.
   * If you omit `TDto`, Linqraft uses `[SourceTypeName]Dto`.
   * The generated nested DTO currently copies scalar, enum, string, and value-type members.

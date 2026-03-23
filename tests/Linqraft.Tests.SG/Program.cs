@@ -362,7 +362,7 @@ public sealed class SourceGeneratorSmokeTests
             .Select(diagnostic => diagnostic.GetMessage())
             .Any(message =>
                 message.Contains(
-                    "Detected recursive AsInline expansion",
+                    "Detected recursive projectable helper expansion",
                     StringComparison.Ordinal
                 )
             )
