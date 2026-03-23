@@ -345,9 +345,8 @@ internal abstract class ProjectionSupportExtensionClassGenerator
     )
     {
         foreach (
-            var signature in GetProjectionHookMethodSignatures(hook, interfaceMethod: true).Select(
-                (value, index) => (Signature: value, Index: index)
-            )
+            var signature in GetProjectionHookMethodSignatures(hook, interfaceMethod: true)
+                .Select((value, index) => (Signature: value, Index: index))
         )
         {
             AppendProjectionHookInterfaceMethodDocumentation(builder, hook, signature.Index);
@@ -381,17 +380,17 @@ internal abstract class ProjectionSupportExtensionClassGenerator
                         "A projection that describes how the wrapped value should be converted into the nested result."
                     ),
                 ],
-                returns:
-                    "A marker representing the nested projection result that the source generator inlines into the surrounding projection.",
-                example:
-                    """
-                    var dto = query.UseLinqraft().Select&lt;OrderDto&gt;((order, helper) =&gt; new OrderDto
-                    {
-                        Customer = helper.Project(order.Customer).Select(customer =&gt; new CustomerDto { Id = customer.Id })
-                    });
-                    """
+                returns: "A marker representing the nested projection result that the source generator inlines into the surrounding projection.",
+                example: """
+                var dto = query.UseLinqraft().Select&lt;OrderDto&gt;((order, helper) =&gt; new OrderDto
+                {
+                    Customer = helper.Project(order.Customer).Select(customer =&gt; new CustomerDto { Id = customer.Id })
+                });
+                """
             );
-            builder.AppendLine("TResult Select<TResult>(global::System.Func<T, TResult> selector);");
+            builder.AppendLine(
+                "TResult Select<TResult>(global::System.Func<T, TResult> selector);"
+            );
         }
 
         builder.AppendLine("}");
@@ -465,17 +464,20 @@ internal abstract class ProjectionSupportExtensionClassGenerator
         AppendXmlDocumentation(
             builder,
             signature.CreateSummary(generatorOptions),
-            typeParameters:
-                signature.HasKeySelector
-                    ? [("TIn", "The source element type."), ("TKey", "The grouping key type."), ("TResult", "The projected result type.")]
-                    : [("TIn", "The source element type."), ("TResult", "The projected result type.")],
+            typeParameters: signature.HasKeySelector
+                ?
+                [
+                    ("TIn", "The source element type."),
+                    ("TKey", "The grouping key type."),
+                    ("TResult", "The projected result type."),
+                ]
+                : [("TIn", "The source element type."), ("TResult", "The projected result type.")],
             parameters: CreateProjectionEntryPointParameterDocumentation(
                 signature.HasKeySelector,
                 signature.UsesProjectionHelperParameter,
                 signature.CaptureKind
             ),
-            returns:
-                $"A deferred sequence of <typeparamref name=\"TResult\"/> values that {generatorOptions.GeneratorDisplayName} replaces with generated projection code.",
+            returns: $"A deferred sequence of <typeparamref name=\"TResult\"/> values that {generatorOptions.GeneratorDisplayName} replaces with generated projection code.",
             example: CreateProjectionEntryPointExample(signature)
         );
         if (signature.CreateObsoleteMessage(generatorOptions) is { } obsoleteMessage)
@@ -616,11 +618,7 @@ internal abstract class ProjectionSupportExtensionClassGenerator
                 "Anonymous-object capture is obsolete. Use the delegate-based capture pattern instead."
             );
         }
-        yield return new(
-            CaptureKind.Delegate,
-            "with NativeAOT-safe delegate captures",
-            null
-        );
+        yield return new(CaptureKind.Delegate, "with NativeAOT-safe delegate captures", null);
     }
 
     private static IEnumerable<(string TypeName, string Kind)> GetReceivers(bool includeEnumerable)
@@ -646,9 +644,8 @@ internal abstract class ProjectionSupportExtensionClassGenerator
         LinqraftGeneratorOptionsCore generatorOptions
     )
     {
-        var resultKind = receiverKind == ReceiverKind.IQueryable
-            ? "queryable"
-            : "deferred enumerable";
+        var resultKind =
+            receiverKind == ReceiverKind.IQueryable ? "queryable" : "deferred enumerable";
         return $"A {resultKind} sequence that {generatorOptions.GeneratorDisplayName} replaces with the generated projection pipeline.";
     }
 
@@ -659,9 +656,7 @@ internal abstract class ProjectionSupportExtensionClassGenerator
             CaptureKind.None => null,
             CaptureKind.AnonymousObject => "object capture",
             CaptureKind.Delegate => "global::System.Func<object> capture",
-            _ => throw new InvalidOperationException(
-                $"Unsupported capture kind '{captureKind}'."
-            ),
+            _ => throw new InvalidOperationException($"Unsupported capture kind '{captureKind}'."),
         };
     }
 
@@ -680,9 +675,7 @@ internal abstract class ProjectionSupportExtensionClassGenerator
                 "capture",
                 "Returns any external values that should be inlined into the generated projection using the NativeAOT-safe delegate capture pattern."
             ),
-            _ => throw new InvalidOperationException(
-                $"Unsupported capture kind '{captureKind}'."
-            ),
+            _ => throw new InvalidOperationException($"Unsupported capture kind '{captureKind}'."),
         };
     }
 
@@ -694,11 +687,15 @@ internal abstract class ProjectionSupportExtensionClassGenerator
     {
         var typeParameters = hook.Kind switch
         {
-            LinqraftProjectionHookKind.Projection when signatureIndex == 0 =>
-                new[] { ("TResult", "The nested DTO type to generate.") },
+            LinqraftProjectionHookKind.Projection when signatureIndex == 0 => new[]
+            {
+                ("TResult", "The nested DTO type to generate."),
+            },
             LinqraftProjectionHookKind.Projection => null,
             LinqraftProjectionHookKind.Project =>
-                [("T", "The source value type exposed to the nested selector.")],
+            [
+                ("T", "The source value type exposed to the nested selector."),
+            ],
             _ => [("T", "The source value type being marked for rewrite.")],
         };
 
@@ -761,7 +758,9 @@ internal abstract class ProjectionSupportExtensionClassGenerator
                 });
                 """
             ),
-            _ => throw new InvalidOperationException($"Unsupported projection helper kind '{hook.Kind}'."),
+            _ => throw new InvalidOperationException(
+                $"Unsupported projection helper kind '{hook.Kind}'."
+            ),
         };
 
         AppendXmlDocumentation(
@@ -769,12 +768,12 @@ internal abstract class ProjectionSupportExtensionClassGenerator
             summary,
             typeParameters: typeParameters,
             parameters:
-                [
-                    (
-                        "value",
-                        "The source value or navigation member that should participate in the requested rewrite."
-                    ),
-                ],
+            [
+                (
+                    "value",
+                    "The source value or navigation member that should participate in the requested rewrite."
+                ),
+            ],
             returns: returnDescription,
             example: example
         );
@@ -834,7 +833,10 @@ internal abstract class ProjectionSupportExtensionClassGenerator
         return text.Replace("\r\n", "\n").Split('\n');
     }
 
-    private static (string Name, string Description)[] CreateProjectionEntryPointParameterDocumentation(
+    private static (
+        string Name,
+        string Description
+    )[] CreateProjectionEntryPointParameterDocumentation(
         bool hasKeySelector,
         bool usesProjectionHelperParameter,
         CaptureKind captureKind
@@ -842,10 +844,7 @@ internal abstract class ProjectionSupportExtensionClassGenerator
     {
         var parameters = new List<(string Name, string Description)>
         {
-            (
-                "query",
-                "The source sequence whose projection should be intercepted and rewritten."
-            ),
+            ("query", "The source sequence whose projection should be intercepted and rewritten."),
         };
 
         var selectorDescription = usesProjectionHelperParameter
@@ -965,7 +964,8 @@ internal abstract class ProjectionSupportExtensionClassGenerator
                     "query.UseLinqraft().Select&lt;OrderDto&gt;(order =&gt; new OrderDto { Total = order.Total + offset }, () =&gt; new { offset })",
                 _ when usesProjectionHelperParameter =>
                     "query.UseLinqraft().Select&lt;OrderDto&gt;((order, helper) =&gt; new OrderDto { Total = helper.AsInline(order.TotalWithTax) })",
-                _ => "query.UseLinqraft().Select&lt;OrderDto&gt;(order =&gt; new OrderDto { Id = order.Id })",
+                _ =>
+                    "query.UseLinqraft().Select&lt;OrderDto&gt;(order =&gt; new OrderDto { Id = order.Id })",
             },
             ProjectionOperationKind.SelectMany => captureKind switch
             {
