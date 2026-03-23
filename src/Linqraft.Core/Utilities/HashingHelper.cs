@@ -3,10 +3,16 @@ using System.Threading;
 
 namespace Linqraft.Core.Utilities;
 
+/// <summary>
+/// Provides hashing.
+/// </summary>
 internal static class HashingHelper
 {
     private static readonly uint[] Crc32Table = CreateCrc32Table();
 
+    /// <summary>
+    /// Computes hash.
+    /// </summary>
     public static string ComputeHash(
         string value,
         int length = 8,
@@ -33,6 +39,9 @@ internal static class HashingHelper
         return builder.ToString(0, length);
     }
 
+    /// <summary>
+    /// Computes crc 32.
+    /// </summary>
     private static uint ComputeCrc32(
         byte[] bytes,
         uint seed,
@@ -49,6 +58,9 @@ internal static class HashingHelper
         return ~crc;
     }
 
+    /// <summary>
+    /// Creates crc 32 table.
+    /// </summary>
     private static uint[] CreateCrc32Table()
     {
         var table = new uint[256];

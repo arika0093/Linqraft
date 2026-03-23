@@ -11,8 +11,14 @@ using Microsoft.CodeAnalysis.CSharp.Syntax;
 
 namespace Linqraft.SourceGenerator;
 
+/// <summary>
+/// Coordinates linqraft generator.
+/// </summary>
 internal static class LinqraftGeneratorPipeline
 {
+    /// <summary>
+    /// Handles initialize.
+    /// </summary>
     public static void Initialize(
         IncrementalGeneratorInitializationContext context,
         LinqraftGeneratorOptionsCore generatorOptions
@@ -217,6 +223,9 @@ internal static class LinqraftGeneratorPipeline
         );
     }
 
+    /// <summary>
+    /// Builds generated sources.
+    /// </summary>
     private static GeneratedSourceSetModel BuildGeneratedSources(
         GeneratedSourceBuildContextModel context,
         CancellationToken cancellationToken = default
@@ -310,6 +319,9 @@ internal static class LinqraftGeneratorPipeline
         };
     }
 
+    /// <summary>
+    /// Determines whether the dto should emit standalone dto.
+    /// </summary>
     private static bool ShouldEmitStandaloneDto(
         GeneratedDtoEmissionModel dto,
         ISet<string> ownedSourceHints
@@ -318,6 +330,9 @@ internal static class LinqraftGeneratorPipeline
         return dto.OwnerHintNames.Length != 1 || !ownedSourceHints.Contains(dto.OwnerHintNames[0]);
     }
 
+    /// <summary>
+    /// Gets standalone dto hint name.
+    /// </summary>
     private static string GetStandaloneDtoHintName(
         GeneratedDtoEmissionModel dto,
         LinqraftGeneratorOptionsCore generatorOptions,
@@ -332,6 +347,9 @@ internal static class LinqraftGeneratorPipeline
         return $"{generatorOptions.StandaloneDtoHintNamePrefix}_{HashingHelper.ComputeHash(dto.Dto.Key, 16, cancellationToken)}.g.cs";
     }
 
+    /// <summary>
+    /// Merges collected values.
+    /// </summary>
     private static IncrementalValueProvider<EquatableArray<T>> MergeCollectedValues<T>(
         IncrementalValueProvider<ImmutableArray<T>> first,
         IncrementalValueProvider<ImmutableArray<T>> second
@@ -343,6 +361,9 @@ internal static class LinqraftGeneratorPipeline
             .Select(static (pair, _) => new EquatableArray<T>(pair.Left.Concat(pair.Right)));
     }
 
+    /// <summary>
+    /// Merges collected values.
+    /// </summary>
     private static IncrementalValueProvider<EquatableArray<T>> MergeCollectedValues<T>(
         IncrementalValueProvider<EquatableArray<T>> first,
         IncrementalValueProvider<ImmutableArray<T>> second
@@ -354,6 +375,9 @@ internal static class LinqraftGeneratorPipeline
             .Select(static (pair, _) => new EquatableArray<T>(pair.Left.Concat(pair.Right)));
     }
 
+    /// <summary>
+    /// Determines whether the invocation is a potential projection invocation.
+    /// </summary>
     private static bool IsPotentialProjectionInvocation(
         InvocationExpressionSyntax invocation,
         LinqraftGeneratorOptionsCore generatorOptions
@@ -390,6 +414,9 @@ internal static class LinqraftGeneratorPipeline
         };
     }
 
+    /// <summary>
+    /// Determines whether the invocation is a potential object generation invocation.
+    /// </summary>
     private static bool IsPotentialObjectGenerationInvocation(
         InvocationExpressionSyntax invocation,
         LinqraftGeneratorOptionsCore generatorOptions
@@ -412,6 +439,9 @@ internal static class LinqraftGeneratorPipeline
         };
     }
 
+    /// <summary>
+    /// Creates empty templates.
+    /// </summary>
     private static IncrementalValuesProvider<T> CreateEmptyTemplates<T>(
         IncrementalGeneratorInitializationContext context
     )

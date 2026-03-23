@@ -5,8 +5,14 @@ using Linqraft.Core.Formatting;
 
 namespace Linqraft.SourceGenerator;
 
+/// <summary>
+/// Emits projection body.
+/// </summary>
 internal static class ProjectionBodyEmitter
 {
+    /// <summary>
+    /// Builds projection body.
+    /// </summary>
     public static string BuildProjectionBody(
         ProjectionTemplateModel projection,
         ProjectionPattern pattern,
@@ -53,6 +59,9 @@ internal static class ProjectionBodyEmitter
             );
     }
 
+    /// <summary>
+    /// Resolves template value.
+    /// </summary>
     public static string ResolveTemplateValue(
         ProjectionMemberTemplateModel member,
         bool useFallbackTemplates,
@@ -64,6 +73,9 @@ internal static class ProjectionBodyEmitter
         return ReplaceTokens(template, typeReplacements, cancellationToken);
     }
 
+    /// <summary>
+    /// Resolves type template.
+    /// </summary>
     public static string ResolveTypeTemplate(
         GeneratedPropertyTemplateModel property,
         bool useFallbackTemplates,
@@ -75,6 +87,9 @@ internal static class ProjectionBodyEmitter
         return ReplaceTokens(template, typeReplacements, cancellationToken);
     }
 
+    /// <summary>
+    /// Handles replace tokens.
+    /// </summary>
     public static string ReplaceTokens(
         string template,
         IReadOnlyDictionary<string, string> typeReplacements,
@@ -101,6 +116,9 @@ internal static class ProjectionBodyEmitter
         return result;
     }
 
+    /// <summary>
+    /// Appends value inline.
+    /// </summary>
     public static string AppendValueInline(string prefix, string value)
     {
         var lines = SplitLines(value);
@@ -113,6 +131,9 @@ internal static class ProjectionBodyEmitter
         return string.Join("\n", lines);
     }
 
+    /// <summary>
+    /// Writes named projection.
+    /// </summary>
     private static string WriteNamedProjection(
         string targetType,
         IReadOnlyList<string> constructorArguments,
@@ -134,6 +155,9 @@ internal static class ProjectionBodyEmitter
         );
     }
 
+    /// <summary>
+    /// Builds initializer expression.
+    /// </summary>
     private static string BuildInitializerExpression(
         string header,
         IReadOnlyList<string> items,
@@ -162,11 +186,17 @@ internal static class ProjectionBodyEmitter
         return builder.ToString();
     }
 
+    /// <summary>
+    /// Determines whether the items should expand initializer.
+    /// </summary>
     private static bool ShouldExpandInitializer(IReadOnlyList<string> items)
     {
         return items.Count > 1 || items.Any(ContainsLineBreak);
     }
 
+    /// <summary>
+    /// Appends multiline item.
+    /// </summary>
     private static void AppendMultilineItem(
         IndentedStringBuilder builder,
         string value,
@@ -183,6 +213,9 @@ internal static class ProjectionBodyEmitter
         }
     }
 
+    /// <summary>
+    /// Appends value with continuation.
+    /// </summary>
     private static string AppendValueWithContinuation(string prefix, string value)
     {
         var lines = SplitLines(value);
@@ -201,17 +234,26 @@ internal static class ProjectionBodyEmitter
         return string.Join("\n", formattedLines);
     }
 
+    /// <summary>
+    /// Handles indent all lines.
+    /// </summary>
     private static string IndentAllLines(string value, int indentLevel = 1)
     {
         var prefix = new string(' ', indentLevel * 4);
         return string.Join("\n", SplitLines(value).Select(line => prefix + line));
     }
 
+    /// <summary>
+    /// Determines whether the value contains a line break.
+    /// </summary>
     private static bool ContainsLineBreak(string value)
     {
         return value.IndexOf('\n') >= 0 || value.IndexOf('\r') >= 0;
     }
 
+    /// <summary>
+    /// Splits lines.
+    /// </summary>
     private static string[] SplitLines(string value)
     {
         return value.Replace("\r\n", "\n").Replace('\r', '\n').Split('\n');

@@ -8,8 +8,14 @@ using Microsoft.CodeAnalysis.CSharp.Syntax;
 
 namespace Linqraft.SourceGenerator;
 
+/// <summary>
+/// Provides projection hook syntax.
+/// </summary>
 internal static class ProjectionHookSyntaxHelper
 {
+    /// <summary>
+    /// Attempts to get hook invocation.
+    /// </summary>
     public static bool TryGetHookInvocation(
         InvocationExpressionSyntax invocation,
         SemanticModel semanticModel,
@@ -53,6 +59,9 @@ internal static class ProjectionHookSyntaxHelper
         return false;
     }
 
+    /// <summary>
+    /// Attempts to get projected value selection.
+    /// </summary>
     public static bool TryGetProjectedValueSelection(
         InvocationExpressionSyntax invocation,
         SemanticModel semanticModel,
@@ -113,6 +122,9 @@ internal static class ProjectionHookSyntaxHelper
         return true;
     }
 
+    /// <summary>
+    /// Attempts to get helper target.
+    /// </summary>
     private static bool TryGetHelperTarget(
         InvocationExpressionSyntax invocation,
         SemanticModel semanticModel,
@@ -169,11 +181,17 @@ internal static class ProjectionHookSyntaxHelper
         return true;
     }
 
+    /// <summary>
+    /// Gets invocation name.
+    /// </summary>
     private static string GetInvocationName(ExpressionSyntax expression)
     {
         return GetInvocationNameSyntax(expression)?.Identifier.ValueText ?? string.Empty;
     }
 
+    /// <summary>
+    /// Gets invocation name syntax.
+    /// </summary>
     private static SimpleNameSyntax? GetInvocationNameSyntax(ExpressionSyntax expression)
     {
         return expression switch
@@ -186,6 +204,9 @@ internal static class ProjectionHookSyntaxHelper
         };
     }
 
+    /// <summary>
+    /// Gets single generic type argument.
+    /// </summary>
     private static TypeSyntax? GetSingleGenericTypeArgument(ExpressionSyntax expression)
     {
         return
@@ -195,11 +216,17 @@ internal static class ProjectionHookSyntaxHelper
             : null;
     }
 
+    /// <summary>
+    /// Gets lambda body.
+    /// </summary>
     private static ExpressionSyntax? GetLambdaBody(LambdaExpressionSyntax? lambda)
     {
         return lambda?.Body as ExpressionSyntax;
     }
 
+    /// <summary>
+    /// Represents hook invocation.
+    /// </summary>
     internal readonly record struct HookInvocationInfo
     {
         public required LinqraftProjectionHookDefinition Hook { get; init; }
@@ -211,6 +238,9 @@ internal static class ProjectionHookSyntaxHelper
         public required TypeSyntax? GenericTypeArgument { get; init; }
     }
 
+    /// <summary>
+    /// Represents projected value selection.
+    /// </summary>
     internal readonly record struct ProjectedValueSelectionInfo
     {
         public required InvocationExpressionSyntax SelectionInvocation { get; init; }

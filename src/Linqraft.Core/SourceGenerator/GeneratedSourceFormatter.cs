@@ -5,8 +5,14 @@ using System.Threading;
 
 namespace Linqraft.SourceGenerator;
 
+/// <summary>
+/// Formats generated source.
+/// </summary>
 internal static class GeneratedSourceFormatter
 {
+    /// <summary>
+    /// Formats generated source.
+    /// </summary>
     public static string FormatGeneratedSource(
         string source,
         CancellationToken cancellationToken = default
@@ -120,6 +126,9 @@ internal static class GeneratedSourceFormatter
         return builder.ToString();
     }
 
+    /// <summary>
+    /// Gets next non empty trimmed line.
+    /// </summary>
     private static string GetNextNonEmptyTrimmedLine(
         string[] lines,
         int startIndex,
@@ -139,6 +148,9 @@ internal static class GeneratedSourceFormatter
         return string.Empty;
     }
 
+    /// <summary>
+    /// Determines whether the trimmed starts with chain closure.
+    /// </summary>
     private static bool StartsWithChainClosure(string trimmed, int leadingCloseCount)
     {
         if (leadingCloseCount >= trimmed.Length)
@@ -150,11 +162,17 @@ internal static class GeneratedSourceFormatter
             && trimmed.EndsWith(",", System.StringComparison.Ordinal);
     }
 
+    /// <summary>
+    /// Determines whether the trimmed is a continuation line.
+    /// </summary>
     private static bool IsContinuationLine(string trimmed)
     {
         return trimmed.Length != 0 && trimmed[0] is '.' or '[' or '?' or ':';
     }
 
+    /// <summary>
+    /// Determines whether the trimmed is an attribute context.
+    /// </summary>
     private static bool IsAttributeContext(string trimmed)
     {
         return trimmed.StartsWith("//", System.StringComparison.Ordinal)
@@ -163,6 +181,9 @@ internal static class GeneratedSourceFormatter
             || trimmed == "{";
     }
 
+    /// <summary>
+    /// Handles count leading closing braces.
+    /// </summary>
     private static int CountLeadingClosingBraces(
         string text,
         CancellationToken cancellationToken = default
@@ -178,6 +199,9 @@ internal static class GeneratedSourceFormatter
         return count;
     }
 
+    /// <summary>
+    /// Handles count leading grouping closures.
+    /// </summary>
     private static int CountLeadingGroupingClosures(
         string text,
         CancellationToken cancellationToken = default
@@ -193,21 +217,33 @@ internal static class GeneratedSourceFormatter
         return count;
     }
 
+    /// <summary>
+    /// Handles count open braces.
+    /// </summary>
     private static int CountOpenBraces(string text)
     {
         return text.Count(character => character == '{');
     }
 
+    /// <summary>
+    /// Handles count close braces.
+    /// </summary>
     private static int CountCloseBraces(string text)
     {
         return text.Count(character => character == '}');
     }
 
+    /// <summary>
+    /// Determines whether the trimmed ends with grouping opener.
+    /// </summary>
     private static bool EndsWithGroupingOpener(string trimmed)
     {
         return trimmed.Length != 0 && trimmed[^1] is '(' or '[';
     }
 
+    /// <summary>
+    /// Handles pop grouping indents.
+    /// </summary>
     private static void PopGroupingIndents(
         Stack<int> groupingIndentStack,
         int count,

@@ -7,8 +7,14 @@ using Linqraft.Core.Configuration;
 
 namespace Linqraft.SourceGenerator;
 
+/// <summary>
+/// Provides projection model finalizer.
+/// </summary>
 internal static class ProjectionModelFinalizer
 {
+    /// <summary>
+    /// Finalizes projection.
+    /// </summary>
     public static ProjectionGenerationModel FinalizeProjection(
         ProjectionSourceTemplateModel template,
         LinqraftConfiguration configuration,
@@ -94,6 +100,9 @@ internal static class ProjectionModelFinalizer
         };
     }
 
+    /// <summary>
+    /// Finalizes object generation.
+    /// </summary>
     public static ObjectGenerationModel FinalizeObjectGeneration(
         ObjectGenerationSourceTemplateModel template,
         LinqraftConfiguration configuration,
@@ -144,6 +153,9 @@ internal static class ProjectionModelFinalizer
         };
     }
 
+    /// <summary>
+    /// Finalizes mapping.
+    /// </summary>
     public static MappingGenerationModel FinalizeMapping(
         MappingSourceTemplateModel template,
         LinqraftConfiguration configuration,
@@ -206,6 +218,9 @@ internal static class ProjectionModelFinalizer
         };
     }
 
+    /// <summary>
+    /// Merges dtos for emission.
+    /// </summary>
     public static EquatableArray<GeneratedDtoEmissionModel> MergeDtosForEmission(
         IEnumerable<GeneratedDtoModel> dtoModels,
         CancellationToken cancellationToken = default
@@ -250,6 +265,9 @@ internal static class ProjectionModelFinalizer
             .ToArray();
     }
 
+    /// <summary>
+    /// Builds dto replacements.
+    /// </summary>
     private static IReadOnlyList<GeneratedDtoReplacementModel> BuildDtoReplacements(
         EquatableArray<GeneratedDtoTemplateModel> templates,
         LinqraftConfiguration configuration,
@@ -267,6 +285,9 @@ internal static class ProjectionModelFinalizer
             .ToArray();
     }
 
+    /// <summary>
+    /// Finalizes dto.
+    /// </summary>
     private static GeneratedDtoModel FinalizeDto(
         GeneratedDtoTemplateModel template,
         EquatableArray<GeneratedDtoTemplateModel> allTemplates,
@@ -314,6 +335,9 @@ internal static class ProjectionModelFinalizer
         };
     }
 
+    /// <summary>
+    /// Resolves fully qualified name.
+    /// </summary>
     private static string ResolveFullyQualifiedName(
         GeneratedDtoTemplateModel template,
         LinqraftConfiguration configuration
@@ -330,6 +354,9 @@ internal static class ProjectionModelFinalizer
             : $"global::{namespaceName}.{containingTypePrefix}{typeName}";
     }
 
+    /// <summary>
+    /// Resolves namespace.
+    /// </summary>
     private static string ResolveNamespace(
         GeneratedDtoTemplateModel template,
         LinqraftConfiguration configuration
@@ -362,6 +389,9 @@ internal static class ProjectionModelFinalizer
         return baseNamespace;
     }
 
+    /// <summary>
+    /// Resolves type name.
+    /// </summary>
     private static string ResolveTypeName(
         GeneratedDtoTemplateModel template,
         LinqraftConfiguration configuration
@@ -374,6 +404,9 @@ internal static class ProjectionModelFinalizer
             : template.Name;
     }
 
+    /// <summary>
+    /// Merges dto shape.
+    /// </summary>
     private static GeneratedDtoModel MergeDtoShape(
         GeneratedDtoModel existing,
         GeneratedDtoModel incoming,
@@ -415,6 +448,9 @@ internal static class ProjectionModelFinalizer
         };
     }
 
+    /// <summary>
+    /// Merges property type name.
+    /// </summary>
     private static string MergePropertyTypeName(string existingTypeName, string incomingTypeName)
     {
         if (string.IsNullOrWhiteSpace(existingTypeName))
@@ -433,6 +469,9 @@ internal static class ProjectionModelFinalizer
         return existingTypeName;
     }
 
+    /// <summary>
+    /// Merges origins.
+    /// </summary>
     private static EquatableArray<GeneratedSourceOriginModel> MergeOrigins(
         EquatableArray<GeneratedSourceOriginModel> existing,
         EquatableArray<GeneratedSourceOriginModel> incoming
@@ -446,6 +485,9 @@ internal static class ProjectionModelFinalizer
             .ToArray();
     }
 
+    /// <summary>
+    /// Represents generated dto replacement.
+    /// </summary>
     private sealed record GeneratedDtoReplacementModel
     {
         public required string PlaceholderToken { get; init; }

@@ -2,13 +2,22 @@ using Microsoft.CodeAnalysis.CSharp.Syntax;
 
 namespace Linqraft.SourceGenerator;
 
+/// <summary>
+/// Resolves anonymous member name.
+/// </summary>
 internal static class AnonymousMemberNameResolver
 {
+    /// <summary>
+    /// Handles get.
+    /// </summary>
     public static string Get(ExpressionSyntax expression)
     {
         return TryGet(expression, out var name) ? name : expression.ToString();
     }
 
+    /// <summary>
+    /// Attempts to handle get.
+    /// </summary>
     private static bool TryGet(ExpressionSyntax expression, out string name)
     {
         switch (expression)

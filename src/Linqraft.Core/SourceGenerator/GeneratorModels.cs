@@ -3,12 +3,18 @@ using Linqraft.Core.Documentation;
 
 namespace Linqraft.SourceGenerator;
 
+/// <summary>
+/// Specifies receiver kind.
+/// </summary>
 internal enum ReceiverKind
 {
     IQueryable,
     IEnumerable,
 }
 
+/// <summary>
+/// Specifies projection.
+/// </summary>
 internal enum ProjectionPattern
 {
     Anonymous,
@@ -16,6 +22,9 @@ internal enum ProjectionPattern
     PredefinedDto,
 }
 
+/// <summary>
+/// Specifies projection operation kind.
+/// </summary>
 internal enum ProjectionOperationKind
 {
     Select,
@@ -23,12 +32,18 @@ internal enum ProjectionOperationKind
     GroupBy,
 }
 
+/// <summary>
+/// Specifies generated dto template kind.
+/// </summary>
 internal enum GeneratedDtoTemplateKind
 {
     RootExplicit,
     NestedAuto,
 }
 
+/// <summary>
+/// Represents capture parameter.
+/// </summary>
 internal sealed record CaptureParameterModel
 {
     public required string PropertyName { get; init; }
@@ -40,12 +55,18 @@ internal sealed record CaptureParameterModel
     public string? ValueAccessor { get; init; }
 }
 
+/// <summary>
+/// Specifies capture transport kind.
+/// </summary>
 internal enum CaptureTransportKind
 {
     AnonymousObject,
     Delegate,
 }
 
+/// <summary>
+/// Represents containing type.
+/// </summary>
 internal sealed record ContainingTypeInfo
 {
     public required string AccessibilityKeyword { get; init; }
@@ -55,6 +76,9 @@ internal sealed record ContainingTypeInfo
     public required string Name { get; init; }
 }
 
+/// <summary>
+/// Represents generated source origin.
+/// </summary>
 internal sealed record GeneratedSourceOriginModel
 {
     public required string FileName { get; init; }
@@ -62,6 +86,9 @@ internal sealed record GeneratedSourceOriginModel
     public required int LineNumber { get; init; }
 }
 
+/// <summary>
+/// Represents generated property template.
+/// </summary>
 internal sealed record GeneratedPropertyTemplateModel
 {
     public required string Name { get; init; }
@@ -75,6 +102,9 @@ internal sealed record GeneratedPropertyTemplateModel
     public required bool IsSuppressed { get; init; }
 }
 
+/// <summary>
+/// Represents projection member template.
+/// </summary>
 internal sealed record ProjectionMemberTemplateModel
 {
     public required string Name { get; init; }
@@ -92,11 +122,17 @@ internal sealed record ProjectionMemberTemplateModel
     public required string FallbackValueTemplate { get; init; }
 }
 
+/// <summary>
+/// Represents projection template.
+/// </summary>
 internal sealed record ProjectionTemplateModel
 {
     public required EquatableArray<ProjectionMemberTemplateModel> Members { get; init; }
 }
 
+/// <summary>
+/// Represents generated dto template.
+/// </summary>
 internal sealed record GeneratedDtoTemplateModel
 {
     public required string TemplateId { get; init; }
@@ -134,6 +170,9 @@ internal sealed record GeneratedDtoTemplateModel
     public required EquatableArray<GeneratedPropertyTemplateModel> Properties { get; init; }
 }
 
+/// <summary>
+/// Represents projection request.
+/// </summary>
 internal sealed record ProjectionRequestTemplate
 {
     public required string HintName { get; init; }
@@ -187,6 +226,9 @@ internal sealed record ProjectionRequestTemplate
     public string? ProjectionBodyTemplate { get; init; }
 }
 
+/// <summary>
+/// Represents mapping request.
+/// </summary>
 internal sealed record MappingRequestTemplate
 {
     public required string HintName { get; init; }
@@ -220,6 +262,9 @@ internal sealed record MappingRequestTemplate
     public string? InnerJoinFilterBodyTemplate { get; init; }
 }
 
+/// <summary>
+/// Represents projection source template.
+/// </summary>
 internal sealed record ProjectionSourceTemplateModel
 {
     public required ProjectionRequestTemplate Request { get; init; }
@@ -227,6 +272,9 @@ internal sealed record ProjectionSourceTemplateModel
     public required EquatableArray<GeneratedDtoTemplateModel> GeneratedDtos { get; init; }
 }
 
+/// <summary>
+/// Represents mapping source template.
+/// </summary>
 internal sealed record MappingSourceTemplateModel
 {
     public required MappingRequestTemplate Request { get; init; }
@@ -234,6 +282,9 @@ internal sealed record MappingSourceTemplateModel
     public required EquatableArray<GeneratedDtoTemplateModel> GeneratedDtos { get; init; }
 }
 
+/// <summary>
+/// Represents generated property.
+/// </summary>
 internal sealed record GeneratedPropertyModel
 {
     public required string Name { get; init; }
@@ -245,6 +296,9 @@ internal sealed record GeneratedPropertyModel
     public required bool IsSuppressed { get; init; }
 }
 
+/// <summary>
+/// Represents generated dto.
+/// </summary>
 internal sealed record GeneratedDtoModel
 {
     public required string Key { get; init; }
@@ -276,6 +330,9 @@ internal sealed record GeneratedDtoModel
     public required EquatableArray<GeneratedPropertyModel> Properties { get; init; }
 }
 
+/// <summary>
+/// Represents generated dto emission.
+/// </summary>
 internal sealed record GeneratedDtoEmissionModel
 {
     public required GeneratedDtoModel Dto { get; init; }
@@ -283,6 +340,9 @@ internal sealed record GeneratedDtoEmissionModel
     public required EquatableArray<string> OwnerHintNames { get; init; }
 }
 
+/// <summary>
+/// Represents projection.
+/// </summary>
 internal sealed record ProjectionRequest
 {
     public required string HintName { get; init; }
@@ -334,6 +394,9 @@ internal sealed record ProjectionRequest
     public required string ProjectionBodyText { get; init; }
 }
 
+/// <summary>
+/// Represents object generation request.
+/// </summary>
 internal sealed record ObjectGenerationRequestTemplate
 {
     public required string HintName { get; init; }
@@ -357,6 +420,9 @@ internal sealed record ObjectGenerationRequestTemplate
     public required string? InterceptableLocationData { get; init; }
 }
 
+/// <summary>
+/// Represents object generation source template.
+/// </summary>
 internal sealed record ObjectGenerationSourceTemplateModel
 {
     public required ObjectGenerationRequestTemplate Request { get; init; }
@@ -364,6 +430,9 @@ internal sealed record ObjectGenerationSourceTemplateModel
     public required EquatableArray<GeneratedDtoTemplateModel> GeneratedDtos { get; init; }
 }
 
+/// <summary>
+/// Represents object generation.
+/// </summary>
 internal sealed record ObjectGenerationRequest
 {
     public required string HintName { get; init; }
@@ -387,6 +456,9 @@ internal sealed record ObjectGenerationRequest
     public required string? InterceptableLocationData { get; init; }
 }
 
+/// <summary>
+/// Represents object generation.
+/// </summary>
 internal sealed record ObjectGenerationModel
 {
     public required ObjectGenerationRequest Request { get; init; }
@@ -394,6 +466,9 @@ internal sealed record ObjectGenerationModel
     public required EquatableArray<GeneratedDtoModel> GeneratedDtos { get; init; }
 }
 
+/// <summary>
+/// Represents mapping.
+/// </summary>
 internal sealed record MappingRequest
 {
     public required string HintName { get; init; }
@@ -427,6 +502,9 @@ internal sealed record MappingRequest
     public string? InnerJoinFilterBodyText { get; init; }
 }
 
+/// <summary>
+/// Represents projection generation.
+/// </summary>
 internal sealed record ProjectionGenerationModel
 {
     public required ProjectionRequest Request { get; init; }
@@ -434,6 +512,9 @@ internal sealed record ProjectionGenerationModel
     public required EquatableArray<GeneratedDtoModel> GeneratedDtos { get; init; }
 }
 
+/// <summary>
+/// Represents mapping generation.
+/// </summary>
 internal sealed record MappingGenerationModel
 {
     public required MappingRequest Request { get; init; }

@@ -2,6 +2,9 @@ using Microsoft.CodeAnalysis.Diagnostics;
 
 namespace Linqraft.Core.Configuration;
 
+/// <summary>
+/// Specifies the property accessor style used for generated DTO members.
+/// </summary>
 internal enum LinqraftPropertyAccessor
 {
     Default,
@@ -10,6 +13,9 @@ internal enum LinqraftPropertyAccessor
     GetAndInternalSet,
 }
 
+/// <summary>
+/// Specifies how much documentation comment output generated code should include.
+/// </summary>
 internal enum LinqraftCommentOutput
 {
     All,
@@ -17,6 +23,9 @@ internal enum LinqraftCommentOutput
     None,
 }
 
+/// <summary>
+/// Captures generator configuration parsed from analyzer config options.
+/// </summary>
 internal sealed record LinqraftConfiguration
 {
     public required LinqraftGeneratorOptionsCore GeneratorOptions { get; init; }
@@ -40,6 +49,9 @@ internal sealed record LinqraftConfiguration
 
     public bool GlobalUsing { get; init; } = true;
 
+    /// <summary>
+    /// Parses Linqraft configuration from analyzer config options.
+    /// </summary>
     public static LinqraftConfiguration Parse(
         AnalyzerConfigOptions options,
         LinqraftGeneratorOptionsCore generatorOptions
@@ -84,6 +96,9 @@ internal sealed record LinqraftConfiguration
         };
     }
 
+    /// <summary>
+    /// Gets a Boolean option value or returns the configured default.
+    /// </summary>
     private static bool GetBool(AnalyzerConfigOptions options, string? key, bool defaultValue)
     {
         if (key is null || !options.TryGetValue(key, out var value))
@@ -94,6 +109,9 @@ internal sealed record LinqraftConfiguration
         return bool.TryParse(value, out var parsed) ? parsed : defaultValue;
     }
 
+    /// <summary>
+    /// Gets an enum option value or returns the configured default.
+    /// </summary>
     private static TEnum GetEnum<TEnum>(
         AnalyzerConfigOptions options,
         string? key,
@@ -111,6 +129,9 @@ internal sealed record LinqraftConfiguration
             : defaultValue;
     }
 
+    /// <summary>
+    /// Gets a string option value or returns the configured default.
+    /// </summary>
     private static string GetOption(AnalyzerConfigOptions options, string? key, string defaultValue)
     {
         return key is not null && options.TryGetValue(key, out var value) ? value : defaultValue;

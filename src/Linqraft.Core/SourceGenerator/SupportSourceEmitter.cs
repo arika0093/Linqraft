@@ -4,8 +4,14 @@ using static Linqraft.Core.Generation.CodeTemplateContents;
 
 namespace Linqraft.SourceGenerator;
 
+/// <summary>
+/// Emits support source.
+/// </summary>
 internal static class SupportSourceEmitter
 {
+    /// <summary>
+    /// Creates support source.
+    /// </summary>
     public static string CreateSupportSource(LinqraftGeneratorOptionsCore generatorOptions)
     {
         var builder = new IndentedStringBuilder();

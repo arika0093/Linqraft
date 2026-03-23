@@ -6,11 +6,17 @@ using System.Linq;
 
 namespace Linqraft.Core.Collections;
 
+/// <summary>
+/// Provides equatable array.
+/// </summary>
 internal readonly struct EquatableArray<T> : IEquatable<EquatableArray<T>>, IEnumerable<T>
     where T : IEquatable<T>
 {
     private readonly ImmutableArray<T> _items;
 
+    /// <summary>
+    /// Initializes a new instance of the EquatableArray class.
+    /// </summary>
     public EquatableArray(IEnumerable<T> items)
     {
         _items = items.ToImmutableArray();
@@ -22,9 +28,15 @@ internal readonly struct EquatableArray<T> : IEquatable<EquatableArray<T>>, IEnu
 
     public T this[int index] => _items[index];
 
+    /// <summary>
+    /// Converts to immutable array.
+    /// </summary>
     public ImmutableArray<T> ToImmutableArray() =>
         _items.IsDefault ? ImmutableArray<T>.Empty : _items;
 
+    /// <summary>
+    /// Determines whether the other equals.
+    /// </summary>
     public bool Equals(EquatableArray<T> other)
     {
         if (Length != other.Length)
@@ -43,11 +55,17 @@ internal readonly struct EquatableArray<T> : IEquatable<EquatableArray<T>>, IEnu
         return true;
     }
 
+    /// <summary>
+    /// Determines whether the obj equals.
+    /// </summary>
     public override bool Equals(object? obj)
     {
         return obj is EquatableArray<T> other && Equals(other);
     }
 
+    /// <summary>
+    /// Gets hash code.
+    /// </summary>
     public override int GetHashCode()
     {
         unchecked
@@ -62,11 +80,17 @@ internal readonly struct EquatableArray<T> : IEquatable<EquatableArray<T>>, IEnu
         }
     }
 
+    /// <summary>
+    /// Gets enumerator.
+    /// </summary>
     public IEnumerator<T> GetEnumerator()
     {
         return (_items.IsDefault ? ImmutableArray<T>.Empty : _items).AsEnumerable().GetEnumerator();
     }
 
+    /// <summary>
+    /// Gets enumerator.
+    /// </summary>
     IEnumerator IEnumerable.GetEnumerator()
     {
         return GetEnumerator();

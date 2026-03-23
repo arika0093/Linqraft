@@ -272,6 +272,9 @@ public abstract class LinqraftGeneratorOptionsCore
     internal string? GeneratorKitMetadataName =>
         GeneratorKitClassName is null ? null : $"{SupportNamespace}.{GeneratorKitClassName}";
 
+    /// <summary>
+    /// Gets validated projection hooks.
+    /// </summary>
     internal IReadOnlyList<LinqraftProjectionHookDefinition> GetValidatedProjectionHooks()
     {
         var hooks = ProjectionHooks;
@@ -291,6 +294,9 @@ public abstract class LinqraftGeneratorOptionsCore
         return hooks;
     }
 
+    /// <summary>
+    /// Handles find projection hook.
+    /// </summary>
     internal LinqraftProjectionHookDefinition? FindProjectionHook(string methodName)
     {
         return GetValidatedProjectionHooks()
@@ -299,6 +305,9 @@ public abstract class LinqraftGeneratorOptionsCore
             );
     }
 
+    /// <summary>
+    /// Gets projection hook class name.
+    /// </summary>
     internal static string GetProjectionHookClassName(LinqraftProjectionHookDefinition hook)
     {
         return string.IsNullOrWhiteSpace(hook.ClassName)

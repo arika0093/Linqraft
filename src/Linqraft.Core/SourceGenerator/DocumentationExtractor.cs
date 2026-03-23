@@ -9,8 +9,14 @@ using Microsoft.CodeAnalysis.CSharp.Syntax;
 
 namespace Linqraft.SourceGenerator;
 
+/// <summary>
+/// Extracts documentation.
+/// </summary>
 internal static class DocumentationExtractor
 {
+    /// <summary>
+    /// Gets type documentation.
+    /// </summary>
     public static DocumentationInfo? GetTypeDocumentation(
         INamedTypeSymbol? symbol,
         LinqraftCommentOutput outputMode,
@@ -41,6 +47,9 @@ internal static class DocumentationExtractor
         };
     }
 
+    /// <summary>
+    /// Gets expression documentation.
+    /// </summary>
     public static DocumentationInfo? GetExpressionDocumentation(
         ExpressionSyntax expression,
         SemanticModel semanticModel,
@@ -75,6 +84,9 @@ internal static class DocumentationExtractor
         return new DocumentationInfo { Summary = summary, Remarks = remarks };
     }
 
+    /// <summary>
+    /// Handles find documentation symbol.
+    /// </summary>
     private static ISymbol? FindDocumentationSymbol(
         ExpressionSyntax expression,
         SemanticModel semanticModel,
@@ -162,6 +174,9 @@ internal static class DocumentationExtractor
         }
     }
 
+    /// <summary>
+    /// Handles extract summary.
+    /// </summary>
     private static string? ExtractSummary(
         ISymbol symbol,
         CancellationToken cancellationToken = default
@@ -195,6 +210,9 @@ internal static class DocumentationExtractor
         }
     }
 
+    /// <summary>
+    /// Handles extract comment attribute.
+    /// </summary>
     private static string? ExtractCommentAttribute(ISymbol symbol)
     {
         return symbol
@@ -204,6 +222,9 @@ internal static class DocumentationExtractor
                 .Value as string;
     }
 
+    /// <summary>
+    /// Handles extract display attribute.
+    /// </summary>
     private static string? ExtractDisplayAttribute(ISymbol symbol)
     {
         return symbol
@@ -213,6 +234,9 @@ internal static class DocumentationExtractor
                 .Value.Value as string;
     }
 
+    /// <summary>
+    /// Handles extract single line comment.
+    /// </summary>
     private static string? ExtractSingleLineComment(
         ISymbol symbol,
         CancellationToken cancellationToken = default
@@ -236,6 +260,9 @@ internal static class DocumentationExtractor
         return string.IsNullOrWhiteSpace(comment) ? null : comment;
     }
 
+    /// <summary>
+    /// Builds remarks.
+    /// </summary>
     private static string BuildRemarks(ISymbol symbol)
     {
         var parts = new List<string> { $"From: <c>{BuildSymbolPath(symbol)}</c>" };
@@ -255,6 +282,9 @@ internal static class DocumentationExtractor
         return string.Join("\n", parts);
     }
 
+    /// <summary>
+    /// Builds symbol path.
+    /// </summary>
     private static string BuildSymbolPath(ISymbol symbol)
     {
         if (symbol.ContainingType is null)
@@ -265,6 +295,9 @@ internal static class DocumentationExtractor
         return $"{symbol.ContainingType.Name}.{symbol.Name}";
     }
 
+    /// <summary>
+    /// Handles normalize.
+    /// </summary>
     private static string Normalize(string value)
     {
         return string.Join(

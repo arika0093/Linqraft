@@ -1,5 +1,8 @@
 namespace Linqraft.Core.Documentation;
 
+/// <summary>
+/// Represents documentation.
+/// </summary>
 internal sealed record DocumentationInfo
 {
     public string? Summary { get; init; }
