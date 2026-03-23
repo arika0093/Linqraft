@@ -44,7 +44,7 @@ internal abstract class ProjectionSupportExtensionClassGenerator
         builder.AppendLines(
             """
             /// <summary>
-            /// Provides projection helper hooks that generated selectors can use to request special rewrite behavior.
+            /// Provides projection helper methods that generated selectors can use to request special rewrite behavior.
             /// </summary>
             [global::Microsoft.CodeAnalysis.EmbeddedAttribute]
             internal partial interface IProjectionHelper
@@ -140,7 +140,7 @@ internal abstract class ProjectionSupportExtensionClassGenerator
         builder.AppendLines(
             $$"""
             /// <summary>
-            /// Provides marker extension methods for projection hook rewrites.
+            /// Provides marker extension methods for projection helper rewrites.
             /// </summary>
             [global::Microsoft.CodeAnalysis.EmbeddedAttribute]
             internal static partial class {{className}}
@@ -150,7 +150,7 @@ internal abstract class ProjectionSupportExtensionClassGenerator
         using (builder.Indent())
         {
             builder.AppendLine(
-                $"private static global::System.InvalidOperationException ThrowInterceptionRequired => new global::System.InvalidOperationException(\"{generatorOptions.GeneratorDisplayName} source generator should replace projection hook invocations before execution.\");"
+                $"private static global::System.InvalidOperationException ThrowInterceptionRequired => new global::System.InvalidOperationException(\"{generatorOptions.GeneratorDisplayName} source generator should replace projection helper invocations before execution.\");"
             );
             builder.AppendLine();
 
@@ -194,19 +194,19 @@ internal abstract class ProjectionSupportExtensionClassGenerator
             or LinqraftProjectionHookKind.InnerJoin
             or LinqraftProjectionHookKind.Projectable =>
             [
-                $"{prefix}T {hook.MethodName}<T>(T value){suffix}",
+                $"{prefix}T {hook.MethodName}<T>(T? value){suffix}",
             ],
             LinqraftProjectionHookKind.Projection =>
             [
-                $"{prefix}TResult {hook.MethodName}<TResult>(object value){suffix}",
-                $"{prefix}object {hook.MethodName}(object value){suffix}",
+                $"{prefix}TResult {hook.MethodName}<TResult>(object? value){suffix}",
+                $"{prefix}object {hook.MethodName}(object? value){suffix}",
             ],
             LinqraftProjectionHookKind.Project =>
             [
-                $"{prefix}IProjectedValue<T> {hook.MethodName}<T>(T value){suffix}",
+                $"{prefix}IProjectedValue<T> {hook.MethodName}<T>(T? value){suffix}",
             ],
             _ => throw new InvalidOperationException(
-                $"Unsupported projection hook kind '{hook.Kind}'."
+                $"Unsupported projection helper kind '{hook.Kind}'."
             ),
         };
     }

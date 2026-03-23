@@ -42,17 +42,18 @@ public sealed class HelperAsProjectionRuntimeTests
                     {
                         order.Id,
                         Customer = helper.AsProjection<HelperExplicitProjectedCustomerDto>(
-                            order.Customer!
+                            order.Customer
                         ),
                     }
             )
             .ToList();
 
         result.Count.ShouldBe(1);
-        result[0].Customer.GetType().ShouldBe(typeof(HelperExplicitProjectedCustomerDto));
-        result[0].Customer.Id.ShouldBe(10);
-        result[0].Customer.Name.ShouldBe("Ada");
-        result[0].Customer.Tier.ShouldBe("Gold");
+        var customer = result[0].Customer.ShouldNotBeNull();
+        customer.GetType().ShouldBe(typeof(HelperExplicitProjectedCustomerDto));
+        customer.Id.ShouldBe(10);
+        customer.Name.ShouldBe("Ada");
+        customer.Tier.ShouldBe("Gold");
     }
 
     [Test]
@@ -62,15 +63,16 @@ public sealed class HelperAsProjectionRuntimeTests
             .AsTestQueryable()
             .Where(order => order.Customer != null)
             .SelectExpr<HelperProjectionOrder, HelperAsProjectionImplicitOrderDto>(
-                (order, helper) => new { order.Id, Customer = helper.AsProjection(order.Customer!) }
+                (order, helper) => new { order.Id, Customer = helper.AsProjection(order.Customer) }
             )
             .ToList();
 
         result.Count.ShouldBe(1);
-        result[0].Customer.GetType().Name.ShouldBe("HelperProjectionCustomerDto");
-        result[0].Customer.Id.ShouldBe(10);
-        result[0].Customer.Name.ShouldBe("Ada");
-        result[0].Customer.Tier.ShouldBe("Gold");
+        var customer = result[0].Customer.ShouldNotBeNull();
+        customer.GetType().Name.ShouldBe("HelperProjectionCustomerDto");
+        customer.Id.ShouldBe(10);
+        customer.Name.ShouldBe("Ada");
+        customer.Tier.ShouldBe("Gold");
     }
 }
 
