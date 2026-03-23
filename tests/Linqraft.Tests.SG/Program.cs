@@ -185,8 +185,7 @@ public sealed class SourceGeneratorSmokeTests
             .ShouldContain("internal partial interface IProjectionHelper");
         generatedSources["Linqraft.Declarations.g.cs"].ShouldContain("T AsLeftJoin<T>(T? value);");
         generatedSources["Linqraft.Declarations.g.cs"].ShouldContain("T AsInnerJoin<T>(T? value);");
-        generatedSources["Linqraft.Declarations.g.cs"]
-            .ShouldContain("T AsInline<T>(T? value);");
+        generatedSources["Linqraft.Declarations.g.cs"].ShouldContain("T AsInline<T>(T? value);");
         generatedSources["Linqraft.Declarations.g.cs"]
             .ShouldContain("TResult AsProjection<TResult>(object? value);");
         generatedSources["Linqraft.Declarations.g.cs"]

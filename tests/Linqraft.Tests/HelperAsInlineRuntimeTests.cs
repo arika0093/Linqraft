@@ -38,11 +38,7 @@ public sealed class HelperAsInlineRuntimeTests
             .OrderBy(order => order.Id)
             .SelectExpr<HelperProjectionOrder, HelperAsInlineOrderDto>(
                 (order, helper) =>
-                    new
-                    {
-                        order.Id,
-                        FirstLargeItemName = helper.AsInline(order.FirstLargeItemName),
-                    }
+                    new { order.Id, FirstLargeItemName = helper.AsInline(order.FirstLargeItemName) }
             )
             .ToList();
 

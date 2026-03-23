@@ -64,7 +64,8 @@ public sealed class HelperAsProjectionTests
             .Context.Orders.AsNoTracking()
             .Where(order => order.OrderNumber == "ORD-001")
             .SelectExpr<EfOrder, EfHelperAsProjectionImplicitOrderDto>(
-                (order, helper) => new { order.OrderNumber, Customer = helper.AsProjection(order.Customer) }
+                (order, helper) =>
+                    new { order.OrderNumber, Customer = helper.AsProjection(order.Customer) }
             )
             .SingleAsync();
 

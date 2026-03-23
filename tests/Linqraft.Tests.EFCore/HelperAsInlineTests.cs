@@ -42,13 +42,11 @@ public sealed class HelperAsInlineTests
             .ToListAsync();
 
         result
-            .Select(
-                row => new
-                {
-                    row.OrderNumber,
-                    FirstLargeItemProductName = (string?)row.FirstLargeItemProductName,
-                }
-            )
+            .Select(row => new
+            {
+                row.OrderNumber,
+                FirstLargeItemProductName = (string?)row.FirstLargeItemProductName,
+            })
             .ToList()
             .ShouldBe(expected);
     }
