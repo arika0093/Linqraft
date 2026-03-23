@@ -1568,7 +1568,7 @@ internal sealed class ProjectionExpressionEmitter
         return BuildInitializerExpression($"new {projectedType}", initializers, cancellationToken);
     }
 
-    private Dictionary<ISymbol, ExpressionSyntax> BuildLambdaParameterBindings(
+    private static Dictionary<ISymbol, ExpressionSyntax> BuildLambdaParameterBindings(
         LambdaExpressionSyntax lambda,
         SemanticModel declarationModel,
         ExpressionSyntax replacementExpression,

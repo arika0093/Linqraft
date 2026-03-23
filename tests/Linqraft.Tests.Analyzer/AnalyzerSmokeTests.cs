@@ -324,6 +324,8 @@ public sealed class AnalyzerSmokeTests
                 {
                     public IQueryable<TResult> Select<TResult>(Func<T, TResult> selector) => throw null!;
                     public IQueryable<TResult> Select<TResult>(Func<T, IProjectionHelper, TResult> selector) => throw null!;
+                    public IQueryable<TResult> Select<TResult>(Func<T, TResult> selector, Func<object> capture) => throw null!;
+                    public IQueryable<TResult> Select<TResult>(Func<T, IProjectionHelper, TResult> selector, Func<object> capture) => throw null!;
                 }
 
                 public static class LinqraftQueryExtensions

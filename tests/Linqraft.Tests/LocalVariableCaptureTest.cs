@@ -22,6 +22,22 @@ public class LocalVariableCaptureTest
     }
 
     [Test]
+    public void UseLinqraft_Select_WithDelegateCapture()
+    {
+        var val = 100;
+        var converted = TestData
+            .AsTestQueryable()
+            .UseLinqraft()
+            .Select(x => new { x.Id, NewValue = x.Value + val }, capture: () => val)
+            .ToList();
+
+        converted.Count.ShouldBe(2);
+        var first = converted[0];
+        first.Id.ShouldBe(1);
+        first.NewValue.ShouldBe(110);
+    }
+
+    [Test]
     public void AnonymousPattern_WithMultipleCapturedVariables()
     {
         var val = 100;

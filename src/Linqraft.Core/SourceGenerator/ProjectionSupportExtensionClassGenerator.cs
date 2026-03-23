@@ -55,9 +55,11 @@ internal abstract class ProjectionSupportExtensionClassGenerator
             internal static partial class LinqraftQueryExtensions
             {
                 public static global::{{generatorOptions.SupportNamespace}}.LinqraftQuery<TIn> UseLinqraft<TIn>(this global::System.Linq.IQueryable<TIn> query)
+                    where TIn : class
                     => new(query);
 
                 public static global::{{generatorOptions.SupportNamespace}}.LinqraftEnumerable<TIn> UseLinqraft<TIn>(this global::System.Collections.Generic.IEnumerable<TIn> query)
+                    where TIn : class
                     => new(query);
             }
             """
@@ -93,6 +95,7 @@ internal abstract class ProjectionSupportExtensionClassGenerator
             /// </summary>
             [global::Microsoft.CodeAnalysis.EmbeddedAttribute]
             internal sealed class {{className}}<TIn>
+                where TIn : class
             {
                 private static global::System.InvalidOperationException ThrowInterceptionRequired => new global::System.InvalidOperationException("{{generatorOptions.GeneratorDisplayName}} source generator should replace UseLinqraft projection invocations before execution.");
 
@@ -151,7 +154,7 @@ internal abstract class ProjectionSupportExtensionClassGenerator
         LinqraftGeneratorOptionsCore generatorOptions
     )
     {
-        foreach (var capture in GetCapturePatterns())
+        foreach (var capture in GetCapturePatterns(includeAnonymousObjectPattern: false))
         {
             WriteLinqraftQueryMethod(
                 builder,
@@ -573,14 +576,19 @@ internal abstract class ProjectionSupportExtensionClassGenerator
         }
     }
 
-    private static IEnumerable<(string? Parameter, string SummarySuffix, string? ObsoleteMessage)> GetCapturePatterns()
+    private static IEnumerable<(string? Parameter, string SummarySuffix, string? ObsoleteMessage)> GetCapturePatterns(
+        bool includeAnonymousObjectPattern = true
+    )
     {
         yield return (null, "without captures", null);
-        yield return (
-            "object capture",
-            "with anonymous-object captures",
-            "Anonymous-object capture is obsolete. Use the delegate-based capture pattern instead."
-        );
+        if (includeAnonymousObjectPattern)
+        {
+            yield return (
+                "object capture",
+                "with anonymous-object captures",
+                "Anonymous-object capture is obsolete. Use the delegate-based capture pattern instead."
+            );
+        }
         yield return (
             "global::System.Func<object> capture",
             "with NativeAOT-safe delegate captures",
@@ -608,13 +616,19 @@ internal abstract class ProjectionSupportExtensionClassGenerator
     )
     {
         var selectorReturnType = selectorUsesObjectResult ? "object" : resultType;
-        var selectorType = hasKeySelector
-            ? usesProjectionHelperParameter
+        string selectorType;
+        if (hasKeySelector)
+        {
+            selectorType = usesProjectionHelperParameter
                 ? $"global::System.Func<global::System.Linq.IGrouping<TKey, TIn>, global::{generatorOptions.SupportNamespace}.IProjectionHelper, {selectorReturnType}>"
-                : $"global::System.Func<global::System.Linq.IGrouping<TKey, TIn>, {selectorReturnType}>"
-            : usesProjectionHelperParameter
+                : $"global::System.Func<global::System.Linq.IGrouping<TKey, TIn>, {selectorReturnType}>";
+        }
+        else
+        {
+            selectorType = usesProjectionHelperParameter
                 ? $"global::System.Func<TIn, global::{generatorOptions.SupportNamespace}.IProjectionHelper, {selectorReturnType}>"
                 : $"global::System.Func<TIn, {selectorReturnType}>";
+        }
         var parameters = hasKeySelector
             ? new[]
             {

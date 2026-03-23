@@ -71,7 +71,7 @@ public sealed class SelectManyExprRuntimeTests
     }
 
     [Test]
-    public void UseLinqraft_selectmany_projects_flattened_rows()
+    public void UseLinqraft_SelectMany_projects_flattened_rows()
     {
         var result = Parents
             .AsTestQueryable()
@@ -95,7 +95,7 @@ public sealed class SelectManyExprRuntimeTests
     }
 
     [Test]
-    public void IEnumerable_UseLinqraft_selectmany_projects_flattened_rows()
+    public void IEnumerable_UseLinqraft_SelectMany_projects_flattened_rows()
     {
         var result = Parents
             .UseLinqraft()
@@ -113,6 +113,32 @@ public sealed class SelectManyExprRuntimeTests
         result.Count.ShouldBe(3);
         result[0].ParentId.ShouldBe(10);
         result[2].ChildId.ShouldBe(201);
+    }
+
+    [Test]
+    public void UseLinqraft_SelectMany_supports_delegate_capture()
+    {
+        var minimumGrandChildren = 1;
+        var result = Parents
+            .AsTestQueryable()
+            .UseLinqraft()
+            .SelectMany<SelectManyExprFluentChildRowDto>(
+                parent =>
+                    parent.Children
+                        .Where(child => child.GrandChildren.Count >= minimumGrandChildren)
+                        .Select(child => new
+                        {
+                            ParentId = parent.Id,
+                            ChildId = child.Id,
+                            ChildName = child.Name,
+                        }),
+                capture: () => minimumGrandChildren
+            )
+            .OrderBy(x => x.ChildId)
+            .ToList();
+
+        result.Count.ShouldBe(2);
+        result.Select(x => x.ChildId).ShouldBe([101, 102]);
     }
 
     [Test]

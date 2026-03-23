@@ -93,6 +93,39 @@ public sealed class EfCoreBasicProjectionTests
     }
 
     [Test]
+    public async Task UseLinqraft_groupby_supports_delegate_capture_over_sqlite()
+    {
+        await using var database = await SqliteTestDatabase.CreateAsync();
+
+        const int threshold = 23;
+        var result = await database
+            .Context.Orders.AsNoTracking()
+            .Where(order => order.OrderNumber == "ORD-001" || order.OrderNumber == "ORD-002")
+            .UseLinqraft()
+            .GroupBy<string, EfFluentSqliteOrderGroupRow>(
+                order =>
+                    order.Items.Sum(item => item.Quantity * item.UnitPrice) >= threshold
+                        ? "High"
+                        : "Low",
+                group => new
+                {
+                    CustomerName = group.Key,
+                    OrderCount = group.Count(),
+                    ItemCount = group.Sum(order => order.Items.Count),
+                },
+                capture: () => threshold
+            )
+            .OrderBy(row => row.CustomerName)
+            .ToListAsync();
+
+        result.Count.ShouldBe(2);
+        result[0].CustomerName.ShouldBe("High");
+        result[0].OrderCount.ShouldBe(1);
+        result[1].CustomerName.ShouldBe("Low");
+        result[1].ItemCount.ShouldBe(1);
+    }
+
+    [Test]
     public async Task Generated_mapping_method_projects_over_sqlite()
     {
         await using var database = await SqliteTestDatabase.CreateAsync();
@@ -343,7 +376,7 @@ public sealed class EfCoreBasicProjectionTests
     }
 
     [Test]
-    public async Task SelectExpr_AsProjectable_inlines_computed_query_property_over_sqlite()
+    public async Task SelectExpr_AsInline_inlines_computed_query_property_over_sqlite()
     {
         await using var database = await SqliteTestDatabase.CreateAsync();
 
@@ -371,7 +404,7 @@ public sealed class EfCoreBasicProjectionTests
                     new
                     {
                         order.OrderNumber,
-                        FirstLargeItemProductName = helper.AsProjectable(
+                        FirstLargeItemProductName = helper.AsInline(
                             order.FirstLargeItemProductName
                         ),
                     }
@@ -379,7 +412,54 @@ public sealed class EfCoreBasicProjectionTests
             .ToListAsync();
 
         result
-            .Select(row => new { row.OrderNumber, row.FirstLargeItemProductName })
+            .Select(row =>
+                new EfOrderInlineExpectation(row.OrderNumber, (string?)row.FirstLargeItemProductName)
+            )
+            .ToList()
+            .ShouldBe(
+                expected.Select(row =>
+                        new EfOrderInlineExpectation(
+                            row.OrderNumber,
+                            row.FirstLargeItemProductName
+                        )
+                    )
+                    .ToList()
+            );
+    }
+
+    [Test]
+    public async Task UseLinqraft_Select_supports_delegate_capture_over_sqlite()
+    {
+        await using var database = await SqliteTestDatabase.CreateAsync();
+
+        const int minQuantity = 2;
+        var query = database
+            .Context.Orders.AsNoTracking()
+            .Where(order => order.OrderNumber == "ORD-001" || order.OrderNumber == "ORD-002")
+            .OrderBy(order => order.OrderNumber);
+
+        var expected = await query
+            .Select(order => new
+            {
+                order.OrderNumber,
+                QualifiedItemCount = order.Items.Count(item => item.Quantity >= minQuantity),
+            })
+            .ToListAsync();
+
+        var result = await query
+            .UseLinqraft()
+            .Select(
+                order => new
+                {
+                    order.OrderNumber,
+                    QualifiedItemCount = order.Items.Count(item => item.Quantity >= minQuantity),
+                },
+                capture: () => minQuantity
+            )
+            .ToListAsync();
+
+        result
+            .Select(row => new { row.OrderNumber, row.QualifiedItemCount })
             .ToList()
             .ShouldBe(expected);
     }
@@ -388,3 +468,5 @@ public sealed class EfCoreBasicProjectionTests
 public partial class EfFluentSqliteOrderRow { }
 
 public partial class EfFluentSqliteOrderGroupRow { }
+
+public sealed record EfOrderInlineExpectation(string OrderNumber, string? FirstLargeItemProductName);

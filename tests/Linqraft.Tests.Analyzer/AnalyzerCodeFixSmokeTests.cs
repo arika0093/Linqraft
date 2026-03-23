@@ -28,6 +28,7 @@ public sealed class AnalyzerCodeFixSmokeTests
             }
 
             public sealed class LinqraftQuery<T>
+                where T : class
             {
                 public LinqraftQuery(IQueryable<T> query)
                 {
@@ -38,15 +39,14 @@ public sealed class AnalyzerCodeFixSmokeTests
 
                 public IQueryable<TResult> Select<TResult>(Func<T, TResult> selector) => throw null!;
                 public IQueryable<TResult> Select<TResult>(Func<T, object> selector) => throw null!;
-                public IQueryable<TResult> Select<TResult>(Func<T, TResult> selector, object capture) => throw null!;
                 public IQueryable<TResult> Select<TResult>(Func<T, TResult> selector, Func<object> capture) => throw null!;
-                public IQueryable<TResult> Select<TResult>(Func<T, object> selector, object capture) => throw null!;
                 public IQueryable<TResult> Select<TResult>(Func<T, object> selector, Func<object> capture) => throw null!;
             }
 
             public static class LinqraftQueryExtensions
             {
-                public static LinqraftQuery<T> UseLinqraft<T>(this IQueryable<T> query) => new(query);
+                public static LinqraftQuery<T> UseLinqraft<T>(this IQueryable<T> query)
+                    where T : class => new(query);
             }
         }
         """;

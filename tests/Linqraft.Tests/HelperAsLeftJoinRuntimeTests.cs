@@ -43,16 +43,18 @@ public sealed class HelperAsLeftJoinRuntimeTests
             .ToList();
 
         result
-            .Select(row => new { row.Id, row.CustomerName })
+            .Select(row => new HelperAsLeftJoinExpectation(row.Id, row.CustomerName))
             .ToList()
             .ShouldBe(
                 new[]
                 {
-                    new { Id = 1, CustomerName = (string?)"Ada" },
-                    new { Id = 2, CustomerName = (string?)null },
+                    new HelperAsLeftJoinExpectation(1, "Ada"),
+                    new HelperAsLeftJoinExpectation(2, null),
                 }
             );
     }
 }
 
 public partial class HelperAsLeftJoinOrderDto;
+
+public sealed record HelperAsLeftJoinExpectation(int Id, string? CustomerName);
