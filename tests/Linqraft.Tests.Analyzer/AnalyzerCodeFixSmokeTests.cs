@@ -367,7 +367,11 @@ public sealed class AnalyzerCodeFixSmokeTests
             }
             """;
 
-        var result = await ApplyFixAsync(source, "LQRS002", "UseLinqraft().Select()");
+        var result = await ApplyFixAsync(
+            source,
+            "LQRS002",
+            "Convert to UseLinqraft().Select()"
+        );
         var fixedText = result.PrimaryDocumentText;
         var compilationErrors = await GetCompilationErrorsAsync(result.ChangedSolution);
 
@@ -414,7 +418,11 @@ public sealed class AnalyzerCodeFixSmokeTests
             }
             """;
 
-        var result = await ApplyFixAsync(source, "LQRS005", "UseLinqraft().Select()");
+        var result = await ApplyFixAsync(
+            source,
+            "LQRS005",
+            "Convert to UseLinqraft().Select()"
+        );
         var fixedText = result.PrimaryDocumentText;
         var compilationErrors = await GetCompilationErrorsAsync(result.ChangedSolution);
 
@@ -461,7 +469,11 @@ public sealed class AnalyzerCodeFixSmokeTests
             }
             """;
 
-        var result = await ApplyFixAsync(source, "LQRS002", "UseLinqraft().Select()");
+        var result = await ApplyFixAsync(
+            source,
+            "LQRS002",
+            "Convert to UseLinqraft().Select()"
+        );
         var fixedText = result.PrimaryDocumentText;
         var compilationErrors = await GetCompilationErrorsAsync(result.ChangedSolution);
 
@@ -505,7 +517,11 @@ public sealed class AnalyzerCodeFixSmokeTests
             }
             """;
 
-        var result = await ApplyFixAsync(source, "LQRS002", "UseLinqraft().Select<TDto>()");
+        var result = await ApplyFixAsync(
+            source,
+            "LQRS002",
+            "Convert to UseLinqraft().Select<TDto>()"
+        );
         var fixedText = result.PrimaryDocumentText;
         var compilationErrors = await GetCompilationErrorsAsync(result.ChangedSolution);
 
@@ -559,7 +575,11 @@ public sealed class AnalyzerCodeFixSmokeTests
             }
             """;
 
-        var result = await ApplyFixAsync(source, "LQRS005", "UseLinqraft().Select<TDto>()");
+        var result = await ApplyFixAsync(
+            source,
+            "LQRS005",
+            "Convert to UseLinqraft().Select<TDto>()"
+        );
         var fixedText = result.PrimaryDocumentText;
         var compilationErrors = await GetCompilationErrorsAsync(result.ChangedSolution);
 
@@ -655,7 +675,11 @@ public sealed class AnalyzerCodeFixSmokeTests
             }
             """;
 
-        var result = await ApplyFixAsync(source, "LQRS005", "UseLinqraft().Select()");
+        var result = await ApplyFixAsync(
+            source,
+            "LQRS005",
+            "Convert to UseLinqraft().Select()"
+        );
         var fixedText = result.PrimaryDocumentText;
         var compilationErrors = await GetCompilationErrorsAsync(result.ChangedSolution);
 
@@ -874,7 +898,11 @@ public sealed class AnalyzerCodeFixSmokeTests
             }
             """;
 
-        var result = await ApplyFixAsync(source, "LQRS006", "UseLinqraft().Select<TDto>()");
+        var result = await ApplyFixAsync(
+            source,
+            "LQRS006",
+            "Convert to UseLinqraft().Select<TDto>()"
+        );
         var fixedText = result.PrimaryDocumentText;
         var compilationErrors = await GetCompilationErrorsAsync(result.ChangedSolution);
 
@@ -928,7 +956,11 @@ public sealed class AnalyzerCodeFixSmokeTests
             }
             """;
 
-        var result = await ApplyFixAsync(source, "LQRS003", "UseLinqraft().Select<TDto>()");
+        var result = await ApplyFixAsync(
+            source,
+            "LQRS003",
+            "Convert to UseLinqraft().Select<TDto>()"
+        );
         var fixedText = result.PrimaryDocumentText;
         var compilationErrors = await GetCompilationErrorsAsync(result.ChangedSolution);
 
@@ -1045,7 +1077,11 @@ public sealed class AnalyzerCodeFixSmokeTests
             }
             """;
 
-        var result = await ApplyFixAsync(source, "LQRS006", "UseLinqraft().Select<TDto>()");
+        var result = await ApplyFixAsync(
+            source,
+            "LQRS006",
+            "Convert to UseLinqraft().Select<TDto>()"
+        );
         var fixedText = result.PrimaryDocumentText;
         var compilationErrors = await GetCompilationErrorsAsync(result.ChangedSolution);
 
