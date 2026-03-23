@@ -19,18 +19,17 @@ internal static class AnalyzerHelpers
     public static bool IsSelectExprInvocation(InvocationExpressionSyntax invocation)
     {
         return string.Equals(
-            GetInvocationName(invocation.Expression),
-            "SelectExpr",
-            StringComparison.Ordinal
-        );
+                GetInvocationName(invocation.Expression),
+                "SelectExpr",
+                StringComparison.Ordinal
+            )
+            || IsUseLinqraftSelectInvocation(invocation);
     }
 
     public static bool IsProjectionExprInvocation(InvocationExpressionSyntax invocation)
     {
-        return GetInvocationName(invocation.Expression)
-            is "SelectExpr"
-                or "SelectManyExpr"
-                or "GroupByExpr";
+        return GetInvocationName(invocation.Expression) is "SelectExpr" or "SelectManyExpr" or "GroupByExpr"
+            || IsUseLinqraftSelectInvocation(invocation);
     }
 
     public static bool IsQueryableSelectInvocation(
@@ -39,6 +38,11 @@ internal static class AnalyzerHelpers
         CancellationToken cancellationToken
     )
     {
+        if (IsUseLinqraftSelectInvocation(invocation))
+        {
+            return false;
+        }
+
         if (
             !string.Equals(
                 GetInvocationName(invocation.Expression),
@@ -433,6 +437,11 @@ internal static class AnalyzerHelpers
 
     private static int? GetPositionalCaptureArgumentIndex(InvocationExpressionSyntax invocation)
     {
+        if (IsUseLinqraftSelectInvocation(invocation))
+        {
+            return 1;
+        }
+
         return GetInvocationName(invocation.Expression) switch
         {
             "Generate" => 1,
@@ -441,6 +450,17 @@ internal static class AnalyzerHelpers
             "GroupByExpr" => 2,
             _ => null,
         };
+    }
+
+    private static bool IsUseLinqraftSelectInvocation(InvocationExpressionSyntax invocation)
+    {
+        return string.Equals(GetInvocationName(invocation.Expression), "Select", StringComparison.Ordinal)
+            && invocation.Expression is MemberAccessExpressionSyntax { Expression: InvocationExpressionSyntax receiverInvocation }
+            && string.Equals(
+                GetInvocationName(receiverInvocation.Expression),
+                "UseLinqraft",
+                StringComparison.Ordinal
+            );
     }
 
     private static bool IsCaptureArgumentExpression(ExpressionSyntax expression)

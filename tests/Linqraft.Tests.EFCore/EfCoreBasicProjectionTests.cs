@@ -34,6 +34,36 @@ public sealed class EfCoreBasicProjectionTests
     }
 
     [Test]
+    public async Task UseLinqraft_select_projects_a_relational_query_over_sqlite()
+    {
+        await using var database = await SqliteTestDatabase.CreateAsync();
+
+        var result = await database
+            .Context.Orders.AsNoTracking()
+            .Where(order => order.OrderNumber == "ORD-001" || order.OrderNumber == "ORD-002")
+            .OrderBy(order => order.OrderNumber)
+            .UseLinqraft()
+            .Select<EfFluentSqliteOrderRow>(
+                (order, helper) => new
+                {
+                    order.Id,
+                    order.OrderNumber,
+                    CustomerName = helper.AsLeftJoin(order.Customer).Name,
+                    ItemCount = order.Items.Count,
+                }
+            )
+            .ToListAsync();
+
+        result.Count.ShouldBe(2);
+        result[0].OrderNumber.ShouldBe("ORD-001");
+        result[0].CustomerName.ShouldBe("Ada");
+        result[0].ItemCount.ShouldBe(2);
+        result[1].OrderNumber.ShouldBe("ORD-002");
+        result[1].CustomerName.ShouldBeNull();
+        result[1].ItemCount.ShouldBe(1);
+    }
+
+    [Test]
     public async Task Generated_mapping_method_projects_over_sqlite()
     {
         await using var database = await SqliteTestDatabase.CreateAsync();
@@ -320,3 +350,5 @@ public sealed class EfCoreBasicProjectionTests
             .ShouldBe(expected);
     }
 }
+
+public partial class EfFluentSqliteOrderRow { }

@@ -1,6 +1,6 @@
 # Usage Patterns
 
-Linqraft provides several usage patterns for different scenarios. This guide explains when and how to use each pattern, including `SelectExpr`-based projections and `LinqraftKit.Generate` for non-query object generation.
+Linqraft provides several usage patterns for different scenarios. This guide explains when and how to use each pattern, including the recommended `UseLinqraft().Select<TDto>(...)` query style, `SelectExpr`-based projections, and `LinqraftKit.Generate` for non-query object generation.
 
 ## Overview
 
@@ -51,7 +51,7 @@ var orders = await dbContext.Orders
 
 ## Explicit DTO Pattern
 
-Specify the input entity type and output DTO type as generic parameters. Linqraft automatically generates the DTO class based on your selector.
+Use `UseLinqraft().Select<TDto>(...)` so the source type is inferred from the query and Linqraft automatically generates the DTO class based on your selector.
 
 ### When to Use
 * API endpoints
@@ -63,9 +63,9 @@ Specify the input entity type and output DTO type as generic parameters. Linqraf
 
 ```csharp
 var orders = await dbContext.Orders
-    // Order: input entity type
     // OrderDto: output DTO type (auto-generated)
-    .SelectExpr<Order, OrderDto>(o => new
+    .UseLinqraft()
+    .Select<OrderDto>(o => new
     {
         o.Id,
         CustomerName = o.Customer?.Name,
@@ -80,6 +80,8 @@ var orders = await dbContext.Orders
 
 // Result type: List<OrderDto>
 ```
+
+`SelectExpr<Order, OrderDto>(...)` remains supported, but the fluent `UseLinqraft().Select<OrderDto>(...)` form is recommended because it makes the Linqraft-specific projection explicit while still inferring the source type from the query.
 
 ### Generated Code
 

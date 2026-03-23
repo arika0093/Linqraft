@@ -372,6 +372,7 @@ internal static class ProjectionTemplateBuilder
                 Origin = CreateOrigin(invocation),
                 OperationKind = operationKind.Value,
                 ReceiverKind = receiverKind.Value,
+                UsesFluentQuerySyntax = IsUseLinqraftSelectInvocation(invocation),
                 Pattern = analyzedProjection.Pattern,
                 SourceTypeName = sourceType.ToFullyQualifiedTypeName(),
                 ResultTypeTemplate = analyzedProjection.ResultTypeTemplate,
@@ -2435,6 +2436,11 @@ internal static class ProjectionTemplateBuilder
         LinqraftGeneratorOptionsCore generatorOptions
     )
     {
+        if (IsUseLinqraftSelectInvocation(invocation))
+        {
+            return 1;
+        }
+
         return GetInvocationName(invocation.Expression) switch
         {
             var name when name == generatorOptions.ObjectGenerationMethodName => 1,
@@ -2627,15 +2633,21 @@ internal static class ProjectionTemplateBuilder
     )
     {
         var nameSyntax = GetInvocationNameSyntax(selectExpr.Expression) as GenericNameSyntax;
-        if (nameSyntax?.TypeArgumentList.Arguments.Count >= 2)
+        var resultTypeSyntax = nameSyntax?.TypeArgumentList.Arguments.LastOrDefault();
+        if (resultTypeSyntax is not null)
         {
-            var sourceType = semanticModel
-                .GetTypeInfo(nameSyntax.TypeArgumentList.Arguments[0], cancellationToken)
-                .Type;
-            var resultType = semanticModel
-                .GetTypeInfo(nameSyntax.TypeArgumentList.Arguments[1], cancellationToken)
-                .Type;
-            if (!IsPubliclyAccessible(sourceType) || !IsPubliclyAccessible(resultType))
+            var resultType = semanticModel.GetTypeInfo(resultTypeSyntax, cancellationToken).Type;
+            if (nameSyntax!.TypeArgumentList.Arguments.Count >= 2)
+            {
+                var sourceType = semanticModel
+                    .GetTypeInfo(nameSyntax.TypeArgumentList.Arguments[0], cancellationToken)
+                    .Type;
+                if (!IsPubliclyAccessible(sourceType) || !IsPubliclyAccessible(resultType))
+                {
+                    return "internal";
+                }
+            }
+            else if (!IsPubliclyAccessible(resultType))
             {
                 return "internal";
             }
@@ -2672,6 +2684,11 @@ internal static class ProjectionTemplateBuilder
         LinqraftGeneratorOptionsCore generatorOptions
     )
     {
+        if (IsUseLinqraftSelectInvocation(invocation))
+        {
+            return ProjectionOperationKind.Select;
+        }
+
         return GetInvocationName(invocation.Expression) switch
         {
             var name when name == generatorOptions.SelectExprMethodName =>
@@ -2733,8 +2750,25 @@ internal static class ProjectionTemplateBuilder
     )
     {
         return string.Equals(
+                GetInvocationName(invocation.Expression),
+                generatorOptions.SelectExprMethodName,
+                StringComparison.Ordinal
+            )
+            || IsUseLinqraftSelectInvocation(invocation);
+    }
+
+    private static bool IsUseLinqraftSelectInvocation(InvocationExpressionSyntax invocation)
+    {
+        return string.Equals(GetInvocationName(invocation.Expression), "Select", StringComparison.Ordinal)
+            && GetReceiverExpression(invocation) is InvocationExpressionSyntax receiverInvocation
+            && IsUseLinqraftInvocation(receiverInvocation);
+    }
+
+    private static bool IsUseLinqraftInvocation(InvocationExpressionSyntax invocation)
+    {
+        return string.Equals(
             GetInvocationName(invocation.Expression),
-            generatorOptions.SelectExprMethodName,
+            "UseLinqraft",
             StringComparison.Ordinal
         );
     }

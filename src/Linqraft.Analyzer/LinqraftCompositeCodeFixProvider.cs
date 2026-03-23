@@ -730,13 +730,13 @@ public sealed class LinqraftCompositeCodeFixProvider : CodeFixProvider
             selectExpr is null
             || AnalyzerHelpers.GetInvocationNameSyntax(selectExpr.Expression)
                 is not GenericNameSyntax genericName
-            || genericName.TypeArgumentList.Arguments.Count < 2
+            || genericName.TypeArgumentList.Arguments.Count < 1
         )
         {
             return document;
         }
 
-        var dtoTypeSyntax = genericName.TypeArgumentList.Arguments[1];
+        var dtoTypeSyntax = genericName.TypeArgumentList.Arguments.Last();
         var dtoTypeSymbol = semanticModel.GetTypeInfo(dtoTypeSyntax, cancellationToken).Type;
         var (statusCode, responseType) = GetProducesResponseTypeMetadata(
             method,

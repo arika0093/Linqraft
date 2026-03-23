@@ -79,6 +79,28 @@ public sealed class GeneratedProjectionRuntimeTests
     }
 
     [Test]
+    public void UseLinqraft_select_explicit_dto_projection_runs()
+    {
+        var result = Orders
+            .AsTestQueryable()
+            .UseLinqraft()
+            .Select<ProjectionOrderFluentDto>(order => new
+            {
+                order.Id,
+                CustomerName = order.Customer?.Name,
+                ItemCount = order.Items.Count,
+            })
+            .ToList();
+
+        result.Count.ShouldBe(2);
+        result[0].Id.ShouldBe(1);
+        result[0].CustomerName.ShouldBe("Ada");
+        result[0].ItemCount.ShouldBe(1);
+        result[1].CustomerName.ShouldBe("Grace");
+        result[1].ItemCount.ShouldBe(2);
+    }
+
+    [Test]
     public void Predefined_dto_projection_runs()
     {
         var result = Products
@@ -206,6 +228,8 @@ public partial class ProjectionDeclaredOrderDto
 {
     public int Id { get; private set; }
 }
+
+public partial class ProjectionOrderFluentDto { }
 
 internal static class TrackingQueryable
 {

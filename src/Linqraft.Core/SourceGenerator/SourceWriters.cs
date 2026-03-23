@@ -250,7 +250,11 @@ internal static class SourceWriters
                     builder.AppendLine();
                 }
 
-                var receiverType = GetReceiverTypeName(request.ReceiverKind);
+                var receiverType = GetReceiverTypeName(
+                    request.ReceiverKind,
+                    request.UsesFluentQuerySyntax,
+                    generatorOptions
+                );
                 var selectorResultType = GetSelectorResultType(request);
                 var captureParameter =
                     request.CaptureTransportKind == CaptureTransportKind.Delegate
@@ -265,7 +269,15 @@ internal static class SourceWriters
                         : request.UsesProjectionHelperParameter
                             ? $"global::System.Func<TIn, {helperType}, {selectorResultType}>"
                             : $"global::System.Func<TIn, {selectorResultType}>";
-                var signature = request.OperationKind switch
+                var signature = request.UsesFluentQuerySyntax
+                    ? GetFluentQuerySignature(
+                        request,
+                        receiverType,
+                        selectorType,
+                        captureParameter,
+                        cancellationToken
+                    )
+                    : request.OperationKind switch
                 {
                     ProjectionOperationKind.Select => request.Captures.Length == 0
                         ? $"public static {receiverType}<TResult> {request.MethodName}<TIn, TResult>(this {receiverType}<TIn> query, {selectorType} selector) where TIn : class"
@@ -305,7 +317,9 @@ internal static class SourceWriters
                 builder.AppendLine("{", cancellationToken);
                 using (builder.Indent())
                 {
-                    var matchedQueryType = $"{receiverType}<{request.SourceTypeName}>";
+                    var matchedQueryType = request.UsesFluentQuerySyntax
+                        ? $"global::System.Linq.IQueryable<{request.SourceTypeName}>"
+                        : $"{receiverType}<{request.SourceTypeName}>";
 
                     if (request.Captures.Length != 0)
                     {
@@ -327,7 +341,9 @@ internal static class SourceWriters
                     var convertedInvocation = request.OperationKind switch
                     {
                         ProjectionOperationKind.Select =>
-                            $"(({matchedQueryType})(object)query).Select({selectArgument})",
+                            request.UsesFluentQuerySyntax
+                                ? $"(({matchedQueryType})(object)query.Query).Select({selectArgument})"
+                                : $"(({matchedQueryType})(object)query).Select({selectArgument})",
                         ProjectionOperationKind.SelectMany =>
                             $"(({matchedQueryType})(object)query).SelectMany({lambda})",
                         ProjectionOperationKind.GroupBy =>
@@ -341,10 +357,10 @@ internal static class SourceWriters
                         $"var converted = {convertedInvocation};",
                         cancellationToken
                     );
-                    builder.AppendLine(
-                        $"return ({receiverType}<TResult>)(object)converted;",
-                        cancellationToken
-                    );
+                    var returnStatement = request.UsesFluentQuerySyntax
+                        ? "return (global::System.Linq.IQueryable<TResult>)(object)converted;"
+                        : $"return ({receiverType}<TResult>)(object)converted;";
+                    builder.AppendLine(returnStatement, cancellationToken);
                 }
 
                 builder.AppendLine("}", cancellationToken);
@@ -612,6 +628,42 @@ internal static class SourceWriters
         return receiverKind == ReceiverKind.IQueryable
             ? "global::System.Linq.IQueryable"
             : "global::System.Collections.Generic.IEnumerable";
+    }
+
+    private static string GetReceiverTypeName(
+        ReceiverKind receiverKind,
+        bool usesFluentQuerySyntax,
+        LinqraftGeneratorOptionsCore generatorOptions
+    )
+    {
+        if (usesFluentQuerySyntax)
+        {
+            return $"global::{generatorOptions.SupportNamespace}.LinqraftQuery";
+        }
+
+        return receiverKind == ReceiverKind.IQueryable
+            ? "global::System.Linq.IQueryable"
+            : "global::System.Collections.Generic.IEnumerable";
+    }
+
+    private static string GetFluentQuerySignature(
+        ProjectionRequest request,
+        string receiverType,
+        string selectorType,
+        string captureParameter,
+        CancellationToken cancellationToken = default
+    )
+    {
+        cancellationToken.ThrowIfCancellationRequested();
+        return request.OperationKind switch
+        {
+            ProjectionOperationKind.Select => request.Captures.Length == 0
+                ? $"public static global::System.Linq.IQueryable<TResult> {request.MethodName}<TIn, TResult>(this {receiverType}<TIn> query, {selectorType} selector)"
+                : $"public static global::System.Linq.IQueryable<TResult> {request.MethodName}<TIn, TResult>(this {receiverType}<TIn> query, {selectorType} selector, {captureParameter})",
+            _ => throw new InvalidOperationException(
+                $"Fluent query syntax is not supported for projection operation '{request.OperationKind}'."
+            ),
+        };
     }
 
     private static void WriteCaptureExtraction(

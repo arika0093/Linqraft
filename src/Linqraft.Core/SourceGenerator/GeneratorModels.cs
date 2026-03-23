@@ -146,6 +146,8 @@ internal sealed record ProjectionRequestTemplate
 
     public required ReceiverKind ReceiverKind { get; init; }
 
+    public required bool UsesFluentQuerySyntax { get; init; }
+
     public required ProjectionPattern Pattern { get; init; }
 
     public required string SourceTypeName { get; init; }
@@ -288,6 +290,8 @@ internal sealed record ProjectionRequest
     public required ProjectionOperationKind OperationKind { get; init; }
 
     public required ReceiverKind ReceiverKind { get; init; }
+
+    public required bool UsesFluentQuerySyntax { get; init; }
 
     public required ProjectionPattern Pattern { get; init; }
 

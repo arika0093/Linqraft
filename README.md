@@ -14,7 +14,7 @@
 
 ### Query-based automatic DTO generation
 
-You can write projections with `SelectExpr` and get DTOs generated automatically based on the shape of your selector expression.
+You can write projections with `UseLinqraft().Select<TDto>(...)` (recommended) or `SelectExpr` and get DTOs generated automatically based on the shape of your selector expression.
 This allows for *"what you see is what you get"* declarations, unifying DTO definition and query writing.
 Complex queries are fully supported, including nested DTOs, collections, and calculated fields.
 
@@ -23,7 +23,8 @@ For example, the following declaration will automatically generate `OrderDto` an
 ```csharp
 // orders: List<OrderDto✨️>
 var orders = await dbContext.Orders
-    .SelectExpr<Order, OrderDto>(o => new {
+    .UseLinqraft()
+    .Select<OrderDto>(o => new {
         // CustomerName: string
         CustomerName = o.Customer.Name,
         // Items: IEnumerable<OrderItemDto✨️>
@@ -72,7 +73,8 @@ Linqraft generates queries through anonymous type generation, allowing you to wr
 
 ```csharp
 var orders = await dbContext.Orders
-    .SelectExpr<Order, OrderDto>(o => new {
+    .UseLinqraft()
+    .Select<OrderDto>(o => new {
         // CustomerName: string?
         CustomerName = o.Customer?.Name,
         // Items: IEnumerable<string>
@@ -101,7 +103,8 @@ var order = await dbContext.Orders
 // after (apply code fix)
 // order is OrderDto✨️
 var order = await dbContext.Orders
-    .SelectExpr<Order, OrderDto>(o => new {
+    .UseLinqraft()
+    .Select<OrderDto>(o => new {
         // automatically replace null checks with null-propagation operator
         CustomerName = o.Customer?.Name,
         Items = o.OrderItems.Select(oi => new {
@@ -124,9 +127,10 @@ Linqraft also supports explicit projection helpers for cases where you want the 
 
 ```csharp
 var rows = dbContext.Orders
-    // add 2nd argument to SelectExpr,
+    .UseLinqraft()
+    // add 2nd argument to Select,
     // which is a helper object that provides methods for rewriting parts of the selector body.
-    .SelectExpr((o, helper) => new
+    .Select<OrderRow>((o, helper) => new
     {
         CustomerName = helper.AsLeftJoin(o.Customer).Name,
         FirstLargeItem = helper.AsProjectable(o.FirstLargeItemProductName),
@@ -139,7 +143,7 @@ Currently, the following helpers are available:
   * It generates queries that behave like a `LEFT JOIN`.
 * `AsProjectable(query)`
   * It realizes the behavior like [EntityFrameworkCore.Projectables](https://github.com/EFNext/EntityFrameworkCore.Projectables).
-  * That is, the query logic inside properties like `FirstLargeItemProductName` will be expanded as if it were written inline inside the SelectExpr.
+  * That is, the query logic inside properties like `FirstLargeItemProductName` will be expanded as if it were written inline inside the Linqraft selector.
 
 ### No Dependencies 
 
@@ -219,9 +223,10 @@ The most basic usage pattern, with automatic DTO generation.
 ```csharp
 // orders: List<OrderDto✨️>
 var orders = await dbContext.Orders
-    // By explicitly specifying the generic arguments,
-    // you can specify the type of the DTO.
-    .SelectExpr<Order, OrderDto>(o => new
+    // Recommended: opt into Linqraft explicitly and
+    // specify only the output DTO type.
+    .UseLinqraft()
+    .Select<OrderDto>(o => new
     {
         Id = o.Id,
         CustomerName = o.Customer?.Name,
@@ -229,6 +234,8 @@ var orders = await dbContext.Orders
     })
     .ToListAsync();
 ```
+
+`SelectExpr<Order, OrderDto>(...)` remains available, but `UseLinqraft().Select<OrderDto>(...)` is the preferred style because the source type is inferred and the Linqraft-specific behavior is more obvious at the call site.
 
 
 ### Anonymous pattern

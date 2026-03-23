@@ -24,6 +24,11 @@ internal abstract class ProjectionSupportExtensionClassGenerator
 
     protected abstract IEnumerable<SupportMethodSignature> GetMethodSignatures();
 
+    protected virtual void WriteAdditionalMembers(
+        IndentedStringBuilder builder,
+        LinqraftGeneratorOptionsCore generatorOptions
+    ) { }
+
     public static string CreateAllDeclarations(LinqraftGeneratorOptionsCore generatorOptions)
     {
         return string.Join(
@@ -31,7 +36,167 @@ internal abstract class ProjectionSupportExtensionClassGenerator
             Generators
                 .Select(generator => generator.CreateDeclaration(generatorOptions))
                 .Concat(CreateProjectionHelperDeclarations(generatorOptions))
+                .Concat(CreateLinqraftQueryDeclarations(generatorOptions))
         );
+    }
+
+    private static IEnumerable<string> CreateLinqraftQueryDeclarations(
+        LinqraftGeneratorOptionsCore generatorOptions
+    )
+    {
+        var extensionBuilder = new IndentedStringBuilder();
+        extensionBuilder.AppendLines(
+            $$"""
+            /// <summary>
+            /// Starts the recommended fluent {{generatorOptions.GeneratorDisplayName}} projection style for <see cref="global::System.Linq.IQueryable{T}"/>.
+            /// </summary>
+            [global::Microsoft.CodeAnalysis.EmbeddedAttribute]
+            internal static partial class LinqraftQueryExtensions
+            {
+                public static global::{{generatorOptions.SupportNamespace}}.LinqraftQuery<TIn> UseLinqraft<TIn>(this global::System.Linq.IQueryable<TIn> query)
+                    => new(query);
+            }
+            """
+        );
+        yield return extensionBuilder.ToString().TrimEnd();
+
+        var queryBuilder = new IndentedStringBuilder();
+        queryBuilder.AppendLines(
+            $$"""
+            /// <summary>
+            /// Wraps an <see cref="global::System.Linq.IQueryable{T}"/> so Linqraft's fluent projection members can be used.
+            /// </summary>
+            [global::Microsoft.CodeAnalysis.EmbeddedAttribute]
+            internal sealed class LinqraftQuery<TIn> : global::System.Linq.IQueryable<TIn>
+            {
+                private static global::System.InvalidOperationException ThrowInterceptionRequired => new global::System.InvalidOperationException("{{generatorOptions.GeneratorDisplayName}} source generator should replace UseLinqraft().Select invocations before execution.");
+
+                public LinqraftQuery(global::System.Linq.IQueryable<TIn> query)
+                {
+                    Query = query;
+                }
+
+                internal global::System.Linq.IQueryable<TIn> Query { get; }
+
+                public global::System.Type ElementType => Query.ElementType;
+
+                public global::System.Linq.Expressions.Expression Expression => Query.Expression;
+
+                public global::System.Linq.IQueryProvider Provider => Query.Provider;
+
+                public global::System.Collections.Generic.IEnumerator<TIn> GetEnumerator() => Query.GetEnumerator();
+
+                global::System.Collections.IEnumerator global::System.Collections.IEnumerable.GetEnumerator() => GetEnumerator();
+
+            """
+        );
+        using (queryBuilder.Indent())
+        {
+            foreach (
+                var capture in new[]
+                {
+                    new
+                    {
+                        Parameter = (string?)null,
+                        Summary = "Interception stub for fluent Linqraft query projections without captures.",
+                        ObsoleteMessage = (string?)null,
+                    },
+                    new
+                    {
+                        Parameter = (string?)"object capture",
+                        Summary = "Interception stub for fluent Linqraft query projections with anonymous-object captures.",
+                        ObsoleteMessage = (string?)
+                            "Anonymous-object capture is obsolete. Use the delegate-based capture pattern instead.",
+                    },
+                    new
+                    {
+                        Parameter = (string?)"global::System.Func<object> capture",
+                        Summary = "Interception stub for fluent Linqraft query projections with NativeAOT-safe delegate captures.",
+                        ObsoleteMessage = (string?)null,
+                    },
+                }
+            )
+            {
+                WriteLinqraftQuerySelectMethod(
+                    queryBuilder,
+                    summary: capture.Summary,
+                    selectorType: "global::System.Func<TIn, TResult>",
+                    captureParameter: capture.Parameter,
+                    obsoleteMessage: capture.ObsoleteMessage,
+                    isLowPriority: false,
+                    generatorOptions
+                );
+                WriteLinqraftQuerySelectMethod(
+                    queryBuilder,
+                    summary: capture.Summary,
+                    selectorType: "global::System.Func<TIn, object>",
+                    captureParameter: capture.Parameter,
+                    obsoleteMessage: capture.ObsoleteMessage,
+                    isLowPriority: true,
+                    generatorOptions
+                );
+                WriteLinqraftQuerySelectMethod(
+                    queryBuilder,
+                    summary: $"{capture.Summary} Accepts a projection helper as the selector's second parameter.",
+                    selectorType: $"global::System.Func<TIn, global::{generatorOptions.SupportNamespace}.IProjectionHelper, TResult>",
+                    captureParameter: capture.Parameter,
+                    obsoleteMessage: capture.ObsoleteMessage,
+                    isLowPriority: false,
+                    generatorOptions
+                );
+                WriteLinqraftQuerySelectMethod(
+                    queryBuilder,
+                    summary: $"{capture.Summary} Accepts a projection helper as the selector's second parameter.",
+                    selectorType: $"global::System.Func<TIn, global::{generatorOptions.SupportNamespace}.IProjectionHelper, object>",
+                    captureParameter: capture.Parameter,
+                    obsoleteMessage: capture.ObsoleteMessage,
+                    isLowPriority: true,
+                    generatorOptions
+                );
+            }
+        }
+
+        queryBuilder.AppendLine("}");
+        yield return queryBuilder.ToString().TrimEnd();
+    }
+
+    private static void WriteLinqraftQuerySelectMethod(
+        IndentedStringBuilder builder,
+        string summary,
+        string selectorType,
+        string? captureParameter,
+        string? obsoleteMessage,
+        bool isLowPriority,
+        LinqraftGeneratorOptionsCore generatorOptions
+    )
+    {
+        builder.AppendLines(
+            $$"""
+            /// <summary>
+            /// {{summary}}
+            /// </summary>
+            """
+        );
+        if (obsoleteMessage is not null)
+        {
+            builder.AppendLine($"[global::System.Obsolete(\"{obsoleteMessage}\", false)]");
+        }
+        if (isLowPriority)
+        {
+            builder.AppendLine(OverloadResolutionLowPriority);
+        }
+
+        var parameters = new[] { $"{selectorType} selector", captureParameter }.Where(parameter =>
+            parameter is not null
+        );
+        builder.AppendLine(
+            $"public global::System.Linq.IQueryable<TResult> Select<TResult>({string.Join(", ", parameters)})"
+        );
+        using (builder.Indent())
+        {
+            builder.AppendLine("=> throw ThrowInterceptionRequired;");
+        }
+        builder.AppendLine();
     }
 
     private static IEnumerable<string> CreateProjectionHelperDeclarations(
@@ -87,6 +252,7 @@ internal abstract class ProjectionSupportExtensionClassGenerator
                 $"private static global::System.InvalidOperationException ThrowInterceptionRequired => new global::System.InvalidOperationException(\"{generatorOptions.GeneratorDisplayName} source generator should replace {GetMethodName(generatorOptions)} invocations before execution.\");"
             );
             builder.AppendLine();
+            WriteAdditionalMembers(builder, generatorOptions);
 
             foreach (var signature in GetMethodSignatures())
             {
@@ -130,19 +296,11 @@ internal abstract class ProjectionSupportExtensionClassGenerator
 
     protected IEnumerable<SupportMethodSignature> CreateQueryOverloads(
         Func<LinqraftGeneratorOptionsCore, string> resultTypeFactory,
+        bool includeEnumerable = true,
         bool hasKeySelector = false
     )
     {
-        foreach (
-            var receiver in new[]
-            {
-                (TypeName: "global::System.Linq.IQueryable", Kind: "queryable sequence"),
-                (
-                    TypeName: "global::System.Collections.Generic.IEnumerable",
-                    Kind: "enumerable sequence"
-                ),
-            }
-        )
+        foreach (var receiver in GetReceivers(includeEnumerable))
         {
             foreach (
                 var capture in new[]
@@ -239,6 +397,15 @@ internal abstract class ProjectionSupportExtensionClassGenerator
                     IsLowPriority = true,
                 };
             }
+        }
+    }
+
+    private static IEnumerable<(string TypeName, string Kind)> GetReceivers(bool includeEnumerable)
+    {
+        yield return ("global::System.Linq.IQueryable", "queryable sequence");
+        if (includeEnumerable)
+        {
+            yield return ("global::System.Collections.Generic.IEnumerable", "enumerable sequence");
         }
     }
 
