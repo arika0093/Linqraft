@@ -164,6 +164,8 @@ internal sealed record ProjectionRequestTemplate
 
     public string? KeySelectorBodyTemplate { get; init; }
 
+    public string? InnerJoinFilterBodyTemplate { get; init; }
+
     public required bool UseObjectSelectorSignature { get; init; }
 
     public required bool CanUsePrebuiltExpressionWhenConfigured { get; init; }
@@ -212,6 +214,8 @@ internal sealed record MappingRequestTemplate
     public required bool CanUsePrebuiltExpressionWhenConfigured { get; init; }
 
     public required ProjectionTemplateModel Projection { get; init; }
+
+    public string? InnerJoinFilterBodyTemplate { get; init; }
 }
 
 internal sealed record ProjectionSourceTemplateModel
@@ -306,6 +310,8 @@ internal sealed record ProjectionRequest
     public string? KeySelectorParameterName { get; init; }
 
     public string? KeySelectorBodyText { get; init; }
+
+    public string? InnerJoinFilterBodyText { get; init; }
 
     public required bool UseObjectSelectorSignature { get; init; }
 
@@ -413,6 +419,8 @@ internal sealed record MappingRequest
     public required bool CanUsePrebuiltExpression { get; init; }
 
     public required string ProjectionBodyText { get; init; }
+
+    public string? InnerJoinFilterBodyText { get; init; }
 }
 
 internal sealed record ProjectionGenerationModel

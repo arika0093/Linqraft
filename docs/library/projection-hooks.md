@@ -1,6 +1,8 @@
 # Projection Hooks
 
-Projection hooks are exposed through the `IProjectionHelper` selector parameter so you can ask Linqraft to rewrite a specific part of a generated projection body.
+Projection hooks are exposed through the `IProjectionHelper` selector parameter so you can ask Linqraft to rewrite a specific fragment inside a generated projection body.
+
+After support code is generated, the same hooks are also available as generated extension methods, so `helper.AsProjection(order.Customer!)` and `order.Customer!.AsProjection()` are equivalent shapes.
 
 They follow this flow:
 
@@ -16,7 +18,7 @@ Use `helper.AsLeftJoin(value)` when you want a nullable navigation access to be 
 var result = dbContext.Orders
     .SelectExpr<Order, OrderRowDto>((order, helper) => new
     {
-        CustomerName = helper.AsLeftJoin(order.Customer).Name,
+        CustomerName = helper.AsLeftJoin(order.Customer!).Name,
     })
     .ToListAsync();
 ```
@@ -28,6 +30,21 @@ CustomerName = order.Customer != null ? order.Customer.Name : null
 ```
 
 This is useful when the provider would otherwise translate a navigation access into a more restrictive join shape than you want.
+
+### `helper.AsInnerJoin(value)`
+
+Use `helper.AsInnerJoin(value)` when the generated query should behave like an `INNER JOIN` for the hooked value.
+
+```csharp
+var result = dbContext.Orders
+    .SelectExpr<Order, OrderRowDto>((order, helper) => new
+    {
+        CustomerName = helper.AsInnerJoin(order.Customer!).Name,
+    })
+    .ToListAsync();
+```
+
+Linqraft rewrites the query so rows where the hooked value is `null` are filtered out before the generated projection runs.
 
 ### `helper.AsProjectable(value)`
 
@@ -55,6 +72,72 @@ var result = dbContext.Orders
 
 Linqraft rewrites the hook as though the property body had been written directly inside the selector.
 
+### `helper.AsProjection<TDto>(value)` / `value.AsProjection<TDto>()`
+
+Use `AsProjection<TDto>()` when you want a nested member to become a DTO explicitly instead of exposing the original entity or complex type.
+
+```csharp
+var result = dbContext.Orders
+    .SelectExpr<Order, OrderRowDto>(order => new
+    {
+        order.Id,
+        Customer = order.Customer!.AsProjection<CustomerSummaryDto>(),
+    })
+    .ToListAsync();
+```
+
+If you omit the generic argument, Linqraft uses `[SourceTypeName]Dto`:
+
+```csharp
+var result = dbContext.Orders
+    .SelectExpr<Order, OrderRowDto>((order, helper) => new
+    {
+        order.Id,
+        Customer = helper.AsProjection(order.Customer!),
+    })
+    .ToListAsync();
+```
+
+In that example, `Customer` becomes `CustomerDto`.
+
+`AsProjection` currently copies scalar, enum, string, and value-type members from the source object. Navigation and collection members are not expanded automatically.
+
+### `helper.Project<T>(value).Select(...)`
+
+Use `Project(...).Select(...)` when you want to shape a nested projection without repeating the full member path in every selected member.
+
+```csharp
+var result = dbContext.Orders
+    .SelectExpr<Order, OrderRowDto>((order, helper) => new
+    {
+        order.Id,
+        Customer = helper
+            .Project<Customer>(order.Customer!)
+            .Select(customer => new { customer.Id, customer.Name }),
+    })
+    .ToListAsync();
+```
+
+The generic argument is a naming hint for the generated DTO. In the example above, Linqraft generates `CustomerDto`.
+
+If you omit the generic argument, Linqraft uses the destination member name:
+
+```csharp
+var result = dbContext.Orders
+    .SelectExpr<Order, OrderRowDto>((order, helper) => new
+    {
+        order.Id,
+        SelectedCustomer = helper.Project(order.Customer!).Select(customer => new
+        {
+            customer.Id,
+            customer.Name,
+        }),
+    })
+    .ToListAsync();
+```
+
+In that case, Linqraft generates `SelectedCustomerDto`.
+
 ## Important Constraints
 
 ### Hooks are available through the generated selector helper
@@ -64,7 +147,7 @@ Linqraft rewrites the hook as though the property body had been written directly
 ```csharp
 query.SelectExpr((entity, helper) => new
 {
-    Name = helper.AsLeftJoin(entity.Child).Name,
+    Name = helper.AsLeftJoin(entity.Child!).Name,
 });
 ```
 

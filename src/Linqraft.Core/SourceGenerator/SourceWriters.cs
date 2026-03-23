@@ -324,14 +324,23 @@ internal static class SourceWriters
                         && request.ReceiverKind == ReceiverKind.IQueryable
                             ? expressionFieldName
                             : lambda;
+                    var querySource = $"(({matchedQueryType})(object)query)";
+                    if (
+                        request.InnerJoinFilterBodyText is { } innerJoinFilterBodyText
+                        && request.OperationKind != ProjectionOperationKind.GroupBy
+                    )
+                    {
+                        querySource =
+                            $"{querySource}.Where({ProjectionBodyEmitter.AppendValueInline($"{request.SelectorParameterName} => ", innerJoinFilterBodyText)})";
+                    }
                     var convertedInvocation = request.OperationKind switch
                     {
                         ProjectionOperationKind.Select =>
-                            $"(({matchedQueryType})(object)query).Select({selectArgument})",
+                            $"{querySource}.Select({selectArgument})",
                         ProjectionOperationKind.SelectMany =>
-                            $"(({matchedQueryType})(object)query).SelectMany({lambda})",
+                            $"{querySource}.SelectMany({lambda})",
                         ProjectionOperationKind.GroupBy =>
-                            $"(({matchedQueryType})(object)query).GroupBy({ProjectionBodyEmitter.AppendValueInline($"{request.KeySelectorParameterName} => ", request.KeySelectorBodyText ?? "default!")}).Select({lambda})",
+                            $"{querySource}.GroupBy({ProjectionBodyEmitter.AppendValueInline($"{request.KeySelectorParameterName} => ", request.KeySelectorBodyText ?? "default!")}).Select({lambda})",
                         _ => throw new InvalidOperationException(
                             $"Unsupported projection operation '{request.OperationKind}'."
                         ),
@@ -504,16 +513,22 @@ internal static class SourceWriters
                     && request.ReceiverKind == ReceiverKind.IQueryable
                 )
                 {
+                    var querySource = request.InnerJoinFilterBodyText is { } innerJoinFilterBodyText
+                        ? $"source.Where({ProjectionBodyEmitter.AppendValueInline($"{request.SelectorParameterName} => ", innerJoinFilterBodyText)})"
+                        : "source";
                     builder.AppendLine(
-                        $"return source.Select({expressionFieldName});",
+                        $"return {querySource}.Select({expressionFieldName});",
                         cancellationToken
                     );
                 }
                 else
                 {
+                    var querySource = request.InnerJoinFilterBodyText is { } innerJoinFilterBodyText
+                        ? $"source.Where({ProjectionBodyEmitter.AppendValueInline($"{request.SelectorParameterName} => ", innerJoinFilterBodyText)})"
+                        : "source";
                     AppendMultilineLine(
                         builder,
-                        $"return source.Select({lambda});",
+                        $"return {querySource}.Select({lambda});",
                         cancellationToken
                     );
                 }

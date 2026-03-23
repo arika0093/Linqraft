@@ -124,11 +124,16 @@ Linqraft also supports explicit projection helpers for cases where you want the 
 
 ```csharp
 var rows = dbContext.Orders
-    // add 2nd argument to SelectExpr,
-    // which is a helper object that provides methods for rewriting parts of the selector body.
-    .SelectExpr((o, helper) => new
+    .SelectExpr<Order, OrderRowDto>((o, helper) => new
     {
-        CustomerName = helper.AsLeftJoin(o.Customer).Name,
+        CustomerName = helper.AsLeftJoin(o.Customer!).Name,
+        RequiredCustomerName = helper.AsInnerJoin(o.Customer!).Name,
+        Customer = o.Customer!.AsProjection<CustomerDto>(),
+        CustomerSummary = helper.Project(o.Customer!).Select(customer => new
+        {
+            customer.Id,
+            customer.Name,
+        }),
         FirstLargeItem = helper.AsProjectable(o.FirstLargeItemProductName),
     });
 ```
@@ -137,9 +142,18 @@ Currently, the following helpers are available:
 
 * `AsLeftJoin(query)`
   * It generates queries that behave like a `LEFT JOIN`.
+* `AsInnerJoin(query)`
+  * It generates queries that behave like an `INNER JOIN` by filtering out rows where the hooked value is `null` before the generated projection runs.
 * `AsProjectable(query)`
   * It realizes the behavior like [EntityFrameworkCore.Projectables](https://github.com/EFNext/EntityFrameworkCore.Projectables).
   * That is, the query logic inside properties like `FirstLargeItemProductName` will be expanded as if it were written inline inside the SelectExpr.
+* `AsProjection<TDto>(query)` / `query.AsProjection<TDto>()`
+  * It creates a nested DTO explicitly instead of exposing the original member type directly.
+  * If you omit `TDto`, Linqraft uses `[SourceTypeName]Dto`.
+  * The generated nested DTO currently copies scalar, enum, string, and value-type members.
+* `Project<T>(query).Select(...)`
+  * It shapes a nested projection without repeating the full member path.
+  * If you omit `T`, Linqraft uses the destination member name and generates `[MemberName]Dto`.
 
 ### No Dependencies 
 

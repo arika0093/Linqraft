@@ -57,6 +57,13 @@ internal static class ProjectionModelFinalizer
                         replacements,
                         cancellationToken
                     ),
+                InnerJoinFilterBodyText = requestTemplate.InnerJoinFilterBodyTemplate is null
+                    ? null
+                    : ProjectionBodyEmitter.ReplaceTokens(
+                        requestTemplate.InnerJoinFilterBodyTemplate,
+                        replacements,
+                        cancellationToken
+                    ),
                 UseObjectSelectorSignature = requestTemplate.UseObjectSelectorSignature,
                 CanUsePrebuiltExpression =
                     requestTemplate.CanUsePrebuiltExpressionWhenConfigured
@@ -186,6 +193,13 @@ internal static class ProjectionModelFinalizer
                     replacements,
                     cancellationToken
                 ),
+                InnerJoinFilterBodyText = requestTemplate.InnerJoinFilterBodyTemplate is null
+                    ? null
+                    : ProjectionBodyEmitter.ReplaceTokens(
+                        requestTemplate.InnerJoinFilterBodyTemplate,
+                        replacements,
+                        cancellationToken
+                    ),
             },
             GeneratedDtos = dtoReplacements.Select(replacement => replacement.Dto).ToArray(),
         };
