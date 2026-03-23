@@ -20,18 +20,21 @@ No. Linqraft works with any LINQ provider that supports `IEnumerable<T>` and/or 
 ```csharp
 // Entity Framework Core
 var orders = await dbContext.Orders
-    .SelectExpr<Order, OrderDto>(o => new { o.Id, o.CustomerName })
+    .UseLinqraft()
+    .Select<OrderDto>(o => new { o.Id, o.CustomerName })
     .ToListAsync();
 
 // In-memory collection
-var orders = myList
-    .SelectExpr<Order, OrderDto>(o => new { o.Id, o.CustomerName })
+var inMemoryOrders = myList
+    .UseLinqraft()
+    .Select<OrderDto>(o => new { o.Id, o.CustomerName })
     .ToList();
 
 // LINQ to Objects
 var filtered = items
     .Where(x => x.IsActive)
-    .SelectExpr<Item, ItemDto>(x => new { x.Id, x.Name })
+    .UseLinqraft()
+    .Select<ItemDto>(x => new { x.Id, x.Name })
     .ToArray();
 ```
 
@@ -55,7 +58,8 @@ var filtered = items
 public async Task<ActionResult<List<OrderDto>>> GetOrders()
 {
     var orders = await dbContext.Orders
-        .SelectExpr<Order, OrderDto>(o => new { o.Id, o.CustomerName })
+        .UseLinqraft()
+        .Select<OrderDto>(o => new { o.Id, o.CustomerName })
         .ToListAsync();
 
     return Ok(orders); // OrderDto serialized to JSON
@@ -68,23 +72,10 @@ public class OrderService
     {
         return dbContext.Orders
             .Where(o => o.CreatedAt > DateTime.Now.AddDays(-7))
-            .SelectExpr<Order, OrderDto>(o => new { /* ... */ })
+            .UseLinqraft()
+            .Select<OrderDto>(o => new { /* ... */ })
             .ToList();
     }
-}
-
-// Unit test
-[Fact]
-public void OrderDto_Should_Have_Correct_Properties()
-{
-    var dto = new OrderDto
-    {
-        Id = 1,
-        CustomerName = "Test Customer"
-    };
-
-    Assert.Equal(1, dto.Id);
-    Assert.Equal("Test Customer", dto.CustomerName);
 }
 ```
 
@@ -100,7 +91,8 @@ Place your cursor on the generated DTO class name and press F12 (or "Go to Defin
 
 ```csharp
 var orders = dbContext.Orders
-    .SelectExpr<Order, OrderDto>(o => new { /* ... */ })
+    .UseLinqraft()
+    .Select<OrderDto>(o => new { /* ... */ })
     //                  ^^^^^^^^
     //                  F12 here
     .ToList();
@@ -144,10 +136,12 @@ YourProject/
 Please use the [GitHub issue tracker](https://github.com/arika0093/Linqraft/issues).
 
 Include:
-* Your `SelectExpr` usage code
+
+* Your Linqraft projection code
 * Expected behavior
 * Actual behavior
 * Generated code (if relevant)
+
 ### Where can I find examples?
 
 * [Linqraft.Sample](../../examples/Linqraft.Sample) - Basic usage examples
@@ -158,5 +152,4 @@ Include:
 
 * [Installation](./installation.md) - Get started with Linqraft
 * [Usage Patterns](./usage-patterns.md) - Learn different usage patterns
-* [Customization](./customization.md) - Customize generated code
-* [Performance](./performance.md) - Performance benchmarks and comparisons
+* [Performance](./performance.md) - Performance benchmarks

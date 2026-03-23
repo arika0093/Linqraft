@@ -145,7 +145,12 @@ When enabled, expression trees are constructed at compile-time and cached as sta
 // Expression tree is created on every call
 var results = dbContext.Orders
     .AsQueryable()
-    .SelectExpr(o => new OrderDto { Id = o.Id, Name = o.Name })
+    .UseLinqraft()
+    .Select<OrderDto>(o => new
+    {
+        o.Id,
+        o.Name,
+    })
     .ToList();
 
 // With LinqraftUsePrebuildExpression=true:

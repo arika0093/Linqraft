@@ -1,7 +1,7 @@
 # Nested SelectExpr (Beta)
 
 You can use `SelectExpr` inside another `SelectExpr` to explicitly control the DTO class generation for nested collections.  
-This allows you to create reusable DTOs for nested entities instead of auto-generated DTOs in hash namespaces.
+This beta feature is the main documentation exception to the usual `UseLinqraft().Select(...)` style because reusable nested DTO generation currently lives on the `SelectExpr` API. It allows you to create reusable DTOs for nested entities instead of auto-generated DTOs in hash namespaces.
 
 ## Important Notes
 
@@ -159,6 +159,6 @@ internal partial class ItemDto;
 
 ## See Also
 
-* [Usage Patterns](usage-patterns.md) - Overview of all SelectExpr patterns
+* [Usage Patterns](usage-patterns.md) - Overview of the main Linqraft projection patterns
 * [Nested DTO Naming](nested-dto-naming.md) - Configure nested DTO naming strategy
 * [Partial Classes](partial-classes.md) - Extend generated DTOs

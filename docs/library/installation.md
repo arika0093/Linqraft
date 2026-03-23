@@ -7,6 +7,7 @@ This guide covers the installation and setup requirements for Linqraft.
 Linqraft requires **C# 12.0 or later**.
 
 ### .NET 8 or later
+
 No additional setup is required for .NET 8 or later. You can proceed to the [Installing Linqraft](#installing-linqraft) section.
 
 ### .NET 7 or below
@@ -55,10 +56,11 @@ When you open your `.csproj` file, you should see the package added like below:
 ```
 
 The `PrivateAssets` attribute might look unfamiliar, but it indicates that this is a development-only dependency. This means:
+
 * The library will not be included in the production environment
 * It only affects compile-time code generation
 * Your deployed application has zero runtime dependencies from Linqraft
 
 ## Next Steps
 
-* [Usage Patterns](./usage-patterns.md) - Learn how to use `SelectExpr`, `GroupByExpr`, `SelectManyExpr`, and `LinqraftKit.Generate`
+* [Usage Patterns](./usage-patterns.md) - Learn how to use `UseLinqraft().Select(...)`, `UseLinqraft().GroupBy(...)`, `UseLinqraft().SelectMany(...)`, and `LinqraftKit.Generate`

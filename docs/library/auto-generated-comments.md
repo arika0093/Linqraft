@@ -24,23 +24,22 @@ public class Order
     public int Id { get; set; }
 
     [Comment("Customer who placed the order")]
-    public string CustomerName { get; set; }
+    public string CustomerName { get; set; } = "";
 
     [Display(Name = "Total order amount")]
     public decimal TotalAmount { get; set; }
 
     // Collection of items in this order
-    public List<OrderItem> Items { get; set; }
+    public List<OrderItem> Items { get; set; } = [];
 }
 
 public class OrderItem
 {
     // Product associated with this item
-    public Product Product { get; set; }
+    public Product Product { get; set; } = default!;
 }
 
-// Use SelectExpr
-query.SelectExpr<Order, OrderDto>(o => new
+query.UseLinqraft().Select<OrderDto>(o => new
 {
     o.Id,
     o.CustomerName,

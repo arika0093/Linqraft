@@ -145,10 +145,10 @@ In that case, Linqraft generates `SelectedCustomerDto`.
 
 ### Helpers are available through the generated selector helper
 
-`SelectExpr(...)`, `SelectManyExpr(...)`, and `GroupByExpr(...)` provide an `IProjectionHelper` instance as the selector's second parameter when you need helper rewrites:
+`UseLinqraft().Select(...)`, `UseLinqraft().SelectMany(...)`, and `UseLinqraft().GroupBy(...)` provide an `IProjectionHelper` instance as the selector's second parameter when you need helper rewrites:
 
 ```csharp
-query.SelectExpr((entity, helper) => new
+query.UseLinqraft().Select((entity, helper) => new
 {
     Name = helper.AsLeftJoin(entity.Child).Name,
 });

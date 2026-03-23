@@ -224,122 +224,1185 @@ It may look complex, but what it does is very simple.
 
 ## Installation
 
-Install `Linqraft` from NuGet:
+### Overview
+
+Linqraft requires **C# 12.0 or later**. On **.NET 8 and later**, it works out of the box. On **.NET 7 and below**, you need to enable C# 12 manually and add a compatibility package such as PolySharp or Polyfill. The NuGet package is compile-time only, so deployed applications keep **zero Linqraft runtime dependencies**.
+
+<details>
+<summary>Show installation details</summary>
+
+#### Prerequisites
+
+* C# 12.0 or later
+* .NET 8 or later for zero additional setup
+* .NET 7 or below requires manual language-version configuration
+* One of the following SDK environments:
+  * .NET 8.0.400 or later SDK
+  * Visual Studio 2022 version 17.11 or later
+
+#### .NET 7 or below
+
+```xml
+<Project>
+  <PropertyGroup>
+    <LangVersion>12.0</LangVersion>
+  </PropertyGroup>
+  <ItemGroup>
+    <PackageReference Include="Polysharp" Version="1.*" />
+  </ItemGroup>
+</Project>
+```
+
+Use [PolySharp](https://github.com/Sergio0694/PolySharp/) or [Polyfill](https://github.com/SimonCropp/Polyfill) so the required C# features are available even when targeting older runtimes.
+
+#### Install from NuGet
 
 ```bash
 dotnet add package Linqraft
 ```
 
-> [!NOTE]
-> Linqraft works out of the box with **.NET 8 and later**. For .NET 7(C# 11) and below, additional setup is required.  
-> see [Installation Guide](./docs/library/installation.md#net-7-and-below) for details.
+#### Package reference shape
 
-## Basic Usage
-### Explicit DTO pattern
+```xml
+<PackageReference Include="Linqraft" Version="x.y.z">
+  <PrivateAssets>all</PrivateAssets>
+  <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+</PackageReference>
+```
 
-The most basic usage pattern, with automatic DTO generation.
+`PrivateAssets` means Linqraft stays a development-only dependency. It participates in compile-time code generation and analyzer execution, but it is not deployed with your production binaries.
+
+</details>
+
+## Usage Patterns
+
+### Overview
+
+Linqraft supports anonymous projections, auto-generated DTOs, pre-existing DTOs, grouped and flattened projections, and runtime DTO generation through `LinqraftKit.Generate`. The documentation below prefers the fluent `UseLinqraft()` entry point. Lower-level entry points still exist for advanced or legacy scenarios, but the default style in the docs is `UseLinqraft().Select(...)`.
+
+<details>
+<summary>Show usage pattern details</summary>
+
+#### Anonymous Pattern
+
+Use `UseLinqraft().Select(...)` without generic type parameters when you only need a one-off result shape.
 
 ```csharp
-// orders: List<OrderDto✨️>
+var orders = await dbContext.Orders
+    .UseLinqraft()
+    .Select(o => new
+    {
+        o.Id,
+        CustomerName = o.Customer?.Name,
+        TotalAmount = o.OrderItems.Sum(oi => oi.Quantity * oi.UnitPrice),
+    })
+    .ToListAsync();
+```
+
+This is ideal for quick exploration, ad-hoc queries, and prototypes. The trade-off is that anonymous types cannot be reused as public contracts or method return types.
+
+#### Explicit DTO Pattern
+
+Use `UseLinqraft().Select<TDto>(...)` when you want Linqraft to generate a named DTO from the selector body.
+
+```csharp
 var orders = await dbContext.Orders
     .UseLinqraft()
     .Select<OrderDto>(o => new
     {
-        Id = o.Id,
+        o.Id,
         CustomerName = o.Customer?.Name,
-        // ...
+        CustomerCountry = o.Customer?.Address?.Country?.Name,
+        Items = o.OrderItems.Select(oi => new
+        {
+            ProductName = oi.Product?.Name,
+            oi.Quantity,
+        }),
     })
     .ToListAsync();
 ```
 
-Alternatively, you can also write it like this, which is functionally identical.
-But without `UseLinqraft()` and requires specifying both `<TIn, TResult>`.
+Linqraft generates a partial `OrderDto` and any required nested DTOs automatically.
 
 ```csharp
-// orders: List<OrderDto✨️>
+public partial class OrderDto
+{
+    public required int Id { get; set; }
+    public required string? CustomerName { get; set; }
+    public required string? CustomerCountry { get; set; }
+    public required IEnumerable<ItemsDto> Items { get; set; }
+}
+
+namespace LinqraftGenerated_HASH
+{
+    public partial class ItemsDto
+    {
+        public required string? ProductName { get; set; }
+        public required int Quantity { get; set; }
+    }
+}
+```
+
+The same pattern also works for in-memory `IEnumerable<T>` pipelines:
+
+```csharp
+var orders = myList
+    .UseLinqraft()
+    .Select<OrderDto>(o => new
+    {
+        o.Id,
+        CustomerName = o.Customer?.Name,
+    })
+    .ToList();
+```
+
+#### Pre-existing DTO Pattern
+
+Use `UseLinqraft().Select(...)` with your own DTO class when the type already exists or must carry custom attributes and interfaces.
+
+```csharp
+public class OrderDto
+{
+    [JsonPropertyName("order_id")]
+    public int Id { get; set; }
+
+    [Required]
+    public string CustomerName { get; set; } = "";
+
+    public decimal TotalAmount { get; set; }
+}
+
 var orders = await dbContext.Orders
+    .UseLinqraft()
+    .Select(o => new OrderDto
+    {
+        Id = o.Id,
+        CustomerName = o.Customer?.Name ?? string.Empty,
+        TotalAmount = o.OrderItems.Sum(oi => oi.Quantity * oi.UnitPrice),
+    })
+    .ToListAsync();
+```
+
+This keeps Linqraft's null-propagation support while leaving the DTO definition fully under your control.
+
+#### Aggregation and Flattening Helpers
+
+Use `UseLinqraft().GroupBy<TKey, TResult>(...)` when the final result is a projection over an `IGrouping<TKey, TSource>`:
+
+```csharp
+var result = dbContext.HealthChecks
+    .UseLinqraft()
+    .GroupBy<string, HealthSummaryDto>(
+        check => check.Region,
+        group => new
+        {
+            Region = group.Key,
+            AllHealthy = group.All(x => x.Status == "Healthy"),
+            Checks = group.Select(x => new
+            {
+                x.Id,
+                x.Status,
+            }),
+        })
+    .ToListAsync();
+```
+
+Use `UseLinqraft().SelectMany<TResult>(...)` when you want the final result to be flattened:
+
+```csharp
+var rows = dbContext.Orders
+    .UseLinqraft()
+    .SelectMany<OrderItemRow>(order =>
+        order.Items.Select(item => new
+        {
+            OrderId = order.Id,
+            item.ProductName,
+            item.Quantity,
+        }))
+    .ToListAsync();
+```
+
+#### LinqraftKit.Generate
+
+Use `LinqraftKit.Generate<TDto>(...)` when you want Linqraft to generate a DTO from a runtime object instead of from an `IEnumerable` or `IQueryable` projection.
+
+```csharp
+var dto = LinqraftKit.Generate<OrderBundleDto>(
+    new
+    {
+        Id = 42,
+        Customer = new { Name = "Ada" },
+        ItemNames = new[] { "Keyboard", "Mouse" },
+    }
+);
+```
+
+This works well for combining runtime values, nested anonymous objects, arrays, lists, and values produced by other Linqraft projections.
+
+When the initializer depends on local values, prefer the delegate-based `capture:` overload:
+
+```csharp
+var id = 42;
+var prefix = "Order-";
+
+var dto = LinqraftKit.Generate<OrderLabelDto>(
+    new
+    {
+        Id = id,
+        Label = prefix + id,
+    },
+    capture: () => (id, prefix)
+);
+```
+
+The delegate form is NativeAOT-safe and is the recommended capture style for new code.
+
+</details>
+
+## Local Variable Capture
+
+### Overview
+
+Linqraft selectors are rewritten into generated methods, so local variables must be passed explicitly through `capture:` rather than through normal C# closure fields. For new code, prefer `capture: () => (...)` because the generated code can unpack it without relying on runtime reflection and it remains compatible with NativeAOT.
+
+<details>
+<summary>Show local variable capture details</summary>
+
+#### Why capture is required
+
+```csharp
+var threshold = 100;
+var converted = dbContext.Entities
+    .UseLinqraft()
+    .Select<EntityDto>(x => new
+    {
+        x.Id,
+        IsExpensive = x.Price > threshold, // ERROR: threshold must be captured
+    });
+```
+
+#### Recommended delegate-based capture
+
+```csharp
+var threshold = 100;
+var multiplier = 2;
+var suffix = " units";
+
+var converted = dbContext.Entities
+    .UseLinqraft()
+    .Select<EntityDto>(
+        x => new
+        {
+            x.Id,
+            IsExpensive = x.Price > threshold,
+            DoubledValue = x.Value * multiplier,
+            Description = x.Name + suffix,
+        },
+        capture: () => (threshold, multiplier, suffix)
+    );
+```
+
+Anonymous-object captures such as `capture: new { threshold, multiplier, suffix }` are still supported for older code, but they are obsolete. Use the delegate form for new code and let the analyzer migrate legacy call sites when possible.
+
+#### Generated code shape
+
+Generated code unpacks the capture tuple before executing the rewritten projection body:
+
+```csharp
+var captureValue = ((int, int, string))capture();
+var threshold = captureValue.Item1;
+var multiplier = captureValue.Item2;
+var suffix = captureValue.Item3;
+
+var converted = matchedQuery.Select(x => new EntityDto
+{
+    Id = x.Id,
+    IsExpensive = x.Price > threshold,
+    DoubledValue = x.Value * multiplier,
+    Description = x.Name + suffix,
+});
+```
+
+#### Analyzer support
+
+Linqraft analyzers can detect missing capture values and can rewrite legacy anonymous-object captures to the delegate form automatically.
+
+![Local variable capture error](./assets/local-variable-capture-err.png)
+
+</details>
+
+## Array Nullability Removal
+
+### Overview
+
+Linqraft can automatically remove nullability from generated collection properties when an empty collection is a better semantic result than `null`. This avoids repetitive post-processing such as `dto.Items ?? []`.
+
+<details>
+<summary>Show array nullability details</summary>
+
+#### Why it exists
+
+In practice, collection-like members usually behave better as empty collections than as nullable collections. When Linqraft can prove that shape safely, it removes `?` from the generated property type and emits empty collections for the null branch.
+
+#### Rules
+
+Nullability is removed when **all** of the following are true:
+
+1. The expression does not contain a ternary operator (`? :`)
+2. The type is `IEnumerable<T>` or a derived collection type
+3. The expression uses null-conditional access (`?.`)
+4. The expression contains a `Select` or `SelectMany` call
+
+#### Example
+
+```csharp
+var dto = query
+    .UseLinqraft()
+    .Select<EntityDto>(e => new
+    {
+        ChildNames = e.Child?.Select(c => c.Name).ToList(),
+        ChildDtos = e.Child?.Select(c => new { c.Name, c.Description }),
+        ExplicitNullableNames = e.Child != null
+            ? e.Child.Select(c => c.Name).ToList()
+            : null,
+    });
+```
+
+That produces collection properties like:
+
+```csharp
+public partial class EntityDto
+{
+    public required List<string> ChildNames { get; set; }
+    public required IEnumerable<ChildDto> ChildDtos { get; set; }
+    public required List<string>? ExplicitNullableNames { get; set; }
+}
+```
+
+and generated fallbacks like:
+
+```csharp
+ChildNames = d.Child != null
+    ? d.Child.Select(c => c.Name).ToList()
+    : new List<string>(),
+
+ChildDtos = d.Child != null
+    ? d.Child.Select(c => new ChildDto { Name = c.Name, Description = c.Description })
+    : Enumerable.Empty<ChildDto>(),
+```
+
+#### Disable the behavior
+
+```xml
+<PropertyGroup>
+  <LinqraftArrayNullabilityRemoval>false</LinqraftArrayNullabilityRemoval>
+</PropertyGroup>
+```
+
+</details>
+
+## Partial Classes
+
+### Overview
+
+All generated DTOs are `partial`, so you can extend them with methods, interfaces, attributes, or predeclared properties whose accessibility you control yourself.
+
+<details>
+<summary>Show partial class details</summary>
+
+#### Add methods
+
+```csharp
+// Generated by Linqraft
+public partial class OrderDto
+{
+    public required int Id { get; set; }
+    public required string CustomerName { get; set; }
+    public required decimal TotalAmount { get; set; }
+    public required IEnumerable<OrderItemDto> Items { get; set; }
+}
+
+// Your extension
+public partial class OrderDto
+{
+    public string GetDisplayName() => $"Order #{Id} - {CustomerName}";
+
+    public decimal GetAverageItemPrice() =>
+        Items.Any() ? TotalAmount / Items.Count() : 0;
+
+    public bool IsLargeOrder() => TotalAmount > 1000;
+}
+```
+
+#### Add interfaces
+
+```csharp
+public partial class OrderDto : IValidatableObject
+{
+    public IEnumerable<ValidationResult> Validate(ValidationContext validationContext)
+    {
+        if (TotalAmount < 0)
+            yield return new ValidationResult("Total amount cannot be negative");
+
+        if (string.IsNullOrWhiteSpace(CustomerName))
+            yield return new ValidationResult("Customer name is required");
+    }
+}
+```
+
+#### Add attributes
+
+```csharp
+[Serializable]
+[JsonConverter(typeof(CustomOrderDtoConverter))]
+public partial class OrderDto
+{
+}
+```
+
+#### Control property accessibility
+
+Predeclare a property in your own partial type when you want to own its accessibility or implementation:
+
+```csharp
+public partial class OrderDto
+{
+    internal string InternalData { get; set; } = "";
+}
+
+var orders = await dbContext.Orders
+    .UseLinqraft()
+    .Select<OrderDto>(o => new
+    {
+        o.Id,
+        PublicComment = o.Comment,
+        InternalData = o.InternalField,
+    })
+    .ToListAsync();
+```
+
+Linqraft will populate the predeclared member instead of generating it again.
+
+</details>
+
+## Nested DTO Naming
+
+### Overview
+
+Nested DTOs created from anonymous objects inside a selector can use one of two naming strategies: a hash-suffixed namespace (the default) or a hash-suffixed class name in the parent namespace.
+
+<details>
+<summary>Show nested DTO naming details</summary>
+
+#### Hash namespace (default)
+
+By default, Linqraft keeps nested DTO class names clean and moves them into a hash-suffixed namespace:
+
+```csharp
+namespace MyProject
+{
+    public partial class OrderDto
+    {
+        public required List<global::MyProject.LinqraftGenerated_DE33EA40.ItemsDto> Items { get; set; }
+    }
+}
+
+namespace MyProject.LinqraftGenerated_DE33EA40
+{
+    public partial class ItemsDto
+    {
+        public required string? ProductName { get; set; }
+    }
+}
+```
+
+#### Hash class name
+
+Set `LinqraftNestedDtoUseHashNamespace` to `false` when you want nested DTOs in the same namespace as the parent type:
+
+```xml
+<PropertyGroup>
+  <LinqraftNestedDtoUseHashNamespace>false</LinqraftNestedDtoUseHashNamespace>
+</PropertyGroup>
+```
+
+```csharp
+namespace MyProject
+{
+    public partial class OrderDto
+    {
+        public required List<global::MyProject.ItemsDto_DE33EA40> Items { get; set; }
+    }
+
+    public partial class ItemsDto_DE33EA40
+    {
+        public required string? ProductName { get; set; }
+    }
+}
+```
+
+#### How names are chosen
+
+Nested DTO names are derived from the destination member name plus a hash suffix to avoid collisions:
+
+```csharp
+var result = query
+    .UseLinqraft()
+    .Select<OrderDto>(o => new
+    {
+        Items = o.OrderItems.Select(oi => new { oi.ProductName }),
+    });
+```
+
+That produces either `ItemsDto` inside `LinqraftGenerated_HASH` or `ItemsDto_HASH` in the parent namespace, depending on `LinqraftNestedDtoUseHashNamespace`.
+
+#### Explicit reusable names
+
+When you need nested DTOs with stable, reusable names in your own namespace, use the beta nested explicit DTO pattern described later in this README.
+
+</details>
+
+## Mapping Methods
+
+### Overview
+
+Linqraft normally generates projection code inline through interceptors, but sometimes you want a reusable extension method that can be called from multiple places or embedded inside EF Core compiled queries. Mapping generation supports that in two ways: a helper-class approach based on `LinqraftMappingDeclare<T>` and a static partial class approach based on `[LinqraftMappingGenerate]`.
+
+<details>
+<summary>Show mapping method details</summary>
+
+#### When to use mapping generation
+
+Use generated mapping methods when you want:
+
+* Reusable projections shared across multiple callers
+* EF Core compiled queries through `EF.CompileAsyncQuery`
+* EF Core precompiled queries on newer runtimes
+* Dedicated query classes for complex projections
+
+#### Helper class approach (recommended)
+
+Inherit from `LinqraftMappingDeclare<T>` and define the projection in `DefineMapping()`:
+
+```csharp
+[LinqraftMappingGenerate]
+internal sealed class OrderMappingDeclare : LinqraftMappingDeclare<Order>
+{
+    protected override void DefineMapping()
+    {
+        Source.UseLinqraft().Select<OrderDto>(o => new
+        {
+            o.Id,
+            CustomerName = o.Customer?.Name,
+            Items = o.Items.Select(i => new
+            {
+                i.ProductName,
+                i.Quantity,
+            }),
+        });
+    }
+}
+```
+
+By default, Linqraft generates a method named `ProjectTo{EntityName}`, so the declaration above produces a projection you can call as `dbContext.Orders.ProjectToOrder()`.
+
+#### Custom method names, capture parameters, and visibility
+
+```csharp
+[LinqraftMappingGenerate(
+    "ProjectToSummaryWithOffset",
+    Visibility = LinqraftMappingVisibility.Public)]
+internal sealed class OrderSummaryMapping : LinqraftMappingDeclare<Order>
+{
+    private int offset = default;
+    private string suffix = string.Empty;
+
+    protected override void DefineMapping()
+    {
+        Source.UseLinqraft().Select<OrderSummaryDto>(
+            order => new
+            {
+                order.Id,
+                DisplayName = order.CustomerName + suffix,
+                AdjustedTotal = order.Total + offset,
+            },
+            capture: () => (offset, suffix)
+        );
+    }
+}
+```
+
+The generated method receives `offset` and `suffix` as normal parameters, and `Visibility` controls whether the generated helper is `internal` or `public`.
+
+#### Static partial class approach
+
+Use a static partial class when you need more control over the containing type or want multiple generated mappings in one place:
+
+```csharp
+public static partial class OrderQueries
+{
+    [LinqraftMappingGenerate("ProjectToDto")]
+    internal static IQueryable<OrderDto> Template(this IQueryable<Order> source) => source
+        .UseLinqraft()
+        .Select<OrderDto>(o => new
+        {
+            o.Id,
+            CustomerName = o.Customer?.Name,
+            Items = o.Items.Select(i => new
+            {
+                i.ProductName,
+                i.Quantity,
+            }),
+        });
+}
+```
+
+Static partial mappings support the same `capture:` flow and the same `Visibility` option for the generated method.
+
+#### EF Core compiled queries
+
+Both mapping styles work with EF Core compiled queries:
+
+```csharp
+private static readonly Func<MyDbContext, Task<List<OrderSummaryDto>>> GetOrderSummaries =
+    EF.CompileAsyncQuery(
+        (MyDbContext db) => db.Orders
+            .ProjectToSummary()
+            .ToListAsync()
+    );
+```
+
+#### Requirements
+
+* **Helper class approach**
+  * Inherit from `LinqraftMappingDeclare<T>`
+  * Add `[LinqraftMappingGenerate]`
+  * Override `DefineMapping()`
+  * Use a Linqraft projection call such as `UseLinqraft().Select<TDto>(...)`
+  * Use `capture: () => ...` when outer values are required
+* **Static partial approach**
+  * Keep the containing class `static` and `partial`
+  * Mark the template method with `[LinqraftMappingGenerate("MethodName")]`
+  * Make the class top-level, not nested
+  * Use a Linqraft projection call inside the template method
+  * Use `capture: () => ...` when outer values are required
+
+Direct lower-level entry points are still supported in mapping declarations when you need them, but the fluent `UseLinqraft()` style is the default in the docs.
+
+</details>
+
+## Projection Helpers
+
+### Overview
+
+Projection helpers are exposed through the selector's `IProjectionHelper` parameter. They let you ask Linqraft to rewrite a specific fragment inside the generated projection instead of treating the selector body as a plain expression tree.
+
+<details>
+<summary>Show projection helper details</summary>
+
+#### `helper.AsLeftJoin(value)`
+
+Use `helper.AsLeftJoin(value)` when you want nullable navigation access to be emitted as an explicit left-join-style null guard:
+
+```csharp
+var result = dbContext.Orders
+    .UseLinqraft()
+    .Select<OrderRowDto>((order, helper) => new
+    {
+        CustomerName = helper.AsLeftJoin(order.Customer).Name,
+    })
+    .ToListAsync();
+```
+
+This produces generated code shaped like `order.Customer != null ? order.Customer.Name : null`.
+
+#### `helper.AsInnerJoin(value)`
+
+Use `helper.AsInnerJoin(value)` when rows with a null navigation should be filtered out before projection:
+
+```csharp
+var result = dbContext.Orders
+    .UseLinqraft()
+    .Select<OrderRowDto>((order, helper) => new
+    {
+        CustomerName = helper.AsInnerJoin(order.Customer).Name,
+    })
+    .ToListAsync();
+```
+
+#### `helper.AsInline(value)`
+
+Use `helper.AsInline(value)` when a selector references a computed instance property or method that should be inlined into the generated projection:
+
+```csharp
+public sealed class Order
+{
+    public List<OrderItem> Items { get; set; } = [];
+
+    public string? FirstLargeItemProductName => this
+        .Items.Where(item => item.Quantity >= 2)
+        .OrderBy(item => item.Id)
+        .Select(item => item.ProductName)
+        .FirstOrDefault();
+}
+
+var result = dbContext.Orders
+    .UseLinqraft()
+    .Select<OrderRowDto>((order, helper) => new
+    {
+        FirstLargeItemProductName = helper.AsInline(order.FirstLargeItemProductName),
+    })
+    .ToListAsync();
+```
+
+Recursive `AsInline` expansion is rejected to avoid infinite rewriting loops.
+
+#### `helper.AsProjection<TDto>(value)`
+
+Use `helper.AsProjection<TDto>(value)` when you want a nested member to become an explicit DTO instead of exposing the original entity or complex type:
+
+```csharp
+var result = dbContext.Orders
+    .UseLinqraft()
+    .Select<OrderRowDto>((order, helper) => new
+    {
+        order.Id,
+        Customer = helper.AsProjection<CustomerSummaryDto>(order.Customer),
+    })
+    .ToListAsync();
+```
+
+If you omit the generic argument, Linqraft uses `[SourceTypeName]Dto`. `AsProjection` currently copies scalar, enum, string, and value-type members; navigation and collection members are not expanded automatically.
+
+#### `helper.Project<T>(value).Select(...)`
+
+Use `Project(...).Select(...)` when you want to shape a nested projection without repeating the full member path:
+
+```csharp
+var result = dbContext.Orders
+    .UseLinqraft()
+    .Select<OrderRowDto>((order, helper) => new
+    {
+        order.Id,
+        Customer = helper
+            .Project<Customer>(order.Customer)
+            .Select(customer => new { customer.Id, customer.Name }),
+    })
+    .ToListAsync();
+```
+
+If you omit `T`, Linqraft uses the destination member name to derive the generated DTO name.
+
+#### Where helper parameters are available
+
+`UseLinqraft().Select(...)`, `UseLinqraft().SelectMany(...)`, and `UseLinqraft().GroupBy(...)` can provide `IProjectionHelper` as the selector's second parameter when you need helper rewrites.
+
+#### Custom helpers
+
+Advanced generator implementations can replace or extend the helper list through `ProjectionHooks`:
+
+```csharp
+public override IReadOnlyList<LinqraftProjectionHookDefinition> ProjectionHooks =>
+[
+    new("InlineProjectable", LinqraftProjectionHookKind.Projectable),
+];
+```
+
+</details>
+
+## Nested Explicit DTO Reuse (Beta)
+
+### Overview
+
+When nested DTOs need stable names and reuse across multiple queries, Linqraft provides a beta pattern based on nested `SelectExpr` calls. This is the main exception to the README's usual fluent style because the reusable nested DTO API currently lives on `SelectExpr`.
+
+<details>
+<summary>Show nested explicit DTO details</summary>
+
+#### Required empty partial declarations
+
+You must declare empty partial classes for every explicit nested DTO type:
+
+```csharp
+public class MyService
+{
+    public void GetOrders(IQueryable<Order> query)
+    {
+        var result = query
+            .SelectExpr<Order, OrderDto>(o => new
+            {
+                o.Id,
+                Items = o.OrderItems.SelectExpr<OrderItem, OrderItemDto>(i => new
+                {
+                    i.ProductName,
+                }),
+            });
+    }
+
+    internal partial class OrderDto;
+    internal partial class OrderItemDto;
+}
+```
+
+Roslyn must be able to resolve those types during generation; otherwise Linqraft cannot determine the correct nested DTO location or resulting member type.
+
+#### Basic usage
+
+```csharp
+var result = query
     .SelectExpr<Order, OrderDto>(o => new
     {
-        Id = o.Id,
-        CustomerName = o.Customer?.Name,
-        // ...
-    })
-    .ToListAsync();
+        o.Id,
+        o.CustomerName,
+        Items = o.OrderItems.SelectExpr<OrderItem, OrderItemDto>(i => new
+        {
+            i.ProductName,
+            i.Quantity,
+        }),
+    });
+
+internal partial class OrderDto;
+internal partial class OrderItemDto;
 ```
 
-### Anonymous pattern
+This produces nested DTOs directly in your namespace instead of under `LinqraftGenerated_HASH`.
 
-Use `UseLinqraft().Select(...)` without generics to get an anonymous-type projection.
+#### Multiple nesting levels
+
+You can nest the pattern multiple levels deep as long as every explicit type has a declaration:
 
 ```csharp
-// orders: List<{anonymous type}>
-var orders = await dbContext.Orders
-    .UseLinqraft()
-    // without generic arguments, the DTO type will be an anonymous type
-    // generated based on the selector body.
-    .Select(o => new
+var result = query
+    .SelectExpr<Entity, EntityDto>(x => new
     {
-        Id = o.Id,
-        // you can also use null-propagation operator
-        // without worrying about Expression Tree limitations.
-        CustomerName = o.Customer?.Name,
+        x.Id,
+        Items = x.Items.SelectExpr<Item, ItemDto>(i => new
+        {
+            i.Id,
+            SubItems = i.SubItems.SelectExpr<SubItem, SubItemDto>(si => new
+            {
+                si.Id,
+                si.Value,
+            }),
+        }),
     })
-    .ToListAsync();
+    .ToList();
+
+internal partial class EntityDto;
+internal partial class ItemDto;
+internal partial class SubItemDto;
 ```
 
-### Pre-existing DTO pattern
+#### Mixing reusable and auto-generated nested DTOs
 
-Use your existing DTO classes:
+You can mix nested `SelectExpr` calls with ordinary nested `Select` calls in the same projection. Only the explicit nested DTOs need declarations.
+
+#### When to use it
+
+Use this beta feature when you need reusable nested DTOs, stable public names, or partial-class extensions on nested types. Stick with ordinary nested `Select(...)` when the nested DTO is truly local to a single query.
+
+</details>
+
+## Auto-Generated Comments
+
+### Overview
+
+Linqraft can copy source comments into generated DTOs. It understands XML documentation, EF Core `[Comment]` attributes, `[Display(Name = ...)]`, and even single-line comments.
+
+<details>
+<summary>Show auto-generated comment details</summary>
+
+#### Supported comment sources
+
+Linqraft extracts documentation from:
+
+1. XML summary comments
+2. EF Core `[Comment("...")]` attributes
+3. `[Display(Name = "...")]` attributes
+4. Single-line comments
+
+#### Example
 
 ```csharp
-// orders: List<MyOrderDto>
-var orders = await dbContext.Orders
-    .UseLinqraft()
-    .Select(o => new MyOrderDto
-    {
-        Id = o.Id,
-        // of course, null-propagation operator is supported as well.
-        CustomerName = o.Customer?.Name,
-    })
-    .ToListAsync();
+public class Order
+{
+    /// <summary>
+    /// Unique identifier for the order
+    /// </summary>
+    [Key]
+    public int Id { get; set; }
 
-// your existing DTO class
-public class MyOrderDto { /* ... */ }
+    [Comment("Customer who placed the order")]
+    public string CustomerName { get; set; } = "";
+
+    [Display(Name = "Total order amount")]
+    public decimal TotalAmount { get; set; }
+
+    // Collection of items in this order
+    public List<OrderItem> Items { get; set; } = [];
+}
+
+query.UseLinqraft().Select<OrderDto>(o => new
+{
+    o.Id,
+    o.CustomerName,
+    Amount = o.TotalAmount,
+    ProductNames = o.Items.Select(i => i.Product?.Name).ToList(),
+});
 ```
 
-For more usage patterns and examples, see the [Usage Patterns Guide](./docs/library/usage-patterns.md).
+#### Generated output shape
 
-## Documentation
+Generated DTO members receive `<summary>` text and, by default, a `<remarks>` section showing the source member and copied attributes:
 
-### Getting Started
+```csharp
+/// <summary>
+/// Unique identifier for the order
+/// </summary>
+/// <remarks>
+/// From: <c>Order.Id</c>
+/// Attributes: <c>[Key]</c>
+/// </remarks>
+public required int Id { get; set; }
+```
 
-* **[Installation](./docs/library/installation.md)** - Prerequisites, installation, and setup
-* **[Usage Patterns](./docs/library/usage-patterns.md)** - Anonymous, Explicit DTO, and Pre-existing DTO patterns
+#### Configuration
 
-### Usage Guides
+```xml
+<PropertyGroup>
+  <LinqraftCommentOutput>All</LinqraftCommentOutput>
+  <LinqraftCommentOutput>SummaryOnly</LinqraftCommentOutput>
+  <LinqraftCommentOutput>None</LinqraftCommentOutput>
+</PropertyGroup>
+```
 
-* **[Local Variable Capture](./docs/library/local-variable-capture.md)** - Using local variables in SelectExpr
-* **[Array Nullability Removal](./docs/library/array-nullability.md)** - Automatic null handling for collections
-* **[Partial Classes](./docs/library/partial-classes.md)** - Extending generated DTOs
-* **[Nested DTO Naming](./docs/library/nested-dto-naming.md)** - Customizing nested DTO names
-* **[Mapping Methods](./docs/library/mapping-methods.md)** - Generating mapping methods to class instead of interceptors
-* **[Projection Helpers](./docs/library/projection-helpers.md)** - Customizing projection behavior with helpers
-* **[Nested SelectExpr](./docs/library/nested-selectexpr.md) (beta)** - Using nested SelectExpr for reusable DTOs
-* **[Auto-Generated Comments](./docs/library/auto-generated-comments.md)** - XML documentation generation
-* **[Global Properties](./docs/library/global-properties.md)** - MSBuild configuration options
+</details>
 
-### Performance & Comparison
+## Global Properties
 
-* **[Performance](./docs/library/performance.md)** - Benchmarks
-* **[Library Comparison](./docs/library/library-comparison.md)** - Comparisons with AutoMapper, Mapster, Mapperly, and Facet
+### Overview
 
-### Help
+Linqraft exposes a small set of MSBuild properties that control namespace selection, DTO shape, comments, nullability behavior, nested DTO naming, expression caching, and generated imports.
 
-* **[FAQ](./docs/library/faq.md)** - Common questions
-* **[Analyzers](./docs/analyzers/README.md)** - Code analyzers and fixes
+<details>
+<summary>Show global property details</summary>
+
+#### Available MSBuild properties
+
+| Property | Default | Purpose |
+|---|---|---|
+| `LinqraftGlobalNamespace` | empty | Override the namespace used when the source type is in the global namespace |
+| `LinqraftRecordGenerate` | `false` | Generate `record` instead of `class` |
+| `LinqraftPropertyAccessor` | `Default` | Choose `get; set;`, `get; init;`, or `get; internal set;` |
+| `LinqraftHasRequired` | `true` | Control whether generated properties use `required` |
+| `LinqraftCommentOutput` | `All` | Emit copied comments as full summary+remarks, summary-only, or none |
+| `LinqraftArrayNullabilityRemoval` | `true` | Remove nullability from eligible collection properties |
+| `LinqraftNestedDtoUseHashNamespace` | `true` | Choose hash namespace vs. hash class names for nested DTOs |
+| `LinqraftUsePrebuildExpression` | `false` | Prebuild and cache expression trees for eligible `IQueryable` projections |
+| `LinqraftGlobalUsing` | `true` | Emit `global using Linqraft;` for compatibility with earlier versions |
+
+A typical `.csproj` section looks like this:
+
+```xml
+<Project>
+  <PropertyGroup>
+    <LinqraftGlobalNamespace></LinqraftGlobalNamespace>
+    <LinqraftRecordGenerate>false</LinqraftRecordGenerate>
+    <LinqraftPropertyAccessor>Default</LinqraftPropertyAccessor>
+    <LinqraftHasRequired>true</LinqraftHasRequired>
+    <LinqraftCommentOutput>All</LinqraftCommentOutput>
+    <LinqraftArrayNullabilityRemoval>true</LinqraftArrayNullabilityRemoval>
+    <LinqraftNestedDtoUseHashNamespace>true</LinqraftNestedDtoUseHashNamespace>
+    <LinqraftUsePrebuildExpression>false</LinqraftUsePrebuildExpression>
+    <LinqraftGlobalUsing>true</LinqraftGlobalUsing>
+  </PropertyGroup>
+</Project>
+```
+
+#### DTO shape and accessors
+
+`LinqraftRecordGenerate`, `LinqraftPropertyAccessor`, and `LinqraftHasRequired` control how generated DTO types look:
+
+```xml
+<LinqraftRecordGenerate>true</LinqraftRecordGenerate>
+<LinqraftPropertyAccessor>GetAndInit</LinqraftPropertyAccessor>
+<LinqraftHasRequired>false</LinqraftHasRequired>
+```
+
+#### Prebuilt expressions
+
+`LinqraftUsePrebuildExpression` caches eligible `IQueryable` expression trees as static fields:
+
+```xml
+<LinqraftUsePrebuildExpression>true</LinqraftUsePrebuildExpression>
+```
+
+It applies to named or predefined DTO projections, not anonymous projections, and it is skipped when capture values are involved.
+
+```csharp
+var results = dbContext.Orders
+    .AsQueryable()
+    .UseLinqraft()
+    .Select<OrderDto>(o => new
+    {
+        o.Id,
+        o.Name,
+    })
+    .ToList();
+```
+
+#### Viewing generated code
+
+You can inspect generated code in two main ways:
+
+1. Use **F12 / Go to Definition** on a generated DTO type
+2. Emit generated files to disk with standard compiler settings:
+
+```xml
+<PropertyGroup>
+  <EmitCompilerGeneratedFiles>true</EmitCompilerGeneratedFiles>
+  <CompilerGeneratedFilesOutputPath>Generated</CompilerGeneratedFilesOutputPath>
+</PropertyGroup>
+```
+
+</details>
+
+## Performance
+
+### Overview
+
+Linqraft's performance is designed to stay very close to hand-written projections. Because the generated code is ordinary LINQ with no runtime mapping engine, benchmarks land near manual DTO code across `IEnumerable`, `IQueryable`, NativeAOT, and EF Core scenarios.
+
+<details>
+<summary>Show performance details</summary>
+
+#### Benchmark environment
+
+```text
+BenchmarkDotNet v0.15.8, Windows 11
+Intel Core i7-14700F 2.10GHz
+.NET SDK 10.0.100
+```
+
+#### Benchmark highlights
+
+| Scenario | Representative Linqraft result | Takeaway |
+|---|---:|---|
+| `IEnumerable` (.NET 10) | `2.196 us` for auto-generated DTOs | Essentially tied with anonymous/manual projections |
+| `IQueryable` (.NET 10) | `874.5 us` for auto-generated DTOs | In the same range as AutoMapper, Mapster, Mapperly, and manual projections |
+| `IQueryable` (NativeAOT) | `136.9 us` for auto-generated DTOs | Very close to manual DTO projection |
+| `EF Core` (SQLite) | `870.1 us` for auto-generated DTOs | Competitive with manual and other projection libraries |
+
+On `IEnumerable`, Linqraft also outperforms AutoMapper and avoids the much larger overhead shown by `Mapster Adapt` in the benchmark suite.
+
+#### Why the numbers stay close to manual code
+
+1. Projection code is generated at compile time
+2. Generated queries are standard LINQ `Select`/`GroupBy`/`SelectMany` operations
+3. There is no runtime reflection-based mapping engine in production
+4. NativeAOT scenarios avoid extra JIT or dynamic mapping costs
+
+#### Benchmark source
+
+For the benchmark project and raw benchmark output, see [Linqraft.Benchmark](./examples/Linqraft.Benchmark).
+
+</details>
+
+## FAQ
+
+### Overview
+
+Linqraft works with more than EF Core, generated DTOs are ordinary C# types, and generated code is easy to inspect when you need to debug or understand the emitted projection.
+
+<details>
+<summary>Show FAQ details</summary>
+
+#### Does Linqraft only work with Entity Framework?
+
+No. Linqraft works with any LINQ provider that supports `IEnumerable<T>` and/or `IQueryable<T>`.
+
+```csharp
+// Entity Framework Core
+var efOrders = await dbContext.Orders
+    .UseLinqraft()
+    .Select<OrderDto>(o => new { o.Id, o.CustomerName })
+    .ToListAsync();
+
+// In-memory collection
+var inMemoryOrders = myList
+    .UseLinqraft()
+    .Select<OrderDto>(o => new { o.Id, o.CustomerName })
+    .ToList();
+
+// LINQ to Objects
+var filtered = items
+    .Where(x => x.IsActive)
+    .UseLinqraft()
+    .Select<ItemDto>(x => new { x.Id, x.Name })
+    .ToArray();
+```
+
+#### Can generated DTOs be used elsewhere?
+
+Yes. Generated DTOs are regular C# classes, so they work as API response models, method return types, parameters, variables, serializer targets, and test fixtures.
+
+```csharp
+[HttpGet]
+public async Task<ActionResult<List<OrderDto>>> GetOrders()
+{
+    var orders = await dbContext.Orders
+        .UseLinqraft()
+        .Select<OrderDto>(o => new { o.Id, o.CustomerName })
+        .ToListAsync();
+
+    return Ok(orders);
+}
+```
+
+#### Can I inspect the generated code?
+
+Yes. Use **F12 / Go to Definition** on a generated DTO name, or emit the generated files to disk:
+
+```xml
+<Project>
+  <PropertyGroup>
+    <EmitCompilerGeneratedFiles>true</EmitCompilerGeneratedFiles>
+    <CompilerGeneratedFilesOutputPath>Generated</CompilerGeneratedFilesOutputPath>
+  </PropertyGroup>
+</Project>
+```
+
+The emitted files appear under `Generated/Linqraft.SourceGenerator/`.
+
+#### Where can I report bugs or request features?
+
+Please use the [GitHub issue tracker](https://github.com/arika0093/Linqraft/issues).
+
+When reporting an issue, include:
+
+* Your Linqraft projection code
+* Expected behavior
+* Actual behavior
+* Generated code, if relevant
+
+#### Where can I find examples?
+
+* [Linqraft.Sample](./examples/Linqraft.Sample) - Basic usage examples
+* [Linqraft.MinimumSample](./examples/Linqraft.MinimumSample) - Minimal working example
+* [Linqraft.ApiSample](./examples/Linqraft.ApiSample) - API integration example
+* [Linqraft.Benchmark](./examples/Linqraft.Benchmark) - Performance benchmarks
+
+</details>
+
+## Analyzers
+
+### Overview
+
+Analyzer documentation remains separate from the library guide. Linqraft ships analyzers and code fixes that can migrate ordinary `Select` calls to `UseLinqraft().Select(...)`, add missing captures, simplify null checks, and highlight projection-specific issues.
+
+See [Analyzers](./docs/analyzers/README.md) for the full rule list and code-fix catalog.
 
 ## Examples
-
 Example projects are available in the [examples](./examples) folder:
 
 * [Linqraft.Sample](./examples/Linqraft.Sample) - Basic usage examples (with EFCore)

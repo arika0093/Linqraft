@@ -1,6 +1,6 @@
 # Usage Patterns
 
-Linqraft provides several usage patterns for different scenarios. This guide explains when and how to use each pattern, including the recommended `UseLinqraft().Select<TDto>(...)` query style, `SelectExpr`-based projections, and `LinqraftKit.Generate` for non-query object generation.
+Linqraft provides several usage patterns for different scenarios. This guide explains when and how to use each pattern, focusing on the fluent `UseLinqraft()` entry point for projections and on `LinqraftKit.Generate` for non-query object generation. Lower-level entry points are still available for advanced or legacy scenarios, but the examples below prefer `UseLinqraft().Select(...)`, `UseLinqraft().GroupBy(...)`, and `UseLinqraft().SelectMany(...)`.
 
 ## Overview
 
@@ -15,16 +15,14 @@ Linqraft provides several usage patterns for different scenarios. This guide exp
 
 ## How to Write Projections
 
-Currently, you can use either of the following two styles, which have equivalent functionality:
+The recommended documentation style is the fluent `UseLinqraft()` entry point:
 
 * `UseLinqraft().Select<TDto>(...)`
-  * Makes it clear that you're using the Linqraft API. In other words, it's more verbose.
-  * When generating DTOs, you can omit the input type specification.
-* `SelectExpr<TIn, TDto>(...)`
-  * It's not obvious that you're using the Linqraft API. In exchange, it's more concise.
-  * When generating DTOs, you need to specify both the input and output types.
+  * Makes it clear that you're using the Linqraft API
+  * Infers the input type from the source query
+  * Matches the default examples in the README and analyzer fixes
 
-You can use either style, but the documentation will use the more explicit `UseLinqraft().Select<TDto>(...)` style.
+Direct projection entry points are still available when you need them, but the examples in this guide prefer the fluent style.
 
 ## Anonymous Pattern
 
@@ -217,7 +215,7 @@ var orders = await dbContext.Orders
 
 ## Aggregation & Flattening Helpers
 
-### GroupByExpr
+### UseLinqraft().GroupBy(...)
 
 Use `UseLinqraft().GroupBy(...)` when the final result is a projection over an `IGrouping<TKey, TSource>`.
 
@@ -239,7 +237,7 @@ var result = dbContext.HealthChecks
     .ToListAsync();
 ```
 
-### SelectManyExpr
+### UseLinqraft().SelectMany(...)
 
 Use `UseLinqraft().SelectMany(...)` when the end result is a flattened projection.
 
@@ -260,7 +258,7 @@ var rows = dbContext.Orders
 
 Use `LinqraftKit.Generate<T>(...)` when you want Linqraft to generate and populate a DTO from a runtime object instead of from an `IEnumerable` / `IQueryable` projection.
 
-This is useful when you want Linqraft's DTO generation rules without going through a query provider. Nested anonymous objects, arrays, lists, and values returned from `SelectExpr` can all be combined into one generated DTO.
+This is useful when you want Linqraft's DTO generation rules without going through a query provider. Nested anonymous objects, arrays, lists, and values returned from other Linqraft projections can all be combined into one generated DTO.
 
 ```csharp
 var dto = LinqraftKit.Generate<OrderBundleDto>(

@@ -28,7 +28,7 @@ internal class OrderMappingDeclare : LinqraftMappingDeclare<Order>
 {
     protected override void DefineMapping()
     {
-        Source.SelectExpr<Order, OrderDto>(o => new
+        Source.UseLinqraft().Select<OrderDto>(o => new
         {
             o.Id,
             CustomerName = o.Customer?.Name,  // ?.operator is converted
@@ -87,7 +87,7 @@ internal class OrderMappingDeclare : LinqraftMappingDeclare<Order>
 {
     protected override void DefineMapping()
     {
-        Source.SelectExpr<Order, OrderDto>(o => new { o.Id, o.CustomerName });
+        Source.UseLinqraft().Select<OrderDto>(o => new { o.Id, o.CustomerName });
     }
 }
 
@@ -108,7 +108,7 @@ internal sealed class OrderSummaryMapping : LinqraftMappingDeclare<Order>
 
     protected override void DefineMapping()
     {
-        Source.SelectExpr<Order, OrderSummaryDto>(
+        Source.UseLinqraft().Select<OrderSummaryDto>(
             order => new
             {
                 order.Id,
@@ -140,7 +140,7 @@ internal sealed class OrderSummaryMapping : LinqraftMappingDeclare<Order>
 {
     protected override void DefineMapping()
     {
-        Source.SelectExpr<Order, OrderSummaryDto>(order => new
+        Source.UseLinqraft().Select<OrderSummaryDto>(order => new
         {
             order.Id,
             order.OrderNumber,
@@ -161,7 +161,8 @@ public static partial class OrderQueries
     // Template method - never called, only analyzed by Linqraft
     [LinqraftMappingGenerate("ProjectToDto")]
     internal static IQueryable<OrderDto> Template(this IQueryable<Order> source) => source
-        .SelectExpr<Order, OrderDto>(o => new
+        .UseLinqraft()
+        .Select<OrderDto>(o => new
         {
             o.Id,
             CustomerName = o.Customer?.Name,  // ?.operator is converted
@@ -215,7 +216,8 @@ public static partial class OrderQueries
         "ProjectToDto",
         Visibility = LinqraftMappingVisibility.Public)]
     internal static IQueryable<OrderDto> Template(this IQueryable<Order> source) => source
-        .SelectExpr<Order, OrderDto>(order => new
+        .UseLinqraft()
+        .Select<OrderDto>(order => new
         {
             order.Id,
         });
@@ -236,7 +238,8 @@ public static partial class OrderQueries
         this IQueryable<Order> source,
         int offset,
         string suffix) => source
-        .SelectExpr<Order, OrderSummaryDto>(
+        .UseLinqraft()
+        .Select<OrderSummaryDto>(
             order => new
             {
                 order.Id,
@@ -268,7 +271,7 @@ internal class OrderSummaryMapping : LinqraftMappingDeclare<Order>
 {
     protected override void DefineMapping()
     {
-        Source.SelectExpr<Order, OrderSummaryDto>(o => new
+        Source.UseLinqraft().Select<OrderSummaryDto>(o => new
         {
             o.Id,
             o.OrderNumber,
@@ -325,7 +328,7 @@ The same works with the static partial class approach - simply use the generated
 3. **Optional `Visibility` override**: Set `Visibility = LinqraftMappingVisibility.Public` when the generated extension should be public
 4. **Override `DefineMapping()`**: Implement the abstract method with your mapping logic
 5. **Use `Source` property**: Use the `Source` property to access the queryable
-6. **SelectExpr Inside**: The `DefineMapping()` method must contain exactly one `SelectExpr` call
+6. **Projection Call Inside**: The `DefineMapping()` method must contain a Linqraft projection call such as `UseLinqraft().Select<TDto>(...)` (direct entry points still work when you need them)
 7. **Capture Pattern**: If you reference outer values, pass them via `capture: () => ...` so Linqraft can generate matching method parameters safely
 
 ### Static Partial Class Requirements:
@@ -333,7 +336,7 @@ The same works with the static partial class approach - simply use the generated
 2. **[LinqraftMappingGenerate] attribute**: Methods must be marked with this attribute and specify the desired method name
 3. **Optional `Visibility` override**: Use `Visibility = LinqraftMappingVisibility.Public` or `.Internal` to override the generated method accessibility
 4. **Top-Level Class**: Extension methods must be in a non-nested class
-5. **SelectExpr Inside**: The template method must contain at least one `SelectExpr` call
+5. **Projection Call Inside**: The template method must contain at least one Linqraft projection call such as `UseLinqraft().Select<TDto>(...)`
 6. **Capture Pattern**: If the selector depends on local values, use `capture: () => ...` so the generated method exposes those values explicitly
 
 ## Further Reading

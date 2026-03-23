@@ -1,13 +1,15 @@
 # Local Variable Capture
 
-Local variables cannot be used directly inside `SelectExpr` because the selector is translated into a separate method. To use local variables, you must explicitly capture them.
+Local variables cannot be used directly inside a Linqraft projection because the selector is translated into a separate generated method. To use local variables, you must explicitly capture them.
 
 ## Problem
 
 ```csharp
 var threshold = 100;
 var converted = dbContext.Entities
-    .SelectExpr<Entity, EntityDto>(x => new {
+    .UseLinqraft()
+    .Select<EntityDto>(x => new
+    {
         x.Id,
         IsExpensive = x.Price > threshold, // ERROR: Cannot access local variable
     });
@@ -23,8 +25,10 @@ var multiplier = 2;
 var suffix = " units";
 
 var converted = dbContext.Entities
-    .SelectExpr<Entity, EntityDto>(
-        x => new {
+    .UseLinqraft()
+    .Select<EntityDto>(
+        x => new
+        {
             x.Id,
             IsExpensive = x.Price > threshold,
             DoubledValue = x.Value * multiplier,

@@ -76,11 +76,12 @@ Nested DTOs are named based on:
 2. A hash suffix to avoid conflicts
 
 **Example:**
+
 ```csharp
-.SelectExpr<Order, OrderDto>(o => new
+query.UseLinqraft().Select<OrderDto>(o => new
 {
     Items = o.OrderItems.Select(oi => new { oi.ProductName })
-})
+});
 
 // Generated:
 // - LinqraftGenerated_HASH.ItemsDto
@@ -90,4 +91,4 @@ Nested DTOs are named based on:
 
 ## Explicit Class Name
 
-See [Nested SelectExpr](./nested-selectexpr.md).
+See [Nested explicit DTO reuse](./nested-selectexpr.md) when you want reusable nested DTOs with explicit names in your own namespace.

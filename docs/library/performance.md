@@ -1,8 +1,7 @@
 # Performance
 
 This guide covers Linqraft's performance characteristics.  
-For detailed benchmark code, see [Linqraft.Benchmark](../../examples/Linqraft.Benchmark).  
-For comparisons with other mapping libraries, see the [Library Comparison](./library-comparison.md) guide.
+For detailed benchmark code, see [Linqraft.Benchmark](../../examples/Linqraft.Benchmark).
 
 ## Performance Benchmarks
 
@@ -82,7 +81,6 @@ Intel Core i7-14700F 2.10GHz, 1 CPU, 28 logical and 20 physical cores
 | 'Traditional Manual DTO'      | 100       | 167.8 us | 1.75 us | 1.64 us |  1.23 |    4 | 8.7891 | 0.9766 | 148.86 KB |        1.19 |
 ```
 
-
 ### EFCore(SQLite)
 
 ```
@@ -102,4 +100,3 @@ Intel Core i7-14700F 2.10GHz, 1 CPU, 28 logical and 20 physical cores
 
 * [Installation](./installation.md) - Get started with Linqraft
 * [Usage Patterns](./usage-patterns.md) - Learn different usage patterns
-* [Library Comparison](./library-comparison.md) - Compare with other mapping libraries
