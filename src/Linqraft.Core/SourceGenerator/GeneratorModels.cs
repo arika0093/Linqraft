@@ -214,6 +214,8 @@ internal sealed record MappingRequestTemplate
     public required bool CanUsePrebuiltExpressionWhenConfigured { get; init; }
 
     public required ProjectionTemplateModel Projection { get; init; }
+
+    public string? InnerJoinFilterBodyTemplate { get; init; }
 }
 
 internal sealed record ProjectionSourceTemplateModel
@@ -417,6 +419,8 @@ internal sealed record MappingRequest
     public required bool CanUsePrebuiltExpression { get; init; }
 
     public required string ProjectionBodyText { get; init; }
+
+    public string? InnerJoinFilterBodyText { get; init; }
 }
 
 internal sealed record ProjectionGenerationModel

@@ -136,6 +136,7 @@ internal static class ProjectionTemplateBuilder
                     .Request
                     .CanUsePrebuiltExpressionWhenConfigured,
                 Projection = projection.Request.Projection!,
+                InnerJoinFilterBodyTemplate = projection.Request.InnerJoinFilterBodyTemplate,
             },
             GeneratedDtos = projection.GeneratedDtos,
         };
@@ -223,6 +224,7 @@ internal static class ProjectionTemplateBuilder
                     .Request
                     .CanUsePrebuiltExpressionWhenConfigured,
                 Projection = projection.Request.Projection!,
+                InnerJoinFilterBodyTemplate = projection.Request.InnerJoinFilterBodyTemplate,
             },
             GeneratedDtos = projection.GeneratedDtos,
         };

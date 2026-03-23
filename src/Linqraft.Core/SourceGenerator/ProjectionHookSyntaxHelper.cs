@@ -38,14 +38,6 @@ internal static class ProjectionHookSyntaxHelper
                 out var helperTarget,
                 cancellationToken
             )
-            || TryGetExtensionTarget(
-                invocation,
-                semanticModel,
-                generatorOptions,
-                hook,
-                out helperTarget,
-                cancellationToken
-            )
         )
         {
             hookInvocation = new HookInvocationInfo
@@ -169,69 +161,6 @@ internal static class ProjectionHookSyntaxHelper
                 )
             )
         )
-        {
-            return false;
-        }
-
-        targetExpression = invocation.ArgumentList.Arguments[0].Expression;
-        return true;
-    }
-
-    private static bool TryGetExtensionTarget(
-        InvocationExpressionSyntax invocation,
-        SemanticModel semanticModel,
-        LinqraftGeneratorOptionsCore generatorOptions,
-        LinqraftProjectionHookDefinition hook,
-        out ExpressionSyntax targetExpression,
-        CancellationToken cancellationToken = default
-    )
-    {
-        targetExpression = null!;
-        var symbolInfo = semanticModel.GetSymbolInfo(invocation, cancellationToken);
-        var methodSymbol =
-            symbolInfo.Symbol as IMethodSymbol
-            ?? symbolInfo.CandidateSymbols.OfType<IMethodSymbol>().FirstOrDefault();
-        if (methodSymbol is null)
-        {
-            return false;
-        }
-
-        var reducedFrom = methodSymbol.ReducedFrom;
-        var targetMethod = reducedFrom ?? methodSymbol;
-        if (!targetMethod.IsExtensionMethod)
-        {
-            return false;
-        }
-
-        var expectedTypeName =
-            $"{generatorOptions.SupportNamespace}.{LinqraftGeneratorOptionsCore.GetProjectionHookClassName(hook)}";
-        if (
-            !string.Equals(
-                targetMethod.ContainingType.ToDisplayString(),
-                expectedTypeName,
-                StringComparison.Ordinal
-            )
-            || !string.Equals(targetMethod.Name, hook.MethodName, StringComparison.Ordinal)
-        )
-        {
-            return false;
-        }
-
-        if (reducedFrom is not null)
-        {
-            if (
-                invocation.Expression is not MemberAccessExpressionSyntax memberAccess
-                || invocation.ArgumentList.Arguments.Count != 0
-            )
-            {
-                return false;
-            }
-
-            targetExpression = memberAccess.Expression;
-            return true;
-        }
-
-        if (invocation.ArgumentList.Arguments.Count == 0)
         {
             return false;
         }
