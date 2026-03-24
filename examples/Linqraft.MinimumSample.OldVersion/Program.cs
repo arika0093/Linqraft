@@ -4,7 +4,8 @@ using Linqraft.MinimumSample;
 var results = SampleData
     .GetOrdersFromOtherSource()
     .AsQueryable()
-    .SelectExpr(s => new
+    .UseLinqraft()
+    .Select<OrdersResultDto>(s => new
     {
         Id = s.Id,
         CustomerName = s.Customer?.Name,

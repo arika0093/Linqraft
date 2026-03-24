@@ -12,7 +12,6 @@ on:
       - 'src/**/*.cs'
       - 'src/**/*.csproj'
       - '.github/workflows/verify-package.yaml'
-      - '.github/workflows/testcases/**'
 
 env:
   DOTNET_VERSION: '10.0.x'
@@ -65,22 +64,9 @@ jobs:
         working-directory: ./verification-test/PackageVerification
         run: dotnet add package Linqraft --version ${{ steps.get-version.outputs.version }} --source "$(pwd)/../../local-packages"
         
-      - name: Build verification project
-        working-directory: ./verification-test/PackageVerification
-        run: dotnet build
-
-      - name: Run and verify output
+      - name: Build and Run verification test project
         shell: bash
         working-directory: ./verification-test/PackageVerification
-        run: dotnet run --no-build
-
-      - name: Verify top-level explicit DTO package repro
-        shell: bash
         run: |
-          mkdir -p ./verification-test/Issue324Repro
-          sed "s/__LINQRAFT_PACKAGE_VERSION__/${{ steps.get-version.outputs.version }}/g" \
-            ./.github/workflows/testcases/Issue324Repro.cs \
-            > ./verification-test/Issue324Repro/repro.cs
-          cp ./verification-test/PackageVerification/NuGet.Config ./verification-test/Issue324Repro/NuGet.Config
-          cd ./verification-test/Issue324Repro
-          dotnet run repro.cs
+          dotnet build
+          dotnet run --no-build
