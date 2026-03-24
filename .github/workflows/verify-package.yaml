@@ -12,6 +12,7 @@ on:
       - 'src/**/*.cs'
       - 'src/**/*.csproj'
       - '.github/workflows/verify-package.yaml'
+      - '.github/workflows/testcases/**'
 
 env:
   DOTNET_VERSION: '10.0.x'
@@ -77,69 +78,9 @@ jobs:
         shell: bash
         run: |
           mkdir -p ./verification-test/Issue324Repro
-          cat > ./verification-test/Issue324Repro/repro.cs <<EOF
-          #:package Linqraft@${{ steps.get-version.outputs.version }}
-          #:property PublishAot=false
-          # AOT is disabled here because this check is only validating the packaged source generator output
-          # for the top-level runfile scenario; NativeAOT is unrelated noise for this regression case.
-          using System;
-          using System.Linq;
-          
-          var dbContext = new DbContextMock();
-          var key = "test";
-          var conditionInfo = dbContext
-              .TestRepos.Where(l => l.Key == key)
-              .SelectExpr<TestRepo, AutoSettingConditionInfoDto>(l => new
-              {
-                  l.Id,
-                  l.Key,
-                  Name = l.Data.TestRepoInfo.CommonName,
-                  Available = l.Data.SomeInfo != null,
-              })
-              .FirstOrDefault();
-          Console.WriteLine(conditionInfo);
-          
-          public class DbContextMock
-          {
-              public IQueryable<TestRepo> TestRepos =>
-                  new[]
-                  {
-                      new TestRepo
-                      {
-                          Id = 1,
-                          Key = "test",
-                          Data = new TestRepoData
-                          {
-                              TestRepoInfo = new TestRepoInfo { CommonName = "common name" },
-                              SomeInfo = new TestRepoSomeInfo { Id = 1 },
-                          },
-                      },
-                  }.AsQueryable();
-          }
-          
-          public class TestRepo
-          {
-              public int Id { get; set; }
-              public string Key { get; set; } = string.Empty;
-              public TestRepoData Data { get; set; } = new();
-          }
-          
-          public class TestRepoData
-          {
-              public TestRepoInfo TestRepoInfo { get; set; } = new();
-              public TestRepoSomeInfo? SomeInfo { get; set; }
-          }
-          
-          public class TestRepoInfo
-          {
-              public string CommonName { get; set; } = string.Empty;
-          }
-          
-          public class TestRepoSomeInfo
-          {
-              public int Id { get; set; }
-          }
-          EOF
+          sed "s/__LINQRAFT_PACKAGE_VERSION__/${{ steps.get-version.outputs.version }}/g" \
+            ./.github/workflows/testcases/Issue324Repro.cs \
+            > ./verification-test/Issue324Repro/repro.cs
           cp ./verification-test/PackageVerification/NuGet.Config ./verification-test/Issue324Repro/NuGet.Config
           cd ./verification-test/Issue324Repro
           dotnet run repro.cs

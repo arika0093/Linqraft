@@ -1054,6 +1054,9 @@ internal static partial class ProjectionTemplateBuilder
         )
         {
             cancellationToken = ResolveCancellationToken(cancellationToken);
+            // The packaged runfile path can leave the selector parameter identifier weakly bound even
+            // though the intercepted SelectExpr signature already told us the source type. Reusing
+            // that known source type keeps member-access recovery anchored to the original selector.
             if (
                 expression is IdentifierNameSyntax identifierName
                 && _selectorParameterType is not null
@@ -1067,6 +1070,9 @@ internal static partial class ProjectionTemplateBuilder
                 return _selectorParameterType;
             }
 
+            // dotnet run <script> + packaged analyzers can surface ErrorType for simple scalar member
+            // accesses such as l.Id or l.Data.TestRepoInfo.CommonName. Probe progressively richer
+            // semantic APIs before falling back to object so explicit DTO members keep their types.
             var typeInfo = _semanticModel.GetTypeInfo(expression, cancellationToken);
             var type = GetResolvedType(typeInfo.Type) ?? GetResolvedType(typeInfo.ConvertedType);
             if (type is not null)
@@ -1110,6 +1116,9 @@ internal static partial class ProjectionTemplateBuilder
                 return null;
             }
 
+            // Even when the full member access is weakly bound in the packaged script scenario,
+            // Roslyn can still sometimes resolve the terminal member name or let us walk the known
+            // receiver type. Try both before giving up on the member's declared type.
             var memberSymbol = _semanticModel.GetSymbolInfo(memberAccess.Name, cancellationToken).Symbol;
             var memberType = GetMemberType(memberSymbol);
             if (memberType is not null)
@@ -1126,6 +1135,7 @@ internal static partial class ProjectionTemplateBuilder
             var memberName = memberAccess.Name.Identifier.ValueText;
             foreach (var candidate in receiverType.GetMembers(memberName))
             {
+                cancellationToken.ThrowIfCancellationRequested();
                 var candidateType = GetMemberType(candidate);
                 if (candidateType is not null)
                 {
