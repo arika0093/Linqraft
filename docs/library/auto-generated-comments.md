@@ -62,11 +62,10 @@ public partial class OrderDto
     /// <summary>
     /// Unique identifier for the order
     /// </summary>
-    /// <remarks>
-    /// From: <c>Order.Id</c>
-    /// Attributes: <c>[Key]</c>
-    /// </remarks>
-    public required int Id { get; set; }
+/// <remarks>
+/// From: <c>Order.Id</c>
+/// </remarks>
+public required int Id { get; set; }
 
     /// <summary>
     /// Customer who placed the order

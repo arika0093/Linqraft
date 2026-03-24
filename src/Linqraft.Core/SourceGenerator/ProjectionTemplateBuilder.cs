@@ -146,7 +146,7 @@ internal static partial class ProjectionTemplateBuilder
                 AccessibilityKeyword = accessibilityKeyword,
                 MethodAccessibilityKeyword = accessibilityKeyword,
                 MethodName = string.IsNullOrWhiteSpace(methodName)
-                    ? $"ProjectTo{classSymbol.BaseType?.TypeArguments.FirstOrDefault()?.Name}"
+                    ? $"ProjectTo{ResolveDefaultMappingResultTypeName(selectExpr, attributeContext.SemanticModel, cancellationToken)}"
                     : methodName!,
                 ReceiverKind = projection.Request.ReceiverKind,
                 SourceTypeName = projection.Request.SourceTypeName,
@@ -161,6 +161,34 @@ internal static partial class ProjectionTemplateBuilder
             },
             GeneratedDtos = projection.GeneratedDtos,
         };
+    }
+
+    /// <summary>
+    /// Resolves the default mapping result type name used for generated helper methods.
+    /// </summary>
+    private static string ResolveDefaultMappingResultTypeName(
+        InvocationExpressionSyntax selectExpr,
+        SemanticModel semanticModel,
+        CancellationToken cancellationToken
+    )
+    {
+        if (GetInvocationNameSyntax(selectExpr.Expression) is GenericNameSyntax genericName)
+        {
+            var resultTypeSyntax = genericName.TypeArgumentList.Arguments.LastOrDefault();
+            var resultType = resultTypeSyntax is null
+                ? null
+                : semanticModel.GetTypeInfo(resultTypeSyntax, cancellationToken).Type;
+            if (resultType is not null)
+            {
+                return resultType.Name;
+            }
+        }
+
+        var returnType = semanticModel.GetTypeInfo(selectExpr, cancellationToken).ConvertedType;
+        return returnType is INamedTypeSymbol namedReturnType
+            && namedReturnType.TypeArguments.LastOrDefault() is ITypeSymbol mappedResultType
+            ? mappedResultType.Name
+            : "Dto";
     }
 
     /// <summary>

@@ -14,9 +14,9 @@ using Microsoft.CodeAnalysis.Text;
 public sealed class SourceGeneratorSmokeTests
 {
     [Test]
-    public void Generator_keeps_prebuilt_expression_generation_opt_in()
+    public void Generator_does_not_emit_prebuilt_expression_cache_fields()
     {
-        var driver = CreateDriver(usePrebuildExpression: false);
+        var driver = CreateDriver();
         var compilation = CreateCompilation(CreateProjectionTree(), CreateMarkerTree("default"));
 
         driver = driver.RunGeneratorsAndUpdateCompilation(
@@ -284,7 +284,6 @@ public sealed class SourceGeneratorSmokeTests
                 ["build_property.InterceptorsPreviewNamespaces"] = "CustomSupport",
                 ["build_property.CustomCommentOutput"] = "None",
                 ["build_property.CustomHasRequired"] = "false",
-                ["build_property.CustomUsePrebuildExpression"] = "true",
                 ["build_property.CustomGlobalUsing"] = "true",
             }
         );
@@ -327,6 +326,88 @@ public sealed class SourceGeneratorSmokeTests
         generatedSources["Custom.Declarations.g.cs"]
             .ShouldContain("internal static partial class ProjectExprExtensions");
         generatedSources["Custom.GlobalUsings.g.cs"].ShouldContain("global using CustomSupport;");
+    }
+
+    [Test]
+    public void Generator_uses_mapping_result_type_name_for_default_mapping_method()
+    {
+        var driver = CreateDriver();
+        var compilation = CreateCompilation(
+            CreateDefaultMappingNameTree(),
+            CreateMarkerTree("default-mapping-name")
+        );
+
+        driver = driver.RunGeneratorsAndUpdateCompilation(
+            compilation,
+            out var outputCompilation,
+            out var diagnostics
+        );
+
+        diagnostics.ShouldBeEmpty();
+        outputCompilation
+            .GetDiagnostics()
+            .Where(diagnostic =>
+                diagnostic.Severity == DiagnosticSeverity.Error && diagnostic.Id != "CS9137"
+            )
+            .ShouldBeEmpty();
+
+        var generatedSources = GetGeneratedSourceMap(driver.GetRunResult());
+        generatedSources
+            .Where(pair => pair.Key.StartsWith("Mapping_", StringComparison.Ordinal))
+            .Select(pair => pair.Value)
+            .ShouldContain(source =>
+                source.Contains(
+                    "ProjectToDefaultNamedOrderDto(this global::System.Linq.IQueryable<global::SmokeFixture.DefaultNamedOrder> source)",
+                    StringComparison.Ordinal
+                )
+            );
+    }
+
+    [Test]
+    public void Generator_prefers_comment_and_display_attributes_in_generated_documentation()
+    {
+        var driver = CreateDriver(
+            new LinqraftGenerator(),
+            new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
+            {
+                ["build_property.RootNamespace"] = "SmokeFixture",
+                ["build_property.InterceptorsNamespaces"] = "Linqraft",
+                ["build_property.InterceptorsPreviewNamespaces"] = "Linqraft",
+                ["build_property.LinqraftCommentOutput"] = "All",
+                ["build_property.LinqraftHasRequired"] = "false",
+                ["build_property.LinqraftGlobalUsing"] = "true",
+            }
+        );
+        var compilation = CreateCompilation(
+            CreateCommentAttributeProjectionTree(),
+            CreateMarkerTree("comment-attributes")
+        );
+
+        driver = driver.RunGeneratorsAndUpdateCompilation(
+            compilation,
+            out var outputCompilation,
+            out var diagnostics
+        );
+
+        diagnostics.ShouldBeEmpty();
+        outputCompilation
+            .GetDiagnostics()
+            .Where(diagnostic =>
+                diagnostic.Severity == DiagnosticSeverity.Error && diagnostic.Id != "CS9137"
+            )
+            .ShouldBeEmpty();
+
+        var generatedSources = GetGeneratedSourceMap(driver.GetRunResult());
+        var generatedDto = generatedSources.Values.Single(source =>
+            source.Contains("CommentedOrderDto", StringComparison.Ordinal)
+            && source.Contains("Friendly customer name", StringComparison.Ordinal)
+        );
+
+        generatedDto.ShouldContain("/// Friendly customer name");
+        generatedDto.ShouldContain("/// UI label");
+        generatedDto.ShouldContain("/// From: <c>CommentedOrder.CustomerName</c>");
+        generatedDto.ShouldContain("/// From: <c>CommentedOrder.Total</c>");
+        generatedDto.ShouldNotContain("Attributes:");
     }
 
     [Test]
@@ -725,10 +806,7 @@ public sealed class SourceGeneratorSmokeTests
         generatedSourceText.ShouldNotContain("global::SmokeFixture.ExternalCustomer");
     }
 
-    private static GeneratorDriver CreateDriver(
-        bool usePrebuildExpression = true,
-        bool useGlobalUsing = true
-    )
+    private static GeneratorDriver CreateDriver(bool useGlobalUsing = true)
     {
         return CreateDriver(
             new LinqraftGenerator(),
@@ -739,9 +817,6 @@ public sealed class SourceGeneratorSmokeTests
                 ["build_property.InterceptorsPreviewNamespaces"] = "Linqraft",
                 ["build_property.LinqraftCommentOutput"] = "None",
                 ["build_property.LinqraftHasRequired"] = "false",
-                ["build_property.LinqraftUsePrebuildExpression"] = usePrebuildExpression
-                    ? "true"
-                    : "false",
                 ["build_property.LinqraftGlobalUsing"] = useGlobalUsing ? "true" : "false",
             }
         );
@@ -1212,6 +1287,99 @@ public sealed class SourceGeneratorSmokeTests
         );
     }
 
+    private static SyntaxTree CreateDefaultMappingNameTree()
+    {
+        const string source = """
+            using System.Linq;
+            using Linqraft;
+
+            namespace SmokeFixture;
+
+            public sealed class DefaultNamedOrder
+            {
+                public int Id { get; set; }
+            }
+
+            [LinqraftMappingGenerate]
+            internal sealed class DefaultNamedOrderMapping : LinqraftMappingDeclare<DefaultNamedOrder>
+            {
+                protected override void DefineMapping()
+                {
+                    Source.SelectExpr<DefaultNamedOrder, DefaultNamedOrderDto>(order => new
+                    {
+                        order.Id,
+                    });
+                }
+            }
+
+            public partial class DefaultNamedOrderDto;
+            """;
+
+        return CSharpSyntaxTree.ParseText(
+            SourceText.From(source),
+            new CSharpParseOptions(LanguageVersion.Preview),
+            path: "SmokeMappings.DefaultName.cs"
+        );
+    }
+
+    private static SyntaxTree CreateCommentAttributeProjectionTree()
+    {
+        const string source = """
+            using System.Collections.Generic;
+            using System.Linq;
+            using Linqraft;
+
+            namespace SmokeFixture;
+
+            [global::System.AttributeUsage(global::System.AttributeTargets.Property)]
+            internal sealed class CommentAttribute : global::System.Attribute
+            {
+                public CommentAttribute(string value)
+                {
+                    Value = value;
+                }
+
+                public string Value { get; }
+            }
+
+            [global::System.AttributeUsage(global::System.AttributeTargets.Property)]
+            internal sealed class DisplayAttribute : global::System.Attribute
+            {
+                public string? Name { get; set; }
+            }
+
+            public sealed class CommentedOrder
+            {
+                [Comment("Friendly customer name")]
+                public string CustomerName { get; set; } = "";
+
+                [Display(Name = "UI label")]
+                public int Total { get; set; }
+            }
+
+            public static class CommentedQueries
+            {
+                public static void Run()
+                {
+                    var query = new List<CommentedOrder>().AsQueryable();
+                    _ = query.SelectExpr<CommentedOrder, CommentedOrderDto>(order => new
+                    {
+                        order.CustomerName,
+                        order.Total,
+                    });
+                }
+            }
+
+            public partial class CommentedOrderDto;
+            """;
+
+        return CSharpSyntaxTree.ParseText(
+            SourceText.From(source),
+            new CSharpParseOptions(LanguageVersion.Preview),
+            path: "SmokeComments.cs"
+        );
+    }
+
     private static SyntaxTree CreateUnrelatedGenerateTree()
     {
         const string source = """
@@ -1463,9 +1631,6 @@ public sealed class SourceGeneratorSmokeTests
 
         public override string GlobalUsingPropertyName => "build_property.CustomGlobalUsing";
 
-        public override string UsePrebuildExpressionPropertyName =>
-            "build_property.CustomUsePrebuildExpression";
-
         public override string HasRequiredPropertyName => "build_property.CustomHasRequired";
 
         public override string CommentOutputPropertyName => "build_property.CustomCommentOutput";
@@ -1559,7 +1724,5 @@ public sealed class SourceGeneratorSmokeTests
         public override string? CommentOutputPropertyName => null;
 
         public override string? HasRequiredPropertyName => null;
-
-        public override string? UsePrebuildExpressionPropertyName => null;
     }
 }

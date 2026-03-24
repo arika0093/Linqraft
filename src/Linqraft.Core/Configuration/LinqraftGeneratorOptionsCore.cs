@@ -222,13 +222,6 @@ public abstract class LinqraftGeneratorOptionsCore
         "build_property.LinqraftNestedDtoUseHashNamespace";
 
     /// <summary>
-    /// Gets the analyzer config key that controls prebuilt expression caching.
-    /// Return <see langword="null"/> to skip reading analyzer config and keep the built-in default.
-    /// </summary>
-    public virtual string? UsePrebuildExpressionPropertyName =>
-        "build_property.LinqraftUsePrebuildExpression";
-
-    /// <summary>
     /// Gets the analyzer config key that controls generated global using emission.
     /// Return <see langword="null"/> to skip reading analyzer config and keep the built-in default.
     /// </summary>

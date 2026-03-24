@@ -273,6 +273,37 @@ public class NestedCaseTest
         secondChild.FirstGrandChildNote.ShouldBeNull();
         secondChild.FirstGrandChildValue.ShouldBeNull();
     }
+
+    [Test]
+    public void NestedCase_SelectExpr_Explicit_with_nested_UseLinqraft()
+    {
+        var converted = NestData
+            .AsTestQueryable()
+            .UseLinqraft()
+            .Select<NestBaseWithFluentChildrenDto>(s => new
+            {
+                s.Id,
+                s.Name,
+                Children = s
+                    .Child2.UseLinqraft()
+                    .Select<NestChild2FluentDto>(c => new
+                    {
+                        c.Summary,
+                        GrandChildCount = c.GrandChilds.Count(),
+                    })
+                    .ToList(),
+            })
+            .ToList();
+
+        converted.Count.ShouldBe(1);
+        converted[0].Id.ShouldBe(1);
+        converted[0].Name.ShouldBe("Base1");
+        converted[0].Children.Count.ShouldBe(2);
+        converted[0].Children[0].Summary.ShouldBe("Child2-1 of Base1");
+        converted[0].Children[0].GrandChildCount.ShouldBe(2);
+        converted[0].Children[1].Summary.ShouldBe("Child2-2 of Base1");
+        converted[0].Children[1].GrandChildCount.ShouldBe(1);
+    }
 }
 
 internal class NestBase
@@ -333,3 +364,7 @@ internal class NestChild2PredefinedDto
     public string? FirstGrandChildNote { get; set; }
     public int? FirstGrandChildValue { get; set; }
 }
+
+internal partial class NestBaseWithFluentChildrenDto;
+
+internal partial class NestChild2FluentDto;

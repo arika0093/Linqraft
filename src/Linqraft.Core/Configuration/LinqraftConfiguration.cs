@@ -45,8 +45,6 @@ internal sealed record LinqraftConfiguration
 
     public bool NestedDtoUseHashNamespace { get; init; } = true;
 
-    public bool UsePrebuildExpression { get; init; }
-
     public bool GlobalUsing { get; init; } = true;
 
     /// <summary>
@@ -86,11 +84,6 @@ internal sealed record LinqraftConfiguration
                 options,
                 generatorOptions.NestedDtoUseHashNamespacePropertyName,
                 true
-            ),
-            UsePrebuildExpression = GetBool(
-                options,
-                generatorOptions.UsePrebuildExpressionPropertyName,
-                false
             ),
             GlobalUsing = GetBool(options, generatorOptions.GlobalUsingPropertyName, true),
         };

@@ -99,39 +99,6 @@ public sealed class GlobalPropertyConfigurationTests
     }
 
     [Test]
-    public void Generated_files_reflect_non_runtime_property_settings()
-    {
-        var generatedRoot = Path.Combine(
-            GetRepositoryRoot(),
-            "tests",
-            "Linqraft.Tests.Configuration",
-            ".generated"
-        );
-        Directory.Exists(generatedRoot).ShouldBeTrue();
-
-        var generatedSources = Directory
-            .GetFiles(generatedRoot, "*.g.cs", SearchOption.AllDirectories)
-            .Select(File.ReadAllText)
-            .ToList();
-
-        generatedSources.ShouldNotBeEmpty();
-
-        var dtoSource = generatedSources.First(source =>
-            source.Contains("partial record ConfiguredOrderDto")
-        );
-        dtoSource.Contains("/// <summary>").ShouldBeFalse();
-
-        generatedSources
-            .Any(source =>
-                source.Contains("ConfiguredOrderDto")
-                && source.Contains(
-                    "private static readonly global::System.Linq.Expressions.Expression"
-                )
-            )
-            .ShouldBeTrue();
-    }
-
-    [Test]
     public void Generated_support_file_uses_declarations_name()
     {
         var generatedRoot = Path.Combine(
@@ -238,17 +205,17 @@ public sealed class GlobalPropertyConfigurationTests
         lines[itemsLineIndex + 8].Trim().ShouldBe(")");
         lines[itemsLineIndex + 9].Trim().ShouldBe(")");
         lines[itemsLineIndex + 10].Trim().ShouldBe(": null,");
-        CountLeadingSpaces(lines[itemsLineIndex]).ShouldBe(12);
-        CountLeadingSpaces(lines[itemsLineIndex + 1]).ShouldBe(16);
-        CountLeadingSpaces(lines[itemsLineIndex + 2]).ShouldBe(20);
-        CountLeadingSpaces(lines[itemsLineIndex + 3]).ShouldBe(24);
-        CountLeadingSpaces(lines[itemsLineIndex + 4]).ShouldBe(24);
-        CountLeadingSpaces(lines[itemsLineIndex + 5]).ShouldBe(28);
-        CountLeadingSpaces(lines[itemsLineIndex + 6]).ShouldBe(28);
-        CountLeadingSpaces(lines[itemsLineIndex + 7]).ShouldBe(24);
-        CountLeadingSpaces(lines[itemsLineIndex + 8]).ShouldBe(20);
-        CountLeadingSpaces(lines[itemsLineIndex + 9]).ShouldBe(16);
-        CountLeadingSpaces(lines[itemsLineIndex + 10]).ShouldBe(16);
+        CountLeadingSpaces(lines[itemsLineIndex]).ShouldBe(16);
+        CountLeadingSpaces(lines[itemsLineIndex + 1]).ShouldBe(20);
+        CountLeadingSpaces(lines[itemsLineIndex + 2]).ShouldBe(24);
+        CountLeadingSpaces(lines[itemsLineIndex + 3]).ShouldBe(28);
+        CountLeadingSpaces(lines[itemsLineIndex + 4]).ShouldBe(28);
+        CountLeadingSpaces(lines[itemsLineIndex + 5]).ShouldBe(32);
+        CountLeadingSpaces(lines[itemsLineIndex + 6]).ShouldBe(32);
+        CountLeadingSpaces(lines[itemsLineIndex + 7]).ShouldBe(28);
+        CountLeadingSpaces(lines[itemsLineIndex + 8]).ShouldBe(24);
+        CountLeadingSpaces(lines[itemsLineIndex + 9]).ShouldBe(20);
+        CountLeadingSpaces(lines[itemsLineIndex + 10]).ShouldBe(20);
         projectionSource
             .Contains("Items = order.Items != null ? order.Items.Select(", StringComparison.Ordinal)
             .ShouldBeFalse();
@@ -314,27 +281,27 @@ public sealed class GlobalPropertyConfigurationTests
         lines[childLineIndex + 13].Trim().ShouldBe("}");
         lines[childLineIndex + 14].Trim().ShouldBe(")");
         lines[childLineIndex + 15].Trim().ShouldBe("),");
-        CountLeadingSpaces(lines[childLineIndex]).ShouldBe(12);
-        CountLeadingSpaces(lines[childLineIndex + 1]).ShouldBe(16);
-        CountLeadingSpaces(lines[childLineIndex + 2]).ShouldBe(20);
-        CountLeadingSpaces(lines[childLineIndex + 3]).ShouldBe(20);
-        CountLeadingSpaces(lines[childLineIndex + 4]).ShouldBe(24);
-        CountLeadingSpaces(lines[childLineIndex + 5]).ShouldBe(24);
-        CountLeadingSpaces(lines[childLineIndex + 6]).ShouldBe(28);
-        CountLeadingSpaces(lines[childLineIndex + 7]).ShouldBe(28);
-        CountLeadingSpaces(lines[childLineIndex + 8]).ShouldBe(24);
-        CountLeadingSpaces(lines[childLineIndex + 9]).ShouldBe(24);
-        CountLeadingSpaces(lines[childLineIndex + 10]).ShouldBe(28);
-        CountLeadingSpaces(lines[childLineIndex + 11]).ShouldBe(28);
-        CountLeadingSpaces(lines[childLineIndex + 12]).ShouldBe(24);
-        CountLeadingSpaces(lines[childLineIndex + 13]).ShouldBe(20);
-        CountLeadingSpaces(lines[childLineIndex + 14]).ShouldBe(16);
-        CountLeadingSpaces(lines[childLineIndex + 15]).ShouldBe(12);
+        CountLeadingSpaces(lines[childLineIndex]).ShouldBe(16);
+        CountLeadingSpaces(lines[childLineIndex + 1]).ShouldBe(20);
+        CountLeadingSpaces(lines[childLineIndex + 2]).ShouldBe(24);
+        CountLeadingSpaces(lines[childLineIndex + 3]).ShouldBe(24);
+        CountLeadingSpaces(lines[childLineIndex + 4]).ShouldBe(28);
+        CountLeadingSpaces(lines[childLineIndex + 5]).ShouldBe(28);
+        CountLeadingSpaces(lines[childLineIndex + 6]).ShouldBe(32);
+        CountLeadingSpaces(lines[childLineIndex + 7]).ShouldBe(32);
+        CountLeadingSpaces(lines[childLineIndex + 8]).ShouldBe(28);
+        CountLeadingSpaces(lines[childLineIndex + 9]).ShouldBe(28);
+        CountLeadingSpaces(lines[childLineIndex + 10]).ShouldBe(32);
+        CountLeadingSpaces(lines[childLineIndex + 11]).ShouldBe(32);
+        CountLeadingSpaces(lines[childLineIndex + 12]).ShouldBe(28);
+        CountLeadingSpaces(lines[childLineIndex + 13]).ShouldBe(24);
+        CountLeadingSpaces(lines[childLineIndex + 14]).ShouldBe(20);
+        CountLeadingSpaces(lines[childLineIndex + 15]).ShouldBe(16);
         projectionSource.Contains("new {", StringComparison.Ordinal).ShouldBeFalse();
     }
 
     [Test]
-    public void Generated_prebuilt_expression_source_dedents_after_nested_select_projection()
+    public void Generated_select_projection_source_dedents_after_nested_select_projection()
     {
         var result = FormattingRoots
             .AsTestQueryable()
@@ -384,15 +351,15 @@ public sealed class GlobalPropertyConfigurationTests
         lines[childLineIndex + 6].Trim().ShouldBe("}");
         lines[childLineIndex + 7].Trim().ShouldBe("),");
         lines[childLineIndex + 8].Trim().ShouldBe("Child2Count = root.Child2.Count,");
-        CountLeadingSpaces(lines[childLineIndex]).ShouldBe(12);
-        CountLeadingSpaces(lines[childLineIndex + 1]).ShouldBe(16);
-        CountLeadingSpaces(lines[childLineIndex + 2]).ShouldBe(16);
-        CountLeadingSpaces(lines[childLineIndex + 3]).ShouldBe(20);
-        CountLeadingSpaces(lines[childLineIndex + 4]).ShouldBe(20);
-        CountLeadingSpaces(lines[childLineIndex + 5]).ShouldBe(20);
-        CountLeadingSpaces(lines[childLineIndex + 6]).ShouldBe(16);
-        CountLeadingSpaces(lines[childLineIndex + 7]).ShouldBe(12);
-        CountLeadingSpaces(lines[childLineIndex + 8]).ShouldBe(12);
+        CountLeadingSpaces(lines[childLineIndex]).ShouldBe(16);
+        CountLeadingSpaces(lines[childLineIndex + 1]).ShouldBe(20);
+        CountLeadingSpaces(lines[childLineIndex + 2]).ShouldBe(20);
+        CountLeadingSpaces(lines[childLineIndex + 3]).ShouldBe(24);
+        CountLeadingSpaces(lines[childLineIndex + 4]).ShouldBe(24);
+        CountLeadingSpaces(lines[childLineIndex + 5]).ShouldBe(24);
+        CountLeadingSpaces(lines[childLineIndex + 6]).ShouldBe(20);
+        CountLeadingSpaces(lines[childLineIndex + 7]).ShouldBe(16);
+        CountLeadingSpaces(lines[childLineIndex + 8]).ShouldBe(16);
         projectionSource
             .Contains("Child2Summaries = root.Child2.Select(", StringComparison.Ordinal)
             .ShouldBeFalse();

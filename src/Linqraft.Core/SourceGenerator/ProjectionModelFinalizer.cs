@@ -72,9 +72,7 @@ internal static class ProjectionModelFinalizer
                         cancellationToken
                     ),
                 UseObjectSelectorSignature = requestTemplate.UseObjectSelectorSignature,
-                CanUsePrebuiltExpression =
-                    requestTemplate.CanUsePrebuiltExpressionWhenConfigured
-                    && configuration.UsePrebuildExpression,
+                CanUsePrebuiltExpression = false,
                 InterceptableLocationVersion = requestTemplate.InterceptableLocationVersion,
                 InterceptableLocationData = requestTemplate.InterceptableLocationData,
                 Captures = requestTemplate.Captures,
@@ -195,9 +193,7 @@ internal static class ProjectionModelFinalizer
                 ResultTypeName = resultTypeName,
                 SelectorParameterName = requestTemplate.SelectorParameterName,
                 Captures = requestTemplate.Captures,
-                CanUsePrebuiltExpression =
-                    requestTemplate.CanUsePrebuiltExpressionWhenConfigured
-                    && configuration.UsePrebuildExpression,
+                CanUsePrebuiltExpression = false,
                 ProjectionBodyText = ProjectionBodyEmitter.BuildProjectionBody(
                     requestTemplate.Projection,
                     ProjectionPattern.PredefinedDto,
