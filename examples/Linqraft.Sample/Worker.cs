@@ -6,6 +6,8 @@ namespace Linqraft.Sample;
 public class Worker(IDbContextFactory<SampleDbContext> dbContextFactory, ILogger<Worker> logger)
     : BackgroundService
 {
+    private GeneratePattern generatePattern = GeneratePattern.PreCompiledQuery;
+
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
     {
         try
@@ -16,28 +18,48 @@ public class Worker(IDbContextFactory<SampleDbContext> dbContextFactory, ILogger
             await DatabaseSetup(dbContext, stoppingToken);
 
             // get sample data
-            var sample = await dbContext
-                .SampleClasses.UseLinqraft()
-                .Select<SampleClassDto>(s => new
-                {
-                    s.Id,
-                    s.Foo,
-                    s.Bar,
-                    Childs = s.Childs.Select(c => new
-                    {
-                        c.Id,
-                        c.Baz,
-                        ChildId = c.Child?.Id,
-                        ChildQux = c.Child?.Qux,
-                    }),
-                    Child2Id = s.Child2?.Id,
-                    Child2Quux = s.Child2?.Quux,
-                    Child3Id = s.Child3.Id,
-                    Child3Corge = s.Child3.Corge,
-                    Child3ChildId = s.Child3?.Child?.Id,
-                    Child3ChildGrault = s.Child3?.Child?.Grault,
-                })
-                .FirstOrDefaultAsync(stoppingToken);
+            SampleClassDto? sample = null;
+
+            switch (generatePattern)
+            {
+                // Pattern 1: Inline mapping
+                case GeneratePattern.InlineMapping:
+                    sample = await dbContext
+                        .SampleClasses.UseLinqraft()
+                        .Select<SampleClassDto>(s => new
+                        {
+                            s.Id,
+                            s.Foo,
+                            s.Bar,
+                            Childs = s.Childs.Select(c => new
+                            {
+                                c.Id,
+                                c.Baz,
+                                ChildId = c.Child?.Id,
+                                ChildQux = c.Child?.Qux,
+                            }),
+                            Child2Id = s.Child2?.Id,
+                            Child2Quux = s.Child2?.Quux,
+                            Child3Id = s.Child3.Id,
+                            Child3Corge = s.Child3.Corge,
+                            Child3ChildId = s.Child3?.Child?.Id,
+                            Child3ChildGrault = s.Child3?.Child?.Grault,
+                        })
+                        .FirstOrDefaultAsync(stoppingToken);
+                    break;
+
+                // Pattern 2: Pre-generated mapping (see LinqraftMappingProfile)
+                case GeneratePattern.PreGeneratedMapping:
+                    sample = await dbContext
+                        .SampleClasses.ProjectToSampleClass()
+                        .FirstOrDefaultAsync(stoppingToken);
+                    break;
+
+                // Pattern 3: Pre-compiled query (see GetSampleClassCompiled)
+                case GeneratePattern.PreCompiledQuery:
+                    sample = await GetSampleClassCompiled(dbContext);
+                    break;
+            }
 
             logger.LogInformation(
                 "Sample data retrieved: {Sample}",
@@ -53,6 +75,12 @@ public class Worker(IDbContextFactory<SampleDbContext> dbContextFactory, ILogger
         }
     }
 
+    // pre-compile query
+    private static readonly Func<SampleDbContext, Task<SampleClassDto?>> GetSampleClassCompiled =
+        EF.CompileAsyncQuery(
+            (SampleDbContext db) => db.SampleClasses.ProjectToSampleClass().FirstOrDefault()
+        );
+
     private async Task DatabaseSetup(SampleDbContext dbContext, CancellationToken stoppingToken)
     {
         logger.LogInformation("Worker starting ...");
@@ -60,4 +88,40 @@ public class Worker(IDbContextFactory<SampleDbContext> dbContextFactory, ILogger
         await dbContext.Database.EnsureCreatedAsync(stoppingToken);
         logger.LogInformation("Database ensured created.");
     }
+}
+
+[LinqraftMappingGenerate]
+internal class LinqraftMappingProfile : LinqraftMappingDeclare<SampleClass>
+{
+    protected override void DefineMapping()
+    {
+        Source
+            .UseLinqraft()
+            .Select<SampleClassDto>(s => new
+            {
+                s.Id,
+                s.Foo,
+                s.Bar,
+                Childs = s.Childs.Select(c => new
+                {
+                    c.Id,
+                    c.Baz,
+                    ChildId = c.Child?.Id,
+                    ChildQux = c.Child?.Qux,
+                }),
+                Child2Id = s.Child2?.Id,
+                Child2Quux = s.Child2?.Quux,
+                Child3Id = s.Child3.Id,
+                Child3Corge = s.Child3.Corge,
+                Child3ChildId = s.Child3?.Child?.Id,
+                Child3ChildGrault = s.Child3?.Child?.Grault,
+            });
+    }
+}
+
+internal enum GeneratePattern
+{
+    InlineMapping,
+    PreGeneratedMapping,
+    PreCompiledQuery,
 }
