@@ -1080,7 +1080,9 @@ internal static partial class ProjectionTemplateBuilder
                 return type;
             }
 
-            type = GetResolvedType(_semanticModel.GetOperation(expression, cancellationToken)?.Type);
+            type = GetResolvedType(
+                _semanticModel.GetOperation(expression, cancellationToken)?.Type
+            );
             if (type is not null)
             {
                 return type;
@@ -1119,7 +1121,9 @@ internal static partial class ProjectionTemplateBuilder
             // Even when the full member access is weakly bound in the packaged script scenario,
             // Roslyn can still sometimes resolve the terminal member name or let us walk the known
             // receiver type. Try both before giving up on the member's declared type.
-            var memberSymbol = _semanticModel.GetSymbolInfo(memberAccess.Name, cancellationToken).Symbol;
+            var memberSymbol = _semanticModel
+                .GetSymbolInfo(memberAccess.Name, cancellationToken)
+                .Symbol;
             var memberType = GetMemberType(memberSymbol);
             if (memberType is not null)
             {
@@ -1152,9 +1156,8 @@ internal static partial class ProjectionTemplateBuilder
             {
                 IEventSymbol eventSymbol => GetResolvedType(eventSymbol.Type),
                 IFieldSymbol fieldSymbol => GetResolvedType(fieldSymbol.Type),
-                IMethodSymbol methodSymbol when methodSymbol.Parameters.Length == 0 => GetResolvedType(
-                    methodSymbol.ReturnType
-                ),
+                IMethodSymbol methodSymbol when methodSymbol.Parameters.Length == 0 =>
+                    GetResolvedType(methodSymbol.ReturnType),
                 IPropertySymbol propertySymbol => GetResolvedType(propertySymbol.Type),
                 _ => null,
             };

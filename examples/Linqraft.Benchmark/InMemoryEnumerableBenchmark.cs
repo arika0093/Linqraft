@@ -137,7 +137,8 @@ public partial class InMemoryEnumerableBenchmark
     public int Linqraft_Anonymous()
     {
         var results = _data
-            .UseLinqraft().Select(s => new
+            .UseLinqraft()
+            .Select(s => new
             {
                 s.Id,
                 s.Foo,
