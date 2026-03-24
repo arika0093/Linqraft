@@ -51,7 +51,7 @@ public class Worker(IDbContextFactory<SampleDbContext> dbContextFactory, ILogger
                 // Pattern 2: Pre-generated mapping (see LinqraftMappingProfile)
                 case GeneratePattern.PreGeneratedMapping:
                     sample = await dbContext
-                        .SampleClasses.ProjectToSampleClass()
+                        .SampleClasses.ProjectToSampleClassDto()
                         .FirstOrDefaultAsync(stoppingToken);
                     break;
 
@@ -78,7 +78,7 @@ public class Worker(IDbContextFactory<SampleDbContext> dbContextFactory, ILogger
     // pre-compile query
     private static readonly Func<SampleDbContext, Task<SampleClassDto?>> GetSampleClassCompiled =
         EF.CompileAsyncQuery(
-            (SampleDbContext db) => db.SampleClasses.ProjectToSampleClass().FirstOrDefault()
+            (SampleDbContext db) => db.SampleClasses.ProjectToSampleClassDto().FirstOrDefault()
         );
 
     private async Task DatabaseSetup(SampleDbContext dbContext, CancellationToken stoppingToken)
