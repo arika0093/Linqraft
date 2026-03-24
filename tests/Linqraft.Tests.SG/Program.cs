@@ -725,6 +725,60 @@ public sealed class SourceGeneratorSmokeTests
         generatedSourceText.ShouldNotContain("global::SmokeFixture.ExternalCustomer");
     }
 
+    [Test]
+    public void Generator_preserves_scalar_property_types_for_top_level_explicit_dto_without_placeholder_declaration()
+    {
+        var driver = CreateDriver(
+            new LinqraftGenerator(),
+            new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
+            {
+                ["build_property.RootNamespace"] = "repro",
+                ["build_property.InterceptorsNamespaces"] = "Linqraft",
+                ["build_property.InterceptorsPreviewNamespaces"] = "Linqraft",
+                ["build_property.LinqraftCommentOutput"] = "None",
+                ["build_property.LinqraftHasRequired"] = "true",
+                ["build_property.LinqraftUsePrebuildExpression"] = "false",
+                ["build_property.LinqraftGlobalUsing"] = "true",
+            }
+        );
+        var compilation = CreateCompilation(
+            [CreateIssue324TopLevelProjectionTree(), CreateMarkerTree("issue324-top-level")],
+            outputKind: OutputKind.ConsoleApplication
+        );
+
+        driver = driver.RunGeneratorsAndUpdateCompilation(
+            compilation,
+            out var outputCompilation,
+            out var diagnostics
+        );
+
+        diagnostics.ShouldBeEmpty();
+        outputCompilation
+            .GetDiagnostics()
+            .Where(diagnostic =>
+                diagnostic.Severity == DiagnosticSeverity.Error && diagnostic.Id != "CS9137"
+            )
+            .ShouldBeEmpty();
+
+        var generatedSourceText = string.Join(
+            "\n",
+            GetGeneratedSourceMap(driver.GetRunResult()).Values
+        );
+
+        generatedSourceText.ShouldContain(
+            "public required global::System.Int32 Id { get; set; }"
+        );
+        generatedSourceText.ShouldContain(
+            "public required global::System.String Key { get; set; }"
+        );
+        generatedSourceText.ShouldContain(
+            "public required global::System.String Name { get; set; }"
+        );
+        generatedSourceText.ShouldContain(
+            "public required global::System.Boolean Available { get; set; }"
+        );
+    }
+
     private static GeneratorDriver CreateDriver(
         bool usePrebuildExpression = true,
         bool useGlobalUsing = true
@@ -1307,6 +1361,76 @@ public sealed class SourceGeneratorSmokeTests
             SourceText.From(source),
             new CSharpParseOptions(LanguageVersion.Preview),
             path: "SmokeProjection.UnresolvedQualifiedExternalType.cs"
+        );
+    }
+
+    private static SyntaxTree CreateIssue324TopLevelProjectionTree()
+    {
+        const string source = """
+            using System;
+            using System.Linq;
+            using Linqraft;
+
+            var dbContext = new DbContextMock();
+            var key = "test";
+            var conditionInfo = dbContext
+                .TestRepos.Where(l => l.Key == key)
+                .SelectExpr<TestRepo, AutoSettingConditionInfoDto>(l => new
+                {
+                    l.Id,
+                    l.Key,
+                    Name = l.Data.TestRepoInfo.CommonName,
+                    Available = l.Data.SomeInfo != null,
+                })
+                .FirstOrDefault();
+            Console.WriteLine(conditionInfo);
+
+            public class DbContextMock
+            {
+                public IQueryable<TestRepo> TestRepos =>
+                    new[]
+                    {
+                        new TestRepo
+                        {
+                            Id = 1,
+                            Key = "test",
+                            Data = new TestRepoData
+                            {
+                                TestRepoInfo = new TestRepoInfo { CommonName = "common name" },
+                                SomeInfo = new TestRepoSomeInfo { Id = 1 },
+                            },
+                        },
+                    }.AsQueryable();
+            }
+
+            public class TestRepo
+            {
+                public int Id { get; set; }
+                public string Key { get; set; } = string.Empty;
+                public TestRepoData Data { get; set; } = new();
+            }
+
+            public class TestRepoData
+            {
+                public TestRepoInfo TestRepoInfo { get; set; } = new();
+                public TestRepoSomeInfo? SomeInfo { get; set; }
+            }
+
+            public class TestRepoInfo
+            {
+                public string CommonName { get; set; } = string.Empty;
+            }
+
+            public class TestRepoSomeInfo
+            {
+                public int Id { get; set; }
+            }
+            """;
+
+        return CSharpSyntaxTree.ParseText(
+            SourceText.From(source),
+            new CSharpParseOptions(LanguageVersion.Preview),
+            path: "SmokeProjection.Issue324.TopLevel.cs"
         );
     }
 

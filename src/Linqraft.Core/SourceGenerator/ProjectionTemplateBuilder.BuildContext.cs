@@ -29,6 +29,8 @@ internal static partial class ProjectionTemplateBuilder
         private readonly IReadOnlyList<ProjectionExpressionEmitter.CaptureEntry> _captureEntries;
         private readonly CancellationToken _cancellationToken;
         private readonly LinqraftGeneratorOptionsCore _generatorOptions;
+        private readonly string? _selectorParameterName;
+        private readonly ITypeSymbol? _selectorParameterType;
         private readonly string? _projectionHelperParameterName;
         private readonly string? _projectionHelperParameterTypeName;
         private readonly Dictionary<string, GeneratedDtoTemplateModel> _generatedDtos = new(
@@ -43,6 +45,8 @@ internal static partial class ProjectionTemplateBuilder
             IReadOnlyList<ProjectionExpressionEmitter.CaptureEntry> captureEntries,
             CancellationToken cancellationToken,
             LinqraftGeneratorOptionsCore generatorOptions,
+            string? selectorParameterName,
+            ITypeSymbol? selectorParameterType,
             string? projectionHelperParameterName,
             string? projectionHelperParameterTypeName
         )
@@ -51,6 +55,8 @@ internal static partial class ProjectionTemplateBuilder
             _captureEntries = captureEntries;
             _cancellationToken = cancellationToken;
             _generatorOptions = generatorOptions;
+            _selectorParameterName = selectorParameterName;
+            _selectorParameterType = selectorParameterType;
             _projectionHelperParameterName = projectionHelperParameterName;
             _projectionHelperParameterTypeName = projectionHelperParameterTypeName;
         }
@@ -688,9 +694,7 @@ internal static partial class ProjectionTemplateBuilder
                 );
             }
 
-            var type =
-                _semanticModel.GetTypeInfo(expression, cancellationToken).ConvertedType
-                ?? _semanticModel.GetTypeInfo(expression, cancellationToken).Type;
+            var type = GetExpressionType(expression, cancellationToken);
             return type?.ToFullyQualifiedTypeName() ?? "object";
         }
 
@@ -1050,8 +1054,93 @@ internal static partial class ProjectionTemplateBuilder
         )
         {
             cancellationToken = ResolveCancellationToken(cancellationToken);
+            if (
+                expression is IdentifierNameSyntax identifierName
+                && _selectorParameterType is not null
+                && string.Equals(
+                    identifierName.Identifier.ValueText,
+                    _selectorParameterName,
+                    StringComparison.Ordinal
+                )
+            )
+            {
+                return _selectorParameterType;
+            }
+
             var typeInfo = _semanticModel.GetTypeInfo(expression, cancellationToken);
-            return typeInfo.Type ?? typeInfo.ConvertedType;
+            var type = GetResolvedType(typeInfo.Type ?? typeInfo.ConvertedType);
+            if (type is not null)
+            {
+                return type;
+            }
+
+            type = GetResolvedType(_semanticModel.GetOperation(expression, cancellationToken)?.Type);
+            if (type is not null)
+            {
+                return type;
+            }
+
+            return _semanticModel.GetSymbolInfo(expression, cancellationToken).Symbol switch
+            {
+                IAliasSymbol alias when alias.Target is ITypeSymbol aliasType => GetResolvedType(
+                    aliasType
+                ),
+                IEventSymbol eventSymbol => GetResolvedType(eventSymbol.Type),
+                IFieldSymbol fieldSymbol => GetResolvedType(fieldSymbol.Type),
+                ILocalSymbol localSymbol => GetResolvedType(localSymbol.Type),
+                IMethodSymbol methodSymbol => GetResolvedType(methodSymbol.ReturnType),
+                IParameterSymbol parameterSymbol => GetResolvedType(parameterSymbol.Type),
+                IPropertySymbol propertySymbol => GetResolvedType(propertySymbol.Type),
+                _ => ResolveMemberAccessType(expression, cancellationToken),
+            };
+        }
+
+        private static ITypeSymbol? GetResolvedType(ITypeSymbol? type)
+        {
+            return type is null or IErrorTypeSymbol ? null : type;
+        }
+
+        private ITypeSymbol? ResolveMemberAccessType(
+            ExpressionSyntax expression,
+            CancellationToken cancellationToken
+        )
+        {
+            if (expression is not MemberAccessExpressionSyntax memberAccess)
+            {
+                return null;
+            }
+
+            var memberSymbol = _semanticModel.GetSymbolInfo(memberAccess.Name, cancellationToken).Symbol;
+            var memberType = GetMemberType(memberSymbol);
+            if (memberType is not null)
+            {
+                return memberType;
+            }
+
+            var receiverType = GetExpressionType(memberAccess.Expression, cancellationToken);
+            if (receiverType is null)
+            {
+                return null;
+            }
+
+            var memberName = memberAccess.Name.Identifier.ValueText;
+            return receiverType.GetMembers(memberName).Select(GetMemberType).FirstOrDefault(type =>
+                type is not null
+            );
+        }
+
+        private static ITypeSymbol? GetMemberType(ISymbol? symbol)
+        {
+            return symbol switch
+            {
+                IEventSymbol eventSymbol => GetResolvedType(eventSymbol.Type),
+                IFieldSymbol fieldSymbol => GetResolvedType(fieldSymbol.Type),
+                IMethodSymbol methodSymbol when methodSymbol.Parameters.Length == 0 => GetResolvedType(
+                    methodSymbol.ReturnType
+                ),
+                IPropertySymbol propertySymbol => GetResolvedType(propertySymbol.Type),
+                _ => null,
+            };
         }
 
         /// <summary>
