@@ -13,10 +13,7 @@ public class Worker(IDbContextFactory<SampleDbContext> dbContextFactory, ILogger
             using var dbContext = await dbContextFactory.CreateDbContextAsync(stoppingToken);
 
             // create database
-            logger.LogInformation("Worker starting ...");
-            await dbContext.Database.EnsureDeletedAsync(stoppingToken);
-            await dbContext.Database.EnsureCreatedAsync(stoppingToken);
-            logger.LogInformation("Database ensured created.");
+            await DatabaseSetup(dbContext, stoppingToken);
 
             // get sample data
             var sample = await dbContext
@@ -54,5 +51,13 @@ public class Worker(IDbContextFactory<SampleDbContext> dbContextFactory, ILogger
             // exit
             Environment.Exit(0);
         }
+    }
+
+    private async Task DatabaseSetup(SampleDbContext dbContext, CancellationToken stoppingToken)
+    {
+        logger.LogInformation("Worker starting ...");
+        await dbContext.Database.EnsureDeletedAsync(stoppingToken);
+        await dbContext.Database.EnsureCreatedAsync(stoppingToken);
+        logger.LogInformation("Database ensured created.");
     }
 }

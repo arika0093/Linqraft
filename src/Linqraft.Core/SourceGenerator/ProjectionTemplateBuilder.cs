@@ -368,6 +368,8 @@ internal static partial class ProjectionTemplateBuilder
             captureEntries,
             cancellationToken,
             generatorOptions,
+            GetLambdaParameterName(selectorLambda),
+            sourceType,
             GetProjectionHelperParameterName(selectorLambda),
             GetProjectionHelperParameterTypeName(selectorLambda, semanticModel, cancellationToken)
         );
@@ -928,6 +930,8 @@ internal static partial class ProjectionTemplateBuilder
             captureEntries,
             cancellationToken,
             generatorOptions,
+            selectorParameterName: null,
+            selectorParameterType: null,
             projectionHelperParameterName: null,
             projectionHelperParameterTypeName: null
         );

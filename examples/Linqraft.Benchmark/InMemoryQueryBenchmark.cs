@@ -141,7 +141,8 @@ public partial class InMemoryQueryBenchmark
     {
         var results = _data
             .AsQueryable()
-            .SelectExpr(s => new
+            .UseLinqraft()
+            .Select(s => new
             {
                 s.Id,
                 s.Foo,
@@ -173,20 +174,19 @@ public partial class InMemoryQueryBenchmark
     {
         var results = _data
             .AsQueryable()
-            .SelectExpr<SampleClass, InMemoryLinqraftSampleClassDto>(s => new
+            .UseLinqraft()
+            .Select<InMemoryLinqraftSampleClassDto>(s => new
             {
                 s.Id,
                 s.Foo,
                 s.Bar,
-                Childs = s.Childs.SelectExpr<SampleChildClass, InMemoryLinqraftSampleChildClassDto>(
-                    c => new
-                    {
-                        c.Id,
-                        c.Baz,
-                        ChildId = c.Child?.Id,
-                        ChildQux = c.Child?.Qux,
-                    }
-                ),
+                Childs = s.Childs.Select(c => new
+                {
+                    c.Id,
+                    c.Baz,
+                    ChildId = c.Child?.Id,
+                    ChildQux = c.Child?.Qux,
+                }),
                 Child2Id = s.Child2?.Id,
                 Child2Quux = s.Child2?.Quux,
                 Child3Id = s.Child3.Id,
@@ -207,7 +207,8 @@ public partial class InMemoryQueryBenchmark
     {
         var results = _data
             .AsQueryable()
-            .SelectExpr(s => new ManualSampleClassDto
+            .UseLinqraft()
+            .Select(s => new ManualSampleClassDto
             {
                 Id = s.Id,
                 Foo = s.Foo,

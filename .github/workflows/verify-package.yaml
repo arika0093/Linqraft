@@ -64,11 +64,9 @@ jobs:
         working-directory: ./verification-test/PackageVerification
         run: dotnet add package Linqraft --version ${{ steps.get-version.outputs.version }} --source "$(pwd)/../../local-packages"
         
-      - name: Build verification project
-        working-directory: ./verification-test/PackageVerification
-        run: dotnet build
-
-      - name: Run and verify output
+      - name: Build and Run verification test project
         shell: bash
         working-directory: ./verification-test/PackageVerification
-        run: dotnet run --no-build
+        run: |
+          dotnet build
+          dotnet run --no-build

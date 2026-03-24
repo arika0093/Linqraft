@@ -126,7 +126,7 @@ public partial class InMemoryQueryAotBenchmark
     }
 
     // ============================================================
-    // Pattern 3: Linqraft SelectExpr with Anonymous Type
+    // Pattern 3: Linqraft UseLinqraft().Select with Anonymous Type
     // (Using Linqraft - Anonymous Type)
     // ============================================================
     [Benchmark(Description = "Linqraft Anonymous")]
@@ -134,7 +134,8 @@ public partial class InMemoryQueryAotBenchmark
     {
         var results = _data
             .AsQueryable()
-            .SelectExpr(s => new
+            .UseLinqraft()
+            .Select(s => new
             {
                 s.Id,
                 s.Foo,
@@ -158,7 +159,7 @@ public partial class InMemoryQueryAotBenchmark
     }
 
     // ============================================================
-    // Pattern 4: Linqraft SelectExpr with Auto-Generated DTO
+    // Pattern 4: Linqraft UseLinqraft().Select with Auto-Generated DTO
     // (Using Linqraft - Auto-Generated DTO)
     // ============================================================
     [Benchmark(Baseline = true, Description = "Linqraft Auto-Generated DTO")]
@@ -166,7 +167,8 @@ public partial class InMemoryQueryAotBenchmark
     {
         var results = _data
             .AsQueryable()
-            .SelectExpr<SampleClass, InMemoryQueryAotLinqraftSampleClassDto>(s => new
+            .UseLinqraft()
+            .Select<InMemoryQueryAotLinqraftSampleClassDto>(s => new
             {
                 s.Id,
                 s.Foo,
@@ -190,7 +192,7 @@ public partial class InMemoryQueryAotBenchmark
     }
 
     // ============================================================
-    // Pattern 5: Linqraft SelectExpr with Manual DTO
+    // Pattern 5: Linqraft UseLinqraft().Select with Manual DTO
     // (Using Linqraft - Manual DTO definition)
     // ============================================================
     [Benchmark(Description = "Linqraft Manual DTO")]
@@ -198,7 +200,8 @@ public partial class InMemoryQueryAotBenchmark
     {
         var results = _data
             .AsQueryable()
-            .SelectExpr(s => new ManualSampleClassDto
+            .UseLinqraft()
+            .Select(s => new ManualSampleClassDto
             {
                 Id = s.Id,
                 Foo = s.Foo,
