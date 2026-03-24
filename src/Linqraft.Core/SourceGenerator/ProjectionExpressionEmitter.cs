@@ -442,7 +442,13 @@ internal sealed partial class ProjectionExpressionEmitter
             return projectable;
         }
 
-        if (TryEmitUseLinqraftProjectionInvocation(expression, out var fluentProjection, cancellationToken))
+        if (
+            TryEmitUseLinqraftProjectionInvocation(
+                expression,
+                out var fluentProjection,
+                cancellationToken
+            )
+        )
         {
             return fluentProjection;
         }
@@ -1215,7 +1221,8 @@ internal sealed partial class ProjectionExpressionEmitter
                 cancellationToken
             ),
             "GroupBy" => EmitGroupByExprInvocation(receiver, invocation, cancellationToken),
-            _ => $"{receiver}.{methodName}{EmitArgumentList(invocation.ArgumentList, cancellationToken)}",
+            _ =>
+                $"{receiver}.{methodName}{EmitArgumentList(invocation.ArgumentList, cancellationToken)}",
         };
         return true;
     }
@@ -1230,13 +1237,15 @@ internal sealed partial class ProjectionExpressionEmitter
     {
         cancellationToken = ResolveCancellationToken(cancellationToken);
         if (
-            invocation.Expression is not MemberAccessExpressionSyntax { Name.Identifier.ValueText: "UseLinqraft" }
+            invocation.Expression
+            is not MemberAccessExpressionSyntax { Name.Identifier.ValueText: "UseLinqraft" }
         )
         {
             return false;
         }
 
-        var methodSymbol = _semanticModel.GetSymbolInfo(invocation, cancellationToken).Symbol as IMethodSymbol;
+        var methodSymbol =
+            _semanticModel.GetSymbolInfo(invocation, cancellationToken).Symbol as IMethodSymbol;
         if (methodSymbol is null)
         {
             return false;
@@ -1247,8 +1256,7 @@ internal sealed partial class ProjectionExpressionEmitter
                 targetMethod.ContainingType.ToDisplayString(),
                 $"{_generatorOptions.SupportNamespace}.LinqraftQueryExtensions",
                 StringComparison.Ordinal
-            )
-            && string.Equals(targetMethod.Name, "UseLinqraft", StringComparison.Ordinal);
+            ) && string.Equals(targetMethod.Name, "UseLinqraft", StringComparison.Ordinal);
     }
 
     /// <summary>

@@ -185,7 +185,8 @@ internal static partial class ProjectionTemplateBuilder
         }
 
         var returnType = semanticModel.GetTypeInfo(selectExpr, cancellationToken).ConvertedType;
-        return returnType is INamedTypeSymbol namedReturnType
+        return
+            returnType is INamedTypeSymbol namedReturnType
             && namedReturnType.TypeArguments.LastOrDefault() is ITypeSymbol mappedResultType
             ? mappedResultType.Name
             : "Dto";
