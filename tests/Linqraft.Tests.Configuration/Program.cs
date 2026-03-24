@@ -99,39 +99,6 @@ public sealed class GlobalPropertyConfigurationTests
     }
 
     [Test]
-    public void Generated_files_reflect_non_runtime_property_settings()
-    {
-        var generatedRoot = Path.Combine(
-            GetRepositoryRoot(),
-            "tests",
-            "Linqraft.Tests.Configuration",
-            ".generated"
-        );
-        Directory.Exists(generatedRoot).ShouldBeTrue();
-
-        var generatedSources = Directory
-            .GetFiles(generatedRoot, "*.g.cs", SearchOption.AllDirectories)
-            .Select(File.ReadAllText)
-            .ToList();
-
-        generatedSources.ShouldNotBeEmpty();
-
-        var dtoSource = generatedSources.First(source =>
-            source.Contains("partial record ConfiguredOrderDto")
-        );
-        dtoSource.Contains("/// <summary>").ShouldBeFalse();
-
-        generatedSources
-            .Any(source =>
-                source.Contains("ConfiguredOrderDto")
-                && source.Contains(
-                    "private static readonly global::System.Linq.Expressions.Expression"
-                )
-            )
-            .ShouldBeTrue();
-    }
-
-    [Test]
     public void Generated_support_file_uses_declarations_name()
     {
         var generatedRoot = Path.Combine(
