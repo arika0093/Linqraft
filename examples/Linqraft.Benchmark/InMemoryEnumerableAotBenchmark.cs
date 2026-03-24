@@ -223,6 +223,19 @@ public partial class InMemoryEnumerableAotBenchmark
     }
 
     // ============================================================
+    // Pattern 6: Linqraft MappingDeclare
+    // (Using Linqraft's MappingDeclare for reusable mapping definitions)
+    // ============================================================
+    // [Benchmark(Description = "Linqraft MappingDeclare")]
+    // public int Linqraft_MappingDeclare()
+    // {
+    //     var results = _data
+    //         .ProjectToLinqraftDeclareSampleClassDto()
+    //         .ToList();
+    //     return results.Count;
+    // }
+
+    // ============================================================
     // Pattern 7: Mapperly with Map
     // (Using Mapperly's source-generated mapping)
     // ============================================================

@@ -225,6 +225,17 @@ public partial class InMemoryQueryAotBenchmark
     }
 
     // ============================================================
+    // Pattern 6: Linqraft MappingDeclare
+    // (Using Linqraft's MappingDeclare for reusable mapping definitions)
+    // ============================================================
+    [Benchmark(Description = "Linqraft MappingDeclare")]
+    public int Linqraft_MappingDeclare()
+    {
+        var results = _data.AsQueryable().ProjectToLinqraftDeclareSampleClassDto().ToList();
+        return results.Count;
+    }
+
+    // ============================================================
     // Pattern 7: Mapperly with IQueryable Projection
     // (Using Mapperly's source-generated projection)
     // ============================================================

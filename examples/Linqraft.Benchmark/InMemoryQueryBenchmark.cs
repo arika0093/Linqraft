@@ -232,7 +232,18 @@ public partial class InMemoryQueryBenchmark
     }
 
     // ============================================================
-    // Pattern 6: AutoMapper with ProjectTo
+    // Pattern 6: Linqraft MappingDeclare
+    // (Using Linqraft's MappingDeclare for reusable mapping definitions)
+    // ============================================================
+    [Benchmark(Description = "Linqraft MappingDeclare")]
+    public int Linqraft_MappingDeclare()
+    {
+        var results = _data.AsQueryable().ProjectToLinqraftDeclareSampleClassDto().ToList();
+        return results.Count;
+    }
+
+    // ============================================================
+    // Pattern 7: AutoMapper with ProjectTo
     // (Using AutoMapper's IQueryable projection)
     // ============================================================
     [Benchmark(Description = "AutoMapper ProjectTo")]
@@ -246,7 +257,7 @@ public partial class InMemoryQueryBenchmark
     }
 
     // ============================================================
-    // Pattern 7: Mapperly with IQueryable Projection
+    // Pattern 8: Mapperly with IQueryable Projection
     // (Using Mapperly's source-generated projection)
     // ============================================================
     [Benchmark(Description = "Mapperly Projection")]
@@ -257,7 +268,7 @@ public partial class InMemoryQueryBenchmark
     }
 
     // ============================================================
-    // Pattern 8: Mapster with ProjectToType
+    // Pattern 9: Mapster with ProjectToType
     // (Using Mapster's IQueryable projection)
     // ============================================================
     [Benchmark(Description = "Mapster ProjectToType")]

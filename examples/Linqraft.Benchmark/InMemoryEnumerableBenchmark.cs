@@ -226,7 +226,20 @@ public partial class InMemoryEnumerableBenchmark
     }
 
     // ============================================================
-    // Pattern 6: AutoMapper with Map
+    // Pattern 6: Linqraft MappingDeclare
+    // (Using Linqraft's MappingDeclare for reusable mapping definitions)
+    // ============================================================
+    // [Benchmark(Description = "Linqraft MappingDeclare")]
+    // public int Linqraft_MappingDeclare()
+    // {
+    //     var results = _data
+    //         .ProjectToLinqraftDeclareSampleClassDto()
+    //         .ToList();
+    //     return results.Count;
+    // }
+
+    // ============================================================
+    // Pattern 7: AutoMapper with Map
     // (Using AutoMapper's in-memory mapping)
     // ============================================================
     [Benchmark(Description = "AutoMapper Map")]
@@ -237,7 +250,7 @@ public partial class InMemoryEnumerableBenchmark
     }
 
     // ============================================================
-    // Pattern 7: Mapperly with Map
+    // Pattern 8: Mapperly with Map
     // (Using Mapperly's source-generated mapping)
     // ============================================================
     [Benchmark(Description = "Mapperly Map")]
@@ -248,7 +261,7 @@ public partial class InMemoryEnumerableBenchmark
     }
 
     // ============================================================
-    // Pattern 8: Mapster with Adapt
+    // Pattern 9: Mapster with Adapt
     // (Using Mapster's in-memory mapping)
     // ============================================================
     [Benchmark(Description = "Mapster Adapt")]
