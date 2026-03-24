@@ -236,15 +236,10 @@ Use [PolySharp](https://github.com/Sergio0694/PolySharp/) or [Polyfill](https://
 
 </details>
 
-## Usage Documentation
-### Usage Patterns
-
+## Basic Usage
 Linqraft supports anonymous projections, auto-generated DTOs, pre-existing DTOs, grouped and flattened projections, and runtime DTO generation through `LinqraftKit.Generate`. 
 
-<details>
-<summary>Show usage pattern details</summary>
-
-#### Syntax variations
+### Syntax variations
 
 Linqraft supports the following two syntax variations:
 
@@ -271,22 +266,22 @@ var result2 = query
 
 The two variations have their own advantages:
 
-* `UseLinqraft().Select<TDto>(...)` (available ver 0.10 and later)
+* `UseLinqraft().Select<TDto>(...)`
   * Makes it clear that Linqraft is being used.
   * Does not require specifying `TSource`, only the DTO type parameter you need.
-* `SelectExpr<TSource, TDto>(...)` (legacy style)
+* `SelectExpr<TSource, TDto>(...)`
   * More concise.
+  * Slightly more performant since it doesn't generate the extra `LinqraftQuery<TSource>` object.
 
 You can use either style, but the documentation will use the `UseLinqraft().Select<TDto>(...)` style for explanations.
 
-#### Explicit DTO Pattern
+### Explicit DTO Pattern
 
 Use `UseLinqraft().Select<TDto>(...)` when you want Linqraft to generate a named DTO from the selector body.
 
 ```csharp
 var orders = await dbContext.Orders
-    .UseLinqraft()
-    .Select<OrderDto>(o => new
+    .UseLinqraft().Select<OrderDto>(o => new
     {
         o.Id,
         CustomerName = o.Customer?.Name,
@@ -325,8 +320,7 @@ The same pattern also works for in-memory `IEnumerable<T>` pipelines:
 
 ```csharp
 var orders = myList
-    .UseLinqraft()
-    .Select<OrderDto>(o => new
+    .UseLinqraft().Select<OrderDto>(o => new
     {
         o.Id,
         CustomerName = o.Customer?.Name,
@@ -334,14 +328,13 @@ var orders = myList
     .ToList();
 ```
 
-#### Anonymous Pattern
+### Anonymous Pattern
 
 Use `UseLinqraft().Select(...)` without generic type parameters when you only need a one-off result shape.
 
 ```csharp
 var orders = await dbContext.Orders
-    .UseLinqraft()
-    .Select(o => new
+    .UseLinqraft().Select(o => new
     {
         o.Id,
         CustomerName = o.Customer?.Name,
@@ -350,9 +343,12 @@ var orders = await dbContext.Orders
     .ToListAsync();
 ```
 
-This is ideal for quick exploration, ad-hoc queries, and prototypes. The trade-off is that anonymous types cannot be reused as public contracts or method return types.
+This is ideal for quick exploration, ad-hoc queries, and prototypes.
 
-#### Pre-existing DTO Pattern
+> [!NOTE]
+> This is mostly the same as a normal `Select(new => { ... })`, but with support for features like the null-propagation operator.
+
+### Pre-existing DTO Pattern
 
 Use `UseLinqraft().Select(...)` with your own DTO class when the type already exists or must carry custom attributes and interfaces.
 
@@ -381,9 +377,14 @@ var orders = await dbContext.Orders
 
 This keeps Linqraft's null-propagation support while leaving the DTO definition fully under your control.
 
-#### Aggregation and Flattening Helpers
+### Aggregation and Flattening Helpers
 
-Use `UseLinqraft().GroupBy<TKey, TResult>(...)` when the final result is a projection over an `IGrouping<TKey, TSource>`:
+In addition to `Select`, the following two projection patterns are also available (same as normal LINQ):
+
+* `SelectMany`: flattening projections over nested collections
+* `GroupBy`: projections over groupings
+
+Use `GroupBy<TKey, TResult>(...)` when the final result is a projection over an `IGrouping<TKey, TSource>`:
 
 ```csharp
 var result = dbContext.HealthChecks
@@ -403,7 +404,7 @@ var result = dbContext.HealthChecks
     .ToListAsync();
 ```
 
-Use `UseLinqraft().SelectMany<TResult>(...)` when you want the final result to be flattened:
+Use `SelectMany<TResult>(...)` when you want the final result to be flattened:
 
 ```csharp
 var rows = dbContext.Orders
@@ -418,7 +419,7 @@ var rows = dbContext.Orders
     .ToListAsync();
 ```
 
-#### LinqraftKit.Generate
+### LinqraftKit.Generate
 
 Use `LinqraftKit.Generate<TDto>(...)` when you want Linqraft to generate a DTO from a runtime object instead of from an `IEnumerable` or `IQueryable` projection.
 
@@ -435,7 +436,7 @@ var dto = LinqraftKit.Generate<OrderBundleDto>(
 
 This works well for combining runtime values, nested anonymous objects, arrays, lists, and values produced by other Linqraft projections.
 
-When the initializer depends on local values, prefer the delegate-based `capture:` overload:
+When the initializer depends on local values, use `capture:` overload. For more details about local variable capture, see the [Local Variable Capture](#local-variable-capture) section below.
 
 ```csharp
 var id = 42;
@@ -451,10 +452,8 @@ var dto = LinqraftKit.Generate<OrderLabelDto>(
 );
 ```
 
-The delegate form is NativeAOT-safe and is the recommended capture style for new code.
 
-</details>
-
+## Usage Documentation
 ### Local Variable Capture
 
 Linqraft selectors are rewritten into generated methods, so local variables must be passed explicitly through `capture:` rather than through normal C# closure fields.
@@ -871,6 +870,11 @@ If you omit `T`, Linqraft uses the destination member name to derive the generat
 
 </details>
 
+### Analyzers
+
+Linqraft ships analyzers and code fixes that can migrate ordinary `Select` calls to `UseLinqraft().Select(...)`, add missing captures, simplify null checks, and highlight projection-specific issues.
+
+See [Analyzers](./docs/analyzers/README.md) for the full rule list and code-fix catalog.
 
 ## Advanced Features
 ### Nested Explicit DTO Reuse
@@ -963,12 +967,6 @@ Use `LinqraftCommentOutput` to control how much of the original comments are cop
 ```
 
 </details>
-
-### Analyzers
-
-Linqraft ships analyzers and code fixes that can migrate ordinary `Select` calls to `UseLinqraft().Select(...)`, add missing captures, simplify null checks, and highlight projection-specific issues.
-
-See [Analyzers](./docs/analyzers/README.md) for the full rule list and code-fix catalog.
 
 ## Performance
 
