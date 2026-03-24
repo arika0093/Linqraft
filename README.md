@@ -120,7 +120,7 @@ var order = await dbContext.Orders
 
 </details>
 
-### Projection Helpers
+### Projection Helpers for simplify
 
 Linqraft also supports explicit projection helpers for cases where you want the generator to rewrite part of a selector body:
 
