@@ -1068,7 +1068,7 @@ internal static partial class ProjectionTemplateBuilder
             }
 
             var typeInfo = _semanticModel.GetTypeInfo(expression, cancellationToken);
-            var type = GetResolvedType(typeInfo.Type ?? typeInfo.ConvertedType);
+            var type = GetResolvedType(typeInfo.Type) ?? GetResolvedType(typeInfo.ConvertedType);
             if (type is not null)
             {
                 return type;
@@ -1124,9 +1124,16 @@ internal static partial class ProjectionTemplateBuilder
             }
 
             var memberName = memberAccess.Name.Identifier.ValueText;
-            return receiverType.GetMembers(memberName).Select(GetMemberType).FirstOrDefault(type =>
-                type is not null
-            );
+            foreach (var candidate in receiverType.GetMembers(memberName))
+            {
+                var candidateType = GetMemberType(candidate);
+                if (candidateType is not null)
+                {
+                    return candidateType;
+                }
+            }
+
+            return null;
         }
 
         private static ITypeSymbol? GetMemberType(ISymbol? symbol)

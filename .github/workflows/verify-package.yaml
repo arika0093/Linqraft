@@ -80,6 +80,8 @@ jobs:
           cat > ./verification-test/Issue324Repro/repro.cs <<EOF
           #:package Linqraft@${{ steps.get-version.outputs.version }}
           #:property PublishAot=false
+          # AOT is disabled here because this check is only validating the packaged source generator output
+          # for the top-level runfile scenario; NativeAOT is unrelated noise for this regression case.
           using System;
           using System.Linq;
           
