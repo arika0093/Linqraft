@@ -442,6 +442,11 @@ internal sealed partial class ProjectionExpressionEmitter
             return projectable;
         }
 
+        if (TryEmitUseLinqraftProjectionInvocation(expression, out var fluentProjection, cancellationToken))
+        {
+            return fluentProjection;
+        }
+
         return expression.Expression switch
         {
             MemberAccessExpressionSyntax memberAccess => memberAccess
@@ -1113,6 +1118,18 @@ internal sealed partial class ProjectionExpressionEmitter
             return projectable;
         }
 
+        if (
+            TryEmitUseLinqraftProjectionInvocation(
+                invocation,
+                receiver,
+                out var fluentProjection,
+                cancellationToken
+            )
+        )
+        {
+            return fluentProjection;
+        }
+
         return methodName.Identifier.ValueText switch
         {
             var name when name == _generatorOptions.SelectExprMethodName =>
@@ -1131,6 +1148,107 @@ internal sealed partial class ProjectionExpressionEmitter
                 ? rewritten
                 : $"{receiver}.{EmitSimpleName(methodName)}{EmitArgumentList(invocation.ArgumentList, cancellationToken)}",
         };
+    }
+
+    /// <summary>
+    /// Attempts to emit a nested UseLinqraft projection invocation as a plain LINQ call.
+    /// </summary>
+    private bool TryEmitUseLinqraftProjectionInvocation(
+        InvocationExpressionSyntax invocation,
+        out string rewritten,
+        CancellationToken cancellationToken = default
+    )
+    {
+        rewritten = string.Empty;
+        if (
+            invocation.Expression
+                is not MemberAccessExpressionSyntax
+                {
+                    Expression: InvocationExpressionSyntax receiverInvocation
+                }
+            || !IsUseLinqraftInvocation(receiverInvocation, cancellationToken)
+            || receiverInvocation.Expression is not MemberAccessExpressionSyntax receiverAccess
+        )
+        {
+            return false;
+        }
+
+        return TryEmitUseLinqraftProjectionInvocation(
+            invocation,
+            Emit(receiverAccess.Expression, cancellationToken),
+            out rewritten,
+            cancellationToken
+        );
+    }
+
+    /// <summary>
+    /// Attempts to emit a nested UseLinqraft projection invocation as a plain LINQ call.
+    /// </summary>
+    private bool TryEmitUseLinqraftProjectionInvocation(
+        InvocationExpressionSyntax invocation,
+        string receiver,
+        out string rewritten,
+        CancellationToken cancellationToken = default
+    )
+    {
+        rewritten = string.Empty;
+        if (
+            invocation.Expression
+                is not MemberAccessExpressionSyntax
+                {
+                    Expression: InvocationExpressionSyntax receiverInvocation,
+                    Name.Identifier.ValueText: var methodName
+                }
+            || !IsUseLinqraftInvocation(receiverInvocation, cancellationToken)
+        )
+        {
+            return false;
+        }
+
+        rewritten = methodName switch
+        {
+            "Select" => EmitProjectionInvocation(receiver, invocation, "Select", cancellationToken),
+            "SelectMany" => EmitProjectionInvocation(
+                receiver,
+                invocation,
+                "SelectMany",
+                cancellationToken
+            ),
+            "GroupBy" => EmitGroupByExprInvocation(receiver, invocation, cancellationToken),
+            _ => $"{receiver}.{methodName}{EmitArgumentList(invocation.ArgumentList, cancellationToken)}",
+        };
+        return true;
+    }
+
+    /// <summary>
+    /// Determines whether the invocation is a UseLinqraft support call.
+    /// </summary>
+    private bool IsUseLinqraftInvocation(
+        InvocationExpressionSyntax invocation,
+        CancellationToken cancellationToken = default
+    )
+    {
+        cancellationToken = ResolveCancellationToken(cancellationToken);
+        if (
+            invocation.Expression is not MemberAccessExpressionSyntax { Name.Identifier.ValueText: "UseLinqraft" }
+        )
+        {
+            return false;
+        }
+
+        var methodSymbol = _semanticModel.GetSymbolInfo(invocation, cancellationToken).Symbol as IMethodSymbol;
+        if (methodSymbol is null)
+        {
+            return false;
+        }
+
+        var targetMethod = methodSymbol.ReducedFrom ?? methodSymbol;
+        return string.Equals(
+                targetMethod.ContainingType.ToDisplayString(),
+                $"{_generatorOptions.SupportNamespace}.LinqraftQueryExtensions",
+                StringComparison.Ordinal
+            )
+            && string.Equals(targetMethod.Name, "UseLinqraft", StringComparison.Ordinal);
     }
 
     /// <summary>

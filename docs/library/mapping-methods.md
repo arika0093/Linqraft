@@ -50,8 +50,8 @@ namespace YourNamespace
 {
     internal static partial class OrderMappingDeclare_A1B2C3D4
     {
-        // Default method name: ProjectTo{EntityName}
-        internal static IQueryable<OrderDto> ProjectToOrder(
+        // Default method name: ProjectTo{DtoTypeName}
+        internal static IQueryable<OrderDto> ProjectToOrderDto(
             this IQueryable<Order> source)
         {
             return source.Select(o => new OrderDto
@@ -73,7 +73,7 @@ You can then call the generated method from anywhere:
 
 ```csharp
 var orders = await dbContext.Orders
-    .ProjectToOrder()
+    .ProjectToOrderDto()
     .ToListAsync();
 ```
 

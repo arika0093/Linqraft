@@ -153,24 +153,10 @@ internal static partial class SourceWriters
             builder.AppendLine("{", cancellationToken);
             using (builder.Indent())
             {
-                var expressionFieldName = $"s_expression_{request.MethodName}";
                 var lambda = ProjectionBodyEmitter.AppendValueInline(
                     $"{request.SelectorParameterName} => ",
                     request.ProjectionBodyText
                 );
-                if (
-                    request.CanUsePrebuiltExpression
-                    && request.OperationKind == ProjectionOperationKind.Select
-                    && request.ReceiverKind == ReceiverKind.IQueryable
-                )
-                {
-                    AppendMultilineLine(
-                        builder,
-                        $"private static readonly global::System.Linq.Expressions.Expression<global::System.Func<{request.SourceTypeName}, {request.ResultTypeName}>> {expressionFieldName} = {lambda};",
-                        cancellationToken
-                    );
-                    builder.AppendLine();
-                }
 
                 var receiverType = GetReceiverTypeName(
                     request.ReceiverKind,
@@ -256,12 +242,6 @@ internal static partial class SourceWriters
                         );
                     }
 
-                    var selectArgument =
-                        request.CanUsePrebuiltExpression
-                        && request.OperationKind == ProjectionOperationKind.Select
-                        && request.ReceiverKind == ReceiverKind.IQueryable
-                            ? expressionFieldName
-                            : lambda;
                     var querySource = request.UsesFluentQuerySyntax
                         ? $"(({matchedQueryType})(object)query.GetSource())"
                         : $"(({matchedQueryType})(object)query)";
@@ -275,7 +255,7 @@ internal static partial class SourceWriters
                     }
                     var convertedInvocation = request.OperationKind switch
                     {
-                        ProjectionOperationKind.Select => $"{querySource}.Select({selectArgument})",
+                        ProjectionOperationKind.Select => $"{querySource}.Select({lambda})",
                         ProjectionOperationKind.SelectMany => $"{querySource}.SelectMany({lambda})",
                         ProjectionOperationKind.GroupBy =>
                             $"{querySource}.GroupBy({ProjectionBodyEmitter.AppendValueInline($"{request.KeySelectorParameterName} => ", request.KeySelectorBodyText ?? "default!")}).Select({lambda})",
@@ -421,17 +401,6 @@ internal static partial class SourceWriters
                 $"{request.SelectorParameterName} => ",
                 request.ProjectionBodyText
             );
-            var expressionFieldName = $"s_expression_{request.MethodName}";
-            if (request.CanUsePrebuiltExpression && request.ReceiverKind == ReceiverKind.IQueryable)
-            {
-                AppendMultilineLine(
-                    builder,
-                    $"private static readonly global::System.Linq.Expressions.Expression<global::System.Func<{request.SourceTypeName}, {request.ResultTypeName}>> {expressionFieldName} = {lambda};",
-                    cancellationToken
-                );
-                builder.AppendLine();
-            }
-
             builder.AppendLine(
                 $"{request.MethodAccessibilityKeyword} static {receiverType}<{request.ResultTypeName}> {request.MethodName}(this {receiverType}<{request.SourceTypeName}> source{string.Concat(request.Captures.Select(capture => $", {capture.TypeName} {capture.PropertyName}"))})",
                 cancellationToken
@@ -452,30 +421,14 @@ internal static partial class SourceWriters
                     );
                 }
 
-                if (
-                    request.CanUsePrebuiltExpression
-                    && request.ReceiverKind == ReceiverKind.IQueryable
-                )
-                {
-                    var querySource = request.InnerJoinFilterBodyText is { } innerJoinFilterBodyText
-                        ? $"source.Where({ProjectionBodyEmitter.AppendValueInline($"{request.SelectorParameterName} => ", innerJoinFilterBodyText)})"
-                        : "source";
-                    builder.AppendLine(
-                        $"return {querySource}.Select({expressionFieldName});",
-                        cancellationToken
-                    );
-                }
-                else
-                {
-                    var querySource = request.InnerJoinFilterBodyText is { } innerJoinFilterBodyText
-                        ? $"source.Where({ProjectionBodyEmitter.AppendValueInline($"{request.SelectorParameterName} => ", innerJoinFilterBodyText)})"
-                        : "source";
-                    AppendMultilineLine(
-                        builder,
-                        $"return {querySource}.Select({lambda});",
-                        cancellationToken
-                    );
-                }
+                var querySource = request.InnerJoinFilterBodyText is { } innerJoinFilterBodyText
+                    ? $"source.Where({ProjectionBodyEmitter.AppendValueInline($"{request.SelectorParameterName} => ", innerJoinFilterBodyText)})"
+                    : "source";
+                AppendMultilineLine(
+                    builder,
+                    $"return {querySource}.Select({lambda});",
+                    cancellationToken
+                );
             }
 
             builder.AppendLine("}", cancellationToken);

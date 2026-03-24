@@ -680,7 +680,7 @@ internal sealed class OrderMappingDeclare : LinqraftMappingDeclare<Order>
 }
 ```
 
-By default, Linqraft generates a method named `ProjectTo{EntityName}`, so the declaration above produces a projection you can call as `dbContext.Orders.ProjectToOrder()`.
+By default, Linqraft generates a method named `ProjectTo{DtoTypeName}`, so the declaration above produces a projection you can call as `dbContext.Orders.ProjectToOrderDto()`.
 
 #### Custom method names, capture parameters, and visibility
 
@@ -906,7 +906,7 @@ internal partial class OrderItemDto;
 
 ### Global Properties
 
-Linqraft exposes a small set of MSBuild properties that control namespace selection, DTO shape, comments, nullability behavior, nested DTO naming, expression caching, and generated imports.
+Linqraft exposes a small set of MSBuild properties that control namespace selection, DTO shape, comments, nullability behavior, nested DTO naming, and generated imports.
 
 <details>
 <summary>Show global property details</summary>
@@ -922,7 +922,6 @@ Linqraft exposes a small set of MSBuild properties that control namespace select
 | `LinqraftCommentOutput` | `All` | Emit copied comments as full summary+remarks, summary-only, or none |
 | `LinqraftArrayNullabilityRemoval` | `true` | Remove nullability from eligible collection properties |
 | `LinqraftNestedDtoUseHashNamespace` | `true` | Choose hash namespace vs. hash class names for nested DTOs |
-| `LinqraftUsePrebuildExpression` | `false` | Prebuild and cache expression trees for eligible `IQueryable` projections |
 | `LinqraftGlobalUsing` | `true` | Emit `global using Linqraft;` for compatibility with earlier versions |
 
 A typical `.csproj` section looks like this:
@@ -937,7 +936,6 @@ A typical `.csproj` section looks like this:
     <LinqraftCommentOutput>All</LinqraftCommentOutput>
     <LinqraftArrayNullabilityRemoval>true</LinqraftArrayNullabilityRemoval>
     <LinqraftNestedDtoUseHashNamespace>true</LinqraftNestedDtoUseHashNamespace>
-    <LinqraftUsePrebuildExpression>false</LinqraftUsePrebuildExpression>
     <LinqraftGlobalUsing>true</LinqraftGlobalUsing>
   </PropertyGroup>
 </Project>

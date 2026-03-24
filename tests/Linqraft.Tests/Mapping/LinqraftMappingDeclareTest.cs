@@ -102,7 +102,7 @@ public class LinqraftMappingDeclareTest
         }.AsTestQueryable();
 
         // Act - the generated extension method should be available
-        var result = data.ProjectToMappingDeclareSourceClass().ToList();
+        var result = data.ProjectToMappingDeclareBasicDto().ToList();
 
         // Assert
         result.Count.ShouldBe(2);
@@ -203,7 +203,7 @@ public class LinqraftMappingDeclareTest
         }.AsTestQueryable();
 
         // Act - the generated method should be available
-        var result = data.ProjectToMappingDeclareParentClass().ToList();
+        var result = data.ProjectToMappingDeclareParentDto().ToList();
 
         // Assert
         result.Count.ShouldBe(2);

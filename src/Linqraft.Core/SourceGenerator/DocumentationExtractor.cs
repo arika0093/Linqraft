@@ -265,21 +265,7 @@ internal static class DocumentationExtractor
     /// </summary>
     private static string BuildRemarks(ISymbol symbol)
     {
-        var parts = new List<string> { $"From: <c>{BuildSymbolPath(symbol)}</c>" };
-        var attributes = symbol
-            .GetAttributes()
-            .Select(attribute => attribute.AttributeClass?.Name)
-            .Where(name => !string.IsNullOrWhiteSpace(name))
-            .Distinct()
-            .ToList();
-
-        if (attributes.Count != 0)
-        {
-            parts.Add($"Attributes: <c>[{string.Join("], [", attributes)}]</c>");
-        }
-
-        // The public docs do not define the exact remarks wording for every supported comment source.
-        return string.Join("\n", parts);
+        return $"From: <c>{BuildSymbolPath(symbol)}</c>";
     }
 
     /// <summary>
