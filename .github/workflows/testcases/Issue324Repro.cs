@@ -2,7 +2,8 @@
 #:property PublishAot=false
 // AOT is disabled here because this check only validates the packaged source generator output
 // for the top-level runfile scenario behind #324/#329.
-// The repro intentionally mirrors the issue report's POCO setup, so CS8618 noise is suppressed.
+// The repro intentionally mirrors the issue report's partially initialized POCO setup, so
+// remaining CS8618 noise is suppressed instead of normalizing every property initializer away.
 #pragma warning disable CS8618
 using System;
 using System.Linq;
