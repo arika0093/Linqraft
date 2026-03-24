@@ -360,6 +360,10 @@ public sealed class SourceGeneratorSmokeTests
                     "ProjectToDefaultNamedOrderDto(this global::System.Linq.IQueryable<global::SmokeFixture.DefaultNamedOrder> source)",
                     StringComparison.Ordinal
                 )
+                    && source.Contains(
+                        "ProjectToDefaultNamedOrderDto(this global::System.Collections.Generic.IEnumerable<global::SmokeFixture.DefaultNamedOrder> source)",
+                        StringComparison.Ordinal
+                    )
             );
     }
 
@@ -707,6 +711,9 @@ public sealed class SourceGeneratorSmokeTests
         mappingSource.ShouldContain("public static partial class PublicOrderMapping_");
         mappingSource.ShouldContain(
             "public static global::System.Linq.IQueryable<global::SmokeFixture.PublicOrderRow> ProjectToPublicOrderRow"
+        );
+        mappingSource.ShouldContain(
+            "public static global::System.Collections.Generic.IEnumerable<global::SmokeFixture.PublicOrderRow> ProjectToPublicOrderRow"
         );
 
         var lines = mappingSource.Replace("\r\n", "\n").Split('\n');

@@ -100,6 +100,24 @@ internal static class AnalyzerHelpers
             .FirstOrDefault();
     }
 
+    public static LambdaExpressionSyntax? GetProjectionSelectorLambda(
+        InvocationExpressionSyntax invocation
+    )
+    {
+        var lambdas = invocation
+            .ArgumentList.Arguments.Select(argument => argument.Expression)
+            .OfType<LambdaExpressionSyntax>()
+            .ToArray();
+        if (lambdas.Length == 0)
+        {
+            return null;
+        }
+
+        return GetInvocationName(invocation.Expression) is "GroupByExpr" or "GroupBy"
+            ? lambdas[^1]
+            : lambdas[0];
+    }
+
     public static ExpressionSyntax? GetLambdaExpressionBody(LambdaExpressionSyntax lambda)
     {
         return lambda.Body as ExpressionSyntax;
@@ -162,6 +180,24 @@ internal static class AnalyzerHelpers
         }
 
         return $"ResultDto_{Math.Abs(contextNode.SpanStart):X8}";
+    }
+
+    public static bool IsInsideMappingGenerateDeclaration(SyntaxNode node)
+    {
+        return node
+            .AncestorsAndSelf()
+            .OfType<MemberDeclarationSyntax>()
+            .Where(declaration =>
+                declaration is MethodDeclarationSyntax
+                    or ClassDeclarationSyntax
+                    or StructDeclarationSyntax
+                    or RecordDeclarationSyntax
+            )
+            .Any(declaration =>
+                declaration
+                    .AttributeLists.SelectMany(list => list.Attributes)
+                    .Any(attribute => IsMappingGenerateAttributeName(attribute.Name.ToString()))
+            );
     }
 
     public static IEnumerable<ISymbol> CollectOuterReferences(
@@ -457,6 +493,16 @@ internal static class AnalyzerHelpers
     private static bool IsUseLinqraftSelectInvocation(InvocationExpressionSyntax invocation)
     {
         return GetUseLinqraftProjectionMethodName(invocation) == "Select";
+    }
+
+    private static bool IsMappingGenerateAttributeName(string name)
+    {
+        return name is "LinqraftMappingGenerate"
+            or "LinqraftMappingGenerateAttribute"
+            or "global::Linqraft.LinqraftMappingGenerate"
+            or "global::Linqraft.LinqraftMappingGenerateAttribute"
+            || name.EndsWith(".LinqraftMappingGenerate", StringComparison.Ordinal)
+            || name.EndsWith(".LinqraftMappingGenerateAttribute", StringComparison.Ordinal);
     }
 
     private static string? GetUseLinqraftProjectionMethodName(InvocationExpressionSyntax invocation)

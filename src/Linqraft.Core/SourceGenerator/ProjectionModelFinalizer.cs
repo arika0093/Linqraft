@@ -188,20 +188,36 @@ internal static class ProjectionModelFinalizer
                 AccessibilityKeyword = requestTemplate.AccessibilityKeyword,
                 MethodAccessibilityKeyword = requestTemplate.MethodAccessibilityKeyword,
                 MethodName = requestTemplate.MethodName,
+                OperationKind = requestTemplate.OperationKind,
                 ReceiverKind = requestTemplate.ReceiverKind,
                 SourceTypeName = requestTemplate.SourceTypeName,
                 ResultTypeName = resultTypeName,
                 SelectorParameterName = requestTemplate.SelectorParameterName,
+                KeySelectorParameterName = requestTemplate.KeySelectorParameterName,
+                KeySelectorBodyText = requestTemplate.KeySelectorBodyTemplate is null
+                    ? null
+                    : ProjectionBodyEmitter.ReplaceTokens(
+                        requestTemplate.KeySelectorBodyTemplate,
+                        replacements,
+                        cancellationToken
+                    ),
                 Captures = requestTemplate.Captures,
                 CanUsePrebuiltExpression = false,
-                ProjectionBodyText = ProjectionBodyEmitter.BuildProjectionBody(
-                    requestTemplate.Projection,
-                    ProjectionPattern.PredefinedDto,
-                    resultTypeName,
-                    configuration.ArrayNullabilityRemoval,
-                    replacements,
-                    cancellationToken
-                ),
+                ProjectionBodyText =
+                    requestTemplate.Projection is { } projectionTemplate
+                        ? ProjectionBodyEmitter.BuildProjectionBody(
+                            projectionTemplate,
+                            ProjectionPattern.PredefinedDto,
+                            resultTypeName,
+                            configuration.ArrayNullabilityRemoval,
+                            replacements,
+                            cancellationToken
+                        )
+                        : ProjectionBodyEmitter.ReplaceTokens(
+                            requestTemplate.ProjectionBodyTemplate ?? string.Empty,
+                            replacements,
+                            cancellationToken
+                        ),
                 InnerJoinFilterBodyText = requestTemplate.InnerJoinFilterBodyTemplate is null
                     ? null
                     : ProjectionBodyEmitter.ReplaceTokens(

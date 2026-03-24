@@ -41,12 +41,28 @@ public sealed class AnalyzerCodeFixSmokeTests
                 public IQueryable<TResult> Select<TResult>(Func<T, object> selector) => throw null!;
                 public IQueryable<TResult> Select<TResult>(Func<T, TResult> selector, Func<object> capture) => throw null!;
                 public IQueryable<TResult> Select<TResult>(Func<T, object> selector, Func<object> capture) => throw null!;
+                public IQueryable<TResult> SelectMany<TResult>(Func<T, IQueryable<TResult>> selector) => throw null!;
+                public IQueryable<TResult> SelectMany<TResult>(Func<T, IQueryable<TResult>> selector, Func<object> capture) => throw null!;
+                public IQueryable<TResult> GroupBy<TKey, TResult>(Func<T, TKey> keySelector, Func<System.Linq.IGrouping<TKey, T>, TResult> selector) => throw null!;
+                public IQueryable<TResult> GroupBy<TKey, TResult>(Func<T, TKey> keySelector, Func<System.Linq.IGrouping<TKey, T>, TResult> selector, Func<object> capture) => throw null!;
             }
 
             public static class LinqraftQueryExtensions
             {
                 public static LinqraftQuery<T> UseLinqraft<T>(this IQueryable<T> query)
                     where T : class => new(query);
+            }
+
+            [AttributeUsage(AttributeTargets.Class | AttributeTargets.Method)]
+            public sealed class LinqraftMappingGenerateAttribute : Attribute
+            {
+                public LinqraftMappingGenerateAttribute()
+                {
+                }
+
+                public LinqraftMappingGenerateAttribute(string methodName)
+                {
+                }
             }
         }
         """;
@@ -1372,6 +1388,106 @@ public sealed class AnalyzerCodeFixSmokeTests
         fixedText.ShouldContain("new { ChildId = entity.Child?.Id }");
     }
 
+    [Test]
+    public async Task Projection_mapping_code_fix_extracts_fluent_select_into_mapping_document()
+    {
+        const string source = """
+            using System;
+            using System.Linq;
+            using Linqraft;
+
+            public sealed class Entity
+            {
+                public int Id { get; set; }
+                public int Value { get; set; }
+            }
+
+            public sealed class QueryHolder
+            {
+                public object Project(IQueryable<Entity> source, int threshold)
+                {
+                    return source
+                        .UseLinqraft()
+                        .Select(entity => new
+                        {
+                            entity.Id,
+                            IsLarge = entity.Value > threshold,
+                        });
+                }
+            }
+            """;
+
+        var result = await ApplyFixAsync(source, "LQRS010", "LinqraftMappingGenerate");
+
+        result.PrimaryDocumentText.ShouldContain("source.ProjectToProjectDto(threshold)");
+        result.Documents.Keys.ShouldContain("ProjectDtoMappingDeclare.cs");
+        result.Documents["ProjectDtoMappingDeclare.cs"].ShouldContain(
+            "[LinqraftMappingGenerate(\"ProjectToProjectDto\")]"
+        );
+        result.Documents["ProjectDtoMappingDeclare.cs"].ShouldContain(
+            "query.UseLinqraft().Select<ProjectDto>"
+        );
+        result.Documents["ProjectDtoMappingDeclare.cs"].ShouldContain("capture: () => threshold");
+    }
+
+    [Test]
+    public async Task Projection_mapping_code_fix_extracts_groupbyexpr_into_mapping_document()
+    {
+        const string source = """
+            using System;
+            using System.Linq;
+            using Linqraft;
+
+            namespace Linqraft
+            {
+                public static class GroupByExprExtensions
+                {
+                    public static IQueryable<TResult> GroupByExpr<TIn, TKey, TResult>(
+                        this IQueryable<TIn> query,
+                        Func<TIn, TKey> keySelector,
+                        Func<IGrouping<TKey, TIn>, object> selector)
+                        where TIn : class => throw null!;
+                }
+            }
+
+            public sealed class Entity
+            {
+                public string Region { get; set; } = "";
+                public int Value { get; set; }
+            }
+
+            public sealed class RegionSummary
+            {
+                public string Region { get; set; } = "";
+                public int Total { get; set; }
+            }
+
+            public sealed class QueryHolder
+            {
+                public IQueryable<RegionSummary> Project(IQueryable<Entity> source)
+                {
+                    return source.GroupByExpr<Entity, string, RegionSummary>(
+                        entity => entity.Region,
+                        group => new RegionSummary
+                        {
+                            Region = group.Key,
+                            Total = group.Sum(x => x.Value),
+                        });
+                }
+            }
+            """;
+
+        var result = await ApplyFixAsync(source, "LQRS010", "LinqraftMappingGenerate");
+
+        result.PrimaryDocumentText.ShouldContain("source.ProjectToRegionSummary()");
+        result.Documents["RegionSummaryMappingDeclare.cs"].ShouldContain(
+            "query.GroupByExpr<"
+        );
+        result.Documents["RegionSummaryMappingDeclare.cs"].ShouldContain(
+            "[LinqraftMappingGenerate(\"ProjectToRegionSummary\")]"
+        );
+    }
+
     private static async Task<AppliedFixResult> ApplyFixAsync(
         string source,
         string diagnosticId,
@@ -1402,10 +1518,22 @@ public sealed class AnalyzerCodeFixSmokeTests
             changedSolution.GetDocument(document.Id)
             ?? changedSolution.Projects.SelectMany(project => project.Documents).First();
         var text = await changedDocument.GetTextAsync();
+        var documents = new Dictionary<string, string>(StringComparer.Ordinal);
+        foreach (var changedProject in changedSolution.Projects)
+        {
+            foreach (var changedDocumentInProject in changedProject.Documents)
+            {
+                documents[changedDocumentInProject.Name] = (
+                    await changedDocumentInProject.GetTextAsync()
+                ).ToString();
+            }
+        }
+
         return new AppliedFixResult
         {
             PrimaryDocumentText = text.ToString(),
             ChangedSolution = changedSolution,
+            Documents = documents,
         };
     }
 
@@ -1544,5 +1672,7 @@ public sealed class AnalyzerCodeFixSmokeTests
         public required string PrimaryDocumentText { get; init; }
 
         public required Solution ChangedSolution { get; init; }
+
+        public required IReadOnlyDictionary<string, string> Documents { get; init; }
     }
 }

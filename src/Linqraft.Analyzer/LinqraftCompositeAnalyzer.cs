@@ -40,6 +40,7 @@ public sealed class LinqraftCompositeAnalyzer : DiagnosticAnalyzer
     {
         var invocation = (InvocationExpressionSyntax)context.Node;
         AnalyzeAnonymousCapturePattern(context, invocation);
+        AnalyzeProjectionToMappingGenerate(context, invocation);
 
         if (AnalyzerHelpers.IsSelectExprInvocation(invocation))
         {
@@ -110,6 +111,56 @@ public sealed class LinqraftCompositeAnalyzer : DiagnosticAnalyzer
                 )
             );
         }
+    }
+
+    private static void AnalyzeProjectionToMappingGenerate(
+        SyntaxNodeAnalysisContext context,
+        InvocationExpressionSyntax invocation
+    )
+    {
+        if (
+            !AnalyzerHelpers.IsProjectionExprInvocation(invocation)
+            || AnalyzerHelpers.IsInsideMappingGenerateDeclaration(invocation)
+            || invocation.Ancestors().OfType<LambdaExpressionSyntax>().Any()
+        )
+        {
+            return;
+        }
+
+        var lambda = AnalyzerHelpers.GetProjectionSelectorLambda(invocation);
+        if (lambda is null || GetProjectionParameterCount(lambda) != 1)
+        {
+            return;
+        }
+
+        var selectorBody = lambda is null ? null : AnalyzerHelpers.GetLambdaExpressionBody(lambda);
+        if (
+            selectorBody is not AnonymousObjectCreationExpressionSyntax
+                and not ObjectCreationExpressionSyntax
+        )
+        {
+            return;
+        }
+
+        context.ReportDiagnostic(
+            Diagnostic.Create(
+                DiagnosticDescriptors.ProjectionToMappingGenerate,
+                invocation.GetLocation()
+            )
+        );
+    }
+
+    private static int GetProjectionParameterCount(LambdaExpressionSyntax lambda)
+    {
+        return lambda switch
+        {
+            SimpleLambdaExpressionSyntax => 1,
+            ParenthesizedLambdaExpressionSyntax parenthesized => parenthesized
+                .ParameterList
+                .Parameters
+                .Count,
+            _ => 0,
+        };
     }
 
     private static void AnalyzeAnonymousCapturePattern(

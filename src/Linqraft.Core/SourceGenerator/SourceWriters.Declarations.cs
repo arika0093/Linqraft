@@ -396,42 +396,72 @@ internal static partial class SourceWriters
         builder.AppendLine("{", cancellationToken);
         using (builder.Indent())
         {
-            var receiverType = GetReceiverTypeName(request.ReceiverKind);
             var lambda = ProjectionBodyEmitter.AppendValueInline(
                 $"{request.SelectorParameterName} => ",
                 request.ProjectionBodyText
             );
-            builder.AppendLine(
-                $"{request.MethodAccessibilityKeyword} static {receiverType}<{request.ResultTypeName}> {request.MethodName}(this {receiverType}<{request.SourceTypeName}> source{string.Concat(request.Captures.Select(capture => $", {capture.TypeName} {capture.PropertyName}"))})",
-                cancellationToken
-            );
-            builder.AppendLine("{", cancellationToken);
-            using (builder.Indent())
-            {
-                foreach (
-                    var capture in request.Captures.Where(capture =>
-                        capture.LocalName != capture.PropertyName
+            var keyLambda =
+                request.OperationKind == ProjectionOperationKind.GroupBy
+                && request.KeySelectorParameterName is { } keySelectorParameterName
+                && request.KeySelectorBodyText is { } keySelectorBodyText
+                    ? ProjectionBodyEmitter.AppendValueInline(
+                        $"{keySelectorParameterName} => ",
+                        keySelectorBodyText
                     )
-                )
+                    : null;
+            foreach (
+                var receiverType in new[]
                 {
-                    cancellationToken.ThrowIfCancellationRequested();
-                    builder.AppendLine(
-                        $"var {capture.LocalName} = {capture.PropertyName};",
+                    "global::System.Linq.IQueryable",
+                    "global::System.Collections.Generic.IEnumerable",
+                }
+            )
+            {
+                builder.AppendLine(
+                    $"{request.MethodAccessibilityKeyword} static {receiverType}<{request.ResultTypeName}> {request.MethodName}(this {receiverType}<{request.SourceTypeName}> source{string.Concat(request.Captures.Select(capture => $", {capture.TypeName} {capture.PropertyName}"))})",
+                    cancellationToken
+                );
+                builder.AppendLine("{", cancellationToken);
+                using (builder.Indent())
+                {
+                    foreach (
+                        var capture in request.Captures.Where(capture =>
+                            capture.LocalName != capture.PropertyName
+                        )
+                    )
+                    {
+                        cancellationToken.ThrowIfCancellationRequested();
+                        builder.AppendLine(
+                            $"var {capture.LocalName} = {capture.PropertyName};",
+                            cancellationToken
+                        );
+                    }
+
+                    var querySource =
+                        request.InnerJoinFilterBodyText is { } innerJoinFilterBodyText
+                        && request.OperationKind != ProjectionOperationKind.GroupBy
+                            ? $"source.Where({ProjectionBodyEmitter.AppendValueInline($"{request.SelectorParameterName} => ", innerJoinFilterBodyText)})"
+                            : "source";
+                    var projectionInvocation = request.OperationKind switch
+                    {
+                        ProjectionOperationKind.Select => $"{querySource}.Select({lambda})",
+                        ProjectionOperationKind.SelectMany =>
+                            $"{querySource}.SelectMany({lambda})",
+                        ProjectionOperationKind.GroupBy when keyLambda is not null =>
+                            $"{querySource}.GroupBy({keyLambda}).Select({lambda})",
+                        _ => throw new InvalidOperationException(
+                            $"Unsupported mapping operation '{request.OperationKind}'."
+                        ),
+                    };
+                    AppendMultilineLine(
+                        builder,
+                        $"return {projectionInvocation};",
                         cancellationToken
                     );
                 }
 
-                var querySource = request.InnerJoinFilterBodyText is { } innerJoinFilterBodyText
-                    ? $"source.Where({ProjectionBodyEmitter.AppendValueInline($"{request.SelectorParameterName} => ", innerJoinFilterBodyText)})"
-                    : "source";
-                AppendMultilineLine(
-                    builder,
-                    $"return {querySource}.Select({lambda});",
-                    cancellationToken
-                );
+                builder.AppendLine("}", cancellationToken);
             }
-
-            builder.AppendLine("}", cancellationToken);
         }
 
         builder.AppendLine("}", cancellationToken);

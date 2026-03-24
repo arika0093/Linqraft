@@ -365,6 +365,101 @@ public sealed class AnalyzerSmokeTests
     }
 
     [Test]
+    public async Task UseLinqraft_select_reports_LQRS010()
+    {
+        const string source = """
+            using System;
+            using System.Linq;
+            using Linqraft;
+
+            namespace Linqraft
+            {
+                public interface IProjectionHelper
+                {
+                }
+
+                public sealed class LinqraftQuery<T>
+                    where T : class
+                {
+                    public IQueryable<TResult> Select<TResult>(Func<T, TResult> selector) => throw null!;
+                }
+
+                public static class LinqraftQueryExtensions
+                {
+                    public static LinqraftQuery<T> UseLinqraft<T>(this IQueryable<T> query)
+                        where T : class => throw null!;
+                }
+            }
+
+            public sealed class Entity
+            {
+                public int Id { get; set; }
+            }
+
+            public sealed class QueryHolder
+            {
+                public object Project(IQueryable<Entity> source)
+                {
+                    return source.UseLinqraft().Select(entity => new { entity.Id });
+                }
+            }
+            """;
+
+        var diagnostics = await GetDiagnosticsAsync(source);
+        diagnostics.Select(diagnostic => diagnostic.Id).ShouldContain("LQRS010");
+    }
+
+    [Test]
+    public async Task Mapping_generate_declarations_do_not_report_LQRS010()
+    {
+        const string source = """
+            using System;
+            using System.Linq;
+            using Linqraft;
+
+            namespace Linqraft
+            {
+                public sealed class LinqraftMappingGenerateAttribute : Attribute
+                {
+                    public LinqraftMappingGenerateAttribute()
+                    {
+                    }
+
+                    public LinqraftMappingGenerateAttribute(string methodName)
+                    {
+                    }
+                }
+
+                public static class SelectExprExtensions
+                {
+                    public static IQueryable<TResult> SelectExpr<TIn, TResult>(this IQueryable<TIn> query, Func<TIn, object> selector)
+                        where TIn : class => throw null!;
+                }
+            }
+
+            [LinqraftMappingGenerate("ProjectToEntityRow")]
+            public static class MappingDefinitions
+            {
+                public static IQueryable<EntityRow> Dummy(this IQueryable<Entity> source)
+                    => source.SelectExpr<Entity, EntityRow>(entity => new { entity.Id });
+            }
+
+            public sealed class Entity
+            {
+                public int Id { get; set; }
+            }
+
+            public sealed class EntityRow
+            {
+                public int Id { get; set; }
+            }
+            """;
+
+        var diagnostics = await GetDiagnosticsAsync(source);
+        diagnostics.Select(diagnostic => diagnostic.Id).ShouldNotContain("LQRS010");
+    }
+
+    [Test]
     public async Task Queryable_select_named_reports_LQRS003()
     {
         const string source = """

@@ -96,6 +96,36 @@ public class LinqraftMappingGenerateTest
     }
 
     [Test]
+    public void MappingGenerate_BasicTest_supports_IEnumerable_sources()
+    {
+        IEnumerable<MappingTestSampleClass> data =
+        [
+            new MappingTestSampleClass
+            {
+                Id = 1,
+                Value = 10,
+                Name = "Test1",
+                Description = "Description1",
+                Child = new MappingTestChildClass { ChildId = 10, ChildName = "Child1" },
+            },
+            new MappingTestSampleClass
+            {
+                Id = 2,
+                Value = 20,
+                Name = "Test2",
+                Description = null,
+                Child = null,
+            },
+        ];
+
+        var result = MappingTestQueries.ProjectToDto(data).ToList();
+
+        result.Count.ShouldBe(2);
+        result[0].ChildId.ShouldBe(10);
+        result[1].ChildName.ShouldBeNull();
+    }
+
+    [Test]
     public void MappingGenerate_WithCaptureParameters_Test()
     {
         var data = new[]

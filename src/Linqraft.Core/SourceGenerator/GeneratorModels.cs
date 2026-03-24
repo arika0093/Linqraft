@@ -245,6 +245,8 @@ internal sealed record MappingRequestTemplate
 
     public required string MethodName { get; init; }
 
+    public required ProjectionOperationKind OperationKind { get; init; }
+
     public required ReceiverKind ReceiverKind { get; init; }
 
     public required string SourceTypeName { get; init; }
@@ -253,11 +255,17 @@ internal sealed record MappingRequestTemplate
 
     public required string SelectorParameterName { get; init; }
 
+    public string? KeySelectorParameterName { get; init; }
+
+    public string? KeySelectorBodyTemplate { get; init; }
+
     public required EquatableArray<CaptureParameterModel> Captures { get; init; }
 
     public required bool CanUsePrebuiltExpressionWhenConfigured { get; init; }
 
-    public required ProjectionTemplateModel Projection { get; init; }
+    public ProjectionTemplateModel? Projection { get; init; }
+
+    public string? ProjectionBodyTemplate { get; init; }
 
     public string? InnerJoinFilterBodyTemplate { get; init; }
 }
@@ -485,6 +493,8 @@ internal sealed record MappingRequest
 
     public required string MethodName { get; init; }
 
+    public required ProjectionOperationKind OperationKind { get; init; }
+
     public required ReceiverKind ReceiverKind { get; init; }
 
     public required string SourceTypeName { get; init; }
@@ -492,6 +502,10 @@ internal sealed record MappingRequest
     public required string ResultTypeName { get; init; }
 
     public required string SelectorParameterName { get; init; }
+
+    public string? KeySelectorParameterName { get; init; }
+
+    public string? KeySelectorBodyText { get; init; }
 
     public required EquatableArray<CaptureParameterModel> Captures { get; init; }
 

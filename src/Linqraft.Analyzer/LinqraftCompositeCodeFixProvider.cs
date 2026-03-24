@@ -29,6 +29,7 @@ public sealed class LinqraftCompositeCodeFixProvider : CodeFixProvider
             "LQRS004",
             "LQRS005",
             "LQRS006",
+            "LQRS010",
             "LQRW003",
             "LQRW004",
             "LQRE001",
@@ -65,6 +66,9 @@ public sealed class LinqraftCompositeCodeFixProvider : CodeFixProvider
                     break;
                 case "LQRS004":
                     RegisterTernaryFix(context, node);
+                    break;
+                case "LQRS010":
+                    RegisterProjectionToMappingGenerateFix(context, node);
                     break;
                 case "LQRW003":
                     RegisterUnnecessaryCaptureFix(context, node, diagnostic);
@@ -218,6 +222,32 @@ public sealed class LinqraftCompositeCodeFixProvider : CodeFixProvider
                         cancellationToken
                     ),
                 "LQRS004"
+            ),
+            context.Diagnostics
+        );
+    }
+
+    private static void RegisterProjectionToMappingGenerateFix(
+        CodeFixContext context,
+        SyntaxNode node
+    )
+    {
+        var invocation = node.FirstAncestorOrSelf<InvocationExpressionSyntax>();
+        if (invocation is null)
+        {
+            return;
+        }
+
+        context.RegisterCodeFix(
+            CodeAction.Create(
+                "Convert to LinqraftMappingGenerate",
+                cancellationToken =>
+                    ConvertProjectionToMappingGenerateAsync(
+                        context.Document,
+                        invocation,
+                        cancellationToken
+                    ),
+                "LQRS010"
             ),
             context.Diagnostics
         );
@@ -557,6 +587,48 @@ public sealed class LinqraftCompositeCodeFixProvider : CodeFixProvider
         return WithFormattedSyntaxRoot(
             document,
             root.ReplaceNode(conditionalExpression, simplified)
+        );
+    }
+
+    private static async Task<Solution> ConvertProjectionToMappingGenerateAsync(
+        Document document,
+        InvocationExpressionSyntax invocation,
+        CancellationToken cancellationToken
+    )
+    {
+        var root = await document.GetSyntaxRootAsync(cancellationToken).ConfigureAwait(false);
+        var semanticModel = await document
+            .GetSemanticModelAsync(cancellationToken)
+            .ConfigureAwait(false);
+        if (root is null || semanticModel is null)
+        {
+            return document.Project.Solution;
+        }
+
+        var candidate = CreateMappingGenerateCandidate(invocation, semanticModel, cancellationToken);
+        if (candidate is null)
+        {
+            return document.Project.Solution;
+        }
+
+        var updatedRoot = Formatter.Format(
+            root.ReplaceNode(invocation, candidate.CallSiteInvocation.WithTriviaFrom(invocation)),
+            new AdhocWorkspace()
+        );
+        var updatedSolution = document.Project.Solution.WithDocumentSyntaxRoot(
+            document.Id,
+            updatedRoot
+        );
+        var projectId = document.Project.Id;
+        var documentName = GetUniqueDocumentName(
+            updatedSolution.GetProject(projectId)!,
+            $"{candidate.DtoTypeName}MappingDeclare.cs"
+        );
+        return updatedSolution.AddDocument(
+            DocumentId.CreateNewId(projectId, documentName),
+            documentName,
+            candidate.MappingDocumentText,
+            document.Folders
         );
     }
 
@@ -1471,6 +1543,516 @@ public sealed class LinqraftCompositeCodeFixProvider : CodeFixProvider
         return AnalyzerHelpers.GenerateDtoName(invocation);
     }
 
+    private static MappingGenerateCandidate? CreateMappingGenerateCandidate(
+        InvocationExpressionSyntax invocation,
+        SemanticModel semanticModel,
+        CancellationToken cancellationToken
+    )
+    {
+        if (
+            AnalyzerHelpers.IsInsideMappingGenerateDeclaration(invocation)
+            || invocation.Ancestors().OfType<LambdaExpressionSyntax>().Any()
+        )
+        {
+            return null;
+        }
+
+        var selectorLambda = AnalyzerHelpers.GetProjectionSelectorLambda(invocation);
+        if (selectorLambda is null)
+        {
+            return null;
+        }
+
+        var selectorBody = AnalyzerHelpers.GetLambdaExpressionBody(selectorLambda);
+        if (
+            selectorBody is not AnonymousObjectCreationExpressionSyntax
+                and not ObjectCreationExpressionSyntax
+        )
+        {
+            return null;
+        }
+
+        var receiverExpression = GetProjectionReceiverExpression(invocation);
+        if (receiverExpression is null)
+        {
+            return null;
+        }
+
+        var receiverType =
+            semanticModel.GetTypeInfo(receiverExpression, cancellationToken).ConvertedType
+            ?? semanticModel.GetTypeInfo(receiverExpression, cancellationToken).Type;
+        if (receiverType is null)
+        {
+            return null;
+        }
+
+        var sourceTypeName = GetFullyQualifiedSourceTypeName(
+            receiverType,
+            semanticModel,
+            receiverExpression.SpanStart
+        );
+        if (string.IsNullOrWhiteSpace(sourceTypeName))
+        {
+            return null;
+        }
+
+        var dtoTypeName = GetProjectionDtoTypeName(
+            invocation,
+            selectorLambda,
+            semanticModel,
+            cancellationToken
+        );
+        var dtoMethodSuffix = GetUnqualifiedTypeName(dtoTypeName);
+        var methodName = $"ProjectTo{dtoMethodSuffix}";
+        var captureParameters = GetCaptureParameters(
+            invocation,
+            selectorLambda,
+            semanticModel,
+            cancellationToken
+        );
+        var replacement = CreateMappingMethodInvocation(
+            receiverExpression,
+            methodName,
+            captureParameters
+        );
+        var mappingBodyInvocation = CreateMappingBodyInvocation(
+            invocation,
+            dtoTypeName,
+            sourceTypeName,
+            GetGroupByKeyTypeName(invocation, semanticModel, cancellationToken),
+            captureParameters
+        );
+        if (mappingBodyInvocation is null)
+        {
+            return null;
+        }
+
+        var receiverTypeName = SupportsQueryable(receiverType)
+            ? "global::System.Linq.IQueryable"
+            : "global::System.Collections.Generic.IEnumerable";
+        var mappingDocumentText = BuildMappingDocumentText(
+            GetNamespaceName(invocation),
+            $"{methodName}Mappings",
+            receiverTypeName,
+            sourceTypeName,
+            dtoTypeName,
+            methodName,
+            captureParameters,
+            mappingBodyInvocation.NormalizeWhitespace().ToFullString()
+        );
+
+        return new MappingGenerateCandidate
+        {
+            DtoTypeName = dtoMethodSuffix,
+            CallSiteInvocation = replacement,
+            MappingDocumentText = mappingDocumentText,
+        };
+    }
+
+    private static ExpressionSyntax? GetProjectionReceiverExpression(
+        InvocationExpressionSyntax invocation
+    )
+    {
+        if (invocation.Expression is not MemberAccessExpressionSyntax memberAccess)
+        {
+            return null;
+        }
+
+        if (
+            memberAccess.Expression is InvocationExpressionSyntax useLinqraftInvocation
+            && useLinqraftInvocation.Expression is MemberAccessExpressionSyntax useLinqraftAccess
+            && AnalyzerHelpers.GetInvocationName(useLinqraftInvocation.Expression) == "UseLinqraft"
+        )
+        {
+            return useLinqraftAccess.Expression;
+        }
+
+        return memberAccess.Expression;
+    }
+
+    private static string GetProjectionDtoTypeName(
+        InvocationExpressionSyntax invocation,
+        LambdaExpressionSyntax selectorLambda,
+        SemanticModel semanticModel,
+        CancellationToken cancellationToken
+    )
+    {
+        if (
+            AnalyzerHelpers.GetLambdaExpressionBody(selectorLambda)
+            is ObjectCreationExpressionSyntax objectCreation
+        )
+        {
+            var typeSymbol = semanticModel.GetTypeInfo(objectCreation.Type, cancellationToken).Type;
+            if (typeSymbol is not null && typeSymbol.TypeKind != TypeKind.Error)
+            {
+                return typeSymbol.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat);
+            }
+        }
+
+        if (
+            AnalyzerHelpers.GetInvocationNameSyntax(invocation.Expression) is GenericNameSyntax genericName
+            && genericName.TypeArgumentList.Arguments.Count > 0
+        )
+        {
+            var explicitType = genericName.TypeArgumentList.Arguments.Last();
+            var explicitTypeSymbol = semanticModel.GetTypeInfo(explicitType, cancellationToken).Type;
+            if (explicitTypeSymbol is not null && explicitTypeSymbol.TypeKind != TypeKind.Error)
+            {
+                return explicitTypeSymbol.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat);
+            }
+
+            return explicitType.ToString();
+        }
+
+        return AnalyzerHelpers.GenerateDtoName(invocation);
+    }
+
+    private static string? GetGroupByKeyTypeName(
+        InvocationExpressionSyntax invocation,
+        SemanticModel semanticModel,
+        CancellationToken cancellationToken
+    )
+    {
+        if (
+            AnalyzerHelpers.GetInvocationName(invocation.Expression)
+                is not "GroupBy"
+                    and not "GroupByExpr"
+        )
+        {
+            return null;
+        }
+
+        var keySelector = invocation.ArgumentList.Arguments
+            .Select(argument => argument.Expression)
+            .OfType<LambdaExpressionSyntax>()
+            .FirstOrDefault();
+        var keyBody = keySelector is null ? null : AnalyzerHelpers.GetLambdaExpressionBody(keySelector);
+        var keyType =
+            keyBody is null
+                ? null
+                : semanticModel.GetTypeInfo(keyBody, cancellationToken).ConvertedType
+                    ?? semanticModel.GetTypeInfo(keyBody, cancellationToken).Type;
+        return keyType?.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat);
+    }
+
+    private static string GetFullyQualifiedSourceTypeName(
+        ITypeSymbol receiverType,
+        SemanticModel semanticModel,
+        int position
+    )
+    {
+        if (receiverType is not INamedTypeSymbol namedType)
+        {
+            return string.Empty;
+        }
+
+        var elementType =
+            namedType.TypeArguments.FirstOrDefault()
+            ?? namedType
+                .AllInterfaces.FirstOrDefault(interfaceType => interfaceType.TypeArguments.Length == 1)
+                ?.TypeArguments[0];
+        return elementType is null
+            ? string.Empty
+            : elementType.ToMinimalDisplayString(
+                semanticModel,
+                position,
+                SymbolDisplayFormat.FullyQualifiedFormat
+            );
+    }
+
+    private static bool SupportsQueryable(ITypeSymbol receiverType)
+    {
+        return receiverType is INamedTypeSymbol namedType
+            && (namedType.OriginalDefinition.ToDisplayString() == "System.Linq.IQueryable<T>"
+                || namedType.AllInterfaces.Any(interfaceType =>
+                    interfaceType.OriginalDefinition.ToDisplayString()
+                    == "System.Linq.IQueryable<T>"
+                ));
+    }
+
+    private static List<MappingCaptureParameter> GetCaptureParameters(
+        InvocationExpressionSyntax invocation,
+        LambdaExpressionSyntax selectorLambda,
+        SemanticModel semanticModel,
+        CancellationToken cancellationToken
+    )
+    {
+        var captureParameters = new List<MappingCaptureParameter>();
+        var seenNames = new HashSet<string>(StringComparer.Ordinal);
+        foreach (var expression in GetCaptureExpressions(GetCaptureArgument(invocation)))
+        {
+            var parameterName = AnalyzerHelpers.GetCaptureMemberName(expression);
+            if (string.IsNullOrWhiteSpace(parameterName) || !seenNames.Add(parameterName))
+            {
+                continue;
+            }
+
+            var typeSymbol =
+                semanticModel.GetTypeInfo(expression, cancellationToken).ConvertedType
+                ?? semanticModel.GetTypeInfo(expression, cancellationToken).Type;
+            captureParameters.Add(
+                new MappingCaptureParameter
+                {
+                    Name = parameterName,
+                    TypeName = typeSymbol?.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat)
+                        ?? "object",
+                    ArgumentExpression = expression.WithoutTrivia(),
+                }
+            );
+        }
+
+        foreach (
+            var reference in AnalyzerHelpers
+                .CollectOuterReferences(selectorLambda, semanticModel, cancellationToken)
+                .Distinct(SymbolEqualityComparer.Default)
+        )
+        {
+            if (!seenNames.Add(reference.Name))
+            {
+                continue;
+            }
+
+            captureParameters.Add(
+                new MappingCaptureParameter
+                {
+                    Name = reference.Name,
+                    TypeName = reference switch
+                    {
+                        ILocalSymbol local => local.Type.ToDisplayString(
+                            SymbolDisplayFormat.FullyQualifiedFormat
+                        ),
+                        IParameterSymbol parameter => parameter.Type.ToDisplayString(
+                            SymbolDisplayFormat.FullyQualifiedFormat
+                        ),
+                        IPropertySymbol property => property.Type.ToDisplayString(
+                            SymbolDisplayFormat.FullyQualifiedFormat
+                        ),
+                        IFieldSymbol field => field.Type.ToDisplayString(
+                            SymbolDisplayFormat.FullyQualifiedFormat
+                        ),
+                        _ => "object",
+                    },
+                    ArgumentExpression = SyntaxFactory.IdentifierName(reference.Name),
+                }
+            );
+        }
+
+        return captureParameters;
+    }
+
+    private static InvocationExpressionSyntax CreateMappingMethodInvocation(
+        ExpressionSyntax receiverExpression,
+        string methodName,
+        IEnumerable<MappingCaptureParameter> captureParameters
+    )
+    {
+        return SyntaxFactory.InvocationExpression(
+            SyntaxFactory.MemberAccessExpression(
+                SyntaxKind.SimpleMemberAccessExpression,
+                receiverExpression.WithoutTrivia(),
+                SyntaxFactory.IdentifierName(methodName)
+            ),
+            SyntaxFactory.ArgumentList(
+                SyntaxFactory.SeparatedList(
+                    captureParameters.Select(parameter =>
+                        SyntaxFactory.Argument(parameter.ArgumentExpression.WithoutTrivia())
+                    )
+                )
+            )
+        );
+    }
+
+    private static InvocationExpressionSyntax? CreateMappingBodyInvocation(
+        InvocationExpressionSyntax invocation,
+        string dtoTypeName,
+        string sourceTypeName,
+        string? keyTypeName,
+        IEnumerable<MappingCaptureParameter> captureParameters
+    )
+    {
+        var updatedInvocation = ReplaceProjectionReceiver(
+            invocation,
+            SyntaxFactory.IdentifierName("query")
+        );
+        updatedInvocation = AddProjectionTypeArguments(
+            updatedInvocation,
+            dtoTypeName,
+            sourceTypeName,
+            keyTypeName
+        );
+        return AddCaptureNames(
+            updatedInvocation,
+            captureParameters.Select(parameter => parameter.Name)
+        );
+    }
+
+    private static InvocationExpressionSyntax ReplaceProjectionReceiver(
+        InvocationExpressionSyntax invocation,
+        ExpressionSyntax replacementReceiver
+    )
+    {
+        if (invocation.Expression is not MemberAccessExpressionSyntax memberAccess)
+        {
+            return invocation;
+        }
+
+        if (
+            memberAccess.Expression is InvocationExpressionSyntax useLinqraftInvocation
+            && useLinqraftInvocation.Expression is MemberAccessExpressionSyntax useLinqraftAccess
+            && AnalyzerHelpers.GetInvocationName(useLinqraftInvocation.Expression) == "UseLinqraft"
+        )
+        {
+            return invocation.WithExpression(
+                memberAccess.WithExpression(
+                    useLinqraftInvocation.WithExpression(
+                        useLinqraftAccess.WithExpression(replacementReceiver.WithoutTrivia())
+                    )
+                )
+            );
+        }
+
+        return invocation.WithExpression(
+            memberAccess.WithExpression(replacementReceiver.WithoutTrivia())
+        );
+    }
+
+    private static InvocationExpressionSyntax AddProjectionTypeArguments(
+        InvocationExpressionSyntax invocation,
+        string dtoTypeName,
+        string sourceTypeName,
+        string? keyTypeName
+    )
+    {
+        var operationName = AnalyzerHelpers.GetInvocationName(invocation.Expression);
+        return operationName switch
+        {
+            "Select" => AddInvocationTypeArguments(invocation, dtoTypeName),
+            "SelectMany" => AddInvocationTypeArguments(invocation, dtoTypeName),
+            "GroupBy" when !string.IsNullOrWhiteSpace(keyTypeName) =>
+                AddInvocationTypeArguments(invocation, keyTypeName!, dtoTypeName),
+            "SelectExpr" => AddInvocationTypeArguments(invocation, sourceTypeName, dtoTypeName),
+            "SelectManyExpr" => AddInvocationTypeArguments(
+                invocation,
+                sourceTypeName,
+                dtoTypeName
+            ),
+            "GroupByExpr" when !string.IsNullOrWhiteSpace(keyTypeName) =>
+                AddInvocationTypeArguments(invocation, sourceTypeName, keyTypeName!, dtoTypeName),
+            _ => invocation,
+        };
+    }
+
+    private static InvocationExpressionSyntax AddInvocationTypeArguments(
+        InvocationExpressionSyntax invocation,
+        params string[] typeNames
+    )
+    {
+        if (invocation.Expression is not MemberAccessExpressionSyntax memberAccess)
+        {
+            return invocation;
+        }
+
+        return invocation.WithExpression(
+            memberAccess.WithName(
+                SyntaxFactory.GenericName(
+                    SyntaxFactory.Identifier(AnalyzerHelpers.GetInvocationName(invocation.Expression)),
+                    SyntaxFactory.TypeArgumentList(
+                        SyntaxFactory.SeparatedList(
+                            typeNames.Select(typeName => SyntaxFactory.ParseTypeName(typeName))
+                        )
+                    )
+                )
+            )
+        );
+    }
+
+    private static string GetNamespaceName(SyntaxNode node)
+    {
+        return node.AncestorsAndSelf()
+                .OfType<BaseNamespaceDeclarationSyntax>()
+                .FirstOrDefault()
+                ?.Name.ToString() ?? string.Empty;
+    }
+
+    private static string BuildMappingDocumentText(
+        string namespaceName,
+        string containerName,
+        string receiverTypeName,
+        string sourceTypeName,
+        string dtoTypeName,
+        string methodName,
+        IReadOnlyList<MappingCaptureParameter> captureParameters,
+        string bodyInvocationText
+    )
+    {
+        var parameterSuffix = string.Concat(
+            captureParameters.Select(parameter => $", {parameter.TypeName} {parameter.Name}")
+        );
+        var header = """
+            #nullable enable
+
+            using Linqraft;
+
+            """;
+        var body = $$"""
+            internal static partial class {{containerName}}
+            {
+                [LinqraftMappingGenerate("{{methodName}}")]
+                internal static {{receiverTypeName}}<{{dtoTypeName}}> {{methodName}}(this {{receiverTypeName}}<{{sourceTypeName}}> query{{parameterSuffix}})
+                    => {{bodyInvocationText}};
+            }
+            """;
+        return string.IsNullOrWhiteSpace(namespaceName)
+            ? header + body
+            : $$"""
+                {{header}}namespace {{namespaceName}};
+
+                {{body}}
+                """;
+    }
+
+    private static string GetUniqueDocumentName(Project project, string proposedName)
+    {
+        var existingNames = new HashSet<string>(
+            project.Documents.Select(document => document.Name),
+            StringComparer.OrdinalIgnoreCase
+        );
+        if (!existingNames.Contains(proposedName))
+        {
+            return proposedName;
+        }
+
+        var extensionIndex = proposedName.LastIndexOf('.');
+        var prefix = extensionIndex >= 0 ? proposedName[..extensionIndex] : proposedName;
+        var suffix = extensionIndex >= 0 ? proposedName[extensionIndex..] : string.Empty;
+        var index = 2;
+        while (true)
+        {
+            var candidate = $"{prefix}{index}{suffix}";
+            if (existingNames.Add(candidate))
+            {
+                return candidate;
+            }
+
+            index++;
+        }
+    }
+
+    private static string GetUnqualifiedTypeName(string typeName)
+    {
+        var value = typeName.StartsWith("global::", StringComparison.Ordinal)
+            ? typeName["global::".Length..]
+            : typeName;
+        var genericIndex = value.IndexOf('<');
+        if (genericIndex >= 0)
+        {
+            value = value[..genericIndex];
+        }
+
+        var qualifierIndex = value.LastIndexOf('.');
+        return qualifierIndex >= 0 ? value[(qualifierIndex + 1)..] : value;
+    }
+
     private static ExpressionSyntax RewriteProjectionExpression(
         ExpressionSyntax expression,
         bool simplifyTernary,
@@ -2015,5 +2597,23 @@ public sealed class LinqraftCompositeCodeFixProvider : CodeFixProvider
         return missingUsings.Length == 0
             ? compilationUnit
             : compilationUnit.WithUsings(compilationUnit.Usings.AddRange(missingUsings));
+    }
+
+    private sealed record MappingGenerateCandidate
+    {
+        public required string DtoTypeName { get; init; }
+
+        public required InvocationExpressionSyntax CallSiteInvocation { get; init; }
+
+        public required string MappingDocumentText { get; init; }
+    }
+
+    private sealed record MappingCaptureParameter
+    {
+        public required string Name { get; init; }
+
+        public required string TypeName { get; init; }
+
+        public required ExpressionSyntax ArgumentExpression { get; init; }
     }
 }

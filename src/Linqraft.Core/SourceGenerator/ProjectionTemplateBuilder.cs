@@ -95,12 +95,12 @@ internal static partial class ProjectionTemplateBuilder
             .DescendantNodes()
             .OfType<InvocationExpressionSyntax>()
             .FirstOrDefault(invocation =>
-                IsSelectExprInvocation(
+                GetProjectionOperationKind(
                     invocation,
                     attributeContext.SemanticModel,
                     generatorOptions,
                     cancellationToken
-                )
+                ) is not null
             );
         if (selectExpr is null)
         {
@@ -148,15 +148,19 @@ internal static partial class ProjectionTemplateBuilder
                 MethodName = string.IsNullOrWhiteSpace(methodName)
                     ? $"ProjectTo{ResolveDefaultMappingResultTypeName(selectExpr, attributeContext.SemanticModel, cancellationToken)}"
                     : methodName!,
+                OperationKind = projection.Request.OperationKind,
                 ReceiverKind = projection.Request.ReceiverKind,
                 SourceTypeName = projection.Request.SourceTypeName,
                 ResultTypeTemplate = projection.Request.ResultTypeTemplate,
                 SelectorParameterName = projection.Request.SelectorParameterName,
+                KeySelectorParameterName = projection.Request.KeySelectorParameterName,
+                KeySelectorBodyTemplate = projection.Request.KeySelectorBodyTemplate,
                 Captures = projection.Request.Captures,
                 CanUsePrebuiltExpressionWhenConfigured = projection
                     .Request
                     .CanUsePrebuiltExpressionWhenConfigured,
-                Projection = projection.Request.Projection!,
+                Projection = projection.Request.Projection,
+                ProjectionBodyTemplate = projection.Request.ProjectionBodyTemplate,
                 InnerJoinFilterBodyTemplate = projection.Request.InnerJoinFilterBodyTemplate,
             },
             GeneratedDtos = projection.GeneratedDtos,
@@ -222,12 +226,12 @@ internal static partial class ProjectionTemplateBuilder
             .DescendantNodes()
             .OfType<InvocationExpressionSyntax>()
             .FirstOrDefault(invocation =>
-                IsSelectExprInvocation(
+                GetProjectionOperationKind(
                     invocation,
                     attributeContext.SemanticModel,
                     generatorOptions,
                     cancellationToken
-                )
+                ) is not null
             );
         if (selectExpr is null)
         {
@@ -275,15 +279,19 @@ internal static partial class ProjectionTemplateBuilder
                 ),
                 MethodName =
                     GetMappingMethodName(mappingAttribute) ?? declaration.Identifier.ValueText,
+                OperationKind = projection.Request.OperationKind,
                 ReceiverKind = projection.Request.ReceiverKind,
                 SourceTypeName = projection.Request.SourceTypeName,
                 ResultTypeTemplate = projection.Request.ResultTypeTemplate,
                 SelectorParameterName = projection.Request.SelectorParameterName,
+                KeySelectorParameterName = projection.Request.KeySelectorParameterName,
+                KeySelectorBodyTemplate = projection.Request.KeySelectorBodyTemplate,
                 Captures = projection.Request.Captures,
                 CanUsePrebuiltExpressionWhenConfigured = projection
                     .Request
                     .CanUsePrebuiltExpressionWhenConfigured,
-                Projection = projection.Request.Projection!,
+                Projection = projection.Request.Projection,
+                ProjectionBodyTemplate = projection.Request.ProjectionBodyTemplate,
                 InnerJoinFilterBodyTemplate = projection.Request.InnerJoinFilterBodyTemplate,
             },
             GeneratedDtos = projection.GeneratedDtos,
