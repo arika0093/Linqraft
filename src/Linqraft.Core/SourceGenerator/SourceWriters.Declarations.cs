@@ -437,9 +437,11 @@ internal static partial class SourceWriters
                         );
                     }
 
+                    var canApplyInnerJoinFilter =
+                        request.OperationKind != ProjectionOperationKind.GroupBy;
                     var querySource =
                         request.InnerJoinFilterBodyText is { } innerJoinFilterBodyText
-                        && request.OperationKind != ProjectionOperationKind.GroupBy
+                        && canApplyInnerJoinFilter
                             ? $"source.Where({ProjectionBodyEmitter.AppendValueInline($"{request.SelectorParameterName} => ", innerJoinFilterBodyText)})"
                             : "source";
                     var projectionInvocation = request.OperationKind switch

@@ -43,8 +43,8 @@ public sealed class AnalyzerCodeFixSmokeTests
                 public IQueryable<TResult> Select<TResult>(Func<T, object> selector, Func<object> capture) => throw null!;
                 public IQueryable<TResult> SelectMany<TResult>(Func<T, IQueryable<TResult>> selector) => throw null!;
                 public IQueryable<TResult> SelectMany<TResult>(Func<T, IQueryable<TResult>> selector, Func<object> capture) => throw null!;
-                public IQueryable<TResult> GroupBy<TKey, TResult>(Func<T, TKey> keySelector, Func<System.Linq.IGrouping<TKey, T>, TResult> selector) => throw null!;
-                public IQueryable<TResult> GroupBy<TKey, TResult>(Func<T, TKey> keySelector, Func<System.Linq.IGrouping<TKey, T>, TResult> selector, Func<object> capture) => throw null!;
+                public IQueryable<TResult> GroupBy<TKey, TResult>(Func<T, TKey> keySelector, Func<System.Linq.IGrouping<TKey, T>, TResult> resultSelector) => throw null!;
+                public IQueryable<TResult> GroupBy<TKey, TResult>(Func<T, TKey> keySelector, Func<System.Linq.IGrouping<TKey, T>, TResult> resultSelector, Func<object> capture) => throw null!;
             }
 
             public static class LinqraftQueryExtensions

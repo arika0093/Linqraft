@@ -133,7 +133,7 @@ public sealed class LinqraftCompositeAnalyzer : DiagnosticAnalyzer
             return;
         }
 
-        var selectorBody = lambda is null ? null : AnalyzerHelpers.GetLambdaExpressionBody(lambda);
+        var selectorBody = AnalyzerHelpers.GetLambdaExpressionBody(lambda);
         if (
             selectorBody is not AnonymousObjectCreationExpressionSyntax
                 and not ObjectCreationExpressionSyntax
