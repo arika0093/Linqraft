@@ -25,14 +25,12 @@ public static partial class MappingTestQueries
         int offset,
         string suffix
     ) =>
-        source.Select<MappingTestCapturedDto>(
-            x => new
-            {
-                x.Id,
-                AdjustedValue = x.Value + offset,
-                Description = x.Name + suffix,
-            }
-        );
+        source.Select<MappingTestCapturedDto>(x => new
+        {
+            x.Id,
+            AdjustedValue = x.Value + offset,
+            Description = x.Name + suffix,
+        });
 
 #if NET9_0_OR_GREATER
     [LinqraftMapping]
@@ -43,9 +41,9 @@ public static partial class MappingTestQueries
         {
             x.Id,
             x.Title,
-            Children = x.Children.UseLinqraft().Select<MappingTestChildDto>(
-                c => new { c.ChildId, c.ChildName }
-            ),
+            Children = x
+                .Children.UseLinqraft()
+                .Select<MappingTestChildDto>(c => new { c.ChildId, c.ChildName }),
         });
 #endif
 }

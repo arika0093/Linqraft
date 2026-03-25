@@ -91,10 +91,7 @@ internal static partial class ProjectionTemplateBuilder
                 && typeDeclaration.Parent is not TypeDeclarationSyntax
             )
             || methodSymbol.Parameters.Length == 0
-            || !IsMappingDeclarationReceiver(
-                methodSymbol.Parameters[0].Type,
-                generatorOptions
-            )
+            || !IsMappingDeclarationReceiver(methodSymbol.Parameters[0].Type, generatorOptions)
         )
         {
             return null;

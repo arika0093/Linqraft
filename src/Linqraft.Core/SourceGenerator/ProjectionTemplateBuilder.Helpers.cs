@@ -929,7 +929,8 @@ internal static partial class ProjectionTemplateBuilder
                 semanticModel,
                 generatorOptions,
                 cancellationToken
-            ) is { } mappingOperationKind
+            ) is
+            { } mappingOperationKind
         )
         {
             return mappingOperationKind;
@@ -1085,10 +1086,7 @@ internal static partial class ProjectionTemplateBuilder
         var targetMethod = methodSymbol?.ReducedFrom ?? methodSymbol;
         if (
             targetMethod is null
-            || !IsMappingDeclarationReceiver(
-                targetMethod.ContainingType,
-                generatorOptions
-            )
+            || !IsMappingDeclarationReceiver(targetMethod.ContainingType, generatorOptions)
         )
         {
             return null;

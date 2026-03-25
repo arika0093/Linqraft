@@ -153,10 +153,7 @@ internal static class LinqraftGeneratorPipeline
             projectionSources.Collect(),
             objectGenerationSources.Collect()
         );
-        var ownedSources = MergeCollectedValues(
-            queryOwnedSources,
-            mappingMethodSources.Collect()
-        );
+        var ownedSources = MergeCollectedValues(queryOwnedSources, mappingMethodSources.Collect());
         var generatedSources = ownedSources
             .Combine(configuration)
             .Select(

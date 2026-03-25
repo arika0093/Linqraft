@@ -19,12 +19,7 @@ internal static partial class MappingMethodQueries
     [LinqraftMapping]
     internal static IQueryable<MappingDeclareCustomDto> CustomProjection(
         this LinqraftMapper<MappingDeclareSourceClass> source
-    ) =>
-        source.Select<MappingDeclareCustomDto>(x => new
-        {
-            x.Id,
-            x.Description,
-        });
+    ) => source.Select<MappingDeclareCustomDto>(x => new { x.Id, x.Description });
 
     [LinqraftMapping]
     internal static IQueryable<MappingDeclareCaptureDto> ProjectToMappingDeclareWithCapture(
@@ -48,9 +43,9 @@ internal static partial class MappingMethodQueries
         {
             x.Id,
             x.Title,
-            Children = x.Children.UseLinqraft().Select<MappingDeclareChildDto>(
-                c => new { c.ChildId, c.ChildName }
-            ),
+            Children = x
+                .Children.UseLinqraft()
+                .Select<MappingDeclareChildDto>(c => new { c.ChildId, c.ChildName }),
         });
 #endif
 }
