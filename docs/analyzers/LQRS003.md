@@ -19,7 +19,7 @@ Detects `System.Linq` `Select` invocations on `IQueryable<T>` whose selector cre
 - Named selectors that already contain a simplifiable null ternary are surfaced as [LQRS006](./LQRS006.md) instead.
 
 ## Code Fixes
-`SelectToSelectExprNamedCodeFixProvider` registers three distinct fixes (titles shown are from the provider):
+The code fix registers three distinct fixes:
 
 - **Convert to UseLinqraft().Select<TDto>()**
   - Converts the `Select` method to a generic `UseLinqraft().Select<TDto>()` call and **converts the named object creation into an anonymous object**. This variant recursively converts nested object creations as well (deep conversion). It also runs the ternary-null simplifier on the generated anonymous structures, converting patterns like `x.A != null ? x.A.B : null` to `x.A?.B`.
@@ -49,7 +49,7 @@ prop = x.A?.B
 
 This provides more concise code using null-conditional operators. The second option (strict) and third option (predefined) intentionally preserve the original ternary patterns. You can use [LQRS004](LQRS004.md) to manually apply the transformation afterward.
 
-These three options map directly to the code-fix implementations: `ConvertToSelectExprExplicitDtoAsync`, `ConvertToSelectExprExplicitDtoStructAsync`, and `ConvertToSelectExprPredefinedDtoAsync`.
+These three options correspond to the three conversion variants shown above.
 
 ## Examples
 The examples below show the concrete transformations performed by each fix.

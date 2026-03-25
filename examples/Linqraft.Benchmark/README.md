@@ -19,9 +19,9 @@ The benchmark compares the following patterns:
 2. **Traditional Manual DTO** - Traditional LINQ Select with manually defined DTOs
 
 ### Linqraft
-3. **Linqraft Anonymous** - Linqraft SelectExpr with anonymous type
-4. **Linqraft Auto-Generated DTO** - Linqraft SelectExpr with auto-generated DTOs
-5. **Linqraft Manual DTO** - Linqraft SelectExpr with manually defined DTOs
+3. **Linqraft Anonymous** - Linqraft `UseLinqraft().Select(...)` with anonymous type
+4. **Linqraft Auto-Generated DTO** - Linqraft `UseLinqraft().Select<TDto>(...)` with auto-generated DTOs
+5. **Linqraft Manual DTO** - Linqraft `UseLinqraft().Select(...)` with manually defined DTOs
 
 ### Third-Party Mapping Libraries
 6. **AutoMapper ProjectTo** - AutoMapper's IQueryable projection with `ProjectTo<T>()`

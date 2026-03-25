@@ -25,8 +25,8 @@ internal static class DiagnosticDescriptors
 
     public static readonly DiagnosticDescriptor SelectToSelectExprAnonymous = new(
         "LQRS002",
-        "IQueryable.Select can be converted to SelectExpr",
-        "IQueryable.Select can be converted to SelectExpr",
+        "IQueryable.Select can be converted to UseLinqraft().Select(...)",
+        "IQueryable.Select can be converted to UseLinqraft().Select(...)",
         "Design",
         DiagnosticSeverity.Hidden,
         isEnabledByDefault: true
@@ -34,8 +34,8 @@ internal static class DiagnosticDescriptors
 
     public static readonly DiagnosticDescriptor SelectToSelectExprNamed = new(
         "LQRS003",
-        "IQueryable.Select can be converted to SelectExpr",
-        "IQueryable.Select can be converted to SelectExpr",
+        "IQueryable.Select can be converted to UseLinqraft().Select(...)",
+        "IQueryable.Select can be converted to UseLinqraft().Select(...)",
         "Design",
         DiagnosticSeverity.Hidden,
         isEnabledByDefault: true
@@ -43,8 +43,8 @@ internal static class DiagnosticDescriptors
 
     public static readonly DiagnosticDescriptor SelectToSelectExprAnonymousWithNullTernary = new(
         "LQRS005",
-        "IQueryable.Select can be converted to SelectExpr",
-        "IQueryable.Select can be converted to SelectExpr",
+        "IQueryable.Select can be converted to UseLinqraft().Select(...)",
+        "IQueryable.Select can be converted to UseLinqraft().Select(...)",
         "Design",
         DiagnosticSeverity.Info,
         isEnabledByDefault: true
@@ -52,8 +52,8 @@ internal static class DiagnosticDescriptors
 
     public static readonly DiagnosticDescriptor SelectToSelectExprNamedWithNullTernary = new(
         "LQRS006",
-        "IQueryable.Select can be converted to SelectExpr",
-        "IQueryable.Select can be converted to SelectExpr",
+        "IQueryable.Select can be converted to UseLinqraft().Select(...)",
+        "IQueryable.Select can be converted to UseLinqraft().Select(...)",
         "Design",
         DiagnosticSeverity.Info,
         isEnabledByDefault: true

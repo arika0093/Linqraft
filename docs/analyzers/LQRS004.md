@@ -11,25 +11,25 @@ Detects conditional (ternary) expressions where one branch returns `null` (or a 
 - The node is a conditional expression (`condition ? whenTrue : whenFalse`).
 - The condition contains a null check (e.g. `x != null`, `x == null`) or a logical-and chain that includes a null check.
 - One branch is `null` (or `(Type?)null`) and the other branch constructs an object (`new ...` or anonymous `new { ... }`).
-- The conditional is inside a `SelectExpr` call.
+- The conditional is inside a Linqraft projection call such as `SelectExpr` or `UseLinqraft().Select(...)`.
 
 ## When It Doesn't Trigger
 - Neither branch is an object creation.
 - The condition doesn't include a null-check.
-- The conditional is outside a `SelectExpr` call.
+- The conditional is outside a Linqraft projection call.
 
 ## Suggested Transformation
 The analyzer reports an informational diagnostic and suggests a null-propagation style replacement when the pattern is a simple null check that guards an object creation. A common safe transformation is to move the nullable operator into the member access so that inner member accesses use the null-conditional operator.
 
 ### Relationship with LQRS002/LQRS003/LQRS005/LQRS006
 
-Some `Select` → `SelectExpr` conversion options automatically apply this transformation:
+Some `Select` → `UseLinqraft().Select(...)` conversion options automatically apply this transformation:
 - **LQRS005** (anonymous type with null ternary): Always applies ternary simplification
-- **LQRS006 "Convert to SelectExpr<T, TDto>"**: Applies ternary simplification
+- **LQRS006 "Convert to UseLinqraft().Select<TDto>()"**: Applies ternary simplification
 
 Others preserve the original ternary patterns:
-- **LQRS006 "Convert to SelectExpr<T, TDto> (strict)"**: Does NOT apply ternary simplification
-- **LQRS006 "Convert to SelectExpr (use predefined classes)"**: Does NOT apply ternary simplification
+- **LQRS006 "Convert to UseLinqraft().Select<TDto>() (strict)"**: Does NOT apply ternary simplification
+- **LQRS006 "Convert to UseLinqraft().Select() (use predefined classes)"**: Does NOT apply ternary simplification
 
 The hidden baseline suggestions [LQRS002](./LQRS002.md) and [LQRS003](./LQRS003.md) still cover the non-ternary cases. For conversions that preserve ternary patterns, you can use LQRS004 to manually apply the transformation afterward if desired.
 

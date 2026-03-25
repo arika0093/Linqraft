@@ -133,7 +133,7 @@ public partial class InMemoryQueryBenchmark
     }
 
     // ============================================================
-    // Pattern 3: Linqraft SelectExpr with Anonymous Type
+    // Pattern 3: Linqraft UseLinqraft().Select with Anonymous Type
     // (Using Linqraft - Anonymous Type)
     // ============================================================
     [Benchmark(Description = "Linqraft Anonymous")]
@@ -166,7 +166,7 @@ public partial class InMemoryQueryBenchmark
     }
 
     // ============================================================
-    // Pattern 4: Linqraft SelectExpr with Auto-Generated DTO
+    // Pattern 4: Linqraft UseLinqraft().Select with Auto-Generated DTO
     // (Using Linqraft - Auto-Generated DTO)
     // ============================================================
     [Benchmark(Baseline = true, Description = "Linqraft Auto-Generated DTO")]
@@ -199,7 +199,7 @@ public partial class InMemoryQueryBenchmark
     }
 
     // ============================================================
-    // Pattern 5: Linqraft SelectExpr with Manual DTO
+    // Pattern 5: Linqraft UseLinqraft().Select with Manual DTO
     // (Using Linqraft - Manual DTO definition)
     // ============================================================
     [Benchmark(Description = "Linqraft Manual DTO")]
