@@ -20,6 +20,8 @@ Notes:
 ## When It Triggers
 When a `SelectExpr(...)` invocation's lambda body references any of the above elements but the invocation does not include a `capture` argument (or the referenced names are missing from the `capture` object).
 
+`[LinqraftMapping]` template methods are different: values that should become generated mapping-method parameters are declared directly on the template method signature, so they do not require `capture:`.
+
 ## Code Fix Behavior
 `LocalVariableCaptureCodeFixProvider` will:
 - Compute the full set of required capture names (including already-captured ones).

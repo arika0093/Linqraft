@@ -6,24 +6,25 @@ namespace Linqraft.Tests.EFCore;
 
 internal static partial class EfOrderQueries
 {
-    [LinqraftMappingGenerate("ProjectToEfCompiledOrderRow")]
-    internal static IQueryable<EfCompiledOrderRow> Template(this IQueryable<EfOrder> source)
+    [LinqraftMapping]
+    internal static IQueryable<EfCompiledOrderRow> ProjectToEfCompiledOrderRow(
+        this LinqraftMapper<EfOrder> source
+    )
     {
-        return source.SelectExpr<EfOrder, EfCompiledOrderRow>(order => new
+        return source.Select<EfCompiledOrderRow>(order => new
         {
             order.Id,
             order.OrderNumber,
             TotalAmount = order.Items.Sum(item => item.Quantity * item.UnitPrice),
         });
     }
-}
 
-[LinqraftMappingGenerate("ProjectToEfNullableShipmentRow")]
-internal sealed class EfNullableShipmentMappingDeclare : LinqraftMappingDeclare<EfOrder>
-{
-    protected override void DefineMapping()
+    [LinqraftMapping]
+    internal static IQueryable<EfNullableShipmentRow> ProjectToEfNullableShipmentRow(
+        this LinqraftMapper<EfOrder> source
+    )
     {
-        Source.SelectExpr<EfOrder, EfNullableShipmentRow>(order => new
+        return source.Select<EfNullableShipmentRow>(order => new
         {
             order.OrderNumber,
             CarrierName = order.Shipment?.CarrierName,

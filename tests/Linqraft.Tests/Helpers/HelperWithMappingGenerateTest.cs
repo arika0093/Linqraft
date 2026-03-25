@@ -5,20 +5,20 @@ namespace Linqraft.Tests;
 
 public static partial class MappingHelperTestQueries
 {
-    [LinqraftMappingGenerate("ProjectToHelperLeftJoinDto")]
-    internal static IQueryable<MappingHelperLeftJoinOrderDto> DummyLeftJoin(
-        this IQueryable<MappingHelperOrder> source
+    [LinqraftMapping]
+    internal static IQueryable<MappingHelperLeftJoinOrderDto> ProjectToHelperLeftJoinDto(
+        this LinqraftMapper<MappingHelperOrder> source
     ) =>
-        source.SelectExpr<MappingHelperOrder, MappingHelperLeftJoinOrderDto>(
+        source.Select<MappingHelperLeftJoinOrderDto>(
             (order, helper) =>
                 new { order.Id, CustomerName = helper.AsLeftJoin(order.Customer!).Name }
         );
 
-    [LinqraftMappingGenerate("ProjectToHelperInnerJoinDto")]
-    internal static IQueryable<MappingHelperInnerJoinOrderDto> DummyInnerJoin(
-        this IQueryable<MappingHelperOrder> source
+    [LinqraftMapping]
+    internal static IQueryable<MappingHelperInnerJoinOrderDto> ProjectToHelperInnerJoinDto(
+        this LinqraftMapper<MappingHelperOrder> source
     ) =>
-        source.SelectExpr<MappingHelperOrder, MappingHelperInnerJoinOrderDto>(
+        source.Select<MappingHelperInnerJoinOrderDto>(
             (order, helper) =>
                 new { order.Id, CustomerName = helper.AsInnerJoin(order.Customer!).Name }
         );

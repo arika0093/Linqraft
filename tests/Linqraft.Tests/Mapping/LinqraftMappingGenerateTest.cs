@@ -6,11 +6,11 @@ namespace Linqraft.Tests;
 // Static partial class with mapping methods
 public static partial class MappingTestQueries
 {
-    [LinqraftMappingGenerate("ProjectToDto")]
-    internal static IQueryable<MappingTestSampleDto> DummyQuery(
-        this IQueryable<MappingTestSampleClass> source
+    [LinqraftMapping]
+    internal static IQueryable<MappingTestSampleDto> ProjectToDto(
+        this LinqraftMapper<MappingTestSampleClass> source
     ) =>
-        source.SelectExpr<MappingTestSampleClass, MappingTestSampleDto>(x => new
+        source.Select<MappingTestSampleDto>(x => new
         {
             x.Id,
             x.Name,
@@ -19,32 +19,31 @@ public static partial class MappingTestQueries
             ChildName = x.Child?.ChildName,
         });
 
-    [LinqraftMappingGenerate("ProjectToDtoWithCapture")]
-    internal static IQueryable<MappingTestCapturedDto> DummyWithCapture(
-        this IQueryable<MappingTestSampleClass> source,
+    [LinqraftMapping]
+    internal static IQueryable<MappingTestCapturedDto> ProjectToDtoWithCapture(
+        this LinqraftMapper<MappingTestSampleClass> source,
         int offset,
         string suffix
     ) =>
-        source.SelectExpr<MappingTestSampleClass, MappingTestCapturedDto>(
+        source.Select<MappingTestCapturedDto>(
             x => new
             {
                 x.Id,
                 AdjustedValue = x.Value + offset,
                 Description = x.Name + suffix,
-            },
-            () => (offset, suffix)
+            }
         );
 
 #if NET9_0_OR_GREATER
-    [LinqraftMappingGenerate("ProjectToDtoWithChildren")]
-    internal static IQueryable<MappingTestParentDto> DummyWithChildren(
-        this IQueryable<MappingTestParentClass> source
+    [LinqraftMapping]
+    internal static IQueryable<MappingTestParentDto> ProjectToDtoWithChildren(
+        this LinqraftMapper<MappingTestParentClass> source
     ) =>
-        source.SelectExpr<MappingTestParentClass, MappingTestParentDto>(x => new
+        source.Select<MappingTestParentDto>(x => new
         {
             x.Id,
             x.Title,
-            Children = x.Children.SelectExpr<MappingTestChildClass, MappingTestChildClassDto>(
+            Children = x.Children.UseLinqraft().Select<MappingTestChildDto>(
                 c => new { c.ChildId, c.ChildName }
             ),
         });
@@ -192,5 +191,11 @@ public class MappingTestParentClass
     public string Title { get; set; } = "";
     public List<MappingTestChildClass> Children { get; set; } = new();
 }
+
+public partial class MappingTestSampleDto;
+
+public partial class MappingTestChildDto;
+
+public partial class MappingTestParentDto;
 
 public partial class MappingTestCapturedDto;

@@ -320,7 +320,7 @@ public sealed class SourceGeneratorSmokeTests
         generatedSources["Custom.Declarations.g.cs"]
             .ShouldContain("internal sealed partial class CustomMappingGenerateAttribute");
         generatedSources["Custom.Declarations.g.cs"]
-            .ShouldContain("internal abstract partial class CustomMappingDeclare<T>");
+            .ShouldContain("internal sealed partial class CustomMappingDeclare<T>");
         generatedSources["Custom.Declarations.g.cs"]
             .ShouldContain("internal static partial class CustomKit");
         generatedSources["Custom.Declarations.g.cs"]
@@ -357,7 +357,7 @@ public sealed class SourceGeneratorSmokeTests
             .Select(pair => pair.Value)
             .ShouldContain(source =>
                 source.Contains(
-                    "ProjectToDefaultNamedOrderDto(this global::System.Linq.IQueryable<global::SmokeFixture.DefaultNamedOrder> source)",
+                    "ToDefaultNamedOrderDto(this global::System.Linq.IQueryable<global::SmokeFixture.DefaultNamedOrder> source)",
                     StringComparison.Ordinal
                 )
             );
@@ -633,7 +633,7 @@ public sealed class SourceGeneratorSmokeTests
     }
 
     [Test]
-    public void Class_level_mapping_requires_mapping_declare_inheritance()
+    public void Method_level_mapping_requires_mapper_receiver()
     {
         var driver = CreateDriver();
         var compilation = CreateCompilation(
@@ -704,9 +704,12 @@ public sealed class SourceGeneratorSmokeTests
             source.Contains("ProjectToPublicOrderRow", StringComparison.Ordinal)
         );
 
-        mappingSource.ShouldContain("public static partial class PublicOrderMapping_");
+        mappingSource.ShouldContain("public static partial class PublicOrderMappings");
         mappingSource.ShouldContain(
             "public static global::System.Linq.IQueryable<global::SmokeFixture.PublicOrderRow> ProjectToPublicOrderRow"
+        );
+        mappingSource.ShouldContain(
+            "public static global::System.Collections.Generic.IEnumerable<global::SmokeFixture.PublicOrderRow> ProjectToPublicOrderRow"
         );
 
         var lines = mappingSource.Replace("\r\n", "\n").Split('\n');
@@ -962,13 +965,11 @@ public sealed class SourceGeneratorSmokeTests
                     => CustomKit.Build<CustomDto>(new { Id = 1 });
             }
 
-            [CustomMappingGenerate]
-            internal sealed class CustomEntityMapping : CustomMappingDeclare<CustomEntity>
+            internal static partial class CustomEntityMappings
             {
-                protected override void DefineMapping()
-                {
-                    _ = Source.ProjectExpr(x => new CustomDto { Id = x.Id });
-                }
+                [CustomMappingGenerate]
+                internal static IQueryable<CustomDto> ProjectToCustomDto(this CustomMappingDeclare<CustomEntity> source)
+                    => source.Select<CustomDto>(x => new { x.Id });
             }
             """;
 
@@ -1194,22 +1195,20 @@ public sealed class SourceGeneratorSmokeTests
                 public int Id { get; set; }
             }
 
-            [LinqraftMappingGenerate("ProjectToValidOrderProjection")]
-            internal sealed class ValidOrderMapping : LinqraftMappingDeclare<SmokeOrder>
+            internal static partial class ValidOrderMappings
             {
-                protected override void DefineMapping()
-                {
-                    Source.SelectExpr<SmokeOrder, ValidOrderProjectionDto>(order => new
+                [LinqraftMapping]
+                internal static IQueryable<ValidOrderProjectionDto> ProjectToValidOrderProjection(this LinqraftMapper<SmokeOrder> source)
+                    => source.Select<ValidOrderProjectionDto>(order => new
                     {
                         order.Id,
                     });
-                }
             }
 
-            [LinqraftMappingGenerate("ProjectToIgnoredOrderProjection")]
-            internal sealed class IgnoredOrderMapping
+            internal static partial class IgnoredOrderMappings
             {
-                internal IQueryable<IgnoredOrderProjectionDto> DefineMapping(IQueryable<SmokeOrder> source)
+                [LinqraftMapping]
+                internal static IQueryable<IgnoredOrderProjectionDto> ProjectToIgnoredOrderProjection(this IQueryable<SmokeOrder> source)
                 {
                     return source.SelectExpr<SmokeOrder, IgnoredOrderProjectionDto>(order => new
                     {
@@ -1259,12 +1258,11 @@ public sealed class SourceGeneratorSmokeTests
                 public Shipment? Shipment { get; set; }
             }
 
-            [LinqraftMappingGenerate("ProjectToPublicOrderRow", Visibility = LinqraftMappingVisibility.Public)]
-            internal sealed class PublicOrderMapping : LinqraftMappingDeclare<SmokeOrder>
+            public static partial class PublicOrderMappings
             {
-                protected override void DefineMapping()
-                {
-                    Source.SelectExpr<SmokeOrder, PublicOrderRow>(order => new
+                [LinqraftMapping(Visibility = LinqraftMapper.Public)]
+                internal static IQueryable<PublicOrderRow> ProjectToPublicOrderRow(this LinqraftMapper<SmokeOrder> source)
+                    => source.Select<PublicOrderRow>(order => new
                     {
                         TotalFeeAmount = order.Shipment != null
                             ? (int)(
@@ -1274,7 +1272,6 @@ public sealed class SourceGeneratorSmokeTests
                             )
                             : (int?)null,
                     });
-                }
             }
 
             public partial class PublicOrderRow;
@@ -1300,16 +1297,14 @@ public sealed class SourceGeneratorSmokeTests
                 public int Id { get; set; }
             }
 
-            [LinqraftMappingGenerate]
-            internal sealed class DefaultNamedOrderMapping : LinqraftMappingDeclare<DefaultNamedOrder>
+            internal static partial class DefaultNamedOrderMappings
             {
-                protected override void DefineMapping()
-                {
-                    Source.SelectExpr<DefaultNamedOrder, DefaultNamedOrderDto>(order => new
+                [LinqraftMapping]
+                internal static IQueryable<DefaultNamedOrderDto> ToDefaultNamedOrderDto(this LinqraftMapper<DefaultNamedOrder> source)
+                    => source.Select<DefaultNamedOrderDto>(order => new
                     {
                         order.Id,
                     });
-                }
             }
 
             public partial class DefaultNamedOrderDto;

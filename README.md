@@ -642,7 +642,7 @@ Linqraft will populate the predeclared member instead of generating it again.
 
 ### Mapping Methods
 
-Linqraft normally generates projection code inline through interceptors, but sometimes you want a reusable extension method that can be called from multiple places or embedded inside EF Core compiled queries. Mapping generation supports that in two ways: a helper-class approach based on `LinqraftMappingDeclare<T>` and a static partial class approach based on `[LinqraftMappingGenerate]`.
+Linqraft normally generates projection code inline through interceptors, but sometimes you want a reusable extension method that can be called from multiple places or embedded inside EF Core compiled queries. For that case, define a mapping template method with `[LinqraftMapping]` and `LinqraftMapper<TSource>`.
 
 <details>
 <summary>Show mapping method details</summary>
@@ -656,17 +656,16 @@ Use generated mapping methods when you want:
 * EF Core precompiled queries on newer runtimes
 * Dedicated query classes for complex projections
 
-#### Helper class approach
+#### Declaring a mapping method
 
-Inherit from `LinqraftMappingDeclare<T>` and define the projection in `DefineMapping()`:
+Create a top-level `static partial` class, then add a template method whose receiver is `LinqraftMapper<TSource>`:
 
 ```csharp
-[LinqraftMappingGenerate]
-internal sealed class OrderMappingDeclare : LinqraftMappingDeclare<Order>
+public static partial class OrderQueries
 {
-    protected override void DefineMapping()
-    {
-        Source.UseLinqraft().Select<OrderDto>(o => new
+    [LinqraftMapping]
+    internal static IQueryable<OrderDto> ProjectToOrderDto(this LinqraftMapper<Order> source) =>
+        source.Select<OrderDto>(o => new
         {
             o.Id,
             CustomerName = o.Customer?.Name,
@@ -676,68 +675,37 @@ internal sealed class OrderMappingDeclare : LinqraftMappingDeclare<Order>
                 i.Quantity,
             }),
         });
-    }
 }
 ```
 
-By default, Linqraft generates a method named `ProjectTo{DtoTypeName}`, so the declaration above produces a projection you can call as `dbContext.Orders.ProjectToOrderDto()`.
+Linqraft generates overloads for both `IQueryable<TSource>` and `IEnumerable<TSource>`, so the template above becomes a reusable `ProjectToOrderDto(...)` extension method on your real query source.
 
-#### Custom method names, capture parameters, and visibility
+#### Parameters and visibility
 
 ```csharp
-[LinqraftMappingGenerate(
-    "ProjectToSummaryWithOffset",
-    Visibility = LinqraftMappingVisibility.Public)]
-internal sealed class OrderSummaryMapping : LinqraftMappingDeclare<Order>
+public static partial class OrderQueries
 {
-    private int offset = default;
-    private string suffix = string.Empty;
-
-    protected override void DefineMapping()
-    {
-        Source.UseLinqraft().Select<OrderSummaryDto>(
+    [LinqraftMapping(Visibility = LinqraftMapper.Public)]
+    internal static IQueryable<OrderSummaryDto> ProjectToSummary(
+        this LinqraftMapper<Order> source,
+        int offset,
+        string suffix) =>
+        source.Select<OrderSummaryDto>(
             order => new
             {
                 order.Id,
                 DisplayName = order.CustomerName + suffix,
                 AdjustedTotal = order.Total + offset,
-            },
-            capture: () => (offset, suffix)
+            }
         );
-    }
 }
 ```
 
-The generated method receives `offset` and `suffix` as normal parameters, and `Visibility` controls whether the generated helper is `internal` or `public`.
-
-#### Static partial class approach
-
-Use a static partial class when you need more control over the containing type or want multiple generated mappings in one place:
-
-```csharp
-public static partial class OrderQueries
-{
-    [LinqraftMappingGenerate("ProjectToDto")]
-    internal static IQueryable<OrderDto> Template(this IQueryable<Order> source) => source
-        .UseLinqraft()
-        .Select<OrderDto>(o => new
-        {
-            o.Id,
-            CustomerName = o.Customer?.Name,
-            Items = o.Items.Select(i => new
-            {
-                i.ProductName,
-                i.Quantity,
-            }),
-        });
-}
-```
-
-Static partial mappings support the same `capture:` flow and the same `Visibility` option for the generated method.
+Additional values are declared as normal method parameters, so `capture: () => ...` is not needed for mapping methods. `Visibility` defaults to `internal`; set it to `LinqraftMapper.Public` when the generated extensions should be public.
 
 #### EF Core compiled queries
 
-Both mapping styles work with EF Core compiled queries:
+Mapping methods work with EF Core compiled queries:
 
 ```csharp
 private static readonly Func<MyDbContext, Task<List<OrderSummaryDto>>> GetOrderSummaries =
@@ -750,20 +718,13 @@ private static readonly Func<MyDbContext, Task<List<OrderSummaryDto>>> GetOrderS
 
 #### Requirements
 
-* **Helper class approach**
-  * Inherit from `LinqraftMappingDeclare<T>`
-  * Add `[LinqraftMappingGenerate]`
-  * Override `DefineMapping()`
-  * Use a Linqraft projection call such as `UseLinqraft().Select<TDto>(...)`
-  * Use `capture: () => ...` when outer values are required
-* **Static partial approach**
-  * Keep the containing class `static` and `partial`
-  * Mark the template method with `[LinqraftMappingGenerate("MethodName")]`
-  * Make the class top-level, not nested
-  * Use a Linqraft projection call inside the template method
-  * Use `capture: () => ...` when outer values are required
+* Keep the containing class `static`, `partial`, and top-level
+* Mark the template method with `[LinqraftMapping]`
+* Use `this LinqraftMapper<TSource>` as the first parameter
+* Use a Linqraft mapping call such as `source.Select<TDto>(...)`
+* Add any extra generated method parameters directly to the template method signature
 
-Direct lower-level entry points are still supported in mapping declarations when you need them, but the fluent `UseLinqraft()` style is the default in the docs.
+`LinqraftMappingGenerate` and `LinqraftMappingDeclare<T>` were deprecated in v0.10 and are no longer the recommended mapping API.
 
 </details>
 

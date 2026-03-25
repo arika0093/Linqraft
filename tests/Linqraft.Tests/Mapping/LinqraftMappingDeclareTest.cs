@@ -3,86 +3,63 @@ using System.Linq;
 
 namespace Linqraft.Tests;
 
-// Test classes inheriting from LinqraftMappingDeclare<T>
-[LinqraftMappingGenerate]
-internal class BasicMappingDeclare : LinqraftMappingDeclare<MappingDeclareSourceClass>
+internal static partial class MappingMethodQueries
 {
-    protected override void DefineMapping()
-    {
-        Source.SelectExpr<MappingDeclareSourceClass, MappingDeclareBasicDto>(x => new
+    [LinqraftMapping]
+    internal static IQueryable<MappingDeclareBasicDto> ProjectToMappingDeclareBasicDto(
+        this LinqraftMapper<MappingDeclareSourceClass> source
+    ) =>
+        source.Select<MappingDeclareBasicDto>(x => new
         {
             x.Id,
             x.Name,
             ChildName = x.Child?.ChildName,
         });
-    }
-}
 
-// Test with custom method name using class-level attribute
-[LinqraftMappingGenerate("CustomProjection")]
-internal class CustomMethodNameMappingDeclare : LinqraftMappingDeclare<MappingDeclareSourceClass>
-{
-    protected override void DefineMapping()
-    {
-        Source.SelectExpr<MappingDeclareSourceClass, MappingDeclareCustomDto>(x => new
+    [LinqraftMapping]
+    internal static IQueryable<MappingDeclareCustomDto> CustomProjection(
+        this LinqraftMapper<MappingDeclareSourceClass> source
+    ) =>
+        source.Select<MappingDeclareCustomDto>(x => new
         {
             x.Id,
             x.Description,
         });
-    }
-}
 
-[LinqraftMappingGenerate("ProjectToMappingDeclareWithCapture")]
-internal class CaptureMappingDeclare : LinqraftMappingDeclare<MappingDeclareSourceClass>
-{
-    private int offset = default;
-    private string suffix = string.Empty;
+    [LinqraftMapping]
+    internal static IQueryable<MappingDeclareCaptureDto> ProjectToMappingDeclareWithCapture(
+        this LinqraftMapper<MappingDeclareSourceClass> source,
+        int offset,
+        string suffix
+    ) =>
+        source.Select<MappingDeclareCaptureDto>(x => new
+        {
+            x.Id,
+            AdjustedValue = x.Value + offset,
+            Description = x.Name + suffix,
+        });
 
-    protected override void DefineMapping()
-    {
-        Source.SelectExpr<MappingDeclareSourceClass, MappingDeclareCaptureDto>(
-            x => new
-            {
-                x.Id,
-                AdjustedValue = x.Value + offset,
-                Description = x.Name + suffix,
-            },
-            () => (offset, suffix)
-        );
-    }
-}
-
-// bug: in old .NET versions, this test is not working correctly
 #if NET9_0_OR_GREATER
-
-// Test with nested collections
-[LinqraftMappingGenerate]
-internal class NestedCollectionMappingDeclare : LinqraftMappingDeclare<MappingDeclareParentClass>
-{
-    protected override void DefineMapping()
-    {
-        Source.SelectExpr<MappingDeclareParentClass, MappingDeclareParentDto>(x => new
+    [LinqraftMapping]
+    internal static IQueryable<MappingDeclareParentDto> ProjectToMappingDeclareParentDto(
+        this LinqraftMapper<MappingDeclareParentClass> source
+    ) =>
+        source.Select<MappingDeclareParentDto>(x => new
         {
             x.Id,
             x.Title,
-            Children = x.Children.SelectExpr<MappingDeclareChildClass, MappingDeclareChildDto>(
+            Children = x.Children.UseLinqraft().Select<MappingDeclareChildDto>(
                 c => new { c.ChildId, c.ChildName }
             ),
         });
-    }
-}
-
-internal partial class MappingDeclareParentDto;
-
-internal partial class MappingDeclareChildDto;
 #endif
+}
 
 public class LinqraftMappingDeclareTest
 {
     [Test]
     public void MappingDeclare_BasicTest()
     {
-        // Arrange
         var data = new[]
         {
             new MappingDeclareSourceClass
@@ -101,10 +78,8 @@ public class LinqraftMappingDeclareTest
             },
         }.AsTestQueryable();
 
-        // Act - the generated extension method should be available
         var result = data.ProjectToMappingDeclareBasicDto().ToList();
 
-        // Assert
         result.Count.ShouldBe(2);
         result[0].Id.ShouldBe(1);
         result[0].Name.ShouldBe("Test1");
@@ -118,7 +93,6 @@ public class LinqraftMappingDeclareTest
     [Test]
     public void MappingDeclare_CustomMethodName_Test()
     {
-        // Arrange
         var data = new[]
         {
             new MappingDeclareSourceClass
@@ -126,25 +100,20 @@ public class LinqraftMappingDeclareTest
                 Id = 1,
                 Name = "Test1",
                 Description = "Description1",
-                Child = null,
             },
             new MappingDeclareSourceClass
             {
                 Id = 2,
                 Name = "Test2",
                 Description = "Description2",
-                Child = null,
             },
         }.AsTestQueryable();
 
-        // Act - the custom method name should be available
         var result = data.CustomProjection().ToList();
 
-        // Assert
         result.Count.ShouldBe(2);
         result[0].Id.ShouldBe(1);
         result[0].Description.ShouldBe("Description1");
-
         result[1].Id.ShouldBe(2);
         result[1].Description.ShouldBe("Description2");
     }
@@ -177,11 +146,36 @@ public class LinqraftMappingDeclareTest
         result[1].Description.ShouldBe("Test2 units");
     }
 
+    [Test]
+    public void MappingDeclare_Generates_IEnumerable_Overload()
+    {
+        IEnumerable<MappingDeclareSourceClass> data =
+        [
+            new()
+            {
+                Id = 1,
+                Name = "Test1",
+                Description = "Description1",
+            },
+            new()
+            {
+                Id = 2,
+                Name = "Test2",
+                Description = "Description2",
+            },
+        ];
+
+        var result = data.CustomProjection().ToList();
+
+        result.Count.ShouldBe(2);
+        result[0].Description.ShouldBe("Description1");
+        result[1].Description.ShouldBe("Description2");
+    }
+
 #if NET9_0_OR_GREATER
     [Test]
     public void MappingDeclare_NestedCollection_Test()
     {
-        // Arrange
         var data = new[]
         {
             new MappingDeclareParentClass
@@ -202,10 +196,8 @@ public class LinqraftMappingDeclareTest
             },
         }.AsTestQueryable();
 
-        // Act - the generated method should be available
         var result = data.ProjectToMappingDeclareParentDto().ToList();
 
-        // Assert
         result.Count.ShouldBe(2);
         result[0].Id.ShouldBe(1);
         result[0].Title.ShouldBe("Parent1");
@@ -222,7 +214,6 @@ public class LinqraftMappingDeclareTest
 #endif
 }
 
-// Test source classes
 public class MappingDeclareSourceClass
 {
     public int Id { get; set; }
@@ -245,4 +236,14 @@ public class MappingDeclareParentClass
     public List<MappingDeclareChildClass> Children { get; set; } = new();
 }
 
+public partial class MappingDeclareBasicDto;
+
+public partial class MappingDeclareCustomDto;
+
 public partial class MappingDeclareCaptureDto;
+
+#if NET9_0_OR_GREATER
+internal partial class MappingDeclareParentDto;
+
+internal partial class MappingDeclareChildDto;
+#endif

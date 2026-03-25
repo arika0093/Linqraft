@@ -495,6 +495,11 @@ internal static partial class ProjectionTemplateBuilder
             return ReceiverKind.IEnumerable;
         }
 
+        if (receiverType is INamedTypeSymbol namedType && namedType.TypeArguments.Length == 1)
+        {
+            return ReceiverKind.IQueryable;
+        }
+
         return null;
     }
 
@@ -915,6 +920,18 @@ internal static partial class ProjectionTemplateBuilder
             return useLinqraftOperationKind;
         }
 
+        if (
+            GetMappingProjectionOperationKind(
+                invocation,
+                semanticModel,
+                generatorOptions,
+                cancellationToken
+            ) is { } mappingOperationKind
+        )
+        {
+            return mappingOperationKind;
+        }
+
         return GetInvocationName(invocation.Expression) switch
         {
             var name when name == generatorOptions.SelectExprMethodName =>
@@ -1051,6 +1068,39 @@ internal static partial class ProjectionTemplateBuilder
     }
 
     /// <summary>
+    /// Gets mapping declaration projection operation kind.
+    /// </summary>
+    private static ProjectionOperationKind? GetMappingProjectionOperationKind(
+        InvocationExpressionSyntax invocation,
+        SemanticModel semanticModel,
+        LinqraftGeneratorOptionsCore generatorOptions,
+        CancellationToken cancellationToken = default
+    )
+    {
+        var methodSymbol =
+            semanticModel.GetSymbolInfo(invocation, cancellationToken).Symbol as IMethodSymbol;
+        var targetMethod = methodSymbol?.ReducedFrom ?? methodSymbol;
+        if (
+            targetMethod is null
+            || !IsMappingDeclarationReceiver(
+                targetMethod.ContainingType,
+                generatorOptions
+            )
+        )
+        {
+            return null;
+        }
+
+        return targetMethod.Name switch
+        {
+            "Select" => ProjectionOperationKind.Select,
+            "SelectMany" => ProjectionOperationKind.SelectMany,
+            "GroupBy" => ProjectionOperationKind.GroupBy,
+            _ => null,
+        };
+    }
+
+    /// <summary>
     /// Determines whether the invocation is an use linqraft invocation.
     /// </summary>
     private static bool IsUseLinqraftInvocation(
@@ -1177,12 +1227,11 @@ internal static partial class ProjectionTemplateBuilder
     }
 
     /// <summary>
-    /// Determines whether the symbol inherits from the mapping declare.
+    /// Determines whether the symbol is a mapping declaration receiver.
     /// </summary>
-    private static bool InheritsFromMappingDeclare(
-        INamedTypeSymbol symbol,
-        LinqraftGeneratorOptionsCore generatorOptions,
-        CancellationToken cancellationToken = default
+    private static bool IsMappingDeclarationReceiver(
+        ITypeSymbol? symbol,
+        LinqraftGeneratorOptionsCore generatorOptions
     )
     {
         if (generatorOptions.MappingDeclareClassName is not { } mappingDeclareClassName)
@@ -1190,19 +1239,10 @@ internal static partial class ProjectionTemplateBuilder
             return false;
         }
 
-        var current = symbol.BaseType;
-        while (current is not null)
-        {
-            cancellationToken.ThrowIfCancellationRequested();
-            if (current.Name == mappingDeclareClassName)
-            {
-                return true;
-            }
-
-            current = current.BaseType;
-        }
-
-        return false;
+        return symbol is INamedTypeSymbol namedType
+            && namedType.Arity == 1
+            && namedType.Name == mappingDeclareClassName
+            && namedType.ContainingNamespace.ToDisplayString() == generatorOptions.SupportNamespace;
     }
 
     /// <summary>
@@ -1221,14 +1261,6 @@ internal static partial class ProjectionTemplateBuilder
         return attributes.FirstOrDefault(attribute =>
             attribute.AttributeClass?.Name == mappingGenerateAttributeName
         );
-    }
-
-    /// <summary>
-    /// Gets mapping method name.
-    /// </summary>
-    private static string? GetMappingMethodName(AttributeData? attribute)
-    {
-        return attribute?.ConstructorArguments.FirstOrDefault().Value as string;
     }
 
     /// <summary>

@@ -67,23 +67,6 @@ internal static class LinqraftGeneratorPipeline
             .Where(static template => template is not null)
             .Select(static (template, _) => template!);
 
-        var mappingClassTemplates = generatorOptions.MappingGenerateAttributeMetadataName
-            is { } mappingAttributeMetadataName
-            ? context
-                .SyntaxProvider.ForAttributeWithMetadataName(
-                    mappingAttributeMetadataName,
-                    static (node, _) => node is ClassDeclarationSyntax,
-                    (attributeContext, cancellationToken) =>
-                        ProjectionTemplateBuilder.AnalyzeMappingClass(
-                            attributeContext,
-                            cancellationToken,
-                            generatorOptions
-                        )
-                )
-                .Where(static template => template is not null)
-                .Select(static (template, _) => template!)
-            : CreateEmptyTemplates<MappingSourceTemplateModel>(context);
-
         var mappingMethodTemplates = generatorOptions.MappingGenerateAttributeMetadataName
             is { } mappingMethodMetadataName
             ? context
@@ -116,16 +99,6 @@ internal static class LinqraftGeneratorPipeline
             .Select(
                 static (data, cancellationToken) =>
                     ProjectionModelFinalizer.FinalizeObjectGeneration(
-                        data.Left,
-                        data.Right,
-                        cancellationToken
-                    )
-            );
-        var mappingClassModels = mappingClassTemplates
-            .Combine(configuration)
-            .Select(
-                static (data, cancellationToken) =>
-                    ProjectionModelFinalizer.FinalizeMapping(
                         data.Left,
                         data.Right,
                         cancellationToken
@@ -164,17 +137,6 @@ internal static class LinqraftGeneratorPipeline
                         GeneratedDtos = model.GeneratedDtos,
                     }
         );
-        var mappingClassSources = mappingClassModels.Select(
-            static (model, _) =>
-                (OwnedGeneratedSourceModel)
-                    new MappingOwnedGeneratedSourceModel
-                    {
-                        HintName = $"{model.Request.HintName}.g.cs",
-                        OwnerHintName = model.Request.HintName,
-                        Request = model.Request,
-                        GeneratedDtos = model.GeneratedDtos,
-                    }
-        );
         var mappingMethodSources = mappingMethodModels.Select(
             static (model, _) =>
                 (OwnedGeneratedSourceModel)
@@ -191,12 +153,8 @@ internal static class LinqraftGeneratorPipeline
             projectionSources.Collect(),
             objectGenerationSources.Collect()
         );
-        var queryAndClassOwnedSources = MergeCollectedValues(
-            queryOwnedSources,
-            mappingClassSources.Collect()
-        );
         var ownedSources = MergeCollectedValues(
-            queryAndClassOwnedSources,
+            queryOwnedSources,
             mappingMethodSources.Collect()
         );
         var generatedSources = ownedSources
