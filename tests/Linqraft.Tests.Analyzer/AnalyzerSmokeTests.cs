@@ -212,9 +212,9 @@ public sealed class AnalyzerSmokeTests
         var diagnostic = diagnostics.Single(current => current.Id == "LQRS002");
 
         diagnostic.Severity.ShouldBe(DiagnosticSeverity.Hidden);
-        diagnostic.GetMessage().ShouldBe(
-            "IQueryable.Select can be converted to UseLinqraft().Select(...)"
-        );
+        diagnostic
+            .GetMessage()
+            .ShouldBe("IQueryable.Select can be converted to UseLinqraft().Select(...)");
         diagnostics.Select(current => current.Id).ShouldNotContain("LQRS005");
     }
 
@@ -251,9 +251,9 @@ public sealed class AnalyzerSmokeTests
         var diagnostic = diagnostics.Single(current => current.Id == "LQRS005");
 
         diagnostic.Severity.ShouldBe(DiagnosticSeverity.Info);
-        diagnostic.GetMessage().ShouldBe(
-            "IQueryable.Select can be converted to UseLinqraft().Select(...)"
-        );
+        diagnostic
+            .GetMessage()
+            .ShouldBe("IQueryable.Select can be converted to UseLinqraft().Select(...)");
         diagnostics.Select(current => current.Id).ShouldNotContain("LQRS002");
     }
 
@@ -450,9 +450,9 @@ public sealed class AnalyzerSmokeTests
         var diagnostic = diagnostics.Single(current => current.Id == "LQRS003");
 
         diagnostic.Severity.ShouldBe(DiagnosticSeverity.Hidden);
-        diagnostic.GetMessage().ShouldBe(
-            "IQueryable.Select can be converted to UseLinqraft().Select(...)"
-        );
+        diagnostic
+            .GetMessage()
+            .ShouldBe("IQueryable.Select can be converted to UseLinqraft().Select(...)");
         diagnostics.Select(current => current.Id).ShouldNotContain("LQRS006");
     }
 
@@ -502,9 +502,9 @@ public sealed class AnalyzerSmokeTests
         var diagnostic = diagnostics.Single(current => current.Id == "LQRS006");
 
         diagnostic.Severity.ShouldBe(DiagnosticSeverity.Info);
-        diagnostic.GetMessage().ShouldBe(
-            "IQueryable.Select can be converted to UseLinqraft().Select(...)"
-        );
+        diagnostic
+            .GetMessage()
+            .ShouldBe("IQueryable.Select can be converted to UseLinqraft().Select(...)");
         diagnostics.Select(current => current.Id).ShouldNotContain("LQRS003");
     }
 
