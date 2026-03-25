@@ -99,6 +99,53 @@ public sealed class AnalyzerSmokeTests
     }
 
     [Test]
+    public async Task Mapper_method_parameters_do_not_require_capture()
+    {
+        const string source = """
+            using System;
+            using System.Linq;
+            using Linqraft;
+
+            namespace Linqraft
+            {
+                [AttributeUsage(AttributeTargets.Method)]
+                public sealed class LinqraftMappingAttribute : Attribute
+                {
+                }
+
+                public sealed class LinqraftMapper<T> where T : class
+                {
+                    public IQueryable<TResult> Select<TResult>(Func<T, object> selector) => throw null!;
+                }
+            }
+
+            public class Entity
+            {
+                public int Id { get; set; }
+                public int Value { get; set; }
+            }
+
+            public class EntityDto { }
+
+            public static partial class QueryHolder
+            {
+                [LinqraftMapping]
+                internal static IQueryable<EntityDto> ToDto(this LinqraftMapper<Entity> source, int threshold)
+                {
+                    return source.Select<EntityDto>(entity => new
+                    {
+                        entity.Id,
+                        IsLarge = entity.Value > threshold,
+                    });
+                }
+            }
+            """;
+
+        var diagnostics = await GetDiagnosticsAsync(source);
+        diagnostics.Select(diagnostic => diagnostic.Id).ShouldNotContain("LQRE001");
+    }
+
+    [Test]
     public async Task Anonymous_capture_reports_LQRW004()
     {
         const string source = """

@@ -80,6 +80,7 @@ internal static class SupportSourceEmitter
             if (
                 generatorOptions.MappingVisibilityEnumName is { } mappingVisibilityEnumName
                 && generatorOptions.MappingGenerateAttributeName is { } mappingGenerateAttributeName
+                && generatorOptions.MappingDeclareClassName is { } mappingDeclareVisibilityClassName
             )
             {
                 builder.AppendLines(
@@ -96,23 +97,25 @@ internal static class SupportSourceEmitter
                     }
 
                     /// <summary>
-                    /// Marks a mapping declaration that {{generatorOptions.GeneratorDisplayName}} should turn into a reusable projection method.
+                    /// Visibility constants used by <see cref="{{mappingGenerateAttributeName}}"/>.
                     /// </summary>
                     {{EmbeddedAttribute}}
-                    {{ClassAndMethodAttributes}}
+                    internal static partial class {{mappingDeclareVisibilityClassName}}
+                    {
+                        public const {{mappingVisibilityEnumName}} Default = {{mappingVisibilityEnumName}}.Default;
+
+                        public const {{mappingVisibilityEnumName}} Internal = {{mappingVisibilityEnumName}}.Internal;
+
+                        public const {{mappingVisibilityEnumName}} Public = {{mappingVisibilityEnumName}}.Public;
+                    }
+
+                    /// <summary>
+                    /// Marks a mapping declaration method that {{generatorOptions.GeneratorDisplayName}} should turn into reusable queryable and enumerable projection methods.
+                    /// </summary>
+                    {{EmbeddedAttribute}}
+                    {{MethodAttributes}}
                     internal sealed partial class {{mappingGenerateAttributeName}} : global::System.Attribute
                     {
-                        public {{mappingGenerateAttributeName}}()
-                        {
-                        }
-
-                        public {{mappingGenerateAttributeName}}(string methodName)
-                        {
-                            MethodName = methodName;
-                        }
-
-                        public string? MethodName { get; }
-
                         public {{mappingVisibilityEnumName}} Visibility { get; set; }
                     }
 
@@ -143,14 +146,30 @@ internal static class SupportSourceEmitter
                 builder.AppendLines(
                     $$"""
                     /// <summary>
-                    /// Base type for reusable mapping declarations. Override <see cref="DefineMapping"/> and describe the projection with <c>{{generatorOptions.SelectExprMethodName}}</c>.
+                    /// Declaration surface for reusable mapping methods. Describe the desired projection with members such as <c>Select</c>, <c>SelectMany</c>, or <c>GroupBy</c>.
                     /// </summary>
                     {{EmbeddedAttribute}}
-                    internal abstract partial class {{mappingDeclareClassName}}<T>
+                    {{EditorBrowsableNeverAttribute}}
+                    internal sealed partial class {{mappingDeclareClassName}}<T>
+                        where T : class
                     {
-                        protected global::System.Linq.IQueryable<T> Source => throw LinqraftDeclarationThrowHelpers.ForMappingDeclaration();
+                        public global::System.Linq.IQueryable<TResult> Select<TResult>(global::System.Func<T, object> selector)
+                            => throw LinqraftDeclarationThrowHelpers.ForMappingDeclaration();
 
-                        protected abstract void DefineMapping();
+                        public global::System.Linq.IQueryable<TResult> Select<TResult>(global::System.Func<T, global::{{generatorOptions.SupportNamespace}}.IProjectionHelper, object> selector)
+                            => throw LinqraftDeclarationThrowHelpers.ForMappingDeclaration();
+
+                        public global::System.Linq.IQueryable<TResult> SelectMany<TResult>(global::System.Func<T, global::System.Collections.Generic.IEnumerable<TResult>> selector)
+                            => throw LinqraftDeclarationThrowHelpers.ForMappingDeclaration();
+
+                        public global::System.Linq.IQueryable<TResult> SelectMany<TResult>(global::System.Func<T, global::{{generatorOptions.SupportNamespace}}.IProjectionHelper, global::System.Collections.Generic.IEnumerable<TResult>> selector)
+                            => throw LinqraftDeclarationThrowHelpers.ForMappingDeclaration();
+
+                        public global::System.Linq.IQueryable<TResult> GroupBy<TKey, TResult>(global::System.Func<T, TKey> keySelector, global::System.Func<global::System.Linq.IGrouping<TKey, T>, TResult> selector)
+                            => throw LinqraftDeclarationThrowHelpers.ForMappingDeclaration();
+
+                        public global::System.Linq.IQueryable<TResult> GroupBy<TKey, TResult>(global::System.Func<T, TKey> keySelector, global::System.Func<global::System.Linq.IGrouping<TKey, T>, global::{{generatorOptions.SupportNamespace}}.IProjectionHelper, TResult> selector)
+                            => throw LinqraftDeclarationThrowHelpers.ForMappingDeclaration();
                     }
 
                     """

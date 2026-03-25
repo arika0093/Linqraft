@@ -62,137 +62,6 @@ internal static partial class ProjectionTemplateBuilder
     }
 
     /// <summary>
-    /// Analyzes a mapping declaration class and extracts its generated projection template.
-    /// </summary>
-    public static MappingSourceTemplateModel? AnalyzeMappingClass(
-        GeneratorAttributeSyntaxContext attributeContext,
-        CancellationToken cancellationToken,
-        LinqraftGeneratorOptionsCore generatorOptions
-    )
-    {
-        if (
-            attributeContext.TargetNode is not ClassDeclarationSyntax declaration
-            || attributeContext.TargetSymbol is not INamedTypeSymbol classSymbol
-        )
-        {
-            return null;
-        }
-
-        if (!InheritsFromMappingDeclare(classSymbol, generatorOptions, cancellationToken))
-        {
-            return null;
-        }
-
-        var defineMapping = declaration
-            .Members.OfType<MethodDeclarationSyntax>()
-            .FirstOrDefault(method => method.Identifier.ValueText == "DefineMapping");
-        if (defineMapping is null)
-        {
-            return null;
-        }
-
-        var selectExpr = defineMapping
-            .DescendantNodes()
-            .OfType<InvocationExpressionSyntax>()
-            .FirstOrDefault(invocation =>
-                IsSelectExprInvocation(
-                    invocation,
-                    attributeContext.SemanticModel,
-                    generatorOptions,
-                    cancellationToken
-                )
-            );
-        if (selectExpr is null)
-        {
-            return null;
-        }
-
-        var mappingHintName =
-            $"{generatorOptions.MappingHintNamePrefix}_{HashingHelper.ComputeHash(classSymbol.ToDisplayString(), 16, cancellationToken)}";
-        var projection = AnalyzeQueryProjectionInvocation(
-            selectExpr,
-            attributeContext.SemanticModel,
-            cancellationToken,
-            allowInterceptor: false,
-            ownerHintName: mappingHintName,
-            generatorOptions
-        );
-        if (projection is null)
-        {
-            return null;
-        }
-
-        var mappingAttribute = GetMappingGenerateAttribute(
-            classSymbol.GetAttributes(),
-            generatorOptions
-        );
-        var methodName = GetMappingMethodName(mappingAttribute);
-        var accessibilityKeyword = GetMappingGeneratedAccessibilityKeyword(
-            classSymbol.DeclaredAccessibility,
-            selectExpr,
-            attributeContext.SemanticModel,
-            GetMappingVisibilityKeyword(mappingAttribute, cancellationToken),
-            cancellationToken
-        );
-        return new MappingSourceTemplateModel
-        {
-            Request = new MappingRequestTemplate
-            {
-                HintName = mappingHintName,
-                Origin = CreateOrigin(selectExpr),
-                Namespace = SymbolNameHelper.GetNamespace(classSymbol.ContainingNamespace),
-                ContainingTypeName =
-                    $"{classSymbol.Name}_{HashingHelper.ComputeHash(classSymbol.ToDisplayString(), 8, cancellationToken)}",
-                AccessibilityKeyword = accessibilityKeyword,
-                MethodAccessibilityKeyword = accessibilityKeyword,
-                MethodName = string.IsNullOrWhiteSpace(methodName)
-                    ? $"ProjectTo{ResolveDefaultMappingResultTypeName(selectExpr, attributeContext.SemanticModel, cancellationToken)}"
-                    : methodName!,
-                ReceiverKind = projection.Request.ReceiverKind,
-                SourceTypeName = projection.Request.SourceTypeName,
-                ResultTypeTemplate = projection.Request.ResultTypeTemplate,
-                SelectorParameterName = projection.Request.SelectorParameterName,
-                Captures = projection.Request.Captures,
-                CanUsePrebuiltExpressionWhenConfigured = projection
-                    .Request
-                    .CanUsePrebuiltExpressionWhenConfigured,
-                Projection = projection.Request.Projection!,
-                InnerJoinFilterBodyTemplate = projection.Request.InnerJoinFilterBodyTemplate,
-            },
-            GeneratedDtos = projection.GeneratedDtos,
-        };
-    }
-
-    /// <summary>
-    /// Resolves the default mapping result type name used for generated helper methods.
-    /// </summary>
-    private static string ResolveDefaultMappingResultTypeName(
-        InvocationExpressionSyntax selectExpr,
-        SemanticModel semanticModel,
-        CancellationToken cancellationToken
-    )
-    {
-        if (GetInvocationNameSyntax(selectExpr.Expression) is GenericNameSyntax genericName)
-        {
-            var resultTypeSyntax = genericName.TypeArgumentList.Arguments.LastOrDefault();
-            var resultType = resultTypeSyntax is null
-                ? null
-                : semanticModel.GetTypeInfo(resultTypeSyntax, cancellationToken).Type;
-            if (resultType is not null)
-            {
-                return resultType.Name;
-            }
-        }
-
-        var returnType = semanticModel.GetTypeInfo(selectExpr, cancellationToken).ConvertedType;
-        return
-            returnType is INamedTypeSymbol namedReturnType
-            && namedReturnType.TypeArguments.LastOrDefault() is ITypeSymbol mappedResultType
-            ? mappedResultType.Name
-            : "Dto";
-    }
-
-    /// <summary>
     /// Analyzes a mapping declaration method and extracts its generated projection template.
     /// </summary>
     public static MappingSourceTemplateModel? AnalyzeMappingMethod(
@@ -211,8 +80,21 @@ internal static partial class ProjectionTemplateBuilder
         }
 
         if (
-            !methodSymbol.ContainingType.IsStatic
+            !methodSymbol.IsStatic
+            || !methodSymbol.IsExtensionMethod
+            || !methodSymbol.ContainingType.IsStatic
+            || methodSymbol.ContainingType.ContainingType is not null
             || !methodSymbol.ContainingType.DeclaringSyntaxReferences.Any()
+            || !methodSymbol.ContainingType.DeclaringSyntaxReferences.Any(reference =>
+                reference.GetSyntax(cancellationToken) is TypeDeclarationSyntax typeDeclaration
+                && typeDeclaration.Modifiers.Any(SyntaxKind.PartialKeyword)
+                && typeDeclaration.Parent is not TypeDeclarationSyntax
+            )
+            || methodSymbol.Parameters.Length == 0
+            || !IsMappingDeclarationReceiver(
+                methodSymbol.Parameters[0].Type,
+                generatorOptions
+            )
         )
         {
             return null;
@@ -222,12 +104,13 @@ internal static partial class ProjectionTemplateBuilder
             .DescendantNodes()
             .OfType<InvocationExpressionSyntax>()
             .FirstOrDefault(invocation =>
-                IsSelectExprInvocation(
+                GetMappingProjectionOperationKind(
                     invocation,
                     attributeContext.SemanticModel,
                     generatorOptions,
                     cancellationToken
                 )
+                    is not null
             );
         if (selectExpr is null)
         {
@@ -270,16 +153,23 @@ internal static partial class ProjectionTemplateBuilder
                     methodSymbol.DeclaredAccessibility,
                     selectExpr,
                     attributeContext.SemanticModel,
-                    GetMappingVisibilityKeyword(mappingAttribute, cancellationToken),
+                    GetMappingVisibilityKeyword(mappingAttribute, cancellationToken) ?? "internal",
                     cancellationToken
                 ),
-                MethodName =
-                    GetMappingMethodName(mappingAttribute) ?? declaration.Identifier.ValueText,
+                MethodName = declaration.Identifier.ValueText,
                 ReceiverKind = projection.Request.ReceiverKind,
                 SourceTypeName = projection.Request.SourceTypeName,
                 ResultTypeTemplate = projection.Request.ResultTypeTemplate,
                 SelectorParameterName = projection.Request.SelectorParameterName,
-                Captures = projection.Request.Captures,
+                Captures = methodSymbol
+                    .Parameters.Skip(1)
+                    .Select(parameter => new CaptureParameterModel
+                    {
+                        PropertyName = parameter.Name,
+                        LocalName = parameter.Name,
+                        TypeName = parameter.Type.ToFullyQualifiedTypeName(),
+                    })
+                    .ToArray(),
                 CanUsePrebuiltExpressionWhenConfigured = projection
                     .Request
                     .CanUsePrebuiltExpressionWhenConfigured,
@@ -342,7 +232,7 @@ internal static partial class ProjectionTemplateBuilder
         var receiverType =
             semanticModel.GetTypeInfo(receiver, cancellationToken).ConvertedType
             ?? semanticModel.GetTypeInfo(receiver, cancellationToken).Type;
-        var receiverKind = ResolveReceiverKind(receiverType);
+        var receiverKind = ResolveReceiverKind(receiverType, generatorOptions);
         if (receiverKind is null)
         {
             return null;
