@@ -1,5 +1,3 @@
-ja: `SelectMany(Expr)`に加えて、`GroupBy(Expr)`も考慮する必要があります。
-en: In addition to `SelectMany(Expr)`, we also need to consider `GroupBy(Expr)`.
 <div align="center">
   <img width="144px" src="./assets/linqraft_512.png" />
 
