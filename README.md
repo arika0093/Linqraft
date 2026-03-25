@@ -1,4 +1,5 @@
-
+ja: `SelectMany(Expr)`に加えて、`GroupBy(Expr)`も考慮する必要があります。
+en: In addition to `SelectMany(Expr)`, we also need to consider `GroupBy(Expr)`.
 <div align="center">
   <img width="144px" src="./assets/linqraft_512.png" />
 
@@ -679,6 +680,18 @@ public static partial class OrderQueries
 ```
 
 Linqraft generates overloads for both `IQueryable<TSource>` and `IEnumerable<TSource>`, so the template above becomes a reusable `ProjectToOrderDto(...)` extension method on your real query source.
+
+```csharp
+// generated code sample
+public static partial class OrderQueries
+{
+    internal static IQueryable<OrderDto> ProjectToOrderDto(this IQueryable<Order> source) =>
+        source.Select<OrderDto>(o => new OrderDto { /* ... */ });
+
+    internal static IEnumerable<OrderDto> ProjectToOrderDto(this IEnumerable<Order> source) =>
+        source.Select<OrderDto>(o => new OrderDto { /* ... */ });
+}
+```
 
 #### Parameters and visibility
 
