@@ -1230,7 +1230,7 @@ internal static partial class ProjectionTemplateBuilder
     /// Determines whether the symbol is a mapping declaration receiver.
     /// </summary>
     private static bool IsMappingDeclarationReceiver(
-        ITypeSymbol? symbol,
+        ITypeSymbol? receiverType,
         LinqraftGeneratorOptionsCore generatorOptions
     )
     {
@@ -1239,7 +1239,7 @@ internal static partial class ProjectionTemplateBuilder
             return false;
         }
 
-        return symbol is INamedTypeSymbol namedType
+        return receiverType is INamedTypeSymbol namedType
             && namedType.Arity == 1
             && namedType.Name == mappingDeclareClassName
             && namedType.ContainingNamespace.ToDisplayString() == generatorOptions.SupportNamespace;
