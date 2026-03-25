@@ -83,10 +83,12 @@ internal static partial class ProjectionTemplateBuilder
             !methodSymbol.IsStatic
             || !methodSymbol.IsExtensionMethod
             || !methodSymbol.ContainingType.IsStatic
+            || methodSymbol.ContainingType.ContainingType is not null
             || !methodSymbol.ContainingType.DeclaringSyntaxReferences.Any()
             || !methodSymbol.ContainingType.DeclaringSyntaxReferences.Any(reference =>
                 reference.GetSyntax(cancellationToken) is TypeDeclarationSyntax typeDeclaration
                 && typeDeclaration.Modifiers.Any(SyntaxKind.PartialKeyword)
+                && typeDeclaration.Parent is not TypeDeclarationSyntax
             )
             || methodSymbol.Parameters.Length == 0
             || !IsMappingDeclarationReceiver(
@@ -230,7 +232,7 @@ internal static partial class ProjectionTemplateBuilder
         var receiverType =
             semanticModel.GetTypeInfo(receiver, cancellationToken).ConvertedType
             ?? semanticModel.GetTypeInfo(receiver, cancellationToken).Type;
-        var receiverKind = ResolveReceiverKind(receiverType);
+        var receiverKind = ResolveReceiverKind(receiverType, generatorOptions);
         if (receiverKind is null)
         {
             return null;

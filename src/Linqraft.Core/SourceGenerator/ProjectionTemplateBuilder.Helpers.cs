@@ -483,7 +483,10 @@ internal static partial class ProjectionTemplateBuilder
     /// <summary>
     /// Resolves receiver kind.
     /// </summary>
-    private static ReceiverKind? ResolveReceiverKind(ITypeSymbol? receiverType)
+    private static ReceiverKind? ResolveReceiverKind(
+        ITypeSymbol? receiverType,
+        LinqraftGeneratorOptionsCore generatorOptions
+    )
     {
         if (SymbolNameHelper.IsQueryable(receiverType))
         {
@@ -495,7 +498,7 @@ internal static partial class ProjectionTemplateBuilder
             return ReceiverKind.IEnumerable;
         }
 
-        if (receiverType is INamedTypeSymbol namedType && namedType.TypeArguments.Length == 1)
+        if (IsMappingDeclarationReceiver(receiverType, generatorOptions))
         {
             return ReceiverKind.IQueryable;
         }

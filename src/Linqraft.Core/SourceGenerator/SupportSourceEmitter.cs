@@ -80,6 +80,7 @@ internal static class SupportSourceEmitter
             if (
                 generatorOptions.MappingVisibilityEnumName is { } mappingVisibilityEnumName
                 && generatorOptions.MappingGenerateAttributeName is { } mappingGenerateAttributeName
+                && generatorOptions.MappingDeclareClassName is { } mappingDeclareVisibilityClassName
             )
             {
                 builder.AppendLines(
@@ -99,7 +100,7 @@ internal static class SupportSourceEmitter
                     /// Visibility constants used by <see cref="{{mappingGenerateAttributeName}}"/>.
                     /// </summary>
                     {{EmbeddedAttribute}}
-                    internal static partial class {{generatorOptions.MappingDeclareClassName}}
+                    internal static partial class {{mappingDeclareVisibilityClassName}}
                     {
                         public const {{mappingVisibilityEnumName}} Default = {{mappingVisibilityEnumName}}.Default;
 
@@ -158,16 +159,16 @@ internal static class SupportSourceEmitter
                         public global::System.Linq.IQueryable<TResult> Select<TResult>(global::System.Func<T, global::{{generatorOptions.SupportNamespace}}.IProjectionHelper, object> selector)
                             => throw LinqraftDeclarationThrowHelpers.ForMappingDeclaration();
 
-                        public global::System.Linq.IQueryable<TResult> SelectMany<TResult>(global::System.Func<T, global::System.Collections.Generic.IEnumerable<object>> selector)
+                        public global::System.Linq.IQueryable<TResult> SelectMany<TResult>(global::System.Func<T, global::System.Collections.Generic.IEnumerable<TResult>> selector)
                             => throw LinqraftDeclarationThrowHelpers.ForMappingDeclaration();
 
-                        public global::System.Linq.IQueryable<TResult> SelectMany<TResult>(global::System.Func<T, global::{{generatorOptions.SupportNamespace}}.IProjectionHelper, global::System.Collections.Generic.IEnumerable<object>> selector)
+                        public global::System.Linq.IQueryable<TResult> SelectMany<TResult>(global::System.Func<T, global::{{generatorOptions.SupportNamespace}}.IProjectionHelper, global::System.Collections.Generic.IEnumerable<TResult>> selector)
                             => throw LinqraftDeclarationThrowHelpers.ForMappingDeclaration();
 
-                        public global::System.Linq.IQueryable<TResult> GroupBy<TKey, TResult>(global::System.Func<T, TKey> keySelector, global::System.Func<global::System.Linq.IGrouping<TKey, T>, object> selector)
+                        public global::System.Linq.IQueryable<TResult> GroupBy<TKey, TResult>(global::System.Func<T, TKey> keySelector, global::System.Func<global::System.Linq.IGrouping<TKey, T>, TResult> selector)
                             => throw LinqraftDeclarationThrowHelpers.ForMappingDeclaration();
 
-                        public global::System.Linq.IQueryable<TResult> GroupBy<TKey, TResult>(global::System.Func<T, TKey> keySelector, global::System.Func<global::System.Linq.IGrouping<TKey, T>, global::{{generatorOptions.SupportNamespace}}.IProjectionHelper, object> selector)
+                        public global::System.Linq.IQueryable<TResult> GroupBy<TKey, TResult>(global::System.Func<T, TKey> keySelector, global::System.Func<global::System.Linq.IGrouping<TKey, T>, global::{{generatorOptions.SupportNamespace}}.IProjectionHelper, TResult> selector)
                             => throw LinqraftDeclarationThrowHelpers.ForMappingDeclaration();
                     }
 
