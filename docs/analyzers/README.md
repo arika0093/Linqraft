@@ -21,7 +21,7 @@ Basically, analyzers come with code fixes that can be automatically applied to i
 This allows you to fix the above recommendations with a single click.
 
 ## Prefixes
-- `LQRF` - Linqraft Refactoring suggestions (utility improvements, without SelectExpr)
-- `LQRS` - Linqraft SelectExpr suggestions
+- `LQRF` - Linqraft refactoring suggestions (utility improvements outside projection migrations)
+- `LQRS` - Linqraft projection suggestions
 - `LQRW` - Linqraft Warnings
 - `LQRE` - Linqraft Errors

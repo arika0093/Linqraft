@@ -19,7 +19,7 @@ Detects `System.Linq` `Select` calls performed on `IQueryable<T>` whose selector
 - Anonymous selectors that already contain a simplifiable null ternary are surfaced as [LQRS005](./LQRS005.md) instead.
 
 ## Code Fixes
-`SelectToSelectExprAnonymousCodeFixProvider` can offer conversions such as:
+The code fix can offer conversions such as:
 - Convert `Select(...)` → `UseLinqraft().Select(...)` preserving the anonymous projection.
 - Convert `Select(...)` → `UseLinqraft().Select<TDto>(...)` with a generated DTO type when that is preferable.
 - When the selector references outer variables, the conversion also adds the required `capture:` entries automatically.
