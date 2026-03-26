@@ -15,7 +15,20 @@ public sealed class GeneratedProjectionRuntimeTests
         {
             Id = 1,
             Customer = new ProjectionCustomer { Name = "Ada" },
-            Items = [new ProjectionOrderItem { Name = "Keyboard" }],
+            Items =
+            [
+                new ProjectionOrderItem
+                {
+                    Name = "Keyboard",
+                    Details = new ProjectionOrderItemDetails
+                    {
+                        Owner = new ProjectionOrderItemOwner
+                        {
+                            Account = new ProjectionOrderItemAccount { LoyaltyScore = 7 },
+                        },
+                    },
+                },
+            ],
         },
         new()
         {
@@ -23,8 +36,15 @@ public sealed class GeneratedProjectionRuntimeTests
             Customer = new ProjectionCustomer { Name = "Grace" },
             Items =
             [
-                new ProjectionOrderItem { Name = "Mouse" },
-                new ProjectionOrderItem { Name = "Trackpad" },
+                new ProjectionOrderItem
+                {
+                    Name = "Mouse",
+                    Details = new ProjectionOrderItemDetails
+                    {
+                        Owner = new ProjectionOrderItemOwner { Account = null },
+                    },
+                },
+                new ProjectionOrderItem { Name = "Trackpad", Details = null },
             ],
         },
     ];
@@ -197,6 +217,42 @@ public sealed class GeneratedProjectionRuntimeTests
             .SetMethod!.IsPrivate.ShouldBeTrue();
     }
 
+    [Test]
+    public void Explicit_dto_projection_preserves_types_in_three_level_nested_projection()
+    {
+        var result = Orders
+            .AsTestQueryable()
+            .SelectExpr<ProjectionOrder, ProjectionOrderNestedDto>(order => new
+            {
+                order.Id,
+                Items = order.Items.Select(item => new
+                {
+                    item.Name,
+                    LoyaltyScore = item.Details?.Owner?.Account?.LoyaltyScore,
+                }),
+            })
+            .ToList();
+
+        result.Count.ShouldBe(2);
+        result[0].Id.ShouldBe(1);
+        result[0].Items.Count().ShouldBe(1);
+        result[0].Items.First().Name.ShouldBe("Keyboard");
+        result[0].Items.First().LoyaltyScore.ShouldBe(7);
+        result[1].Id.ShouldBe(2);
+        result[1].Items.Count().ShouldBe(2);
+        result[1].Items.First().LoyaltyScore.ShouldBeNull();
+        result[1].Items.Skip(1).First().LoyaltyScore.ShouldBeNull();
+
+        var itemElementType = typeof(ProjectionOrderNestedDto)
+            .GetProperty(nameof(ProjectionOrderNestedDto.Items))!
+            .PropertyType.GetGenericArguments()
+            .First();
+#pragma warning disable IL2075
+        itemElementType.GetProperty("LoyaltyScore")!.PropertyType.ShouldBe(typeof(int?));
+        itemElementType.GetProperty("Name")!.PropertyType.ShouldBe(typeof(string));
+#pragma warning restore IL2075
+    }
+
     private static void SkipIfNativeAotCapture()
     {
         if (!RuntimeFeature.IsDynamicCodeSupported)
@@ -223,6 +279,22 @@ public sealed class ProjectionCustomer
 public sealed class ProjectionOrderItem
 {
     public string Name { get; set; } = string.Empty;
+    public ProjectionOrderItemDetails? Details { get; set; }
+}
+
+public sealed class ProjectionOrderItemDetails
+{
+    public ProjectionOrderItemOwner? Owner { get; set; }
+}
+
+public sealed class ProjectionOrderItemOwner
+{
+    public ProjectionOrderItemAccount? Account { get; set; }
+}
+
+public sealed class ProjectionOrderItemAccount
+{
+    public int LoyaltyScore { get; set; }
 }
 
 public sealed class ProjectionProduct
@@ -254,6 +326,8 @@ public partial class ProjectionDeclaredOrderDto
 {
     public int Id { get; private set; }
 }
+
+public partial class ProjectionOrderNestedDto;
 
 internal static class TrackingQueryable
 {

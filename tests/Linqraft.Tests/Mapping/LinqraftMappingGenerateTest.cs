@@ -32,6 +32,17 @@ public static partial class MappingTestQueries
             Description = x.Name + suffix,
         });
 
+    [LinqraftMapping]
+    internal static IQueryable<MappingTestDeepConditionalDto> ProjectToDeepConditionalDto(
+        this LinqraftMapper<MappingTestSampleClass> source
+    ) =>
+        source.Select<MappingTestDeepConditionalDto>(x => new
+        {
+            x.Id,
+            DeepChildCode = x.Child?.GrandChild?.Leaf?.Code,
+            DeepChildName = x.Child?.GrandChild?.Leaf?.Name ?? "missing",
+        });
+
 #if NET9_0_OR_GREATER
     [LinqraftMapping]
     internal static IQueryable<MappingTestParentDto> ProjectToDtoWithChildren(
@@ -122,6 +133,56 @@ public class LinqraftMappingGenerateTest
         result[1].Description.ShouldBe("Test2 units");
     }
 
+    [Test]
+    public void MappingGenerate_DeepConditionalAccess_PreservesTypes()
+    {
+        var data = new[]
+        {
+            new MappingTestSampleClass
+            {
+                Id = 1,
+                Name = "Test1",
+                Child = new MappingTestChildClass
+                {
+                    ChildId = 10,
+                    ChildName = "Child1",
+                    GrandChild = new MappingTestGrandChildClass
+                    {
+                        Leaf = new MappingTestLeafClass { Code = 42, Name = "Leaf1" },
+                    },
+                },
+            },
+            new MappingTestSampleClass
+            {
+                Id = 2,
+                Name = "Test2",
+                Child = new MappingTestChildClass
+                {
+                    ChildId = 20,
+                    ChildName = "Child2",
+                    GrandChild = new MappingTestGrandChildClass { Leaf = null },
+                },
+            },
+        }.AsTestQueryable();
+
+        var result = MappingTestQueries.ProjectToDeepConditionalDto(data).ToList();
+
+        result.Count.ShouldBe(2);
+        result[0].Id.ShouldBe(1);
+        result[0].DeepChildCode.ShouldBe(42);
+        result[0].DeepChildName.ShouldBe("Leaf1");
+        result[1].Id.ShouldBe(2);
+        result[1].DeepChildCode.ShouldBeNull();
+        result[1].DeepChildName.ShouldBe("missing");
+
+        typeof(MappingTestDeepConditionalDto)
+            .GetProperty(nameof(MappingTestDeepConditionalDto.DeepChildCode))!
+            .PropertyType.ShouldBe(typeof(int?));
+        typeof(MappingTestDeepConditionalDto)
+            .GetProperty(nameof(MappingTestDeepConditionalDto.DeepChildName))!
+            .PropertyType.ShouldBe(typeof(string));
+    }
+
 #if NET9_0_OR_GREATER
     [Test]
     public void MappingGenerate_WithNestedCollection_Test()
@@ -181,6 +242,18 @@ public class MappingTestChildClass
 {
     public int ChildId { get; set; }
     public string ChildName { get; set; } = "";
+    public MappingTestGrandChildClass? GrandChild { get; set; }
+}
+
+public class MappingTestGrandChildClass
+{
+    public MappingTestLeafClass? Leaf { get; set; }
+}
+
+public class MappingTestLeafClass
+{
+    public int Code { get; set; }
+    public string Name { get; set; } = "";
 }
 
 public class MappingTestParentClass
@@ -197,3 +270,5 @@ public partial class MappingTestChildDto;
 public partial class MappingTestParentDto;
 
 public partial class MappingTestCapturedDto;
+
+public partial class MappingTestDeepConditionalDto;
