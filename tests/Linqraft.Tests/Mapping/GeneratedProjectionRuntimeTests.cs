@@ -248,8 +248,12 @@ public sealed class GeneratedProjectionRuntimeTests
             .PropertyType.GetGenericArguments()
             .First();
 #pragma warning disable IL2075
-        itemElementType.GetProperty("LoyaltyScore")!.PropertyType.ShouldBe(typeof(int?));
-        itemElementType.GetProperty("Name")!.PropertyType.ShouldBe(typeof(string));
+        itemElementType
+            .GetProperty(nameof(ProjectionOrderItemAccount.LoyaltyScore))!
+            .PropertyType.ShouldBe(typeof(int?));
+        itemElementType
+            .GetProperty(nameof(ProjectionOrderItem.Name))!
+            .PropertyType.ShouldBe(typeof(string));
 #pragma warning restore IL2075
     }
 
