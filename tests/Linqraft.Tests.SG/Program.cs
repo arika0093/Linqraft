@@ -809,6 +809,40 @@ public sealed class SourceGeneratorSmokeTests
         generatedSourceText.ShouldNotContain("global::SmokeFixture.ExternalCustomer");
     }
 
+    [Test]
+    public void Generator_preserves_conditional_access_member_type_in_top_level_explicit_dto()
+    {
+        var driver = CreateDriver();
+        var compilation = CreateCompilation(
+            [CreateTopLevelConditionalAccessProjectionTree(), CreateMarkerTree("top-level-conditional")],
+            outputKind: OutputKind.ConsoleApplication
+        );
+
+        driver = driver.RunGeneratorsAndUpdateCompilation(
+            compilation,
+            out var outputCompilation,
+            out var diagnostics
+        );
+
+        diagnostics.ShouldBeEmpty();
+        outputCompilation
+            .GetDiagnostics()
+            .Where(diagnostic =>
+                diagnostic.Severity == DiagnosticSeverity.Error && diagnostic.Id != "CS9137"
+            )
+            .ShouldBeEmpty();
+
+        var generatedSourceText = string.Join(
+            "\n",
+            GetGeneratedSourceMap(driver.GetRunResult()).Values
+        );
+
+        generatedSourceText.ShouldContain(
+            "public global::System.String? CommonName { get; set; }"
+        );
+        generatedSourceText.ShouldNotContain("public object CommonName { get; set; }");
+    }
+
     private static GeneratorDriver CreateDriver(bool useGlobalUsing = true)
     {
         return CreateDriver(
@@ -1470,6 +1504,71 @@ public sealed class SourceGeneratorSmokeTests
             SourceText.From(source),
             new CSharpParseOptions(LanguageVersion.Preview),
             path: "SmokeProjection.UnresolvedQualifiedExternalType.cs"
+        );
+    }
+
+    private static SyntaxTree CreateTopLevelConditionalAccessProjectionTree()
+    {
+        const string source = """
+            using System.Linq;
+            using Linqraft;
+
+            var key = "test";
+            var repos = new[]
+            {
+                new TopLevelConditionalAccessRepo
+                {
+                    Id = 1,
+                    Key = "test",
+                    Data = new TopLevelConditionalAccessRepoData
+                    {
+                        Info = new TopLevelConditionalAccessInfo
+                        {
+                            Common = new TopLevelConditionalAccessCommon { Name = "common name" },
+                        },
+                    },
+                },
+            }.AsQueryable();
+
+            _ = repos
+                .Where(repo => repo.Key == key)
+                .SelectExpr<TopLevelConditionalAccessRepo, TopLevelConditionalAccessDto>(repo => new
+                {
+                    repo.Id,
+                    repo.Key,
+                    CommonName = repo.Data.Info.Common?.Name,
+                })
+                .FirstOrDefault();
+
+            public sealed class TopLevelConditionalAccessRepo
+            {
+                public int Id { get; set; }
+
+                public string Key { get; set; } = string.Empty;
+
+                public TopLevelConditionalAccessRepoData Data { get; set; } = null!;
+            }
+
+            public sealed class TopLevelConditionalAccessRepoData
+            {
+                public TopLevelConditionalAccessInfo Info { get; set; } = null!;
+            }
+
+            public sealed class TopLevelConditionalAccessInfo
+            {
+                public TopLevelConditionalAccessCommon? Common { get; set; }
+            }
+
+            public sealed class TopLevelConditionalAccessCommon
+            {
+                public string Name { get; set; } = string.Empty;
+            }
+            """;
+
+        return CSharpSyntaxTree.ParseText(
+            SourceText.From(source),
+            new CSharpParseOptions(LanguageVersion.Preview),
+            path: "SmokeProjection.TopLevelConditionalAccess.cs"
         );
     }
 

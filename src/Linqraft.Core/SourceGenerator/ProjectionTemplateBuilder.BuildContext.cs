@@ -694,6 +694,15 @@ internal static partial class ProjectionTemplateBuilder
                 );
             }
 
+            if (
+                expression is ConditionalAccessExpressionSyntax conditionalAccess
+                && TryResolveConditionalAccessTypeName(conditionalAccess, cancellationToken)
+                    is { } conditionalAccessType
+            )
+            {
+                return conditionalAccessType;
+            }
+
             var type = GetExpressionType(expression, cancellationToken);
             return type?.ToFullyQualifiedTypeName() ?? "object";
         }
@@ -1099,6 +1108,8 @@ internal static partial class ProjectionTemplateBuilder
                 IMethodSymbol methodSymbol => GetResolvedType(methodSymbol.ReturnType),
                 IParameterSymbol parameterSymbol => GetResolvedType(parameterSymbol.Type),
                 IPropertySymbol propertySymbol => GetResolvedType(propertySymbol.Type),
+                _ when expression is ConditionalAccessExpressionSyntax conditionalAccess =>
+                    ResolveConditionalAccessType(conditionalAccess, cancellationToken),
                 _ => ResolveMemberAccessType(expression, cancellationToken),
             };
         }
@@ -1148,6 +1159,108 @@ internal static partial class ProjectionTemplateBuilder
             }
 
             return null;
+        }
+
+        private string? TryResolveConditionalAccessTypeName(
+            ConditionalAccessExpressionSyntax conditionalAccess,
+            CancellationToken cancellationToken
+        )
+        {
+            cancellationToken = ResolveCancellationToken(cancellationToken);
+            var resolvedType = ResolveConditionalAccessType(conditionalAccess, cancellationToken);
+            return resolvedType is null ? null : FormatConditionalAccessTypeName(resolvedType);
+        }
+
+        private ITypeSymbol? ResolveConditionalAccessType(
+            ConditionalAccessExpressionSyntax conditionalAccess,
+            CancellationToken cancellationToken
+        )
+        {
+            var typeInfo = _semanticModel.GetTypeInfo(conditionalAccess, cancellationToken);
+            var resolvedType = GetResolvedType(typeInfo.Type) ?? GetResolvedType(typeInfo.ConvertedType);
+            if (resolvedType is not null)
+            {
+                return resolvedType;
+            }
+
+            return conditionalAccess.WhenNotNull switch
+            {
+                ConditionalAccessExpressionSyntax nestedConditional => ResolveConditionalAccessType(
+                    nestedConditional,
+                    cancellationToken
+                ),
+                MemberBindingExpressionSyntax memberBinding => ResolveConditionalAccessMemberType(
+                    conditionalAccess.Expression,
+                    memberBinding.Name.Identifier.ValueText,
+                    argumentCount: null,
+                    cancellationToken
+                ),
+                InvocationExpressionSyntax invocation
+                    when invocation.Expression is MemberBindingExpressionSyntax memberBinding =>
+                    ResolveConditionalAccessMemberType(
+                        conditionalAccess.Expression,
+                        memberBinding.Name.Identifier.ValueText,
+                        invocation.ArgumentList.Arguments.Count,
+                        cancellationToken
+                    ),
+                ExpressionSyntax whenNotNullExpression => GetExpressionType(
+                    whenNotNullExpression,
+                    cancellationToken
+                ),
+                _ => null,
+            };
+        }
+
+        private ITypeSymbol? ResolveConditionalAccessMemberType(
+            ExpressionSyntax receiverExpression,
+            string memberName,
+            int? argumentCount,
+            CancellationToken cancellationToken
+        )
+        {
+            var receiverType = GetExpressionType(receiverExpression, cancellationToken);
+            if (receiverType is null)
+            {
+                return null;
+            }
+
+            foreach (var candidate in receiverType.GetMembers(memberName))
+            {
+                cancellationToken.ThrowIfCancellationRequested();
+                if (argumentCount is int expectedArgumentCount)
+                {
+                    if (
+                        candidate is IMethodSymbol methodSymbol
+                        && methodSymbol.Parameters.Length == expectedArgumentCount
+                    )
+                    {
+                        return GetResolvedType(methodSymbol.ReturnType);
+                    }
+
+                    continue;
+                }
+
+                var candidateType = GetMemberType(candidate);
+                if (candidateType is not null)
+                {
+                    return candidateType;
+                }
+            }
+
+            return null;
+        }
+
+        private static string? FormatConditionalAccessTypeName(ITypeSymbol resolvedType)
+        {
+            if (resolvedType.IsAnonymousType || IsCollectionLikeType(resolvedType))
+            {
+                return null;
+            }
+
+            return resolvedType is INamedTypeSymbol namedType
+                && namedType.OriginalDefinition.SpecialType == SpecialType.System_Nullable_T
+                ? namedType.ToFullyQualifiedTypeName()
+                : MakeNullable(resolvedType.ToFullyQualifiedTypeName());
         }
 
         private static ITypeSymbol? GetMemberType(ISymbol? symbol)

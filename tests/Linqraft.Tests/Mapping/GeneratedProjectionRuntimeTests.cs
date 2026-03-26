@@ -76,6 +76,9 @@ public sealed class GeneratedProjectionRuntimeTests
         result[0].ItemCount.ShouldBe(1);
         result[1].CustomerName.ShouldBe("Grace");
         result[1].ItemCount.ShouldBe(2);
+        typeof(ProjectionOrderDto)
+            .GetProperty(nameof(ProjectionOrderDto.CustomerName))!
+            .PropertyType.ShouldBe(typeof(string));
     }
 
     [Test]
