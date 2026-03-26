@@ -814,7 +814,10 @@ public sealed class SourceGeneratorSmokeTests
     {
         var driver = CreateDriver();
         var compilation = CreateCompilation(
-            [CreateTopLevelConditionalAccessProjectionTree(), CreateMarkerTree("top-level-conditional")],
+            [
+                CreateTopLevelConditionalAccessProjectionTree(),
+                CreateMarkerTree("top-level-conditional"),
+            ],
             outputKind: OutputKind.ConsoleApplication
         );
 
@@ -837,9 +840,7 @@ public sealed class SourceGeneratorSmokeTests
             GetGeneratedSourceMap(driver.GetRunResult()).Values
         );
 
-        generatedSourceText.ShouldContain(
-            "public global::System.String? CommonName { get; set; }"
-        );
+        generatedSourceText.ShouldContain("public global::System.String? CommonName { get; set; }");
         generatedSourceText.ShouldNotContain("public object CommonName { get; set; }");
     }
 

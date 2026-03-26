@@ -1177,7 +1177,8 @@ internal static partial class ProjectionTemplateBuilder
         )
         {
             var typeInfo = _semanticModel.GetTypeInfo(conditionalAccess, cancellationToken);
-            var resolvedType = GetResolvedType(typeInfo.Type) ?? GetResolvedType(typeInfo.ConvertedType);
+            var resolvedType =
+                GetResolvedType(typeInfo.Type) ?? GetResolvedType(typeInfo.ConvertedType);
             if (resolvedType is not null)
             {
                 return resolvedType;
@@ -1257,7 +1258,8 @@ internal static partial class ProjectionTemplateBuilder
                 return null;
             }
 
-            return resolvedType is INamedTypeSymbol namedType
+            return
+                resolvedType is INamedTypeSymbol namedType
                 && namedType.OriginalDefinition.SpecialType == SpecialType.System_Nullable_T
                 ? namedType.ToFullyQualifiedTypeName()
                 : MakeNullable(resolvedType.ToFullyQualifiedTypeName());
