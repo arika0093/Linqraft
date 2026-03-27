@@ -235,6 +235,16 @@ Use [PolySharp](https://github.com/Sergio0694/PolySharp/) or [Polyfill](https://
 
 </details>
 
+### AI Agent Integration (APM)
+
+Linqraft ships an [APM](https://github.com/microsoft/apm) skill so AI coding agents can discover and use the library automatically. Install it with:
+
+```
+apm install arika0093/Linqraft
+```
+
+The skill and prompts are defined in [`.apm/`](./.apm/skills/linqraft/SKILL.md).
+
 ## Basic Usage
 Linqraft supports anonymous projections, auto-generated DTOs, pre-existing DTOs, grouped and flattened projections, and runtime DTO generation through `LinqraftKit.Generate`. 
 
