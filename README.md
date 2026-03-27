@@ -241,8 +241,9 @@ Linqraft ships an [APM](https://github.com/microsoft/apm) skill so AI coding age
 ```bash
 # use APM
 apm install arika0093/Linqraft
-# or install manually 
-curl https://raw.githubusercontent.com/arika0093/Linqraft/main/.apm/skills/linqraft/SKILL.md -o SKILL.md
+# or install manually (into the expected APM skills folder)
+mkdir -p .apm/skills/linqraft
+curl https://raw.githubusercontent.com/arika0093/Linqraft/main/.apm/skills/linqraft/SKILL.md -o .apm/skills/linqraft/SKILL.md
 ```
 
 Since Linqraft's DTO generation is an unfamiliar pattern for AI, installing the skill is recommended.
@@ -415,7 +416,7 @@ This works well for combining runtime values, nested anonymous objects, arrays, 
 ## Usage Documentation
 ### Local Variable Capture
 
-Pass the required local variables as a tuple-returning delegate to `capture:` like this:
+Pass the required local variables to `capture:` via a delegate (`Func<object>`) that returns either a single value or an anonymous object/tuple for multiple values, like this:
 
 ```csharp
 var threshold = 100;
@@ -530,9 +531,9 @@ All generated DTOs are `partial`, so you can extend them with methods, interface
 ```csharp
 // can add methods, interfaces, attributes, etc.
 [DebuggerDisplay("{GetDisplayName()}")]
-public partial class SampleDto : ISampleInterface
+public partial class OrderDto : ISampleInterface
 {
-    public string GetDisplayName() => $"Sample #{Id} - {CustomerName}";
+    public string GetDisplayName() => $"Order #{Id} - {CustomerName}";
     public bool IsLargeOrder => TotalAmount > 1000;
 }
 
@@ -546,7 +547,10 @@ var order = await dbContext.Orders
     })
     .FirstOrDefaultAsync();
 // you can call the method you added to the partial class
-Console.WriteLine($"{order.GetDisplayName()} is {(order.IsLargeOrder ? "large" : "small")}.");
+if (order is not null)
+{
+    Console.WriteLine($"{order.GetDisplayName()} is {(order.IsLargeOrder ? "large" : "small")}.");
+}
 ```
 
 ### Mapping Methods
@@ -835,7 +839,7 @@ Use `LinqraftCommentOutput` to control how much of the original comments are cop
 
 ## FAQ
 ### How is the performance?
-Linqraft's performance is designed to be on par with hand-written DTO code because it generates the same code you would write manually😉
+Linqraft's performance is designed to be on par with hand-written DTO code because it generates the same code you would write manually.
 
 Don't believe it? Check out the [Benchmark](./examples/Linqraft.Benchmark).
 

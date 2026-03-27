@@ -37,10 +37,10 @@ and do not need a named DTO type.
 
 | Scenario | Target |
 |----------|--------|
-| DTO used as API response, method return type, or shared within solution | **Explicit DTO**: `.UseLinqraft().Select<TDto>(x => new { ... })` |
-| DTO exists with custom attributes/interfaces the code depends on | **Pre-existing DTO**: `.UseLinqraft().Select(x => new ExistingDto { ... })` — keep the class |
+| **Internal** DTO used as API response, method return type, or shared within the solution (not a public API contract type) | **Explicit DTO**: `.UseLinqraft().Select<TDto>(x => new { ... })` |
+| DTO is a public API contract type, or exists with serialization/custom attributes or interfaces the code depends on | **Pre-existing DTO**: `.UseLinqraft().Select(x => new ExistingDto { ... })` — keep the class |
 
-Default to **Explicit DTO** unless there is a clear reason to keep the existing class.
+Default to **Explicit DTO** for internal DTOs unless there is a clear reason to keep the existing class (for example, it is a public API contract type or relies on serialization/custom attributes or interfaces).
 
 ### 3. Apply the transformation
 
