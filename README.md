@@ -212,10 +212,9 @@ dotnet add package Linqraft
 ```
 
 Linqraft requires **C# 12.0 or later**. On **.NET 8 and later**, it works out of the box.  
-Additional steps are required when targeting `.NET 7` or below.
 
 <details>
-<summary>Show additional installation details for older runtimes</summary>
+<summary>Additional steps are required when targeting `.NET 7` or below</summary>
 
 ```xml
 <!-- .NET 7 or below -->
@@ -235,44 +234,21 @@ Use [PolySharp](https://github.com/Sergio0694/PolySharp/) or [Polyfill](https://
 
 </details>
 
-## Basic Usage
-Linqraft supports anonymous projections, auto-generated DTOs, pre-existing DTOs, grouped and flattened projections, and runtime DTO generation through `LinqraftKit.Generate`. 
+### AI Agent Integration (APM)
 
-### Syntax variations
+Linqraft ships an [APM](https://github.com/microsoft/apm) skill so AI coding agents can discover and use the library automatically. Install it with:
 
-Linqraft supports the following two syntax variations:
-
-```csharp
-// UseLinqraft().Select<TDto>(...) syntax
-var result1 = query
-    .UseLinqraft()
-    .Select<OrderDto>(o => new
-    {
-        o.Id,
-        CustomerName = o.Customer?.Name,
-    })
-    .ToList();
-
-// SelectExpr<TSource, TDto>(...) syntax
-var result2 = query
-    .SelectExpr<Order, OrderDto>(o => new
-    {
-        o.Id,
-        CustomerName = o.Customer?.Name,
-    })
-    .ToList();
+```bash
+# use APM
+apm install arika0093/Linqraft
+# or install manually
+curl https://raw.githubusercontent.com/arika0093/Linqraft/main/.apm/skills/linqraft/SKILL.md -o your/skills/linqraft/SKILL.md
 ```
 
-The two variations have their own advantages:
+Since Linqraft's DTO generation is an unfamiliar pattern for AI, installing the skill is recommended.
 
-* `UseLinqraft().Select<TDto>(...)`
-  * Makes it clear that Linqraft is being used.
-  * Does not require specifying `TSource`, only the DTO type parameter you need.
-* `SelectExpr<TSource, TDto>(...)`
-  * More concise.
-  * Slightly more performant since it doesn't generate the extra `LinqraftQuery<TSource>` object.
-
-You can use either style, but the documentation will use the `UseLinqraft().Select<TDto>(...)` style for explanations.
+## Basic Usage
+Linqraft supports anonymous projections, auto-generated DTOs, pre-existing DTOs, grouped and flattened projections, and runtime DTO generation through `LinqraftKit.Generate`. 
 
 ### Explicit DTO Pattern
 
@@ -423,44 +399,23 @@ var rows = dbContext.Orders
 Use `LinqraftKit.Generate<TDto>(...)` when you want Linqraft to generate a DTO from a runtime object instead of from an `IEnumerable` or `IQueryable` projection.
 
 ```csharp
+var id = 42;
 var dto = LinqraftKit.Generate<OrderBundleDto>(
-    new
-    {
-        Id = 42,
+    new {
+        Id = id,
         Customer = new { Name = "Ada" },
         ItemNames = new[] { "Keyboard", "Mouse" },
-    }
+    },
+    capture: () => id
 );
 ```
 
 This works well for combining runtime values, nested anonymous objects, arrays, lists, and values produced by other Linqraft projections.
 
-When the initializer depends on local values, use `capture:` overload. For more details about local variable capture, see the [Local Variable Capture](#local-variable-capture) section below.
-
-```csharp
-var id = 42;
-var prefix = "Order-";
-
-var dto = LinqraftKit.Generate<OrderLabelDto>(
-    new
-    {
-        Id = id,
-        Label = prefix + id,
-    },
-    capture: () => (id, prefix)
-);
-```
-
-
 ## Usage Documentation
 ### Local Variable Capture
 
-Linqraft selectors are rewritten into generated methods, so local variables must be passed explicitly through `capture:` rather than through normal C# closure fields.
-
-<details>
-<summary>Show local variable capture details</summary>
-
-Pass the required local variables as a tuple-returning delegate to `capture:` like this:
+Pass the required local variables to `capture:` via a delegate (`Func<object>`) that returns either a single value or an anonymous object/tuple for multiple values, like this:
 
 ```csharp
 var threshold = 100;
@@ -481,17 +436,27 @@ var converted = dbContext.Entities
     );
 ```
 
-#### Analyzer support
-
 Linqraft analyzers can detect missing capture values and can rewrite legacy anonymous-object captures to the delegate form automatically.
 
 ![Local variable capture error](./assets/local-variable-capture-err.png)
 
-</details>
-
 ### Array Nullability Removal
 
-Linqraft can automatically remove nullability from generated collection properties when an empty collection is a better semantic result than `null`. This avoids repetitive post-processing such as `dto.Items ?? []`.
+Linqraft can automatically remove nullability from generated collection properties when an empty collection is a better semantic result than `null`.
+This avoids repetitive post-processing such as `dto.Items ?? []`.
+
+```csharp
+var dto = query
+    .UseLinqraft()
+    .Select<EntityDto>(e => new
+    {
+        // ChildNames: List<string>
+        ChildNames = e.Child?.Select(c => c.Name).ToList(),
+        // ChildDtos: IEnumerable<ChildDto>
+        ChildDtos = e.Child?.Select(c => new { c.Name, c.Description }),
+    });
+
+```
 
 <details>
 <summary>Show array nullability details</summary>
@@ -548,6 +513,7 @@ ChildDtos = d.Child != null
 ```
 
 #### Disable the behavior
+If you want to disable this behavior, you can set the MSBuild property `LinqraftArrayNullabilityRemoval` to `false`.
 
 ```xml
 <PropertyGroup>
@@ -561,105 +527,39 @@ ChildDtos = d.Child != null
 
 All generated DTOs are `partial`, so you can extend them with methods, interfaces, attributes, or predeclared properties whose accessibility you control yourself.
 
-<details>
-<summary>Show partial class details</summary>
-
-#### Add methods
-
 ```csharp
-// Generated by Linqraft
-public partial class OrderDto
-{
-    public required int Id { get; set; }
-    public required string CustomerName { get; set; }
-    public required decimal TotalAmount { get; set; }
-    public required IEnumerable<OrderItemDto> Items { get; set; }
-}
-
-// Your extension
-public partial class OrderDto
+// can add methods, interfaces, attributes, etc.
+[DebuggerDisplay("{GetDisplayName()}")]
+public partial class OrderDto : ISampleInterface
 {
     public string GetDisplayName() => $"Order #{Id} - {CustomerName}";
-
-    public decimal GetAverageItemPrice() =>
-        Items.Any() ? TotalAmount / Items.Count() : 0;
-
-    public bool IsLargeOrder() => TotalAmount > 1000;
-}
-```
-
-#### Add interfaces
-
-```csharp
-public partial class OrderDto : IValidatableObject
-{
-    public IEnumerable<ValidationResult> Validate(ValidationContext validationContext)
-    {
-        if (TotalAmount < 0)
-            yield return new ValidationResult("Total amount cannot be negative");
-
-        if (string.IsNullOrWhiteSpace(CustomerName))
-            yield return new ValidationResult("Customer name is required");
-    }
-}
-```
-
-#### Add attributes
-
-```csharp
-[Serializable]
-[JsonConverter(typeof(CustomOrderDtoConverter))]
-public partial class OrderDto
-{
-}
-```
-
-#### Control property accessibility
-
-Predeclare a property in your own partial type when you want to own its accessibility or implementation:
-
-```csharp
-public partial class OrderDto
-{
-    internal string InternalData { get; set; } = "";
+    public bool IsLargeOrder => TotalAmount > 1000;
 }
 
-var orders = await dbContext.Orders
+var order = await dbContext.Orders
     .UseLinqraft()
     .Select<OrderDto>(o => new
     {
         o.Id,
-        PublicComment = o.Comment,
-        InternalData = o.InternalField,
+        CustomerName = o.Customer?.Name,
+        TotalAmount = o.OrderItems.Sum(oi => oi.Quantity * oi.UnitPrice),
     })
-    .ToListAsync();
+    .FirstOrDefaultAsync();
+// you can call the method you added to the partial class
+if (order is not null)
+{
+    Console.WriteLine($"{order.GetDisplayName()} is {(order.IsLargeOrder ? "large" : "small")}.");
+}
 ```
-
-Linqraft will populate the predeclared member instead of generating it again.
-
-</details>
 
 ### Mapping Methods
 
-Linqraft normally generates projection code inline through interceptors, but sometimes you want a reusable extension method that can be called from multiple places or embedded inside EF Core compiled queries. For that case, define a mapping template method with `[LinqraftMapping]` and `LinqraftMapper<TSource>`.
+Linqraft normally generates projection code inline through interceptors, but sometimes you want a reusable extension method that can be called from multiple places or embedded inside EF Core compiled queries through `EF.CompileAsyncQuery`. In that case, you can write a template method and let Linqraft generate the full mapping method based on it.
 
-<details>
-<summary>Show mapping method details</summary>
-
-#### When to use mapping generation
-
-Use generated mapping methods when you want:
-
-* Reusable projections shared across multiple callers
-* EF Core compiled queries through `EF.CompileAsyncQuery`
-* EF Core precompiled queries on newer runtimes
-* Dedicated query classes for complex projections
-
-#### Declaring a mapping method
-
-Create a top-level `static partial` class, then add a template method whose receiver is `LinqraftMapper<TSource>`:
+For example, you can write a template like this:
 
 ```csharp
+// your declaration
 public static partial class OrderQueries
 {
     [LinqraftMapping]
@@ -675,12 +575,8 @@ public static partial class OrderQueries
             }),
         });
 }
-```
 
-Linqraft generates overloads for both `IQueryable<TSource>` and `IEnumerable<TSource>`, so the template above becomes a reusable `ProjectToOrderDto(...)` extension method on your real query source.
-
-```csharp
-// generated code sample
+// generated code such as:
 public static partial class OrderQueries
 {
     internal static IQueryable<OrderDto> ProjectToOrderDto(this IQueryable<Order> source) =>
@@ -689,62 +585,28 @@ public static partial class OrderQueries
     internal static IEnumerable<OrderDto> ProjectToOrderDto(this IEnumerable<Order> source) =>
         source.Select<OrderDto>(o => new OrderDto { /* ... */ });
 }
+
+// and you can call it like this:
+var orders = await dbContext.Orders
+    .ProjectToOrderDto()
+    .ToListAsync();
 ```
 
-#### Parameters and visibility
+This is useful in cases such as:
 
-```csharp
-public static partial class OrderQueries
-{
-    [LinqraftMapping(Visibility = LinqraftMapper.Public)]
-    internal static IQueryable<OrderSummaryDto> ProjectToSummary(
-        this LinqraftMapper<Order> source,
-        int offset,
-        string suffix) =>
-        source.Select<OrderSummaryDto>(
-            order => new
-            {
-                order.Id,
-                DisplayName = order.CustomerName + suffix,
-                AdjustedTotal = order.Total + offset,
-            }
-        );
-}
-```
+* Reusable projections shared across multiple callers
+* EF Core compiled queries through `EF.CompileAsyncQuery`
+* EF Core precompiled queries on newer runtimes
+* Dedicated query classes for complex projections
 
-Additional values are declared as normal method parameters, so `capture: () => ...` is not needed for mapping methods. `Visibility` defaults to `internal`; set it to `LinqraftMapper.Public` when the generated extensions should be public.
-
-#### EF Core compiled queries
-
-Mapping methods work with EF Core compiled queries:
-
-```csharp
-private static readonly Func<MyDbContext, Task<List<OrderSummaryDto>>> GetOrderSummaries =
-    EF.CompileAsyncQuery(
-        (MyDbContext db) => db.Orders
-            .ProjectToSummary()
-            .ToListAsync()
-    );
-```
-
-#### Requirements
-
-* Keep the containing class `static`, `partial`, and top-level
-* Mark the template method with `[LinqraftMapping]`
-* Use `this LinqraftMapper<TSource>` as the first parameter
-* Use a Linqraft mapping call such as `source.Select<TDto>(...)`
-* Add any extra generated method parameters directly to the template method signature
-
-`LinqraftMappingGenerate` and `LinqraftMappingDeclare<T>` were deprecated in v0.10 and are no longer the recommended mapping API.
-
-</details>
 
 ### Projection Helpers
 
-Projection helpers are exposed through the selector's `IProjectionHelper` parameter. They let you ask Linqraft to rewrite a specific fragment inside the generated projection instead of treating the selector body as a plain expression tree.
+Projection helpers are exposed through the selector's `IProjectionHelper` parameter.
+They let you ask Linqraft to rewrite a specific fragment inside the generated projection instead of treating the selector body as a plain expression tree.
 
 <details>
-<summary>Show projection helper details</summary>
+<summary>List of projection helpers</summary>
 
 #### `helper.AsLeftJoin(value)`
 
@@ -849,13 +711,54 @@ Linqraft ships analyzers and code fixes that can migrate ordinary `Select` calls
 See [Analyzers](./docs/analyzers/README.md) for the full rule list and code-fix catalog.
 
 ## Advanced Features
-### Nested Explicit DTO Reuse
+
+<details>
+<summary>
+Syntax variations: <code>UseLinqraft().Select&lt;TDto&gt;</code> vs. <code>SelectExpr&lt;TSource, TDto&gt;</code>
+</summary>
+
+Linqraft supports the following two syntax variations:
+
+```csharp
+// UseLinqraft().Select<TDto>(...) syntax
+var result1 = query
+    .UseLinqraft()
+    .Select<OrderDto>(o => new
+    {
+        o.Id,
+        CustomerName = o.Customer?.Name,
+    })
+    .ToList();
+
+// SelectExpr<TSource, TDto>(...) syntax
+var result2 = query
+    .SelectExpr<Order, OrderDto>(o => new
+    {
+        o.Id,
+        CustomerName = o.Customer?.Name,
+    })
+    .ToList();
+```
+
+The two variations have their own advantages:
+
+* `UseLinqraft().Select<TDto>(...)`
+  * Available since v0.10
+  * Makes it clear that Linqraft is being used.
+  * Does not require specifying `TSource`, only the DTO type parameter you need.
+* `SelectExpr<TSource, TDto>(...)`
+  * More concise.
+  * Slightly more performant since it doesn't generate the extra `LinqraftQuery<TSource>` object.
+
+Both variations produce the same generated code and have the same capabilities, so you can choose the one that best fits your style and needs.
+
+</details>
+
+<details>
+<summary>Nested Explicit DTO Reuse</summary>
 
 When nested DTOs need stable names and reuse across multiple queries,
 Linqraft provides a beta pattern based on nested `UseLinqraft().Select<TDto>(...)` calls.
-
-<details>
-<summary>Show nested explicit DTO details</summary>
 
 ```csharp
 var result = query
@@ -875,13 +778,8 @@ internal partial class OrderItemDto;
 
 </details>
 
-
-### Global Properties
-
-Linqraft exposes a small set of MSBuild properties that control namespace selection, DTO shape, comments, nullability behavior, nested DTO naming, and generated imports.
-
 <details>
-<summary>Show global property details</summary>
+<summary>Linqraft global properties</summary>
 
 #### Available MSBuild properties
 
@@ -938,99 +836,11 @@ Use `LinqraftCommentOutput` to control how much of the original comments are cop
 
 </details>
 
-## Performance
-
-Linqraft's performance is designed to stay very close to hand-written projections. Because the generated code is ordinary LINQ with no runtime mapping engine, benchmarks land near manual DTO code across `IEnumerable`, `IQueryable`, NativeAOT, and EF Core scenarios.
-
-<details>
-<summary>Show performance benchmark details</summary>
-
-For detailed benchmark code, see [Linqraft.Benchmark](../../examples/Linqraft.Benchmark).
-
-### Environment
-
-```
-BenchmarkDotNet v0.15.8, Windows 11 (10.0.26200.7171/25H2/2025Update/HudsonValley2)
-Intel Core i7-14700F 2.10GHz, 1 CPU, 28 logical and 20 physical cores
-.NET SDK 10.0.100
-  [Host]     : .NET 10.0.0 (10.0.0, 10.0.25.52411), X64 RyuJIT x86-64-v3
-  DefaultJob : .NET 10.0.0 (10.0.0, 10.0.25.52411), X64 RyuJIT x86-64-v3
-```
-
-### IEnumerable
-
-**.NET 10**
-```
-| Method                        | DataCount | Mean      | Error     | StdDev    | Median    | Ratio | RatioSD | Rank | Gen0   | Gen1   | Allocated | Alloc Ratio |
-|------------------------------ |---------- |----------:|----------:|----------:|----------:|------:|--------:|-----:|-------:|-------:|----------:|------------:|
-| 'Traditional Manual DTO'      | 100       |  1.785 us | 0.0343 us | 0.0320 us |  1.779 us |  0.81 |    0.02 |    1 | 0.9785 | 0.0572 |   16.5 KB |        1.00 |
-| 'Linqraft Auto-Generated DTO' | 100       |  2.196 us | 0.0439 us | 0.0555 us |  2.191 us |  1.00 |    0.03 |    2 | 0.9766 | 0.0572 |   16.5 KB |        1.00 |
-| 'Traditional Anonymous'       | 100       |  2.219 us | 0.0429 us | 0.0422 us |  2.223 us |  1.01 |    0.03 |    2 | 0.9766 | 0.0572 |   16.5 KB |        1.00 |
-| 'Linqraft Manual DTO'         | 100       |  2.285 us | 0.0509 us | 0.1500 us |  2.326 us |  1.04 |    0.07 |    2 | 0.9766 | 0.0572 |   16.5 KB |        1.00 |
-| 'Linqraft Anonymous'          | 100       |  2.324 us | 0.0462 us | 0.1117 us |  2.300 us |  1.06 |    0.06 |    2 | 0.9766 | 0.0572 |   16.5 KB |        1.00 |
-| 'Mapperly Map'                | 100       |  2.649 us | 0.0485 us | 0.0981 us |  2.630 us |  1.21 |    0.05 |    3 | 1.3504 | 0.1106 |  22.75 KB |        1.38 |
-| 'AutoMapper Map'              | 100       |  4.479 us | 0.0768 us | 0.0681 us |  4.474 us |  2.04 |    0.06 |    4 | 1.7014 | 0.1678 |   28.7 KB |        1.74 |
-| 'Mapster Adapt'               | 100       | 36.286 us | 0.3275 us | 0.2903 us | 36.346 us | 16.53 |    0.43 |    5 | 1.3428 | 0.0610 |  22.71 KB |        1.38 |
-```
-
-**.NET 10 NativeAOT**
-```
-| Method                        | DataCount | Mean     | Error     | StdDev    | Ratio | RatioSD | Rank | Gen0   | Gen1   | Allocated | Alloc Ratio |
-|------------------------------ |---------- |---------:|----------:|----------:|------:|--------:|-----:|-------:|-------:|----------:|------------:|
-| 'Traditional Manual DTO'      | 100       | 3.485 us | 0.0157 us | 0.0131 us |  0.99 |    0.01 |    1 | 0.9651 | 0.0534 |   16.3 KB |        1.00 |
-| 'Linqraft Auto-Generated DTO' | 100       | 3.532 us | 0.0577 us | 0.0540 us |  1.00 |    0.02 |    1 | 0.9651 | 0.0534 |   16.3 KB |        1.00 |
-| 'Linqraft Anonymous'          | 100       | 3.552 us | 0.0693 us | 0.0825 us |  1.01 |    0.03 |    1 | 0.9651 | 0.0534 |   16.3 KB |        1.00 |
-| 'Linqraft Manual DTO'         | 100       | 3.612 us | 0.0714 us | 0.1047 us |  1.02 |    0.03 |    1 | 0.9651 | 0.0534 |   16.3 KB |        1.00 |
-| 'Traditional Anonymous'       | 100       | 3.652 us | 0.0688 us | 0.1358 us |  1.03 |    0.04 |    1 | 0.9651 | 0.0534 |   16.3 KB |        1.00 |
-| 'Mapperly Map'                | 100       | 6.452 us | 0.0532 us | 0.0444 us |  1.83 |    0.03 |    2 | 1.6556 | 0.1373 |  28.02 KB |        1.72 |
-```
-
-### IQueryable
-
-**.NET 10**
-```
-| Method                        | DataCount | Mean     | Error   | StdDev  | Ratio | Rank | Gen0   | Gen1   | Allocated | Alloc Ratio |
-|------------------------------ |---------- |---------:|--------:|--------:|------:|-----:|-------:|-------:|----------:|------------:|
-| 'Linqraft Auto-Generated DTO' | 100       | 874.5 us | 5.16 us | 4.83 us |  1.00 |    1 | 1.9531 | 0.9766 |  46.68 KB |        1.00 |
-| 'Mapperly Projection'         | 100       | 874.8 us | 4.77 us | 4.46 us |  1.00 |    1 | 1.9531 |      - |  58.66 KB |        1.26 |
-| 'Linqraft Manual DTO'         | 100       | 885.5 us | 7.50 us | 6.64 us |  1.01 |    1 | 1.9531 | 0.9766 |  46.68 KB |        1.00 |
-| 'AutoMapper ProjectTo'        | 100       | 886.0 us | 2.47 us | 2.19 us |  1.01 |    1 | 1.9531 |      - |  46.92 KB |        1.01 |
-| 'Mapster ProjectToType'       | 100       | 890.4 us | 5.91 us | 5.53 us |  1.02 |    1 | 1.9531 | 0.9766 |  46.17 KB |        0.99 |
-| 'Traditional Manual DTO'      | 100       | 896.7 us | 6.66 us | 6.23 us |  1.03 |    1 | 1.9531 |      - |  59.85 KB |        1.28 |
-| 'Traditional Anonymous'       | 100       | 967.5 us | 8.23 us | 6.87 us |  1.11 |    2 | 1.9531 |      - |  59.66 KB |        1.28 |
-| 'Linqraft Anonymous'          | 100       | 978.3 us | 6.68 us | 6.25 us |  1.12 |    2 | 1.9531 |      - |  60.21 KB |        1.29 |
-```
-
-**.NET 10 NativeAOT**
-```
-| Method                        | DataCount | Mean     | Error   | StdDev  | Ratio | Rank | Gen0   | Gen1   | Allocated | Alloc Ratio |
-|------------------------------ |---------- |---------:|--------:|--------:|------:|-----:|-------:|-------:|----------:|------------:|
-| 'Linqraft Manual DTO'         | 100       | 135.8 us | 1.09 us | 0.91 us |  0.99 |    1 | 7.3242 | 0.7324 | 125.55 KB |        1.00 |
-| 'Linqraft Auto-Generated DTO' | 100       | 136.9 us | 0.53 us | 0.44 us |  1.00 |    1 | 7.3242 | 0.7324 | 125.23 KB |        1.00 |
-| 'Traditional Anonymous'       | 100       | 149.0 us | 1.20 us | 1.12 us |  1.09 |    2 | 8.0566 | 0.7324 | 135.85 KB |        1.08 |
-| 'Linqraft Anonymous'          | 100       | 149.7 us | 1.49 us | 1.25 us |  1.09 |    2 | 7.8125 | 0.9766 | 135.68 KB |        1.08 |
-| 'Mapperly Projection'         | 100       | 160.7 us | 1.00 us | 0.89 us |  1.17 |    3 | 8.5449 | 0.9766 | 146.64 KB |        1.17 |
-| 'Traditional Manual DTO'      | 100       | 167.8 us | 1.75 us | 1.64 us |  1.23 |    4 | 8.7891 | 0.9766 | 148.86 KB |        1.19 |
-```
-
-### EFCore(SQLite)
-
-```
-| Method                        | DataCount | Mean     | Error    | StdDev   | Ratio | Rank | Gen0    | Gen1   | Allocated | Alloc Ratio |
-|------------------------------ |---------- |---------:|---------:|---------:|------:|-----:|--------:|-------:|----------:|------------:|
-| 'Mapperly Projection'         | 100       | 863.8 us |  2.73 us |  2.42 us |  0.99 |    1 | 13.6719 | 1.9531 | 244.69 KB |        1.05 |
-| 'Linqraft Auto-Generated DTO' | 100       | 870.1 us |  6.02 us |  5.34 us |  1.00 |    1 | 13.6719 | 1.9531 | 232.38 KB |        1.00 |
-| 'Mapster ProjectToType'       | 100       | 870.5 us |  3.13 us |  2.61 us |  1.00 |    1 | 13.6719 | 1.9531 | 236.52 KB |        1.02 |
-| 'Linqraft Manual DTO'         | 100       | 873.0 us |  6.51 us |  6.09 us |  1.00 |    1 | 13.6719 | 1.9531 |  232.3 KB |        1.00 |
-| 'AutoMapper ProjectTo'        | 100       | 876.4 us |  7.45 us |  6.97 us |  1.01 |    1 | 13.6719 | 1.9531 |  237.3 KB |        1.02 |
-| 'Traditional Manual DTO'      | 100       | 893.9 us |  6.19 us | 11.00 us |  1.03 |    1 | 13.6719 | 1.9531 | 245.72 KB |        1.06 |
-| 'Linqraft Anonymous'          | 100       | 952.9 us |  8.29 us |  7.35 us |  1.10 |    2 | 13.6719 | 1.9531 | 245.37 KB |        1.06 |
-| 'Traditional Anonymous'       | 100       | 978.5 us | 10.84 us |  9.61 us |  1.12 |    2 | 13.6719 | 1.9531 | 246.79 KB |        1.06 |
-```
-
-</details>
-
 ## FAQ
+### How is the performance?
+Linqraft's performance is designed to be on par with hand-written DTO code because it generates the same code you would write manually.
+
+Don't believe it? Check out the [Benchmark](./examples/Linqraft.Benchmark).
 
 ### Does Linqraft only work with Entity Framework?
 
