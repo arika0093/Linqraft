@@ -829,19 +829,17 @@ public sealed class AnalyzerCodeFixSmokeTests
             mappingLines,
             line => line.Contains("this global::Linqraft.LinqraftMapper<global::Entity> source")
         );
-        var idParameterLineIndex = Array.FindIndex(
-            mappingLines,
-            line => line.Contains(" id,")
-        );
-        var nameParameterLineIndex = Array.FindIndex(
-            mappingLines,
-            line => line.Contains(" name")
-        );
         mappingText.ShouldContain("ProjectToEntityDto(\n");
         mappingText.ShouldContain(
             "        this global::Linqraft.LinqraftMapper<global::Entity> source,\n"
         );
         sourceParameterLineIndex.ShouldBeGreaterThanOrEqualTo(0);
+        var idParameterLineIndex = sourceParameterLineIndex + 1;
+        var nameParameterLineIndex = sourceParameterLineIndex + 2;
+        idParameterLineIndex.ShouldBeLessThan(mappingLines.Length);
+        nameParameterLineIndex.ShouldBeLessThan(mappingLines.Length);
+        mappingLines[idParameterLineIndex].TrimEnd().ShouldEndWith(" id,");
+        mappingLines[nameParameterLineIndex].TrimEnd().ShouldEndWith(" name");
         idParameterLineIndex.ShouldBeGreaterThan(sourceParameterLineIndex);
         nameParameterLineIndex.ShouldBeGreaterThan(idParameterLineIndex);
         CountLeadingSpaces(mappingLines[idParameterLineIndex]).ShouldBe(
