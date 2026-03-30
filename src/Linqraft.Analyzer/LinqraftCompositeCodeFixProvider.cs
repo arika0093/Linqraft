@@ -2552,18 +2552,21 @@ public sealed class LinqraftCompositeCodeFixProvider : CodeFixProvider
         );
         builder.AppendLine("    /// </summary>");
         builder.AppendLine("    [global::Linqraft.LinqraftMapping]");
-        builder.Append(
+        builder.AppendLine(
             $"    internal static global::System.Linq.IQueryable<{dtoTypeName}> {mappingMethodName}("
         );
-        builder.Append(
-            $"this global::Linqraft.LinqraftMapper<{sourceTypeName}> source"
+        builder.AppendLine(
+            $"        this global::Linqraft.LinqraftMapper<{sourceTypeName}> source{(parameters.Count > 0 ? "," : string.Empty)}"
         );
-        foreach (var parameter in parameters)
+        for (var index = 0; index < parameters.Count; index++)
         {
-            builder.Append($", {parameter.TypeName} {parameter.ParameterName}");
+            var parameter = parameters[index];
+            builder.AppendLine(
+                $"        {parameter.TypeName} {parameter.ParameterName}{(index < parameters.Count - 1 ? "," : string.Empty)}"
+            );
         }
 
-        builder.AppendLine(")");
+        builder.AppendLine("    )");
         builder.AppendLine("        =>");
         builder.AppendLine($"{IndentGeneratedExpression(mappingInvocation)};");
         builder.AppendLine("}");

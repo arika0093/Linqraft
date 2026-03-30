@@ -766,7 +766,7 @@ public sealed class AnalyzerCodeFixSmokeTests
         mappingText.ShouldContain("public static partial class EntityDtoMappingExtensions");
         mappingText.ShouldContain("[global::Linqraft.LinqraftMapping]");
         mappingText.ShouldContain(
-            "internal static global::System.Linq.IQueryable<global::EntityDto> ProjectToEntityDto(this global::Linqraft.LinqraftMapper<global::Entity> source)"
+            "ProjectToEntityDto(\n        this global::Linqraft.LinqraftMapper<global::Entity> source\n    )"
         );
         mappingText.ShouldContain("source.Select<EntityDto>(entity => new");
         mappingText.ShouldNotContain("UseLinqraft");
@@ -824,8 +824,13 @@ public sealed class AnalyzerCodeFixSmokeTests
         );
         fixedText.ShouldContain("return source.ProjectToEntityDto(id, name);");
         mappingText.ShouldNotBeNull();
-        mappingText.ShouldContain("ProjectToEntityDto(");
-        mappingText.ShouldContain("this global::Linqraft.LinqraftMapper<global::Entity> source");
+        mappingText.ShouldContain("ProjectToEntityDto(\n");
+        mappingText.ShouldContain(
+            "        this global::Linqraft.LinqraftMapper<global::Entity> source,\n"
+        );
+        mappingText.ShouldContain(" id,\n");
+        mappingText.ShouldContain(" name\n");
+        mappingText.ShouldContain("    )\n        =>");
         mappingText.ShouldContain("source.Select");
         mappingText.ShouldContain("new EntityDto");
         mappingText.ShouldContain("Id = id");
@@ -943,7 +948,7 @@ public sealed class AnalyzerCodeFixSmokeTests
 
         mappingText.ShouldNotBeNull();
         mappingText.ShouldContain(
-            "ProjectToEntityDto(this global::Linqraft.LinqraftMapper<global::Entity> source)"
+            "ProjectToEntityDto(\n        this global::Linqraft.LinqraftMapper<global::Entity> source\n    )"
         );
         mappingText.ShouldNotContain("source,");
         mappingText.ShouldContain("ChildId = s.Child3.Id");
@@ -997,6 +1002,10 @@ public sealed class AnalyzerCodeFixSmokeTests
         );
 
         mappingText.ShouldNotBeNull();
+        mappingText.ShouldContain(
+            "ProjectToEntityDto(\n        this global::Linqraft.LinqraftMapper<global::Entity> source,"
+        );
+        mappingText.ShouldContain(" name\n    )\n        =>");
         mappingText.ShouldContain("        =>\n");
         mappingText.ShouldContain("            source.Select");
         mappingText.ShouldContain("new EntityDto\n");
