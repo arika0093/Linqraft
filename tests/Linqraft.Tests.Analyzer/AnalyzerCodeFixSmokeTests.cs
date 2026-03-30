@@ -824,12 +824,32 @@ public sealed class AnalyzerCodeFixSmokeTests
         );
         fixedText.ShouldContain("return source.ProjectToEntityDto(id, name);");
         mappingText.ShouldNotBeNull();
+        var mappingLines = mappingText.Replace("\r\n", "\n").Split('\n');
+        var sourceParameterLineIndex = Array.FindIndex(
+            mappingLines,
+            line => line.Contains("this global::Linqraft.LinqraftMapper<global::Entity> source")
+        );
+        var idParameterLineIndex = Array.FindIndex(
+            mappingLines,
+            line => line.Contains(" id,")
+        );
+        var nameParameterLineIndex = Array.FindIndex(
+            mappingLines,
+            line => line.Contains(" name")
+        );
         mappingText.ShouldContain("ProjectToEntityDto(\n");
         mappingText.ShouldContain(
             "        this global::Linqraft.LinqraftMapper<global::Entity> source,\n"
         );
-        mappingText.ShouldContain(" id,\n");
-        mappingText.ShouldContain(" name\n");
+        sourceParameterLineIndex.ShouldBeGreaterThanOrEqualTo(0);
+        idParameterLineIndex.ShouldBeGreaterThan(sourceParameterLineIndex);
+        nameParameterLineIndex.ShouldBeGreaterThan(idParameterLineIndex);
+        CountLeadingSpaces(mappingLines[idParameterLineIndex]).ShouldBe(
+            CountLeadingSpaces(mappingLines[sourceParameterLineIndex])
+        );
+        CountLeadingSpaces(mappingLines[nameParameterLineIndex]).ShouldBe(
+            CountLeadingSpaces(mappingLines[sourceParameterLineIndex])
+        );
         mappingText.ShouldContain("    )\n        =>");
         mappingText.ShouldContain("source.Select");
         mappingText.ShouldContain("new EntityDto");
