@@ -36,7 +36,9 @@ public sealed class AnalyzerCodeFixSmokeTests
                 where T : class
             {
                 public IQueryable<TResult> Select<TResult>(Func<T, TResult> selector) => throw null!;
+                public IQueryable<TResult> Select<TResult>(Func<T, object> selector) => throw null!;
                 public IQueryable<TResult> Select<TResult>(Func<T, IProjectionHelper, TResult> selector) => throw null!;
+                public IQueryable<TResult> Select<TResult>(Func<T, IProjectionHelper, object> selector) => throw null!;
                 public IQueryable<TResult> SelectMany<TResult>(Func<T, System.Collections.Generic.IEnumerable<TResult>> selector) => throw null!;
                 public IQueryable<TResult> SelectMany<TResult>(Func<T, IProjectionHelper, System.Collections.Generic.IEnumerable<TResult>> selector) => throw null!;
                 public IQueryable<TResult> GroupBy<TKey, TResult>(Func<T, TKey> keySelector, Func<System.Linq.IGrouping<TKey, T>, TResult> selector) => throw null!;
@@ -722,6 +724,171 @@ public sealed class AnalyzerCodeFixSmokeTests
             .ShouldBeGreaterThan(CountLeadingSpaces(anonymousLines[anonymousChildsIndex]));
         CountLeadingSpaces(anonymousLines[anonymousChild2IdIndex])
             .ShouldBe(CountLeadingSpaces(anonymousLines[anonymousChildsIndex]));
+    }
+
+    [Test]
+    public async Task Linqraft_mapping_code_fix_replaces_use_linqraft_select_and_adds_mapping_file()
+    {
+        const string source = """
+            using System.Linq;
+            using Linqraft;
+
+            public class Entity
+            {
+                public int Id { get; set; }
+            }
+
+            public class EntityDto
+            {
+                public int Id { get; set; }
+            }
+
+            public class QueryHolder
+            {
+                public IQueryable<EntityDto> Project(IQueryable<Entity> source)
+                {
+                    return source.UseLinqraft().Select<EntityDto>(entity => new
+                    {
+                        entity.Id,
+                    });
+                }
+            }
+            """;
+
+        var result = await ApplyFixAsync(source, "LQRS010", "LinqraftMapping");
+        var fixedText = result.PrimaryDocumentText;
+        var mappingText = await GetDocumentTextAsync(
+            result.ChangedSolution,
+            "EntityDtoMappingExtensions.cs"
+        );
+        fixedText.ShouldContain("return source.ProjectToEntityDto();");
+        mappingText.ShouldNotBeNull();
+        mappingText.ShouldContain("public static partial class EntityDtoMappingExtensions");
+        mappingText.ShouldContain("[global::Linqraft.LinqraftMapping]");
+        mappingText.ShouldContain(
+            "internal static global::System.Linq.IQueryable<global::EntityDto> ProjectToEntityDto(this global::Linqraft.LinqraftMapper<global::Entity> source)"
+        );
+        mappingText.ShouldContain("source.Select<EntityDto>(entity => new");
+        mappingText.ShouldNotContain("UseLinqraft");
+    }
+
+    [Test]
+    public async Task Linqraft_mapping_code_fix_replaces_selectexpr_capture_with_mapping_parameters()
+    {
+        const string source = """
+            using System;
+            using System.Linq;
+            using Linqraft;
+
+            namespace Linqraft
+            {
+                public static class SelectExprExtensions
+                {
+                    public static IQueryable<TResult> SelectExpr<TIn, TResult>(this IQueryable<TIn> query, Func<TIn, TResult> selector, Func<object> capture)
+                        where TIn : class => throw null!;
+                }
+            }
+
+            public class Entity
+            {
+                public int Id { get; set; }
+            }
+
+            public class EntityDto
+            {
+                public int Id { get; set; }
+                public string Name { get; set; } = string.Empty;
+            }
+
+            public class QueryHolder
+            {
+                public IQueryable<EntityDto> Project(IQueryable<Entity> source, int id, string name)
+                {
+                    return source.SelectExpr<Entity, EntityDto>(
+                        entity => new EntityDto
+                        {
+                            Id = id,
+                            Name = name,
+                        },
+                        capture: () => (id, name)
+                    );
+                }
+            }
+            """;
+
+        var result = await ApplyFixAsync(source, "LQRS010", "LinqraftMapping");
+        var fixedText = result.PrimaryDocumentText;
+        var mappingText = await GetDocumentTextAsync(
+            result.ChangedSolution,
+            "EntityDtoMappingExtensions.cs"
+        );
+        fixedText.ShouldContain("return source.ProjectToEntityDto(id, name);");
+        mappingText.ShouldNotBeNull();
+        mappingText.ShouldContain("ProjectToEntityDto(");
+        mappingText.ShouldContain("this global::Linqraft.LinqraftMapper<global::Entity> source");
+        mappingText.ShouldContain("source.Select");
+        mappingText.ShouldContain("new EntityDto");
+        mappingText.ShouldContain("Id = id");
+        mappingText.ShouldContain("Name = name");
+        mappingText.ShouldNotContain("capture:");
+        mappingText.ShouldNotContain("SelectExpr");
+    }
+
+    [Test]
+    public async Task Linqraft_mapping_code_fix_replaces_groupbyexpr_and_preserves_key_selector()
+    {
+        const string source = """
+            using System;
+            using System.Linq;
+            using Linqraft;
+
+            namespace Linqraft
+            {
+                public static class GroupByExprExtensions
+                {
+                    public static IQueryable<TResult> GroupByExpr<TIn, TKey, TResult>(this IQueryable<TIn> query, Func<TIn, TKey> keySelector, Func<System.Linq.IGrouping<TKey, TIn>, TResult> selector)
+                        where TIn : class => throw null!;
+                }
+            }
+
+            public class Entity
+            {
+                public int Id { get; set; }
+            }
+
+            public class GroupRow
+            {
+                public int Key { get; set; }
+            }
+
+            public class QueryHolder
+            {
+                public IQueryable<GroupRow> Project(IQueryable<Entity> source)
+                {
+                    return source.GroupByExpr<Entity, int, GroupRow>(
+                        entity => entity.Id,
+                        group => new GroupRow
+                        {
+                            Key = group.Key,
+                        }
+                    );
+                }
+            }
+            """;
+
+        var result = await ApplyFixAsync(source, "LQRS010", "LinqraftMapping");
+        var fixedText = result.PrimaryDocumentText;
+        var mappingText = await GetDocumentTextAsync(
+            result.ChangedSolution,
+            "GroupRowMappingExtensions.cs"
+        );
+        fixedText.ShouldContain("return source.ProjectToGroupRow();");
+        mappingText.ShouldNotBeNull();
+        mappingText.ShouldContain("public static partial class GroupRowMappingExtensions");
+        mappingText.ShouldContain("source.GroupBy<int, GroupRow>(");
+        mappingText.ShouldContain("entity => entity.Id");
+        mappingText.ShouldContain("group => new GroupRow");
+        mappingText.ShouldNotContain("GroupByExpr");
     }
 
     [Test]
@@ -1467,6 +1634,21 @@ public sealed class AnalyzerCodeFixSmokeTests
         }
 
         return builder.ToImmutable();
+    }
+
+    private static async Task<string?> GetDocumentTextAsync(Solution solution, string documentName)
+    {
+        var document = solution.Projects
+            .SelectMany(project => project.Documents)
+            .FirstOrDefault(candidate =>
+                string.Equals(candidate.Name, documentName, StringComparison.Ordinal)
+            );
+        if (document is null)
+        {
+            return null;
+        }
+
+        return (await document.GetTextAsync()).ToString();
     }
 
     private static Document CreateDocument(string source)
