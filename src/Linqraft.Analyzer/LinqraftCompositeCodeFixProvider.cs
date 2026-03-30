@@ -2453,9 +2453,17 @@ public sealed class LinqraftCompositeCodeFixProvider : CodeFixProvider
         int index
     )
     {
-        var baseName = string.IsNullOrWhiteSpace(candidate)
-            ? $"capture{index + 1}"
-            : char.ToLowerInvariant(candidate[0]) + candidate[1..];
+        string baseName;
+        if (string.IsNullOrWhiteSpace(candidate))
+        {
+            baseName = $"capture{index + 1}";
+        }
+        else
+        {
+            var remainder = candidate.Length > 1 ? candidate[1..] : string.Empty;
+            baseName = char.ToLowerInvariant(candidate[0]) + remainder;
+        }
+
         if (!SyntaxFacts.IsValidIdentifier(baseName))
         {
             baseName = $"capture{index + 1}";
