@@ -27,6 +27,22 @@ public sealed class AnalyzerCodeFixSmokeTests
             {
             }
 
+            [AttributeUsage(AttributeTargets.Method)]
+            public sealed class LinqraftMappingAttribute : Attribute
+            {
+            }
+
+            public sealed class LinqraftMapper<T>
+                where T : class
+            {
+                public IQueryable<TResult> Select<TResult>(Func<T, TResult> selector) => throw null!;
+                public IQueryable<TResult> Select<TResult>(Func<T, IProjectionHelper, TResult> selector) => throw null!;
+                public IQueryable<TResult> SelectMany<TResult>(Func<T, System.Collections.Generic.IEnumerable<TResult>> selector) => throw null!;
+                public IQueryable<TResult> SelectMany<TResult>(Func<T, IProjectionHelper, System.Collections.Generic.IEnumerable<TResult>> selector) => throw null!;
+                public IQueryable<TResult> GroupBy<TKey, TResult>(Func<T, TKey> keySelector, Func<System.Linq.IGrouping<TKey, T>, TResult> selector) => throw null!;
+                public IQueryable<TResult> GroupBy<TKey, TResult>(Func<T, TKey> keySelector, Func<System.Linq.IGrouping<TKey, T>, IProjectionHelper, TResult> selector) => throw null!;
+            }
+
             public sealed class LinqraftQuery<T>
                 where T : class
             {
@@ -41,6 +57,10 @@ public sealed class AnalyzerCodeFixSmokeTests
                 public IQueryable<TResult> Select<TResult>(Func<T, object> selector) => throw null!;
                 public IQueryable<TResult> Select<TResult>(Func<T, TResult> selector, Func<object> capture) => throw null!;
                 public IQueryable<TResult> Select<TResult>(Func<T, object> selector, Func<object> capture) => throw null!;
+                public IQueryable<TResult> SelectMany<TResult>(Func<T, System.Collections.Generic.IEnumerable<TResult>> selector) => throw null!;
+                public IQueryable<TResult> SelectMany<TResult>(Func<T, System.Collections.Generic.IEnumerable<TResult>> selector, Func<object> capture) => throw null!;
+                public IQueryable<TResult> GroupBy<TKey, TResult>(Func<T, TKey> keySelector, Func<System.Linq.IGrouping<TKey, T>, TResult> selector) => throw null!;
+                public IQueryable<TResult> GroupBy<TKey, TResult>(Func<T, TKey> keySelector, Func<System.Linq.IGrouping<TKey, T>, TResult> selector, Func<object> capture) => throw null!;
             }
 
             public static class LinqraftQueryExtensions

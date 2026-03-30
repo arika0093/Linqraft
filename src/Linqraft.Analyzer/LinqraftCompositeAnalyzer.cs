@@ -1,6 +1,7 @@
 using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.Linq;
+using System.Threading;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
@@ -40,6 +41,7 @@ public sealed class LinqraftCompositeAnalyzer : DiagnosticAnalyzer
     {
         var invocation = (InvocationExpressionSyntax)context.Node;
         AnalyzeAnonymousCapturePattern(context, invocation);
+        AnalyzeProjectionToMappingInvocation(context, invocation);
 
         if (AnalyzerHelpers.IsSelectExprInvocation(invocation))
         {
@@ -110,6 +112,48 @@ public sealed class LinqraftCompositeAnalyzer : DiagnosticAnalyzer
                 )
             );
         }
+    }
+
+    private static void AnalyzeProjectionToMappingInvocation(
+        SyntaxNodeAnalysisContext context,
+        InvocationExpressionSyntax invocation
+    )
+    {
+        if (
+            !AnalyzerHelpers.IsProjectionExprInvocation(invocation)
+            || IsInsideLinqraftMappingMethod(invocation, context.SemanticModel, context.CancellationToken)
+        )
+        {
+            return;
+        }
+
+        var lambda = AnalyzerHelpers.GetProjectionResultLambda(invocation);
+        if (lambda is null)
+        {
+            return;
+        }
+
+        var selectorBody = AnalyzerHelpers.GetLambdaExpressionBody(lambda);
+        if (
+            selectorBody is AnonymousObjectCreationExpressionSyntax
+            && !AnalyzerHelpers.HasExplicitProjectionResultType(invocation)
+        )
+        {
+            return;
+        }
+
+        if (
+            selectorBody
+            is not AnonymousObjectCreationExpressionSyntax
+                and not ObjectCreationExpressionSyntax
+        )
+        {
+            return;
+        }
+
+        context.ReportDiagnostic(
+            Diagnostic.Create(DiagnosticDescriptors.ProjectionToLinqraftMapping, invocation.GetLocation())
+        );
     }
 
     private static void AnalyzeAnonymousCapturePattern(
@@ -411,6 +455,25 @@ public sealed class LinqraftCompositeAnalyzer : DiagnosticAnalyzer
                 dtoName
             )
         );
+    }
+
+    private static bool IsInsideLinqraftMappingMethod(
+        InvocationExpressionSyntax invocation,
+        SemanticModel semanticModel,
+        CancellationToken cancellationToken
+    )
+    {
+        var method = invocation.FirstAncestorOrSelf<MethodDeclarationSyntax>();
+        if (method is null)
+        {
+            return false;
+        }
+
+        var methodSymbol = semanticModel.GetDeclaredSymbol(method, cancellationToken);
+        return methodSymbol?.GetAttributes().Any(attribute =>
+                attribute.AttributeClass?.Name == "LinqraftMappingAttribute"
+            )
+            == true;
     }
 
     private static bool FlowsFromAnonymousGroupBy(InvocationExpressionSyntax selectExpr)
