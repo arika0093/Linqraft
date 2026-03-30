@@ -2544,20 +2544,16 @@ public sealed class LinqraftCompositeCodeFixProvider : CodeFixProvider
             builder.AppendLine();
         }
 
-        builder.AppendLine($"public static partial class {mappingClassName}");
-        builder.AppendLine("{");
-        builder.AppendLine("    /// <summary>");
-        builder.AppendLine(
-            "    /// This method is a dummy declaration for implementing the generated projection extension method by Linqraft."
-        );
-        builder.AppendLine("    /// </summary>");
-        builder.AppendLine("    [global::Linqraft.LinqraftMapping]");
-        builder.AppendLine(
-            $"    internal static global::System.Linq.IQueryable<{dtoTypeName}> {mappingMethodName}("
-        );
-        builder.AppendLine(
-            $"        this global::Linqraft.LinqraftMapper<{sourceTypeName}> source{(parameters.Count > 0 ? "," : string.Empty)}"
-        );
+        builder.AppendLine($$"""
+            public static partial class {{mappingClassName}}
+            {
+                /// <summary>
+                /// This method is a dummy declaration for implementing the generated projection extension method by Linqraft.
+                /// </summary>
+                [global::Linqraft.LinqraftMapping]
+                internal static global::System.Linq.IQueryable<{{dtoTypeName}}> {{mappingMethodName}}(
+                    this global::Linqraft.LinqraftMapper<{{sourceTypeName}}> source{{(parameters.Count > 0 ? "," : string.Empty)}}
+            """);
         for (var index = 0; index < parameters.Count; index++)
         {
             var parameter = parameters[index];
@@ -2566,20 +2562,14 @@ public sealed class LinqraftCompositeCodeFixProvider : CodeFixProvider
             );
         }
 
-        builder.AppendLine("    )");
-        builder.AppendLine("        =>");
-        builder.AppendLine($"{IndentGeneratedExpression(mappingInvocation)};");
-        builder.AppendLine("}");
+        builder.AppendLine($$"""
+                ) 
+                {
+                    return {{mappingInvocation.ToFullString().Trim()}};
+                }
+            }
+            """);
         return builder.ToString();
-    }
-
-    private static string IndentGeneratedExpression(ExpressionSyntax expression)
-    {
-        var formattedExpression = expression.ToFullString().Trim();
-        return string.Join(
-            "\n",
-            SplitLines(formattedExpression).Select(line => $"            {line.TrimEnd()}")
-        );
     }
 
     private static SimpleNameSyntax? GetProjectionInvocationNameSyntax(
