@@ -885,10 +885,123 @@ public sealed class AnalyzerCodeFixSmokeTests
         fixedText.ShouldContain("return source.ProjectToGroupRow();");
         mappingText.ShouldNotBeNull();
         mappingText.ShouldContain("public static partial class GroupRowMappingExtensions");
-        mappingText.ShouldContain("source.GroupBy<int, GroupRow>(");
+        mappingText.ShouldContain("source.GroupBy");
         mappingText.ShouldContain("entity => entity.Id");
         mappingText.ShouldContain("group => new GroupRow");
         mappingText.ShouldNotContain("GroupByExpr");
+    }
+
+    [Test]
+    public async Task Linqraft_mapping_code_fix_does_not_capture_member_access_from_lambda_source()
+    {
+        const string source = """
+            using System;
+            using System.Linq;
+            using Linqraft;
+
+            namespace Linqraft
+            {
+                public static class SelectExprExtensions
+                {
+                    public static IQueryable<TResult> SelectExpr<TIn, TResult>(this IQueryable<TIn> query, Func<TIn, TResult> selector)
+                        where TIn : class => throw null!;
+                }
+            }
+
+            public class Child
+            {
+                public int Id { get; set; }
+            }
+
+            public class Entity
+            {
+                public Child Child3 { get; set; } = new();
+            }
+
+            public class EntityDto
+            {
+                public int ChildId { get; set; }
+            }
+
+            public class QueryHolder
+            {
+                public IQueryable<EntityDto> Project(IQueryable<Entity> source)
+                {
+                    return source.SelectExpr<Entity, EntityDto>(s => new EntityDto
+                    {
+                        ChildId = s.Child3.Id,
+                    });
+                }
+            }
+            """;
+
+        var result = await ApplyFixAsync(source, "LQRS010", "LinqraftMapping");
+        var mappingText = await GetDocumentTextAsync(
+            result.ChangedSolution,
+            "EntityDtoMappingExtensions.cs"
+        );
+
+        mappingText.ShouldNotBeNull();
+        mappingText.ShouldContain(
+            "ProjectToEntityDto(this global::Linqraft.LinqraftMapper<global::Entity> source)"
+        );
+        mappingText.ShouldNotContain("source,");
+        mappingText.ShouldContain("ChildId = s.Child3.Id");
+    }
+
+    [Test]
+    public async Task Linqraft_mapping_code_fix_formats_generated_mapping_body_with_line_breaks()
+    {
+        const string source = """
+            using System;
+            using System.Linq;
+            using Linqraft;
+
+            namespace Linqraft
+            {
+                public static class SelectExprExtensions
+                {
+                    public static IQueryable<TResult> SelectExpr<TIn, TResult>(this IQueryable<TIn> query, Func<TIn, TResult> selector, Func<object> capture)
+                        where TIn : class => throw null!;
+                }
+            }
+
+            public class Entity
+            {
+                public int Id { get; set; }
+            }
+
+            public class EntityDto
+            {
+                public int Id { get; set; }
+                public string Name { get; set; } = string.Empty;
+            }
+
+            public class QueryHolder
+            {
+                public IQueryable<EntityDto> Project(IQueryable<Entity> source, string name)
+                {
+                    return source.SelectExpr<Entity, EntityDto>(entity => new EntityDto
+                    {
+                        Id = entity.Id,
+                        Name = name,
+                    }, capture: () => name);
+                }
+            }
+            """;
+
+        var result = await ApplyFixAsync(source, "LQRS010", "LinqraftMapping");
+        var mappingText = await GetDocumentTextAsync(
+            result.ChangedSolution,
+            "EntityDtoMappingExtensions.cs"
+        );
+
+        mappingText.ShouldNotBeNull();
+        mappingText.ShouldContain("        =>\n");
+        mappingText.ShouldContain("            source.Select");
+        mappingText.ShouldContain("new EntityDto\n");
+        mappingText.ShouldContain("Id = entity.Id,\n");
+        mappingText.ShouldContain("Name = name,\n");
     }
 
     [Test]

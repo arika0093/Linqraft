@@ -612,7 +612,7 @@ public sealed class AnalyzerSmokeTests
     }
 
     [Test]
-    public async Task Projection_helper_hook_inside_selectexpr_does_not_report_diagnostics()
+    public async Task Projection_helper_hook_inside_selectexpr_reports_only_LQRS010()
     {
         const string source = """
             using System;
