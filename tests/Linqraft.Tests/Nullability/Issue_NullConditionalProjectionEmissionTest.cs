@@ -30,14 +30,16 @@ public class Issue_NullConditionalProjectionEmissionTest
     {
         var result = _orders
             .AsTestQueryable()
-            .SelectExpr<IssueConditionalProjectionOrder, IssueConditionalProjectionGeneratedDto>(o => new
-            {
-                o.OrderId,
-                CustomerName = o.Customer?.Name,
-                CustomerId = o.Customer?.Id,
-                CustomerCity = o.Customer?.Address?.City,
-                DiscountAppliedAt = o.Discount?.AppliedAt,
-            })
+            .SelectExpr<IssueConditionalProjectionOrder, IssueConditionalProjectionGeneratedDto>(
+                o => new
+                {
+                    o.OrderId,
+                    CustomerName = o.Customer?.Name,
+                    CustomerId = o.Customer?.Id,
+                    CustomerCity = o.Customer?.Address?.City,
+                    DiscountAppliedAt = o.Discount?.AppliedAt,
+                }
+            )
             .ToList();
 
         AssertProjectedValues(result);
