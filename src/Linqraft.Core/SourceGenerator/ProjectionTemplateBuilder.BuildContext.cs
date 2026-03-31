@@ -1235,7 +1235,13 @@ internal static partial class ProjectionTemplateBuilder
             CancellationToken cancellationToken
         )
         {
-            foreach (var candidate in EnumerateMemberCandidates(receiverType, memberName))
+            foreach (
+                var candidate in EnumerateMemberCandidates(
+                    receiverType,
+                    memberName,
+                    cancellationToken
+                )
+            )
             {
                 cancellationToken.ThrowIfCancellationRequested();
                 if (argumentCount is int expectedArgumentCount)
@@ -1263,11 +1269,13 @@ internal static partial class ProjectionTemplateBuilder
 
         private static IEnumerable<ISymbol> EnumerateMemberCandidates(
             ITypeSymbol receiverType,
-            string memberName
+            string memberName,
+            CancellationToken cancellationToken
         )
         {
             foreach (var candidate in receiverType.GetMembers(memberName))
             {
+                cancellationToken.ThrowIfCancellationRequested();
                 yield return candidate;
             }
 
@@ -1280,6 +1288,7 @@ internal static partial class ProjectionTemplateBuilder
             {
                 foreach (var candidate in baseType.GetMembers(memberName))
                 {
+                    cancellationToken.ThrowIfCancellationRequested();
                     yield return candidate;
                 }
             }
@@ -1288,6 +1297,7 @@ internal static partial class ProjectionTemplateBuilder
             {
                 foreach (var candidate in interfaceType.GetMembers(memberName))
                 {
+                    cancellationToken.ThrowIfCancellationRequested();
                     yield return candidate;
                 }
             }
