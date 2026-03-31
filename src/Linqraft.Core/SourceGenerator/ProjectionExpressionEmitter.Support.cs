@@ -658,6 +658,11 @@ internal sealed partial class ProjectionExpressionEmitter
     /// </summary>
     private static string WrapCastExpression(string castPrefix, string expression)
     {
+        if (castPrefix == "()")
+        {
+            return expression;
+        }
+
         if (!ContainsLineBreak(expression))
         {
             return $"{castPrefix}({expression})";

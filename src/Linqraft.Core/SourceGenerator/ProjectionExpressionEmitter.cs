@@ -829,6 +829,7 @@ internal sealed partial class ProjectionExpressionEmitter
                 var castPrefix =
                     !useEmptyFallback
                     && canCast
+                    && expressionTypeName.Length > 0
                     && !ShouldOmitConditionalCast(expression, expressionType)
                         ? $"({expressionTypeName})"
                         : string.Empty;
