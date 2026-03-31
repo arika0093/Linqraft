@@ -30,7 +30,7 @@ public class Issue_NullConditionalProjectionEmissionTest
     {
         var result = _orders
             .AsTestQueryable()
-            .SelectExpr<IssueConditionalProjectionOrder, IssueConditionalProjectionAnonymousDto>(o => new
+            .SelectExpr<IssueConditionalProjectionOrder, IssueConditionalProjectionGeneratedDto>(o => new
             {
                 o.OrderId,
                 CustomerName = o.Customer?.Name,
@@ -116,7 +116,7 @@ public class IssueConditionalProjectionDiscount
     public DateTimeOffset? AppliedAt { get; set; }
 }
 
-partial class IssueConditionalProjectionAnonymousDto : IssueConditionalProjectionExpectation { }
+partial class IssueConditionalProjectionGeneratedDto : IssueConditionalProjectionExpectation { }
 
 public class IssueConditionalProjectionTypedDto : IssueConditionalProjectionExpectation
 {
