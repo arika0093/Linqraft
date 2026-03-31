@@ -121,7 +121,11 @@ public sealed class LinqraftCompositeAnalyzer : DiagnosticAnalyzer
     {
         if (
             !AnalyzerHelpers.IsProjectionExprInvocation(invocation)
-            || IsInsideLinqraftMappingMethod(invocation, context.SemanticModel, context.CancellationToken)
+            || IsInsideLinqraftMappingMethod(
+                invocation,
+                context.SemanticModel,
+                context.CancellationToken
+            )
         )
         {
             return;
@@ -152,7 +156,10 @@ public sealed class LinqraftCompositeAnalyzer : DiagnosticAnalyzer
         }
 
         context.ReportDiagnostic(
-            Diagnostic.Create(DiagnosticDescriptors.ProjectionToLinqraftMapping, invocation.GetLocation())
+            Diagnostic.Create(
+                DiagnosticDescriptors.ProjectionToLinqraftMapping,
+                invocation.GetLocation()
+            )
         );
     }
 
@@ -470,9 +477,9 @@ public sealed class LinqraftCompositeAnalyzer : DiagnosticAnalyzer
         }
 
         var methodSymbol = semanticModel.GetDeclaredSymbol(method, cancellationToken);
-        return methodSymbol?.GetAttributes().Any(attribute =>
-                attribute.AttributeClass?.Name == "LinqraftMappingAttribute"
-            )
+        return methodSymbol
+                ?.GetAttributes()
+                .Any(attribute => attribute.AttributeClass?.Name == "LinqraftMappingAttribute")
             == true;
     }
 

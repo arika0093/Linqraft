@@ -842,12 +842,10 @@ public sealed class AnalyzerCodeFixSmokeTests
         mappingLines[nameParameterLineIndex].TrimEnd().ShouldEndWith(" name");
         idParameterLineIndex.ShouldBeGreaterThan(sourceParameterLineIndex);
         nameParameterLineIndex.ShouldBeGreaterThan(idParameterLineIndex);
-        CountLeadingSpaces(mappingLines[idParameterLineIndex]).ShouldBe(
-            CountLeadingSpaces(mappingLines[sourceParameterLineIndex])
-        );
-        CountLeadingSpaces(mappingLines[nameParameterLineIndex]).ShouldBe(
-            CountLeadingSpaces(mappingLines[sourceParameterLineIndex])
-        );
+        CountLeadingSpaces(mappingLines[idParameterLineIndex])
+            .ShouldBe(CountLeadingSpaces(mappingLines[sourceParameterLineIndex]));
+        CountLeadingSpaces(mappingLines[nameParameterLineIndex])
+            .ShouldBe(CountLeadingSpaces(mappingLines[sourceParameterLineIndex]));
         mappingText.ShouldContain("    )\n    {");
         mappingText.ShouldContain("source.Select");
         mappingText.ShouldContain("new EntityDto");
@@ -1777,8 +1775,8 @@ public sealed class AnalyzerCodeFixSmokeTests
 
     private static async Task<string?> GetDocumentTextAsync(Solution solution, string documentName)
     {
-        var document = solution.Projects
-            .SelectMany(project => project.Documents)
+        var document = solution
+            .Projects.SelectMany(project => project.Documents)
             .FirstOrDefault(candidate =>
                 string.Equals(candidate.Name, documentName, StringComparison.Ordinal)
             );

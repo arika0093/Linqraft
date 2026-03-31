@@ -241,7 +241,11 @@ public sealed class LinqraftCompositeCodeFixProvider : CodeFixProvider
             CodeAction.Create(
                 "Convert to LinqraftMapping form",
                 cancellationToken =>
-                    ConvertProjectionToMappingAsync(context.Document, invocation, cancellationToken),
+                    ConvertProjectionToMappingAsync(
+                        context.Document,
+                        invocation,
+                        cancellationToken
+                    ),
                 "LQRS010"
             ),
             context.Diagnostics
@@ -1899,7 +1903,10 @@ public sealed class LinqraftCompositeCodeFixProvider : CodeFixProvider
         var documentName = GetUniqueDocumentName(document.Project, preferredDocumentName);
         if (documentName != preferredDocumentName)
         {
-            var nameWithoutExtension = documentName.EndsWith(".cs", StringComparison.OrdinalIgnoreCase)
+            var nameWithoutExtension = documentName.EndsWith(
+                ".cs",
+                StringComparison.OrdinalIgnoreCase
+            )
                 ? documentName[..^3]
                 : documentName;
             var nameSuffix = nameWithoutExtension[mappingClassName.Length..];
@@ -1907,11 +1914,7 @@ public sealed class LinqraftCompositeCodeFixProvider : CodeFixProvider
             mappingMethodName = $"{mappingMethodName}{nameSuffix}";
         }
 
-        var parameters = CreateMappingParameterSpecs(
-            invocation,
-            semanticModel,
-            cancellationToken
-        );
+        var parameters = CreateMappingParameterSpecs(invocation, semanticModel, cancellationToken);
         var callerInvocation = CreateMappingCallerInvocation(
             invocation,
             sourceExpression,
@@ -1998,19 +2001,17 @@ public sealed class LinqraftCompositeCodeFixProvider : CodeFixProvider
             return invocation;
         }
 
-        var updatedName = CreateMappingDeclarationMethodName(
-            originalName,
-            invocationName
-        );
+        var updatedName = CreateMappingDeclarationMethodName(originalName, invocationName);
         var sourceArgumentIndex = GetProjectionSourceArgumentIndex(
             invocation,
             semanticModel,
             cancellationToken
         );
         var rewrittenArguments = invocation
-            .ArgumentList.Arguments.Where((argument, index) =>
-                (sourceArgumentIndex is null || index != sourceArgumentIndex.Value)
-                && (captureArgument is null || argument.Span != captureArgument.Span)
+            .ArgumentList.Arguments.Where(
+                (argument, index) =>
+                    (sourceArgumentIndex is null || index != sourceArgumentIndex.Value)
+                    && (captureArgument is null || argument.Span != captureArgument.Span)
             )
             .Select(argument =>
             {
@@ -2071,9 +2072,7 @@ public sealed class LinqraftCompositeCodeFixProvider : CodeFixProvider
             ? SyntaxFactory.IdentifierName(mappedName)
             : SyntaxFactory.GenericName(
                 SyntaxFactory.Identifier(mappedName),
-                SyntaxFactory.TypeArgumentList(
-                    SyntaxFactory.SeparatedList(mappedTypeArguments)
-                )
+                SyntaxFactory.TypeArgumentList(SyntaxFactory.SeparatedList(mappedTypeArguments))
             );
     }
 
@@ -2097,9 +2096,14 @@ public sealed class LinqraftCompositeCodeFixProvider : CodeFixProvider
             return lambda;
         }
 
-        return (ExpressionSyntax)
-            (new MappingParameterRewriter(lambda, semanticModel, replacementMap, cancellationToken)
-                .Visit(lambda) ?? lambda);
+        return (ExpressionSyntax)(
+            new MappingParameterRewriter(
+                lambda,
+                semanticModel,
+                replacementMap,
+                cancellationToken
+            ).Visit(lambda) ?? lambda
+        );
     }
 
     private static IReadOnlyList<MappingParameterSpec> CreateMappingParameterSpecs(
@@ -2114,9 +2118,7 @@ public sealed class LinqraftCompositeCodeFixProvider : CodeFixProvider
         var captureExpressions = captureArgument is null
             ? Array.Empty<ExpressionSyntax>()
             : AnalyzerHelpers.GetCaptureExpressions(captureArgument);
-        foreach (
-            var captureExpression in captureExpressions
-        )
+        foreach (var captureExpression in captureExpressions)
         {
             var parameterName = CreateUniqueParameterName(
                 AnalyzerHelpers.GetCaptureMemberName(captureExpression),
@@ -2188,10 +2190,7 @@ public sealed class LinqraftCompositeCodeFixProvider : CodeFixProvider
                 }
 
                 var symbol = semanticModel.GetSymbolInfo(identifier, cancellationToken).Symbol;
-                if (
-                    !IsCaptureEligible(symbol, localSymbols)
-                    || !seenSymbols.Add(symbol!)
-                )
+                if (!IsCaptureEligible(symbol, localSymbols) || !seenSymbols.Add(symbol!))
                 {
                     continue;
                 }
@@ -2203,7 +2202,9 @@ public sealed class LinqraftCompositeCodeFixProvider : CodeFixProvider
                 );
             }
 
-            foreach (var memberAccess in lambda.DescendantNodes().OfType<MemberAccessExpressionSyntax>())
+            foreach (
+                var memberAccess in lambda.DescendantNodes().OfType<MemberAccessExpressionSyntax>()
+            )
             {
                 var symbol = semanticModel.GetSymbolInfo(memberAccess, cancellationToken).Symbol;
                 if (
@@ -2356,7 +2357,10 @@ public sealed class LinqraftCompositeCodeFixProvider : CodeFixProvider
         CancellationToken cancellationToken
     )
     {
-        if (GetProjectionSourceArgumentIndex(invocation, semanticModel, cancellationToken) is { } index)
+        if (
+            GetProjectionSourceArgumentIndex(invocation, semanticModel, cancellationToken) is
+            { } index
+        )
         {
             if (index >= invocation.ArgumentList.Arguments.Count)
             {
@@ -2382,16 +2386,14 @@ public sealed class LinqraftCompositeCodeFixProvider : CodeFixProvider
     )
     {
         var sourceType = semanticModel.GetTypeInfo(sourceExpression, cancellationToken).Type;
-        if (
-            TryGetSequenceElementType(sourceType, out var elementType)
-            && elementType is not null
-        )
+        if (TryGetSequenceElementType(sourceType, out var elementType) && elementType is not null)
         {
             return elementType.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat);
         }
 
         if (
-            AnalyzerHelpers.GetInvocationNameSyntax(invocation.Expression) is GenericNameSyntax genericName
+            AnalyzerHelpers.GetInvocationNameSyntax(invocation.Expression)
+                is GenericNameSyntax genericName
             && genericName.TypeArgumentList.Arguments.Count > 1
         )
         {
@@ -2425,7 +2427,8 @@ public sealed class LinqraftCompositeCodeFixProvider : CodeFixProvider
         }
 
         if (
-            AnalyzerHelpers.GetInvocationNameSyntax(invocation.Expression) is GenericNameSyntax genericName
+            AnalyzerHelpers.GetInvocationNameSyntax(invocation.Expression)
+                is GenericNameSyntax genericName
             && genericName.TypeArgumentList.Arguments.Count > 0
         )
         {
@@ -2458,7 +2461,8 @@ public sealed class LinqraftCompositeCodeFixProvider : CodeFixProvider
         }
 
         if (
-            AnalyzerHelpers.GetInvocationNameSyntax(invocation.Expression) is GenericNameSyntax genericName
+            AnalyzerHelpers.GetInvocationNameSyntax(invocation.Expression)
+                is GenericNameSyntax genericName
             && genericName.TypeArgumentList.Arguments.Count > 0
         )
         {
@@ -2489,7 +2493,8 @@ public sealed class LinqraftCompositeCodeFixProvider : CodeFixProvider
         CancellationToken cancellationToken
     )
     {
-        var type = semanticModel.GetTypeInfo(expression, cancellationToken).Type
+        var type =
+            semanticModel.GetTypeInfo(expression, cancellationToken).Type
             ?? semanticModel.GetTypeInfo(expression, cancellationToken).ConvertedType;
         return type?.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat)
             ?? "global::System.Object";
@@ -2554,17 +2559,17 @@ public sealed class LinqraftCompositeCodeFixProvider : CodeFixProvider
             }
         }
 
-        var namespaceName = semanticModel.GetEnclosingSymbol(
-            invocation.SpanStart,
-            cancellationToken
-        )?.ContainingNamespace;
+        var namespaceName = semanticModel
+            .GetEnclosingSymbol(invocation.SpanStart, cancellationToken)
+            ?.ContainingNamespace;
         if (namespaceName is not null && !namespaceName.IsGlobalNamespace)
         {
             builder.AppendLine($"namespace {namespaceName.ToDisplayString()};");
             builder.AppendLine();
         }
 
-        builder.AppendLine($$"""
+        builder.AppendLine(
+            $$"""
             public static partial class {{mappingClassName}}
             {
                 /// <summary>
@@ -2572,8 +2577,11 @@ public sealed class LinqraftCompositeCodeFixProvider : CodeFixProvider
                 /// </summary>
                 [global::Linqraft.LinqraftMapping]
                 internal static global::System.Linq.IQueryable<{{dtoTypeName}}> {{mappingMethodName}}(
-                    this global::Linqraft.LinqraftMapper<{{sourceTypeName}}> source{{(parameters.Count > 0 ? "," : string.Empty)}}
-            """);
+                    this global::Linqraft.LinqraftMapper<{{sourceTypeName}}> source{{(
+                parameters.Count > 0 ? "," : string.Empty
+            )}}
+            """
+        );
         for (var index = 0; index < parameters.Count; index++)
         {
             var parameter = parameters[index];
@@ -2582,13 +2590,15 @@ public sealed class LinqraftCompositeCodeFixProvider : CodeFixProvider
             );
         }
 
-        builder.AppendLine($$"""
+        builder.AppendLine(
+            $$"""
                 )
                 {
                     return {{mappingInvocation.ToFullString().Trim()}};
                 }
             }
-            """);
+            """
+        );
         return builder.ToString();
     }
 
@@ -2634,9 +2644,11 @@ public sealed class LinqraftCompositeCodeFixProvider : CodeFixProvider
 
     private static string GetUniqueDocumentName(Project project, string preferredName)
     {
-        if (!project.Documents.Any(document =>
+        if (
+            !project.Documents.Any(document =>
                 string.Equals(document.Name, preferredName, StringComparison.OrdinalIgnoreCase)
-            ))
+            )
+        )
         {
             return preferredName;
         }
@@ -2695,10 +2707,7 @@ public sealed class LinqraftCompositeCodeFixProvider : CodeFixProvider
 
         public override SyntaxNode? VisitIdentifierName(IdentifierNameSyntax node)
         {
-            if (
-                CanUseAsOuterReference(node)
-                && TryGetReplacement(node, out var replacement)
-            )
+            if (CanUseAsOuterReference(node) && TryGetReplacement(node, out var replacement))
             {
                 return SyntaxFactory.IdentifierName(replacement).WithTriviaFrom(node);
             }
@@ -2710,12 +2719,7 @@ public sealed class LinqraftCompositeCodeFixProvider : CodeFixProvider
         {
             var rewritten = (MemberAccessExpressionSyntax)base.VisitMemberAccessExpression(node)!;
             if (
-                !IsLocalAccess(
-                    node.Expression,
-                    semanticModel,
-                    cancellationToken,
-                    _localSymbols
-                )
+                !IsLocalAccess(node.Expression, semanticModel, cancellationToken, _localSymbols)
                 && TryGetReplacement(node, out var replacement)
             )
             {
