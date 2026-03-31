@@ -57,7 +57,8 @@ public enum ReferencedItemCategory
     Beta = 2,
 }
 
-public sealed class ReferencedItemType : ReferencedMasterBase<ReferencedItemType, ReferencedItemCategory>
+public sealed class ReferencedItemType
+    : ReferencedMasterBase<ReferencedItemType, ReferencedItemCategory>
 {
     public bool IsPrimary { get; set; }
 }

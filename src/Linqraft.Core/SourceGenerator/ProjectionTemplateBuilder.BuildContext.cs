@@ -1284,7 +1284,11 @@ internal static partial class ProjectionTemplateBuilder
                 yield break;
             }
 
-            for (var baseType = namedType.BaseType; baseType is not null; baseType = baseType.BaseType)
+            for (
+                var baseType = namedType.BaseType;
+                baseType is not null;
+                baseType = baseType.BaseType
+            )
             {
                 foreach (var candidate in baseType.GetMembers(memberName))
                 {
