@@ -100,6 +100,25 @@ internal static class AnalyzerHelpers
             .FirstOrDefault();
     }
 
+    public static IReadOnlyList<LambdaExpressionSyntax> GetProjectionLambdas(
+        InvocationExpressionSyntax invocation
+    )
+    {
+        var captureArgument = GetCaptureArgument(invocation);
+        return invocation
+            .ArgumentList.Arguments.Where(argument => !ReferenceEquals(argument, captureArgument))
+            .Select(argument => argument.Expression)
+            .OfType<LambdaExpressionSyntax>()
+            .ToArray();
+    }
+
+    public static LambdaExpressionSyntax? GetProjectionResultLambda(
+        InvocationExpressionSyntax invocation
+    )
+    {
+        return GetProjectionLambdas(invocation).LastOrDefault();
+    }
+
     public static ExpressionSyntax? GetLambdaExpressionBody(LambdaExpressionSyntax lambda)
     {
         return lambda.Body as ExpressionSyntax;
@@ -410,6 +429,32 @@ internal static class AnalyzerHelpers
         return typeSymbol.AllInterfaces.Any(interfaceType =>
             interfaceType.ConstructedFrom.ToDisplayString() == metadataName
         );
+    }
+
+    public static bool HasExplicitProjectionResultType(InvocationExpressionSyntax invocation)
+    {
+        if (GetInvocationNameSyntax(invocation.Expression) is not GenericNameSyntax genericName)
+        {
+            return false;
+        }
+
+        var typeArgumentCount = genericName.TypeArgumentList.Arguments.Count;
+        if (GetUseLinqraftProjectionMethodName(invocation) is { } useLinqraftMethodName)
+        {
+            return useLinqraftMethodName switch
+            {
+                "GroupBy" => typeArgumentCount >= 2,
+                "Select" or "SelectMany" => typeArgumentCount >= 1,
+                _ => false,
+            };
+        }
+
+        return GetInvocationName(invocation.Expression) switch
+        {
+            "GroupByExpr" => typeArgumentCount >= 3,
+            "SelectExpr" or "SelectManyExpr" => typeArgumentCount >= 2,
+            _ => false,
+        };
     }
 
     private static string FirstCharToUpper(string value)

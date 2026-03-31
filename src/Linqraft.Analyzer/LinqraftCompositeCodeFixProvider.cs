@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.Composition;
 using System.Linq;
+using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.CodeAnalysis;
@@ -11,6 +12,7 @@ using Microsoft.CodeAnalysis.CodeFixes;
 using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
 using Microsoft.CodeAnalysis.Formatting;
+using Microsoft.CodeAnalysis.Text;
 
 namespace Linqraft.Analyzer;
 
@@ -29,6 +31,7 @@ public sealed class LinqraftCompositeCodeFixProvider : CodeFixProvider
             "LQRS004",
             "LQRS005",
             "LQRS006",
+            "LQRS010",
             "LQRW003",
             "LQRW004",
             "LQRE001",
@@ -65,6 +68,9 @@ public sealed class LinqraftCompositeCodeFixProvider : CodeFixProvider
                     break;
                 case "LQRS004":
                     RegisterTernaryFix(context, node);
+                    break;
+                case "LQRS010":
+                    RegisterProjectionToMappingFix(context, node);
                     break;
                 case "LQRW003":
                     RegisterUnnecessaryCaptureFix(context, node, diagnostic);
@@ -218,6 +224,25 @@ public sealed class LinqraftCompositeCodeFixProvider : CodeFixProvider
                         cancellationToken
                     ),
                 "LQRS004"
+            ),
+            context.Diagnostics
+        );
+    }
+
+    private static void RegisterProjectionToMappingFix(CodeFixContext context, SyntaxNode node)
+    {
+        var invocation = node.FirstAncestorOrSelf<InvocationExpressionSyntax>();
+        if (invocation is null)
+        {
+            return;
+        }
+
+        context.RegisterCodeFix(
+            CodeAction.Create(
+                "Convert to LinqraftMapping form",
+                cancellationToken =>
+                    ConvertProjectionToMappingAsync(context.Document, invocation, cancellationToken),
+                "LQRS010"
             ),
             context.Diagnostics
         );
@@ -1821,10 +1846,896 @@ public sealed class LinqraftCompositeCodeFixProvider : CodeFixProvider
         return value.Replace("\r\n", "\n").Replace('\r', '\n').Split('\n');
     }
 
+    private static async Task<Solution> ConvertProjectionToMappingAsync(
+        Document document,
+        InvocationExpressionSyntax invocation,
+        CancellationToken cancellationToken
+    )
+    {
+        var root = await document.GetSyntaxRootAsync(cancellationToken).ConfigureAwait(false);
+        var semanticModel = await document
+            .GetSemanticModelAsync(cancellationToken)
+            .ConfigureAwait(false);
+        if (root is null || semanticModel is null)
+        {
+            return document.Project.Solution;
+        }
+
+        var sourceExpression = GetProjectionSourceExpression(
+            invocation,
+            semanticModel,
+            cancellationToken
+        );
+        var projectionLambda = AnalyzerHelpers.GetProjectionResultLambda(invocation);
+        if (sourceExpression is null || projectionLambda is null)
+        {
+            return document.Project.Solution;
+        }
+
+        var dtoTypeName = GetProjectionResultTypeName(
+            invocation,
+            projectionLambda,
+            semanticModel,
+            cancellationToken
+        );
+        var dtoSimpleName = GetProjectionResultTypeSimpleName(
+            invocation,
+            projectionLambda,
+            semanticModel,
+            cancellationToken
+        );
+        var sourceTypeName = GetProjectionSourceTypeName(
+            invocation,
+            sourceExpression,
+            semanticModel,
+            cancellationToken
+        );
+        var mappingMethodName = $"ProjectTo{dtoSimpleName}";
+        var mappingClassName = $"{dtoSimpleName}MappingExtensions";
+
+        // Determine the unique document name first, then apply the same suffix to class/method
+        // names so that duplicate projections for the same DTO never produce clashing signatures.
+        var preferredDocumentName = $"{mappingClassName}.cs";
+        var documentName = GetUniqueDocumentName(document.Project, preferredDocumentName);
+        if (documentName != preferredDocumentName)
+        {
+            var nameWithoutExtension = documentName.EndsWith(".cs", StringComparison.OrdinalIgnoreCase)
+                ? documentName[..^3]
+                : documentName;
+            var nameSuffix = nameWithoutExtension[mappingClassName.Length..];
+            mappingClassName = nameWithoutExtension;
+            mappingMethodName = $"{mappingMethodName}{nameSuffix}";
+        }
+
+        var parameters = CreateMappingParameterSpecs(
+            invocation,
+            semanticModel,
+            cancellationToken
+        );
+        var callerInvocation = CreateMappingCallerInvocation(
+            invocation,
+            sourceExpression,
+            mappingMethodName,
+            parameters
+        );
+        var mappingInvocation = CreateMappingDeclarationInvocation(
+            invocation,
+            parameters,
+            semanticModel,
+            cancellationToken
+        );
+
+        var updatedDocument = WithFormattedSyntaxRoot(
+            document,
+            root.ReplaceNode(invocation, callerInvocation)
+        );
+        var updatedRoot = await updatedDocument
+            .GetSyntaxRootAsync(cancellationToken)
+            .ConfigureAwait(false);
+        if (updatedRoot is null)
+        {
+            return updatedDocument.Project.Solution;
+        }
+
+        var mappingSource = CreateMappingDocumentSource(
+            updatedRoot,
+            semanticModel,
+            invocation,
+            cancellationToken,
+            mappingClassName,
+            mappingMethodName,
+            dtoTypeName,
+            sourceTypeName,
+            parameters,
+            mappingInvocation
+        );
+
+        return updatedDocument.Project.Solution.AddDocument(
+            DocumentId.CreateNewId(updatedDocument.Project.Id),
+            documentName,
+            SourceText.From(mappingSource),
+            updatedDocument.Folders
+        );
+    }
+
+    private static InvocationExpressionSyntax CreateMappingCallerInvocation(
+        InvocationExpressionSyntax originalInvocation,
+        ExpressionSyntax sourceExpression,
+        string methodName,
+        IReadOnlyList<MappingParameterSpec> parameters
+    )
+    {
+        return SyntaxFactory
+            .InvocationExpression(
+                SyntaxFactory.MemberAccessExpression(
+                    SyntaxKind.SimpleMemberAccessExpression,
+                    sourceExpression.WithoutTrivia(),
+                    SyntaxFactory.IdentifierName(methodName)
+                ),
+                SyntaxFactory.ArgumentList(
+                    SyntaxFactory.SeparatedList(
+                        parameters.Select(parameter =>
+                            SyntaxFactory.Argument(parameter.ArgumentExpression.WithoutTrivia())
+                        )
+                    )
+                )
+            )
+            .WithTriviaFrom(originalInvocation);
+    }
+
+    private static InvocationExpressionSyntax CreateMappingDeclarationInvocation(
+        InvocationExpressionSyntax invocation,
+        IReadOnlyList<MappingParameterSpec> parameters,
+        SemanticModel semanticModel,
+        CancellationToken cancellationToken
+    )
+    {
+        var captureArgument = AnalyzerHelpers.GetCaptureArgument(invocation);
+        var invocationName = AnalyzerHelpers.GetInvocationName(invocation.Expression);
+        var originalName = GetProjectionInvocationNameSyntax(invocation);
+        if (originalName is null)
+        {
+            return invocation;
+        }
+
+        var updatedName = CreateMappingDeclarationMethodName(
+            originalName,
+            invocationName
+        );
+        var sourceArgumentIndex = GetProjectionSourceArgumentIndex(
+            invocation,
+            semanticModel,
+            cancellationToken
+        );
+        var rewrittenArguments = invocation
+            .ArgumentList.Arguments.Where((argument, index) =>
+                (sourceArgumentIndex is null || index != sourceArgumentIndex.Value)
+                && (captureArgument is null || argument.Span != captureArgument.Span)
+            )
+            .Select(argument =>
+            {
+                if (argument.Expression is not LambdaExpressionSyntax lambda)
+                {
+                    return argument;
+                }
+
+                return argument.WithExpression(
+                    RewriteOuterReferences(lambda, parameters, semanticModel, cancellationToken)
+                );
+            });
+
+        return invocation
+            .WithExpression(
+                SyntaxFactory.MemberAccessExpression(
+                    SyntaxKind.SimpleMemberAccessExpression,
+                    SyntaxFactory.IdentifierName("source"),
+                    updatedName
+                )
+            )
+            .WithArgumentList(
+                SyntaxFactory.ArgumentList(SyntaxFactory.SeparatedList(rewrittenArguments))
+            );
+    }
+
+    private static SimpleNameSyntax CreateMappingDeclarationMethodName(
+        SimpleNameSyntax originalName,
+        string invocationName
+    )
+    {
+        var mappedName = invocationName switch
+        {
+            "SelectExpr" => "Select",
+            "SelectManyExpr" => "SelectMany",
+            "GroupByExpr" => "GroupBy",
+            _ => originalName.Identifier.ValueText,
+        };
+
+        if (originalName is not GenericNameSyntax genericName)
+        {
+            return SyntaxFactory.IdentifierName(mappedName);
+        }
+
+        var typeArguments = genericName.TypeArgumentList.Arguments;
+        var mappedTypeArguments = invocationName switch
+        {
+            "SelectExpr" or "SelectManyExpr" when typeArguments.Count >= 2 => typeArguments
+                .Skip(typeArguments.Count - 1)
+                .ToArray(),
+            "GroupByExpr" when typeArguments.Count >= 3 => typeArguments
+                .Skip(typeArguments.Count - 2)
+                .ToArray(),
+            _ => typeArguments.ToArray(),
+        };
+
+        return mappedTypeArguments.Length == 0
+            ? SyntaxFactory.IdentifierName(mappedName)
+            : SyntaxFactory.GenericName(
+                SyntaxFactory.Identifier(mappedName),
+                SyntaxFactory.TypeArgumentList(
+                    SyntaxFactory.SeparatedList(mappedTypeArguments)
+                )
+            );
+    }
+
+    private static ExpressionSyntax RewriteOuterReferences(
+        LambdaExpressionSyntax lambda,
+        IReadOnlyList<MappingParameterSpec> parameters,
+        SemanticModel semanticModel,
+        CancellationToken cancellationToken
+    )
+    {
+        var replacementMap = parameters
+            .Where(parameter => parameter.Symbol is not null)
+            .GroupBy(parameter => parameter.Symbol, SymbolEqualityComparer.Default)
+            .ToDictionary(
+                group => group.Key!,
+                group => group.First().ParameterName,
+                SymbolEqualityComparer.Default
+            );
+        if (replacementMap.Count == 0)
+        {
+            return lambda;
+        }
+
+        return (ExpressionSyntax)
+            (new MappingParameterRewriter(lambda, semanticModel, replacementMap, cancellationToken)
+                .Visit(lambda) ?? lambda);
+    }
+
+    private static IReadOnlyList<MappingParameterSpec> CreateMappingParameterSpecs(
+        InvocationExpressionSyntax invocation,
+        SemanticModel semanticModel,
+        CancellationToken cancellationToken
+    )
+    {
+        var parameters = new List<MappingParameterSpec>();
+        var usedNames = new HashSet<string>(StringComparer.Ordinal);
+        var captureArgument = AnalyzerHelpers.GetCaptureArgument(invocation);
+        var captureExpressions = captureArgument is null
+            ? Array.Empty<ExpressionSyntax>()
+            : AnalyzerHelpers.GetCaptureExpressions(captureArgument);
+        foreach (
+            var captureExpression in captureExpressions
+        )
+        {
+            var parameterName = CreateUniqueParameterName(
+                AnalyzerHelpers.GetCaptureMemberName(captureExpression),
+                usedNames,
+                parameters.Count
+            );
+            parameters.Add(
+                new MappingParameterSpec(
+                    parameterName,
+                    GetTypeDisplayName(captureExpression, semanticModel, cancellationToken),
+                    captureExpression.WithoutTrivia(),
+                    GetRootSymbol(captureExpression, semanticModel, cancellationToken)
+                )
+            );
+        }
+
+        foreach (
+            var candidate in CollectOuterReferenceCandidates(
+                invocation,
+                semanticModel,
+                cancellationToken
+            )
+        )
+        {
+            if (
+                candidate.Symbol is not null
+                && parameters.Any(parameter =>
+                    parameter.Symbol is not null
+                    && SymbolEqualityComparer.Default.Equals(parameter.Symbol, candidate.Symbol)
+                )
+            )
+            {
+                continue;
+            }
+
+            var parameterName = CreateUniqueParameterName(
+                candidate.Name,
+                usedNames,
+                parameters.Count
+            );
+            parameters.Add(
+                new MappingParameterSpec(
+                    parameterName,
+                    GetTypeDisplayName(candidate.Expression, semanticModel, cancellationToken),
+                    candidate.Expression.WithoutTrivia(),
+                    candidate.Symbol
+                )
+            );
+        }
+
+        return parameters;
+    }
+
+    private static IEnumerable<OuterReferenceCandidate> CollectOuterReferenceCandidates(
+        InvocationExpressionSyntax invocation,
+        SemanticModel semanticModel,
+        CancellationToken cancellationToken
+    )
+    {
+        var seenSymbols = new HashSet<ISymbol>(SymbolEqualityComparer.Default);
+        foreach (var lambda in AnalyzerHelpers.GetProjectionLambdas(invocation))
+        {
+            var localSymbols = GetLocalSymbols(lambda, semanticModel, cancellationToken);
+            foreach (var identifier in lambda.DescendantNodes().OfType<IdentifierNameSyntax>())
+            {
+                if (!CanUseAsOuterReference(identifier))
+                {
+                    continue;
+                }
+
+                var symbol = semanticModel.GetSymbolInfo(identifier, cancellationToken).Symbol;
+                if (
+                    !IsCaptureEligible(symbol, localSymbols)
+                    || !seenSymbols.Add(symbol!)
+                )
+                {
+                    continue;
+                }
+
+                yield return new OuterReferenceCandidate(
+                    AnalyzerHelpers.GetCaptureMemberName(identifier),
+                    identifier,
+                    symbol
+                );
+            }
+
+            foreach (var memberAccess in lambda.DescendantNodes().OfType<MemberAccessExpressionSyntax>())
+            {
+                var symbol = semanticModel.GetSymbolInfo(memberAccess, cancellationToken).Symbol;
+                if (
+                    symbol is not IFieldSymbol and not IPropertySymbol
+                    || (
+                        memberAccess.Parent is MemberAccessExpressionSyntax parentAccess
+                        && parentAccess.Expression == memberAccess
+                    )
+                    || IsRootedInLocalAccess(
+                        memberAccess,
+                        semanticModel,
+                        cancellationToken,
+                        localSymbols
+                    )
+                    || !seenSymbols.Add(symbol)
+                )
+                {
+                    continue;
+                }
+
+                yield return new OuterReferenceCandidate(
+                    AnalyzerHelpers.GetCaptureMemberName(memberAccess),
+                    memberAccess,
+                    symbol
+                );
+            }
+        }
+    }
+
+    private static bool CanUseAsOuterReference(IdentifierNameSyntax identifier)
+    {
+        return !(
+            identifier.Parent is MemberAccessExpressionSyntax memberAccess
+                && memberAccess.Name == identifier
+            || identifier.Parent is MemberBindingExpressionSyntax memberBinding
+                && memberBinding.Name == identifier
+            || identifier.Parent is NameEqualsSyntax
+            || identifier.Parent is NameColonSyntax
+            || identifier.Parent is AnonymousObjectMemberDeclaratorSyntax { NameEquals: not null }
+            || identifier.Parent is AssignmentExpressionSyntax assignment
+                && assignment.Left == identifier
+            || identifier.Parent is VariableDeclaratorSyntax
+            || identifier.Parent is ParameterSyntax
+        );
+    }
+
+    private static bool IsCaptureEligible(ISymbol? symbol, ISet<ISymbol> localSymbols)
+    {
+        if (symbol is null || localSymbols.Contains(symbol))
+        {
+            return false;
+        }
+
+        if (symbol is ILocalSymbol local && local.IsConst)
+        {
+            return false;
+        }
+
+        if (symbol is IFieldSymbol field && (field.IsConst || field.IsStatic))
+        {
+            return false;
+        }
+
+        if (symbol is IPropertySymbol property && property.IsStatic)
+        {
+            return false;
+        }
+
+        return symbol.Kind
+            is SymbolKind.Local
+                or SymbolKind.Parameter
+                or SymbolKind.Field
+                or SymbolKind.Property;
+    }
+
+    private static HashSet<ISymbol> GetLocalSymbols(
+        LambdaExpressionSyntax lambda,
+        SemanticModel semanticModel,
+        CancellationToken cancellationToken
+    )
+    {
+        return new HashSet<ISymbol>(
+            lambda
+                .DescendantNodesAndSelf()
+                .OfType<ParameterSyntax>()
+                .Select(parameter => semanticModel.GetDeclaredSymbol(parameter, cancellationToken))
+                .OfType<ISymbol>()
+                .Concat(
+                    lambda
+                        .DescendantNodes()
+                        .OfType<VariableDeclaratorSyntax>()
+                        .Select(variable =>
+                            semanticModel.GetDeclaredSymbol(variable, cancellationToken)
+                        )
+                        .OfType<ISymbol>()
+                ),
+            SymbolEqualityComparer.Default
+        );
+    }
+
+    private static bool IsLocalAccess(
+        ExpressionSyntax expression,
+        SemanticModel semanticModel,
+        CancellationToken cancellationToken,
+        ISet<ISymbol> localSymbols
+    )
+    {
+        expression = UnwrapParentheses(expression);
+        var symbol = semanticModel.GetSymbolInfo(expression, cancellationToken).Symbol;
+        return symbol is not null && localSymbols.Contains(symbol);
+    }
+
+    private static bool IsRootedInLocalAccess(
+        ExpressionSyntax expression,
+        SemanticModel semanticModel,
+        CancellationToken cancellationToken,
+        ISet<ISymbol> localSymbols
+    )
+    {
+        return IsLocalAccess(
+            GetRootExpression(expression),
+            semanticModel,
+            cancellationToken,
+            localSymbols
+        );
+    }
+
+    private static ISymbol? GetRootSymbol(
+        ExpressionSyntax expression,
+        SemanticModel semanticModel,
+        CancellationToken cancellationToken
+    )
+    {
+        return semanticModel.GetSymbolInfo(GetRootExpression(expression), cancellationToken).Symbol;
+    }
+
+    private static ExpressionSyntax GetRootExpression(ExpressionSyntax expression)
+    {
+        while (expression is MemberAccessExpressionSyntax memberAccess)
+        {
+            expression = memberAccess.Expression;
+        }
+
+        return UnwrapParentheses(expression);
+    }
+
+    private static ExpressionSyntax? GetProjectionSourceExpression(
+        InvocationExpressionSyntax invocation,
+        SemanticModel semanticModel,
+        CancellationToken cancellationToken
+    )
+    {
+        if (GetProjectionSourceArgumentIndex(invocation, semanticModel, cancellationToken) is { } index)
+        {
+            if (index >= invocation.ArgumentList.Arguments.Count)
+            {
+                return null;
+            }
+
+            return UnwrapUseLinqraftSource(invocation.ArgumentList.Arguments[index].Expression);
+        }
+
+        if (invocation.Expression is not MemberAccessExpressionSyntax memberAccess)
+        {
+            return null;
+        }
+
+        return UnwrapUseLinqraftSource(memberAccess.Expression);
+    }
+
+    private static string GetProjectionSourceTypeName(
+        InvocationExpressionSyntax invocation,
+        ExpressionSyntax sourceExpression,
+        SemanticModel semanticModel,
+        CancellationToken cancellationToken
+    )
+    {
+        var sourceType = semanticModel.GetTypeInfo(sourceExpression, cancellationToken).Type;
+        if (
+            TryGetSequenceElementType(sourceType, out var elementType)
+            && elementType is not null
+        )
+        {
+            return elementType.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat);
+        }
+
+        if (
+            AnalyzerHelpers.GetInvocationNameSyntax(invocation.Expression) is GenericNameSyntax genericName
+            && genericName.TypeArgumentList.Arguments.Count > 1
+        )
+        {
+            var type = semanticModel
+                .GetTypeInfo(genericName.TypeArgumentList.Arguments[0], cancellationToken)
+                .Type;
+            if (type is not null)
+            {
+                return type.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat);
+            }
+        }
+
+        return "global::System.Object";
+    }
+
+    private static string GetProjectionResultTypeName(
+        InvocationExpressionSyntax invocation,
+        LambdaExpressionSyntax projectionLambda,
+        SemanticModel semanticModel,
+        CancellationToken cancellationToken
+    )
+    {
+        if (
+            AnalyzerHelpers.GetLambdaExpressionBody(projectionLambda)
+            is ObjectCreationExpressionSyntax objectCreation
+        )
+        {
+            var type = semanticModel.GetTypeInfo(objectCreation.Type, cancellationToken).Type;
+            return type?.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat)
+                ?? objectCreation.Type.ToString();
+        }
+
+        if (
+            AnalyzerHelpers.GetInvocationNameSyntax(invocation.Expression) is GenericNameSyntax genericName
+            && genericName.TypeArgumentList.Arguments.Count > 0
+        )
+        {
+            var resultTypeSyntax = genericName.TypeArgumentList.Arguments.Last();
+            var resultType = semanticModel.GetTypeInfo(resultTypeSyntax, cancellationToken).Type;
+            return resultType?.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat)
+                ?? resultTypeSyntax.ToString();
+        }
+
+        return GetSelectDtoTypeName(invocation, projectionLambda, semanticModel, cancellationToken);
+    }
+
+    private static string GetProjectionResultTypeSimpleName(
+        InvocationExpressionSyntax invocation,
+        LambdaExpressionSyntax projectionLambda,
+        SemanticModel semanticModel,
+        CancellationToken cancellationToken
+    )
+    {
+        if (
+            AnalyzerHelpers.GetLambdaExpressionBody(projectionLambda)
+            is ObjectCreationExpressionSyntax objectCreation
+        )
+        {
+            var type = semanticModel.GetTypeInfo(objectCreation.Type, cancellationToken).Type;
+            if (type is not null)
+            {
+                return type.Name;
+            }
+        }
+
+        if (
+            AnalyzerHelpers.GetInvocationNameSyntax(invocation.Expression) is GenericNameSyntax genericName
+            && genericName.TypeArgumentList.Arguments.Count > 0
+        )
+        {
+            var resultTypeSyntax = genericName.TypeArgumentList.Arguments.Last();
+            var resultType = semanticModel.GetTypeInfo(resultTypeSyntax, cancellationToken).Type;
+            if (resultType is not null)
+            {
+                return resultType.Name;
+            }
+
+            return GetSimpleTypeName(resultTypeSyntax.ToString());
+        }
+
+        return GetSimpleTypeName(
+            GetSelectDtoTypeName(invocation, projectionLambda, semanticModel, cancellationToken)
+        );
+    }
+
+    private static string GetSimpleTypeName(string typeName)
+    {
+        var lastSegment = typeName.Split('.', ':').LastOrDefault();
+        return string.IsNullOrWhiteSpace(lastSegment) ? "Result" : lastSegment.TrimEnd('>');
+    }
+
+    private static string GetTypeDisplayName(
+        ExpressionSyntax expression,
+        SemanticModel semanticModel,
+        CancellationToken cancellationToken
+    )
+    {
+        var type = semanticModel.GetTypeInfo(expression, cancellationToken).Type
+            ?? semanticModel.GetTypeInfo(expression, cancellationToken).ConvertedType;
+        return type?.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat)
+            ?? "global::System.Object";
+    }
+
+    private static string CreateUniqueParameterName(
+        string candidate,
+        ISet<string> usedNames,
+        int index
+    )
+    {
+        string baseName;
+        if (string.IsNullOrWhiteSpace(candidate))
+        {
+            baseName = $"capture{index + 1}";
+        }
+        else
+        {
+            var remainder = candidate.Length > 1 ? candidate[1..] : string.Empty;
+            baseName = char.ToLowerInvariant(candidate[0]) + remainder;
+        }
+
+        if (!SyntaxFacts.IsValidIdentifier(baseName))
+        {
+            baseName = $"capture{index + 1}";
+        }
+
+        var uniqueName = baseName;
+        var suffix = 2;
+        while (!usedNames.Add(uniqueName))
+        {
+            uniqueName = $"{baseName}{suffix++}";
+        }
+
+        return uniqueName;
+    }
+
+    private static string CreateMappingDocumentSource(
+        SyntaxNode root,
+        SemanticModel semanticModel,
+        InvocationExpressionSyntax invocation,
+        CancellationToken cancellationToken,
+        string mappingClassName,
+        string mappingMethodName,
+        string dtoTypeName,
+        string sourceTypeName,
+        IReadOnlyList<MappingParameterSpec> parameters,
+        InvocationExpressionSyntax mappingInvocation
+    )
+    {
+        var builder = new StringBuilder();
+        if (root is CompilationUnitSyntax compilationUnit)
+        {
+            foreach (var usingDirective in compilationUnit.Usings)
+            {
+                builder.AppendLine(usingDirective.WithoutTrivia().ToFullString().Trim());
+            }
+
+            if (compilationUnit.Usings.Count > 0)
+            {
+                builder.AppendLine();
+            }
+        }
+
+        var namespaceName = semanticModel.GetEnclosingSymbol(
+            invocation.SpanStart,
+            cancellationToken
+        )?.ContainingNamespace;
+        if (namespaceName is not null && !namespaceName.IsGlobalNamespace)
+        {
+            builder.AppendLine($"namespace {namespaceName.ToDisplayString()};");
+            builder.AppendLine();
+        }
+
+        builder.AppendLine($$"""
+            public static partial class {{mappingClassName}}
+            {
+                /// <summary>
+                /// This method is a dummy declaration for implementing the generated projection extension method by Linqraft.
+                /// </summary>
+                [global::Linqraft.LinqraftMapping]
+                internal static global::System.Linq.IQueryable<{{dtoTypeName}}> {{mappingMethodName}}(
+                    this global::Linqraft.LinqraftMapper<{{sourceTypeName}}> source{{(parameters.Count > 0 ? "," : string.Empty)}}
+            """);
+        for (var index = 0; index < parameters.Count; index++)
+        {
+            var parameter = parameters[index];
+            builder.AppendLine(
+                $"        {parameter.TypeName} {parameter.ParameterName}{(index < parameters.Count - 1 ? "," : string.Empty)}"
+            );
+        }
+
+        builder.AppendLine($$"""
+                )
+                {
+                    return {{mappingInvocation.ToFullString().Trim()}};
+                }
+            }
+            """);
+        return builder.ToString();
+    }
+
+    private static SimpleNameSyntax? GetProjectionInvocationNameSyntax(
+        InvocationExpressionSyntax invocation
+    )
+    {
+        return invocation.Expression switch
+        {
+            MemberAccessExpressionSyntax memberAccess => memberAccess.Name,
+            SimpleNameSyntax simpleName => simpleName,
+            _ => null,
+        };
+    }
+
+    private static int? GetProjectionSourceArgumentIndex(
+        InvocationExpressionSyntax invocation,
+        SemanticModel semanticModel,
+        CancellationToken cancellationToken
+    )
+    {
+        var methodSymbol =
+            semanticModel.GetSymbolInfo(invocation, cancellationToken).Symbol as IMethodSymbol;
+        return methodSymbol is { IsExtensionMethod: true, ReducedFrom: null } ? 0 : null;
+    }
+
+    private static ExpressionSyntax UnwrapUseLinqraftSource(ExpressionSyntax expression)
+    {
+        expression = UnwrapParentheses(expression);
+        if (
+            expression is InvocationExpressionSyntax useLinqraftInvocation
+            && AnalyzerHelpers.GetInvocationName(useLinqraftInvocation.Expression) == "UseLinqraft"
+        )
+        {
+            return UnwrapParentheses(
+                (useLinqraftInvocation.Expression as MemberAccessExpressionSyntax)?.Expression
+                    ?? expression
+            );
+        }
+
+        return expression;
+    }
+
+    private static string GetUniqueDocumentName(Project project, string preferredName)
+    {
+        if (!project.Documents.Any(document =>
+                string.Equals(document.Name, preferredName, StringComparison.OrdinalIgnoreCase)
+            ))
+        {
+            return preferredName;
+        }
+
+        var extensionIndex = preferredName.LastIndexOf('.');
+        var fileName = extensionIndex >= 0 ? preferredName[..extensionIndex] : preferredName;
+        var fileExtension = extensionIndex >= 0 ? preferredName[extensionIndex..] : string.Empty;
+        var suffix = 2;
+        while (true)
+        {
+            var candidate = $"{fileName}{suffix}{fileExtension}";
+            if (
+                !project.Documents.Any(document =>
+                    string.Equals(document.Name, candidate, StringComparison.OrdinalIgnoreCase)
+                )
+            )
+            {
+                return candidate;
+            }
+
+            suffix++;
+        }
+    }
+
     private static Document WithFormattedSyntaxRoot(Document document, SyntaxNode root)
     {
         using var workspace = new AdhocWorkspace();
         return document.WithSyntaxRoot(Formatter.Format(root, workspace));
+    }
+
+    private sealed record MappingParameterSpec(
+        string ParameterName,
+        string TypeName,
+        ExpressionSyntax ArgumentExpression,
+        ISymbol? Symbol
+    );
+
+    private sealed record OuterReferenceCandidate(
+        string Name,
+        ExpressionSyntax Expression,
+        ISymbol? Symbol
+    );
+
+    private sealed class MappingParameterRewriter(
+        LambdaExpressionSyntax lambda,
+        SemanticModel semanticModel,
+        IReadOnlyDictionary<ISymbol, string> replacements,
+        CancellationToken cancellationToken
+    ) : CSharpSyntaxRewriter
+    {
+        private readonly ISet<ISymbol> _localSymbols = GetLocalSymbols(
+            lambda,
+            semanticModel,
+            cancellationToken
+        );
+
+        public override SyntaxNode? VisitIdentifierName(IdentifierNameSyntax node)
+        {
+            if (
+                CanUseAsOuterReference(node)
+                && TryGetReplacement(node, out var replacement)
+            )
+            {
+                return SyntaxFactory.IdentifierName(replacement).WithTriviaFrom(node);
+            }
+
+            return base.VisitIdentifierName(node);
+        }
+
+        public override SyntaxNode? VisitMemberAccessExpression(MemberAccessExpressionSyntax node)
+        {
+            var rewritten = (MemberAccessExpressionSyntax)base.VisitMemberAccessExpression(node)!;
+            if (
+                !IsLocalAccess(
+                    node.Expression,
+                    semanticModel,
+                    cancellationToken,
+                    _localSymbols
+                )
+                && TryGetReplacement(node, out var replacement)
+            )
+            {
+                return SyntaxFactory.IdentifierName(replacement).WithTriviaFrom(node);
+            }
+
+            return rewritten;
+        }
+
+        private bool TryGetReplacement(ExpressionSyntax expression, out string replacement)
+        {
+            var symbol = semanticModel.GetSymbolInfo(expression, cancellationToken).Symbol;
+            if (symbol is null || _localSymbols.Contains(symbol))
+            {
+                replacement = string.Empty;
+                return false;
+            }
+
+            return replacements.TryGetValue(symbol, out replacement!);
+        }
     }
 
     private sealed class ProjectionExpressionRewriter(

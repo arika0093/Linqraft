@@ -59,6 +59,15 @@ internal static class DiagnosticDescriptors
         isEnabledByDefault: true
     );
 
+    public static readonly DiagnosticDescriptor ProjectionToLinqraftMapping = new(
+        "LQRS010",
+        "Projection can be converted to LinqraftMapping form",
+        "Projection can be converted to reusable LinqraftMapping form",
+        "Design",
+        DiagnosticSeverity.Hidden,
+        isEnabledByDefault: true
+    );
+
     public static readonly DiagnosticDescriptor TernaryNullCheckToConditional = new(
         "LQRS004",
         "Ternary can be simplified",
@@ -130,6 +139,7 @@ internal static class DiagnosticDescriptors
             SelectToSelectExprNamed,
             SelectToSelectExprAnonymousWithNullTernary,
             SelectToSelectExprNamedWithNullTernary,
+            ProjectionToLinqraftMapping,
             TernaryNullCheckToConditional,
             UnnecessaryCapture,
             GeneratedHashedNamespaceUsage,

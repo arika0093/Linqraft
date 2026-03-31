@@ -143,6 +143,7 @@ public sealed class AnalyzerSmokeTests
 
         var diagnostics = await GetDiagnosticsAsync(source);
         diagnostics.Select(diagnostic => diagnostic.Id).ShouldNotContain("LQRE001");
+        diagnostics.Select(diagnostic => diagnostic.Id).ShouldNotContain("LQRS010");
     }
 
     [Test]
@@ -418,6 +419,108 @@ public sealed class AnalyzerSmokeTests
     }
 
     [Test]
+    public async Task UseLinqraft_typed_anonymous_projection_reports_LQRS010()
+    {
+        const string source = """
+            using System;
+            using System.Linq;
+            using Linqraft;
+
+            namespace Linqraft
+            {
+                public interface IProjectionHelper
+                {
+                }
+
+                public sealed class LinqraftQuery<T>
+                    where T : class
+                {
+                    public IQueryable<TResult> Select<TResult>(Func<T, TResult> selector) => throw null!;
+                    public IQueryable<TResult> Select<TResult>(Func<T, TResult> selector, Func<object> capture) => throw null!;
+                }
+
+                public static class LinqraftQueryExtensions
+                {
+                    public static LinqraftQuery<T> UseLinqraft<T>(this IQueryable<T> query)
+                        where T : class => throw null!;
+                }
+            }
+
+            public class Entity
+            {
+                public int Id { get; set; }
+            }
+
+            public class EntityDto
+            {
+                public int Id { get; set; }
+            }
+
+            public class QueryHolder
+            {
+                public IQueryable<EntityDto> Project(IQueryable<Entity> source)
+                {
+                    return source.UseLinqraft().Select<EntityDto>(entity => new
+                    {
+                        entity.Id,
+                    });
+                }
+            }
+            """;
+
+        var diagnostics = await GetDiagnosticsAsync(source);
+        diagnostics.Select(diagnostic => diagnostic.Id).ShouldContain("LQRS010");
+    }
+
+    [Test]
+    public async Task UseLinqraft_untyped_anonymous_projection_does_not_report_LQRS010()
+    {
+        const string source = """
+            using System;
+            using System.Linq;
+            using Linqraft;
+
+            namespace Linqraft
+            {
+                public interface IProjectionHelper
+                {
+                }
+
+                public sealed class LinqraftQuery<T>
+                    where T : class
+                {
+                    public IQueryable<TResult> Select<TResult>(Func<T, TResult> selector) => throw null!;
+                }
+
+                public static class LinqraftQueryExtensions
+                {
+                    public static LinqraftQuery<T> UseLinqraft<T>(this IQueryable<T> query)
+                        where T : class => throw null!;
+                }
+            }
+
+            public class Entity
+            {
+                public int Id { get; set; }
+            }
+
+            public class QueryHolder
+            {
+                public IQueryable<object> Project(IQueryable<Entity> source)
+                {
+                    return source.UseLinqraft().Select(entity => new
+                    {
+                        entity.Id,
+                    });
+                }
+            }
+            """;
+
+        var diagnostics = await GetDiagnosticsAsync(source);
+        diagnostics.Select(diagnostic => diagnostic.Id).ShouldNotContain("LQRS010");
+    }
+
+    [Test]
     public async Task Queryable_select_named_reports_LQRS003()
     {
         const string source = """
@@ -509,7 +612,7 @@ public sealed class AnalyzerSmokeTests
     }
 
     [Test]
-    public async Task Projection_helper_hook_inside_selectexpr_does_not_report_diagnostics()
+    public async Task Projection_helper_hook_inside_selectexpr_reports_only_LQRS010()
     {
         const string source = """
             using System;
@@ -553,7 +656,7 @@ public sealed class AnalyzerSmokeTests
             """;
 
         var diagnostics = await GetDiagnosticsAsync(source);
-        diagnostics.ShouldBeEmpty();
+        diagnostics.Select(diagnostic => diagnostic.Id).ShouldBe(["LQRS010"]);
     }
 
     [Test]
