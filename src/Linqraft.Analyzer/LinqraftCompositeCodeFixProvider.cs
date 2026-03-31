@@ -1892,6 +1892,21 @@ public sealed class LinqraftCompositeCodeFixProvider : CodeFixProvider
         );
         var mappingMethodName = $"ProjectTo{dtoSimpleName}";
         var mappingClassName = $"{dtoSimpleName}MappingExtensions";
+
+        // Determine the unique document name first, then apply the same suffix to class/method
+        // names so that duplicate projections for the same DTO never produce clashing signatures.
+        var preferredDocumentName = $"{mappingClassName}.cs";
+        var documentName = GetUniqueDocumentName(document.Project, preferredDocumentName);
+        if (documentName != preferredDocumentName)
+        {
+            var nameWithoutExtension = documentName.EndsWith(".cs", StringComparison.OrdinalIgnoreCase)
+                ? documentName[..^3]
+                : documentName;
+            var nameSuffix = nameWithoutExtension[mappingClassName.Length..];
+            mappingClassName = nameWithoutExtension;
+            mappingMethodName = $"{mappingMethodName}{nameSuffix}";
+        }
+
         var parameters = CreateMappingParameterSpecs(
             invocation,
             semanticModel,
@@ -1933,10 +1948,6 @@ public sealed class LinqraftCompositeCodeFixProvider : CodeFixProvider
             sourceTypeName,
             parameters,
             mappingInvocation
-        );
-        var documentName = GetUniqueDocumentName(
-            updatedDocument.Project,
-            $"{mappingClassName}.cs"
         );
 
         return updatedDocument.Project.Solution.AddDocument(
@@ -2197,6 +2208,10 @@ public sealed class LinqraftCompositeCodeFixProvider : CodeFixProvider
                 var symbol = semanticModel.GetSymbolInfo(memberAccess, cancellationToken).Symbol;
                 if (
                     symbol is not IFieldSymbol and not IPropertySymbol
+                    || (
+                        memberAccess.Parent is MemberAccessExpressionSyntax parentAccess
+                        && parentAccess.Expression == memberAccess
+                    )
                     || IsRootedInLocalAccess(
                         memberAccess,
                         semanticModel,
@@ -2247,7 +2262,12 @@ public sealed class LinqraftCompositeCodeFixProvider : CodeFixProvider
             return false;
         }
 
-        if (symbol is IFieldSymbol field && field.IsConst)
+        if (symbol is IFieldSymbol field && (field.IsConst || field.IsStatic))
+        {
+            return false;
+        }
+
+        if (symbol is IPropertySymbol property && property.IsStatic)
         {
             return false;
         }
