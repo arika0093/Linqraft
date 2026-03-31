@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using System.Linq;
 
@@ -35,4 +36,35 @@ public sealed class ReferencedCustomer
 public sealed class ReferencedOrderItem
 {
     public int Quantity { get; set; }
+}
+
+public abstract class ReferencedMasterBase<TSelf, TEnum>
+    where TSelf : ReferencedMasterBase<TSelf, TEnum>
+    where TEnum : struct, Enum
+{
+    public TEnum Id { get; set; }
+
+    public string Name { get; set; } = string.Empty;
+
+    public int Order { get; set; }
+
+    public string Label => Id.ToString() ?? Name;
+}
+
+public enum ReferencedItemCategory
+{
+    Alpha = 1,
+    Beta = 2,
+}
+
+public sealed class ReferencedItemType : ReferencedMasterBase<ReferencedItemType, ReferencedItemCategory>
+{
+    public bool IsPrimary { get; set; }
+}
+
+public sealed class ReferencedGenericBaseOrder
+{
+    public int OrderId { get; set; }
+
+    public required ReferencedItemType Item { get; set; }
 }

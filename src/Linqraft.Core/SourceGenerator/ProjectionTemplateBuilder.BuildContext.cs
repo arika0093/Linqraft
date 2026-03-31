@@ -1148,17 +1148,12 @@ internal static partial class ProjectionTemplateBuilder
             }
 
             var memberName = memberAccess.Name.Identifier.ValueText;
-            foreach (var candidate in receiverType.GetMembers(memberName))
-            {
-                cancellationToken.ThrowIfCancellationRequested();
-                var candidateType = GetMemberType(candidate);
-                if (candidateType is not null)
-                {
-                    return candidateType;
-                }
-            }
-
-            return null;
+            return ResolveMemberTypeFromReceiver(
+                receiverType,
+                memberName,
+                argumentCount: null,
+                cancellationToken
+            );
         }
 
         private string? TryResolveConditionalAccessTypeName(
@@ -1225,7 +1220,22 @@ internal static partial class ProjectionTemplateBuilder
                 return null;
             }
 
-            foreach (var candidate in receiverType.GetMembers(memberName))
+            return ResolveMemberTypeFromReceiver(
+                receiverType,
+                memberName,
+                argumentCount,
+                cancellationToken
+            );
+        }
+
+        private static ITypeSymbol? ResolveMemberTypeFromReceiver(
+            ITypeSymbol receiverType,
+            string memberName,
+            int? argumentCount,
+            CancellationToken cancellationToken
+        )
+        {
+            foreach (var candidate in EnumerateMemberCandidates(receiverType, memberName))
             {
                 cancellationToken.ThrowIfCancellationRequested();
                 if (argumentCount is int expectedArgumentCount)
@@ -1249,6 +1259,38 @@ internal static partial class ProjectionTemplateBuilder
             }
 
             return null;
+        }
+
+        private static IEnumerable<ISymbol> EnumerateMemberCandidates(
+            ITypeSymbol receiverType,
+            string memberName
+        )
+        {
+            foreach (var candidate in receiverType.GetMembers(memberName))
+            {
+                yield return candidate;
+            }
+
+            if (receiverType is not INamedTypeSymbol namedType)
+            {
+                yield break;
+            }
+
+            for (var baseType = namedType.BaseType; baseType is not null; baseType = baseType.BaseType)
+            {
+                foreach (var candidate in baseType.GetMembers(memberName))
+                {
+                    yield return candidate;
+                }
+            }
+
+            foreach (var interfaceType in namedType.AllInterfaces)
+            {
+                foreach (var candidate in interfaceType.GetMembers(memberName))
+                {
+                    yield return candidate;
+                }
+            }
         }
 
         private static string? FormatConditionalAccessTypeName(ITypeSymbol resolvedType)

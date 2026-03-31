@@ -20,6 +20,21 @@ public sealed class SupportSourceProjectReferenceTest
         },
     ];
 
+    private static readonly List<ReferencedGenericBaseOrder> GenericBaseOrders =
+    [
+        new()
+        {
+            OrderId = 1,
+            Item = new ReferencedItemType
+            {
+                Id = ReferencedItemCategory.Alpha,
+                Name = "Alpha",
+                Order = 10,
+                IsPrimary = true,
+            },
+        },
+    ];
+
     [Test]
     public void Project_reference_dependency_can_use_linqraft_without_duplicate_support_sources()
     {
@@ -101,5 +116,44 @@ public sealed class SupportSourceProjectReferenceTest
         dtoType
             .GetProperty(nameof(ReferencedOrderWithConstructedExternalTypesDto.ClonedItems))!
             .PropertyType.ShouldBe(typeof(IEnumerable<ReferencedOrderItem>));
+    }
+
+    [Test]
+    public void Project_reference_dependency_preserves_inherited_generic_base_property_types()
+    {
+        var projection = GenericBaseOrders
+            .AsTestQueryable()
+            .SelectExpr<ReferencedGenericBaseOrder, ReferencedGenericBaseOrderDto>(order => new
+            {
+                order.OrderId,
+                IsPrimary = order.Item.IsPrimary,
+                ItemName = order.Item.Name,
+                ItemOrder = order.Item.Order,
+                ItemLabel = order.Item.Label,
+            })
+            .Single();
+
+        projection.OrderId.ShouldBe(1);
+        projection.IsPrimary.ShouldBeTrue();
+        projection.ItemName.ShouldBe("Alpha");
+        projection.ItemOrder.ShouldBe(10);
+        projection.ItemLabel.ShouldBe("Alpha");
+
+        var dtoType = typeof(ReferencedGenericBaseOrderDto);
+        dtoType
+            .GetProperty(nameof(ReferencedGenericBaseOrderDto.OrderId))!
+            .PropertyType.ShouldBe(typeof(int));
+        dtoType
+            .GetProperty(nameof(ReferencedGenericBaseOrderDto.IsPrimary))!
+            .PropertyType.ShouldBe(typeof(bool));
+        dtoType
+            .GetProperty(nameof(ReferencedGenericBaseOrderDto.ItemName))!
+            .PropertyType.ShouldBe(typeof(string));
+        dtoType
+            .GetProperty(nameof(ReferencedGenericBaseOrderDto.ItemOrder))!
+            .PropertyType.ShouldBe(typeof(int));
+        dtoType
+            .GetProperty(nameof(ReferencedGenericBaseOrderDto.ItemLabel))!
+            .PropertyType.ShouldBe(typeof(string));
     }
 }
