@@ -2563,7 +2563,7 @@ public sealed class LinqraftCompositeCodeFixProvider : CodeFixProvider
         }
 
         builder.AppendLine($$"""
-                ) 
+                )
                 {
                     return {{mappingInvocation.ToFullString().Trim()}};
                 }

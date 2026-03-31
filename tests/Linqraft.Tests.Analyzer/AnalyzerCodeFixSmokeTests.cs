@@ -848,7 +848,7 @@ public sealed class AnalyzerCodeFixSmokeTests
         CountLeadingSpaces(mappingLines[nameParameterLineIndex]).ShouldBe(
             CountLeadingSpaces(mappingLines[sourceParameterLineIndex])
         );
-        mappingText.ShouldContain("    )\n        =>");
+        mappingText.ShouldContain("    )\n    {");
         mappingText.ShouldContain("source.Select");
         mappingText.ShouldContain("new EntityDto");
         mappingText.ShouldContain("Id = id");
@@ -1023,9 +1023,8 @@ public sealed class AnalyzerCodeFixSmokeTests
         mappingText.ShouldContain(
             "ProjectToEntityDto(\n        this global::Linqraft.LinqraftMapper<global::Entity> source,"
         );
-        mappingText.ShouldContain(" name\n    )\n        =>");
-        mappingText.ShouldContain("        =>\n");
-        mappingText.ShouldContain("            source.Select");
+        mappingText.ShouldContain(" name\n    )\n    {");
+        mappingText.ShouldContain("        return source.Select");
         mappingText.ShouldContain("new EntityDto\n");
         mappingText.ShouldContain("Id = entity.Id,\n");
         mappingText.ShouldContain("Name = name,\n");
