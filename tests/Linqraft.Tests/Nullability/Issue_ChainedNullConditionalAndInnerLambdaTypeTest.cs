@@ -161,7 +161,7 @@ public sealed partial class Issue_ChainedNullConditionalAndInnerLambdaTypeTest
 
         // Verify the generated DTO property type is correct
         var prop = typeof(OrderManageDto).GetProperty(nameof(OrderManageDto.TagCategories))!;
-        prop.PropertyType.ShouldNotBe(typeof(IEnumerable<object>));
+        prop.PropertyType.ShouldBe(typeof(IEnumerable<TagCategory>));
     }
 
     [Test]
@@ -183,6 +183,6 @@ public sealed partial class Issue_ChainedNullConditionalAndInnerLambdaTypeTest
 
         // Verify the generated DTO property type is List<string>, not List<object>
         var prop = typeof(OrderWithTagsDto).GetProperty(nameof(OrderWithTagsDto.TagLabels))!;
-        prop.PropertyType.ShouldNotBe(typeof(List<object>));
+        prop.PropertyType.ShouldBe(typeof(List<string>));
     }
 }

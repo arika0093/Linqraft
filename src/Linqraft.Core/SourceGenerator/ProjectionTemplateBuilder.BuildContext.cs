@@ -1356,8 +1356,8 @@ internal static partial class ProjectionTemplateBuilder
                         return castTypeSymbol.ToFullyQualifiedTypeName();
                     }
 
-                    // Fallback: try to resolve via ResolveNamedType
-                    return castTypeSyntax.ToString();
+                    // Fallback: do not override the inferred element type when the cast type cannot be resolved
+                    return null;
                 }
 
                 if (invocation.Expression is MemberAccessExpressionSyntax chainMember)
