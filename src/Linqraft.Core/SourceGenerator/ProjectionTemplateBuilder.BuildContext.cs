@@ -1846,7 +1846,10 @@ internal static partial class ProjectionTemplateBuilder
         /// </summary>
         private static string MakeNullable(string typeName)
         {
-            return typeName.EndsWith("?", StringComparison.Ordinal) ? typeName : $"{typeName}?";
+            // System.Nullable<T> is already a nullable value type — don't add a second '?'
+            if (typeName.EndsWith("?", StringComparison.Ordinal) || typeName.StartsWith("Nullable<"))
+                return typeName;
+            return $"{typeName}?";
         }
 
         /// <summary>
