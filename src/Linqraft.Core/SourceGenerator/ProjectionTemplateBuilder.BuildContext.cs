@@ -1119,14 +1119,12 @@ internal static partial class ProjectionTemplateBuilder
                 IFieldSymbol fieldSymbol => GetResolvedType(fieldSymbol.Type),
                 ILocalSymbol localSymbol => GetResolvedType(localSymbol.Type),
                 IMethodSymbol methodSymbol => GetResolvedType(methodSymbol.ReturnType),
-                IParameterSymbol parameterSymbol =>
-                    GetResolvedType(parameterSymbol.Type)
+                IParameterSymbol parameterSymbol => GetResolvedType(parameterSymbol.Type)
                     ?? TryResolveInnerLambdaParameterType(expression, cancellationToken),
                 IPropertySymbol propertySymbol => GetResolvedType(propertySymbol.Type),
                 _ when expression is ConditionalAccessExpressionSyntax conditionalAccess =>
                     ResolveConditionalAccessType(conditionalAccess, cancellationToken),
-                _ =>
-                    ResolveMemberAccessType(expression, cancellationToken)
+                _ => ResolveMemberAccessType(expression, cancellationToken)
                     ?? TryResolveInnerLambdaParameterType(expression, cancellationToken),
             };
         }
@@ -1293,25 +1291,26 @@ internal static partial class ProjectionTemplateBuilder
         /// </summary>
         private static bool IsElementTypePreservingLinqMethod(string methodName)
         {
-            return methodName is "Where"
-                or "OrderBy"
-                or "OrderByDescending"
-                or "ThenBy"
-                or "ThenByDescending"
-                or "Take"
-                or "Skip"
-                or "TakeLast"
-                or "SkipLast"
-                or "TakeWhile"
-                or "SkipWhile"
-                or "Distinct"
-                or "DistinctBy"
-                or "Reverse"
-                or "Append"
-                or "Prepend"
-                or "AsQueryable"
-                or "AsEnumerable"
-                or "DefaultIfEmpty";
+            return methodName
+                is "Where"
+                    or "OrderBy"
+                    or "OrderByDescending"
+                    or "ThenBy"
+                    or "ThenByDescending"
+                    or "Take"
+                    or "Skip"
+                    or "TakeLast"
+                    or "SkipLast"
+                    or "TakeWhile"
+                    or "SkipWhile"
+                    or "Distinct"
+                    or "DistinctBy"
+                    or "Reverse"
+                    or "Append"
+                    or "Prepend"
+                    or "AsQueryable"
+                    or "AsEnumerable"
+                    or "DefaultIfEmpty";
         }
 
         /// <summary>
