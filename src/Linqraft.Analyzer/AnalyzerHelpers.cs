@@ -685,6 +685,28 @@ internal static class AnalyzerHelpers
                     cancellationToken,
                     locallyDeclaredSymbols
                 );
+            case MemberBindingExpressionSyntax memberBinding:
+            {
+                // Walk up to the enclosing ConditionalAccessExpressionSyntax and check
+                // whether its receiver (the expression before ?.) is local.
+                var parent = memberBinding.Parent;
+                while (parent is not null and not ConditionalAccessExpressionSyntax)
+                {
+                    parent = parent.Parent;
+                }
+
+                if (parent is ConditionalAccessExpressionSyntax conditionalParent)
+                {
+                    return IsLocalAccess(
+                        conditionalParent.Expression,
+                        semanticModel,
+                        cancellationToken,
+                        locallyDeclaredSymbols
+                    );
+                }
+
+                return false;
+            }
             default:
                 return false;
         }

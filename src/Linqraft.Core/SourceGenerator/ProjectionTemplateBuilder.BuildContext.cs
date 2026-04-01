@@ -684,6 +684,19 @@ internal static partial class ProjectionTemplateBuilder
                     ownerHintName,
                     cancellationToken
                 );
+                // When a Cast<T>() call sits between the Select and a terminal operation
+                // (e.g., .Select(x => x.Prop).Cast<DateTimeOffset?>().FirstOrDefault()),
+                // the Cast type argument overrides the element type inferred from the lambda body.
+                var castOverride = TryExtractCastTypeArgument(
+                    expression,
+                    collectionProjection.Invocation,
+                    cancellationToken
+                );
+                if (castOverride is not null)
+                {
+                    projectedTypeTemplate = castOverride;
+                }
+
                 return BuildProjectedResultType(
                     expression,
                     collectionProjection.ExpressionType,
@@ -1106,17 +1119,300 @@ internal static partial class ProjectionTemplateBuilder
                 IFieldSymbol fieldSymbol => GetResolvedType(fieldSymbol.Type),
                 ILocalSymbol localSymbol => GetResolvedType(localSymbol.Type),
                 IMethodSymbol methodSymbol => GetResolvedType(methodSymbol.ReturnType),
-                IParameterSymbol parameterSymbol => GetResolvedType(parameterSymbol.Type),
+                IParameterSymbol parameterSymbol =>
+                    GetResolvedType(parameterSymbol.Type)
+                    ?? TryResolveInnerLambdaParameterType(expression, cancellationToken),
                 IPropertySymbol propertySymbol => GetResolvedType(propertySymbol.Type),
                 _ when expression is ConditionalAccessExpressionSyntax conditionalAccess =>
                     ResolveConditionalAccessType(conditionalAccess, cancellationToken),
-                _ => ResolveMemberAccessType(expression, cancellationToken),
+                _ =>
+                    ResolveMemberAccessType(expression, cancellationToken)
+                    ?? TryResolveInnerLambdaParameterType(expression, cancellationToken),
             };
         }
 
         private static ITypeSymbol? GetResolvedType(ITypeSymbol? type)
         {
             return type is null or IErrorTypeSymbol ? null : type;
+        }
+
+        /// <summary>
+        /// When the semantic model cannot resolve a lambda parameter's type (common in NuGet-packaged
+        /// generator scenarios), walks up the syntax tree to find the enclosing lambda, then resolves
+        /// the element type of the collection the lambda iterates over.
+        /// For example, given <c>x.Roles.Select(r => r.RoleId)</c>, resolves <c>r</c> by finding that
+        /// its lambda is an argument to <c>Select</c> called on <c>x.Roles</c>, extracts the element
+        /// type of the <c>Roles</c> collection, and returns it.
+        /// </summary>
+        private ITypeSymbol? TryResolveInnerLambdaParameterType(
+            ExpressionSyntax expression,
+            CancellationToken cancellationToken
+        )
+        {
+            // Find the identifier to match — either the expression itself or the receiver of a member access
+            string? parameterName = null;
+            if (expression is IdentifierNameSyntax identifier)
+            {
+                parameterName = identifier.Identifier.ValueText;
+            }
+            else if (
+                expression is MemberAccessExpressionSyntax memberAccess
+                && memberAccess.Expression is IdentifierNameSyntax receiverIdentifier
+            )
+            {
+                parameterName = receiverIdentifier.Identifier.ValueText;
+            }
+
+            if (parameterName is null)
+            {
+                return null;
+            }
+
+            // Walk up to find the lambda that declares this parameter
+            var node = expression.Parent;
+            LambdaExpressionSyntax? enclosingLambda = null;
+            while (node is not null)
+            {
+                cancellationToken.ThrowIfCancellationRequested();
+                if (node is SimpleLambdaExpressionSyntax simpleLambda)
+                {
+                    if (
+                        string.Equals(
+                            simpleLambda.Parameter.Identifier.ValueText,
+                            parameterName,
+                            StringComparison.Ordinal
+                        )
+                    )
+                    {
+                        enclosingLambda = simpleLambda;
+                        break;
+                    }
+                }
+                else if (
+                    node is ParenthesizedLambdaExpressionSyntax parenthesizedLambda
+                    && parenthesizedLambda.ParameterList.Parameters.Any(p =>
+                        string.Equals(
+                            p.Identifier.ValueText,
+                            parameterName,
+                            StringComparison.Ordinal
+                        )
+                    )
+                )
+                {
+                    enclosingLambda = parenthesizedLambda;
+                    break;
+                }
+
+                node = node.Parent;
+            }
+
+            if (enclosingLambda is null)
+            {
+                return null;
+            }
+
+            // Walk up from the lambda to find the invocation: receiver.Select(lambda, ...)
+            var lambdaParent = enclosingLambda.Parent; // ArgumentSyntax
+            if (lambdaParent is ArgumentSyntax)
+            {
+                lambdaParent = lambdaParent.Parent; // ArgumentListSyntax
+            }
+
+            if (lambdaParent is ArgumentListSyntax)
+            {
+                lambdaParent = lambdaParent.Parent; // InvocationExpressionSyntax
+            }
+
+            if (
+                lambdaParent is InvocationExpressionSyntax invocation
+                && invocation.Expression is MemberAccessExpressionSyntax invocationMember
+            )
+            {
+                // Get the receiver of the invocation (e.g., x.Roles in x.Roles.Select(...))
+                // When the receiver is a chain of LINQ operations (e.g., x.Items.OrderByDescending(...).Where(...)),
+                // unwrap through the chain to find the root collection expression.
+                var receiverExpression = UnwrapLinqChain(
+                    invocationMember.Expression,
+                    cancellationToken
+                );
+                var receiverType = GetExpressionType(receiverExpression, cancellationToken);
+                if (receiverType is not null)
+                {
+                    var elementType = ExtractCollectionElementType(receiverType, cancellationToken);
+                    if (elementType is not null)
+                    {
+                        // If the original expression was a member access (r.RoleId), resolve the member too
+                        if (
+                            expression is MemberAccessExpressionSyntax memberAccessExpr
+                            && memberAccessExpr.Expression is IdentifierNameSyntax
+                        )
+                        {
+                            return ResolveMemberTypeFromReceiver(
+                                elementType,
+                                memberAccessExpr.Name.Identifier.ValueText,
+                                argumentCount: null,
+                                cancellationToken
+                            );
+                        }
+
+                        return elementType;
+                    }
+                }
+            }
+
+            return null;
+        }
+
+        /// <summary>
+        /// Unwraps a chain of LINQ method calls that preserve element type
+        /// (e.g., OrderByDescending, Where, ThenBy, etc.) to find the root collection expression.
+        /// For <c>x.Items.OrderByDescending(i => i.Date).Where(i => i.Active)</c>,
+        /// returns <c>x.Items</c>.
+        /// </summary>
+        private static ExpressionSyntax UnwrapLinqChain(
+            ExpressionSyntax expression,
+            CancellationToken cancellationToken = default
+        )
+        {
+            while (
+                expression is InvocationExpressionSyntax chainedInvocation
+                && chainedInvocation.Expression is MemberAccessExpressionSyntax chainedMember
+                && IsElementTypePreservingLinqMethod(chainedMember.Name.Identifier.ValueText)
+            )
+            {
+                cancellationToken.ThrowIfCancellationRequested();
+                expression = chainedMember.Expression;
+            }
+
+            return expression;
+        }
+
+        /// <summary>
+        /// Returns true for LINQ methods that preserve the element type of the collection
+        /// (i.e., return IEnumerable&lt;T&gt; or IOrderedEnumerable&lt;T&gt; when called on IEnumerable&lt;T&gt;).
+        /// </summary>
+        private static bool IsElementTypePreservingLinqMethod(string methodName)
+        {
+            return methodName is "Where"
+                or "OrderBy"
+                or "OrderByDescending"
+                or "ThenBy"
+                or "ThenByDescending"
+                or "Take"
+                or "Skip"
+                or "TakeLast"
+                or "SkipLast"
+                or "TakeWhile"
+                or "SkipWhile"
+                or "Distinct"
+                or "DistinctBy"
+                or "Reverse"
+                or "Append"
+                or "Prepend"
+                or "AsQueryable"
+                or "AsEnumerable"
+                or "DefaultIfEmpty";
+        }
+
+        /// <summary>
+        /// When the expression chain contains a Cast&lt;T&gt;() call between a projection invocation
+        /// and a terminal operation, extracts T as a fully-qualified type name.
+        /// For <c>.Select(x => x.Prop).Cast&lt;DateTimeOffset?&gt;().FirstOrDefault()</c>,
+        /// returns <c>"global::System.Nullable&lt;global::System.DateTimeOffset&gt;"</c>.
+        /// </summary>
+        private string? TryExtractCastTypeArgument(
+            ExpressionSyntax outerExpression,
+            InvocationExpressionSyntax projectionInvocation,
+            CancellationToken cancellationToken
+        )
+        {
+            // Walk the invocation chain from outer to inner looking for Cast<T>
+            var current = outerExpression;
+            while (current is InvocationExpressionSyntax invocation)
+            {
+                cancellationToken.ThrowIfCancellationRequested();
+                if (invocation == projectionInvocation)
+                {
+                    break;
+                }
+
+                if (
+                    invocation.Expression is MemberAccessExpressionSyntax memberAccess
+                    && memberAccess.Name is GenericNameSyntax genericName
+                    && string.Equals(
+                        genericName.Identifier.ValueText,
+                        "Cast",
+                        StringComparison.Ordinal
+                    )
+                    && genericName.TypeArgumentList.Arguments.Count == 1
+                )
+                {
+                    var castTypeSyntax = genericName.TypeArgumentList.Arguments[0];
+                    var castTypeSymbol = _semanticModel
+                        .GetTypeInfo(castTypeSyntax, cancellationToken)
+                        .Type;
+                    if (castTypeSymbol is not null and not IErrorTypeSymbol)
+                    {
+                        return castTypeSymbol.ToFullyQualifiedTypeName();
+                    }
+
+                    // Fallback: do not override the inferred element type when the cast type cannot be resolved
+                    return null;
+                }
+
+                if (invocation.Expression is MemberAccessExpressionSyntax chainMember)
+                {
+                    current = chainMember.Expression;
+                }
+                else
+                {
+                    break;
+                }
+            }
+
+            return null;
+        }
+
+        /// <summary>
+        /// Extracts the element type from a collection type (e.g., ICollection&lt;T&gt; → T,
+        /// IEnumerable&lt;T&gt; → T, List&lt;T&gt; → T, T[] → T).
+        /// </summary>
+        private static ITypeSymbol? ExtractCollectionElementType(
+            ITypeSymbol collectionType,
+            CancellationToken cancellationToken = default
+        )
+        {
+            if (collectionType is IArrayTypeSymbol arrayType)
+            {
+                return GetResolvedType(arrayType.ElementType);
+            }
+
+            if (
+                collectionType is INamedTypeSymbol namedType
+                && namedType.IsGenericType
+                && namedType.TypeArguments.Length == 1
+                && SymbolNameHelper.IsEnumerable(namedType)
+            )
+            {
+                return GetResolvedType(namedType.TypeArguments[0]);
+            }
+
+            // Check interfaces for IEnumerable<T>
+            foreach (var iface in collectionType.AllInterfaces)
+            {
+                cancellationToken.ThrowIfCancellationRequested();
+                if (
+                    iface.IsGenericType
+                    && iface.TypeArguments.Length == 1
+                    && iface.ConstructedFrom.ToDisplayString()
+                        == "System.Collections.Generic.IEnumerable<T>"
+                )
+                {
+                    return GetResolvedType(iface.TypeArguments[0]);
+                }
+            }
+
+            return null;
         }
 
         private ITypeSymbol? ResolveMemberAccessType(
@@ -1199,12 +1495,91 @@ internal static partial class ProjectionTemplateBuilder
                         invocation.ArgumentList.Arguments.Count,
                         cancellationToken
                     ),
+                // Handle chained member access after ?. (e.g., entity?.Nav.Property)
+                // WhenNotNull is MemberAccessExpression rooted in a MemberBindingExpression.
+                MemberAccessExpressionSyntax memberAccess
+                    when ContainsMemberBinding(memberAccess, cancellationToken) =>
+                    ResolveChainedConditionalAccessType(
+                        conditionalAccess.Expression,
+                        memberAccess,
+                        cancellationToken
+                    ),
                 ExpressionSyntax whenNotNullExpression => GetExpressionType(
                     whenNotNullExpression,
                     cancellationToken
                 ),
                 _ => null,
             };
+        }
+
+        /// <summary>
+        /// Checks whether a member access chain contains a MemberBindingExpressionSyntax at its root.
+        /// </summary>
+        private static bool ContainsMemberBinding(
+            MemberAccessExpressionSyntax memberAccess,
+            CancellationToken cancellationToken = default
+        )
+        {
+            var current = memberAccess.Expression;
+            while (current is MemberAccessExpressionSyntax nested)
+            {
+                cancellationToken.ThrowIfCancellationRequested();
+                current = nested.Expression;
+            }
+
+            return current is MemberBindingExpressionSyntax;
+        }
+
+        /// <summary>
+        /// Resolves the type of a chained member access after a conditional access operator.
+        /// For entity?.Nav1.Nav2.Property, walks through Nav1 → Nav2 → Property from the receiver type.
+        /// </summary>
+        private ITypeSymbol? ResolveChainedConditionalAccessType(
+            ExpressionSyntax receiverExpression,
+            MemberAccessExpressionSyntax chainedAccess,
+            CancellationToken cancellationToken
+        )
+        {
+            // Collect member names from the chain: ?.Nav1.Nav2.Property → [Nav1, Nav2, Property]
+            var memberNames = new List<string>();
+            ExpressionSyntax current = chainedAccess;
+            while (current is MemberAccessExpressionSyntax memberAccess)
+            {
+                cancellationToken.ThrowIfCancellationRequested();
+                memberNames.Add(memberAccess.Name.Identifier.ValueText);
+                current = memberAccess.Expression;
+            }
+
+            if (current is MemberBindingExpressionSyntax binding)
+            {
+                memberNames.Add(binding.Name.Identifier.ValueText);
+            }
+
+            // Reverse so we walk from the first member after ?. to the last
+            memberNames.Reverse();
+
+            var currentType = GetExpressionType(receiverExpression, cancellationToken);
+            if (currentType is null)
+            {
+                return null;
+            }
+
+            foreach (var memberName in memberNames)
+            {
+                cancellationToken.ThrowIfCancellationRequested();
+                currentType = ResolveMemberTypeFromReceiver(
+                    currentType,
+                    memberName,
+                    argumentCount: null,
+                    cancellationToken
+                );
+                if (currentType is null)
+                {
+                    return null;
+                }
+            }
+
+            return currentType;
         }
 
         private ITypeSymbol? ResolveConditionalAccessMemberType(
