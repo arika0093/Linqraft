@@ -876,9 +876,7 @@ public sealed class SourceGeneratorSmokeTests
         );
 
         // Should emit Nullable<Int32> without an extra '?' suffix — CS0453 regression guard
-        generatedSourceText.ShouldContain(
-            "global::System.Nullable<global::System.Int32> SiteId"
-        );
+        generatedSourceText.ShouldContain("global::System.Nullable<global::System.Int32> SiteId");
         generatedSourceText.ShouldNotContain(
             "global::System.Nullable<global::System.Int32>? SiteId"
         );
