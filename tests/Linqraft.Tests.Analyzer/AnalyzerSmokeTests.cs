@@ -908,6 +908,51 @@ public sealed class AnalyzerSmokeTests
         diagnostics.Select(diagnostic => diagnostic.Id).ShouldNotContain("LQRF001");
     }
 
+    [Test]
+    public async Task Null_conditional_chained_member_access_does_not_trigger_LQRE001()
+    {
+        const string source = """
+            using System;
+            using System.Linq;
+            using Linqraft;
+
+            public class Product
+            {
+                public int ProductId { get; set; }
+                public ProductDetail? Detail { get; set; }
+            }
+
+            public class ProductDetail
+            {
+                public string Description { get; set; } = "";
+            }
+
+            public class OrderLine
+            {
+                public int Id { get; set; }
+                public Product? Product { get; set; }
+                public DateTimeOffset CreatedAt { get; set; }
+            }
+
+            public class OrderLineViewDto { }
+
+            public static class QueryHelper
+            {
+                public static void QueryOrderLines(IQueryable<OrderLine> query)
+                {
+                    query.SelectExpr<OrderLine, OrderLineViewDto>(l => new
+                    {
+                        ProductDescription = l.Product?.Detail.Description,
+                        l.CreatedAt,
+                    });
+                }
+            }
+            """;
+
+        var diagnostics = await GetDiagnosticsAsync(source);
+        diagnostics.Select(diagnostic => diagnostic.Id).ShouldNotContain("LQRE001");
+    }
+
     private static async Task<ImmutableArray<Diagnostic>> GetDiagnosticsAsync(string source)
     {
         var parseOptions = new CSharpParseOptions(LanguageVersion.Preview);
