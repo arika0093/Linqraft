@@ -1740,6 +1740,7 @@ internal static partial class ProjectionTemplateBuilder
             return
                 expressionType?.NullableAnnotation == NullableAnnotation.Annotated
                 && !typeName.EndsWith("?", StringComparison.Ordinal)
+                && !typeName.StartsWith("global::System.Nullable<", StringComparison.Ordinal)
                 ? $"{typeName}?"
                 : typeName;
         }
@@ -1848,7 +1849,8 @@ internal static partial class ProjectionTemplateBuilder
         {
             // System.Nullable<T> is already a nullable value type — don't add a second '?'
             if (
-                typeName.EndsWith("?", StringComparison.Ordinal) || typeName.StartsWith("Nullable<")
+                typeName.EndsWith("?", StringComparison.Ordinal)
+                || typeName.StartsWith("global::System.Nullable<", StringComparison.Ordinal)
             )
                 return typeName;
             return $"{typeName}?";
