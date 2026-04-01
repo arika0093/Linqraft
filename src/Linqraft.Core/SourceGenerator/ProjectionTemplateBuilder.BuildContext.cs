@@ -1737,11 +1737,17 @@ internal static partial class ProjectionTemplateBuilder
             ITypeSymbol? expressionType
         )
         {
-            return
-                expressionType?.NullableAnnotation == NullableAnnotation.Annotated
-                && !typeName.EndsWith("?", StringComparison.Ordinal)
-                ? $"{typeName}?"
-                : typeName;
+            if (expressionType?.NullableAnnotation != NullableAnnotation.Annotated)
+                return typeName;
+            if (typeName.EndsWith("?", StringComparison.Ordinal))
+                return typeName;
+            // Nullable<T> value types are already nullable — the expression type IS Nullable<T>
+            if (
+                expressionType is INamedTypeSymbol namedExprType
+                && namedExprType.OriginalDefinition.SpecialType == SpecialType.System_Nullable_T
+            )
+                return typeName;
+            return $"{typeName}?";
         }
 
         /// <summary>
@@ -1846,9 +1852,13 @@ internal static partial class ProjectionTemplateBuilder
         /// </summary>
         private static string MakeNullable(string typeName)
         {
-            // System.Nullable<T> is already a nullable value type — don't add a second '?'
+            if (typeName.EndsWith("?", StringComparison.Ordinal))
+                return typeName;
+            // System.Nullable<T> is already a nullable value type — don't add a second '?'.
+            // EndsWith(">") distinguishes plain Nullable<T> from Nullable<T>[] etc.
             if (
-                typeName.EndsWith("?", StringComparison.Ordinal) || typeName.StartsWith("Nullable<")
+                typeName.StartsWith("global::System.Nullable<", StringComparison.Ordinal)
+                && typeName.EndsWith(">", StringComparison.Ordinal)
             )
                 return typeName;
             return $"{typeName}?";

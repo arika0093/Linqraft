@@ -844,6 +844,82 @@ public sealed class SourceGeneratorSmokeTests
         generatedSourceText.ShouldNotContain("public object CommonName { get; set; }");
     }
 
+    [Test]
+    public void Generator_does_not_emit_double_nullable_for_ternary_null_guard_with_nullable_value_type_cast()
+    {
+        var driver = CreateDriver();
+        var compilation = CreateCompilation(
+            [
+                CreateTernaryNullGuardNullableValueTypeCastTree(),
+                CreateMarkerTree("ternary-nullable-value-type"),
+            ],
+            outputKind: OutputKind.ConsoleApplication
+        );
+
+        driver = driver.RunGeneratorsAndUpdateCompilation(
+            compilation,
+            out var outputCompilation,
+            out var diagnostics
+        );
+
+        diagnostics.ShouldBeEmpty();
+        outputCompilation
+            .GetDiagnostics()
+            .Where(diagnostic =>
+                diagnostic.Severity == DiagnosticSeverity.Error && diagnostic.Id != "CS9137"
+            )
+            .ShouldBeEmpty();
+
+        var generatedSourceText = string.Join(
+            "\n",
+            GetGeneratedSourceMap(driver.GetRunResult()).Values
+        );
+
+        // Should emit Nullable<Int32> without an extra '?' suffix — CS0453 regression guard
+        generatedSourceText.ShouldContain(
+            "global::System.Nullable<global::System.Int32> SiteId"
+        );
+        generatedSourceText.ShouldNotContain(
+            "global::System.Nullable<global::System.Int32>? SiteId"
+        );
+    }
+
+    private static SyntaxTree CreateTernaryNullGuardNullableValueTypeCastTree()
+    {
+        const string source = """
+            using System.Linq;
+            using Linqraft;
+
+            var settings = new[]
+            {
+                new UserSettings { Location = new Location { SiteId = 42 } },
+                new UserSettings { Location = null },
+            }.AsQueryable();
+
+            _ = settings.SelectExpr<UserSettings, UserInfoDto>(u => new
+            {
+                SiteId = u.Location == null ? null : (int?)u.Location.SiteId,
+            });
+
+            public sealed class Location
+            {
+                public int SiteId { get; set; }
+            }
+
+            public sealed class UserSettings
+            {
+                public Location? Location { get; set; }
+            }
+
+            """;
+
+        return CSharpSyntaxTree.ParseText(
+            SourceText.From(source),
+            new CSharpParseOptions(LanguageVersion.Preview),
+            path: "SmokeProjection.TernaryNullableValueTypeCast.cs"
+        );
+    }
+
     private static GeneratorDriver CreateDriver(bool useGlobalUsing = true)
     {
         return CreateDriver(
