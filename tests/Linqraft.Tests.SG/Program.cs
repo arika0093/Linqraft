@@ -882,6 +882,68 @@ public sealed class SourceGeneratorSmokeTests
         );
     }
 
+    [Test]
+    public void Generator_generates_dto_for_UseLinqraft_Select_without_explicit_using_Linqraft()
+    {
+        var driver = CreateDriver();
+        var compilation = CreateCompilation(
+            [
+                CreateUseLinqraftSelectWithoutUsingLinqraftTree(),
+                CreateMarkerTree("no-using-linqraft"),
+            ],
+            outputKind: OutputKind.ConsoleApplication
+        );
+
+        driver = driver.RunGeneratorsAndUpdateCompilation(
+            compilation,
+            out _,
+            out var diagnostics
+        );
+
+        diagnostics.ShouldBeEmpty();
+
+        var generatedSourceText = string.Join(
+            "\n",
+            GetGeneratedSourceMap(driver.GetRunResult()).Values
+        );
+
+        // DTO should be generated even though `using Linqraft;` is absent
+        generatedSourceText.ShouldContain("NoUsingLinqraftOrderDto");
+        generatedSourceText.ShouldContain("public global::System.Int32 Id { get; set; }");
+        generatedSourceText.ShouldContain(
+            "public global::System.String CustomerName { get; set; }"
+        );
+    }
+
+    private static SyntaxTree CreateUseLinqraftSelectWithoutUsingLinqraftTree()
+    {
+        const string source = """
+            using System.Collections.Generic;
+            using System.Linq;
+
+            var orders = new[]
+            {
+                new NoUsingLinqraftOrder { Id = 1, CustomerName = "Ada" },
+            }.AsQueryable();
+
+            _ = orders
+                .UseLinqraft()
+                .Select<NoUsingLinqraftOrderDto>(o => new { o.Id, o.CustomerName });
+
+            public sealed class NoUsingLinqraftOrder
+            {
+                public int Id { get; set; }
+                public string CustomerName { get; set; } = string.Empty;
+            }
+            """;
+
+        return CSharpSyntaxTree.ParseText(
+            SourceText.From(source),
+            new CSharpParseOptions(LanguageVersion.Preview),
+            path: "SmokeProjection.NoUsingLinqraft.cs"
+        );
+    }
+
     private static SyntaxTree CreateTernaryNullGuardNullableValueTypeCastTree()
     {
         const string source = """

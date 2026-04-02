@@ -1126,7 +1126,11 @@ internal static partial class ProjectionTemplateBuilder
             semanticModel.GetSymbolInfo(invocation, cancellationToken).Symbol as IMethodSymbol;
         if (methodSymbol is null)
         {
-            return false;
+            // Fall back to syntax-only check when symbol cannot be resolved
+            // (e.g., when `using Linqraft;` is not explicitly declared in the file).
+            // UseLinqraft() is always called with no explicit arguments (the source is the `this` receiver),
+            // so we use that as an additional guard to reduce false positives.
+            return invocation.ArgumentList.Arguments.Count == 0;
         }
 
         var targetMethod = methodSymbol.ReducedFrom ?? methodSymbol;
