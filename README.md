@@ -242,7 +242,7 @@ Linqraft ships an [APM](https://github.com/microsoft/apm) skill so AI coding age
 # use APM (installs only the skills/ package files via sparse checkout)
 apm install arika0093/Linqraft/skills
 # or install manually
-curl https://raw.githubusercontent.com/arika0093/Linqraft/main/skills/linqraft/SKILL.md -o your/skills/linqraft/SKILL.md
+curl https://raw.githubusercontent.com/arika0093/Linqraft/main/skills/.apm/skills/linqraft/SKILL.md -o your/skills/linqraft/SKILL.md
 ```
 
 Since Linqraft's DTO generation is an unfamiliar pattern for AI, installing the skill is recommended.
