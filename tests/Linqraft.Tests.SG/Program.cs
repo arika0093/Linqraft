@@ -894,11 +894,7 @@ public sealed class SourceGeneratorSmokeTests
             outputKind: OutputKind.ConsoleApplication
         );
 
-        driver = driver.RunGeneratorsAndUpdateCompilation(
-            compilation,
-            out _,
-            out var diagnostics
-        );
+        driver = driver.RunGeneratorsAndUpdateCompilation(compilation, out _, out var diagnostics);
 
         diagnostics.ShouldBeEmpty();
 
