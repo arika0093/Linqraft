@@ -1,0 +1,8 @@
+name: linqraft
+version: 0.10.0
+description: >
+  Roslyn Source Generator that auto-generates DTO classes from LINQ projection selectors at compile time.
+  Includes agent instructions (always-on), a skill reference, and a refactoring prompt.
+author: arika0093
+dependencies:
+  apm: []
