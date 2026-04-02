@@ -239,10 +239,10 @@ Use [PolySharp](https://github.com/Sergio0694/PolySharp/) or [Polyfill](https://
 Linqraft ships an [APM](https://github.com/microsoft/apm) skill so AI coding agents can discover and use the library automatically. Install it with:
 
 ```bash
-# use APM
-apm install arika0093/Linqraft
+# use APM (installs only the skills/ package files via sparse checkout)
+apm install arika0093/Linqraft/skills
 # or install manually
-curl https://raw.githubusercontent.com/arika0093/Linqraft/main/.apm/skills/linqraft/SKILL.md -o your/skills/linqraft/SKILL.md
+curl https://raw.githubusercontent.com/arika0093/Linqraft/main/skills/linqraft/SKILL.md -o your/skills/linqraft/SKILL.md
 ```
 
 Since Linqraft's DTO generation is an unfamiliar pattern for AI, installing the skill is recommended.

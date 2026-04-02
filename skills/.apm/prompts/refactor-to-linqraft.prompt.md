@@ -13,8 +13,7 @@ compile time.
 
 ## Context
 
-- Refer to the `linqraft` skill (`.apm/skills/linqraft/SKILL.md`) for API
-  surface and usage guidelines.
+- Refer to the `linqraft` skill for API surface and usage guidelines.
 - The `Linqraft` NuGet package must be installed in the target project. If it
   is not, run `dotnet add package Linqraft` first.
 
