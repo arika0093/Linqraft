@@ -30,7 +30,7 @@ internal abstract partial class ProjectionSupportExtensionClassGenerator
             /// Starts the fluent {{generatorOptions.GeneratorDisplayName}} projection style for queryable and enumerable sources.
             /// Call <c>UseLinqraft</c> first when you prefer a chained API such as <c>.Select&lt;TResult&gt;(...)</c> over the extension-method entry points.
             /// </summary>
-            [global::Microsoft.CodeAnalysis.EmbeddedAttribute]
+            {{generatorOptions.EmbeddedAttribute}}
             internal static partial class LinqraftQueryExtensions
             {
                 /// <summary>
@@ -105,7 +105,7 @@ internal abstract partial class ProjectionSupportExtensionClassGenerator
                 receiverKind == ReceiverKind.IQueryable ? "queryable" : "enumerable"
             )}} source so fluent {{generatorOptions.GeneratorDisplayName}} projection members are the only visible entry points.
             /// </summary>
-            [global::Microsoft.CodeAnalysis.EmbeddedAttribute]
+            {{generatorOptions.EmbeddedAttribute}}
             {{EditorBrowsableNeverAttribute}}
             internal sealed class {{className}}<TIn>
                 where TIn : class

@@ -27,13 +27,13 @@ internal abstract partial class ProjectionSupportExtensionClassGenerator
 
         var builder = new IndentedStringBuilder();
         builder.AppendLines(
-            """
+            $$"""
             /// <summary>
             /// Supplies the rewrite markers that generated selectors can use to describe how nested values should be interpreted.
             /// Each member is a compile-time marker only: the source generator recognizes the call, rewrites the projection tree,
             /// and removes the stub before any of these members can execute at runtime.
             /// </summary>
-            [global::Microsoft.CodeAnalysis.EmbeddedAttribute]
+            {{generatorOptions.EmbeddedAttribute}}
             internal partial interface IProjectionHelper
             {
             """
@@ -51,7 +51,7 @@ internal abstract partial class ProjectionSupportExtensionClassGenerator
 
         if (hooks.Any(hook => hook.Kind == LinqraftProjectionHookKind.Project))
         {
-            yield return CreateProjectedValueInterface().TrimEnd();
+            yield return CreateProjectedValueInterface(generatorOptions).TrimEnd();
         }
     }
 
@@ -77,15 +77,17 @@ internal abstract partial class ProjectionSupportExtensionClassGenerator
     /// <summary>
     /// Creates projected value interface.
     /// </summary>
-    private static string CreateProjectedValueInterface()
+    private static string CreateProjectedValueInterface(
+        LinqraftGeneratorOptionsCore generatorOptions
+    )
     {
         var builder = new IndentedStringBuilder();
         builder.AppendLines(
-            """
+            $$"""
             /// <summary>
             /// Represents a single projection target that can be reshaped with a local <c>Select</c> expression inside another generated projection.
             /// </summary>
-            [global::Microsoft.CodeAnalysis.EmbeddedAttribute]
+            {{generatorOptions.EmbeddedAttribute}}
             internal partial interface IProjectedValue<T>
             {
             """

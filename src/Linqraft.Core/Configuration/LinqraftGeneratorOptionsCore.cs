@@ -81,6 +81,11 @@ public abstract class LinqraftGeneratorOptionsCore
     public virtual string SupportNamespace => "Linqraft";
 
     /// <summary>
+    /// Gets the attribute reference used to mark generated support declarations.
+    /// </summary>
+    public string EmbeddedAttribute => $"[global::{SupportNamespace}.LinqraftEmbeddedAttribute]";
+
+    /// <summary>
     /// Gets the namespace added to the generated global-using file.
     /// The default uses <see cref="SupportNamespace"/> so consumers can access the generated support API.
     /// </summary>

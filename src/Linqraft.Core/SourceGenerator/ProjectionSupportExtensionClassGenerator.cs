@@ -77,7 +77,7 @@ internal abstract partial class ProjectionSupportExtensionClassGenerator
             /// <summary>
             /// {{GetClassSummary(generatorOptions)}}
             /// </summary>
-            [global::Microsoft.CodeAnalysis.EmbeddedAttribute]
+            {{generatorOptions.EmbeddedAttribute}}
             internal static partial class {{GetClassName(generatorOptions)}}
             {
             """

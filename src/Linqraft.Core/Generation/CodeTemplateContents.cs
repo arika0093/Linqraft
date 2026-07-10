@@ -16,8 +16,6 @@ internal static class CodeTemplateContents
             // </auto-generated>
             """;
 
-    public const string EmbeddedAttribute = "[global::Microsoft.CodeAnalysis.EmbeddedAttribute]";
-
     public const string ClassAndMethodAttributes =
         "[global::System.AttributeUsage(global::System.AttributeTargets.Class | global::System.AttributeTargets.Method, AllowMultiple = false, Inherited = false)]";
 
