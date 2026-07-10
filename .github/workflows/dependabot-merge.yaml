@@ -32,9 +32,10 @@ jobs:
       - name: Run tests only for .NET 10.0
         run: dotnet test --no-build --verbosity normal -f net10.0
   
-  dependabot:
+  dependabot-merge:
     runs-on: ubuntu-latest
     needs: package-test
+    if: success()
     steps:
       - name: Dependabot metadata
         id: metadata
@@ -43,6 +44,17 @@ jobs:
           github-token: "${{ secrets.GITHUB_TOKEN }}"
       - name: Enable auto-merge for Dependabot PRs
         run: gh pr merge --auto --squash "$PR_URL"
+        env:
+          PR_URL: ${{github.event.pull_request.html_url}}
+          GH_TOKEN: ${{secrets.GITHUB_TOKEN}}
+
+  dependabot-close:
+    runs-on: ubuntu-latest
+    needs: package-test
+    if: failure() && github.event.pull_request.user.login == 'dependabot[bot]'
+    steps:
+      - name: Close Dependabot PR on test failure
+        run: gh pr close "$PR_URL" --comment "Tests failed; closing this Dependabot PR automatically."
         env:
           PR_URL: ${{github.event.pull_request.html_url}}
           GH_TOKEN: ${{secrets.GITHUB_TOKEN}}
