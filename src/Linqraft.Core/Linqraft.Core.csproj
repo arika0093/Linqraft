@@ -3,7 +3,7 @@
     <!-- Source-only packaging intentionally has no lib/ref assets, so NuGet's dependency-group/lib matching warning is expected. -->
     <NoWarn>$(NoWarn);NU5128</NoWarn>
     <MicrosoftCodeAnalysisCSharpPackageVersion>4.11.0</MicrosoftCodeAnalysisCSharpPackageVersion>
-    <PolySharpPackageVersion>1.15.0</PolySharpPackageVersion>
+    <PolySharpPackageVersion>1.16.0</PolySharpPackageVersion>
     <IncludeBuildOutput>false</IncludeBuildOutput>
     <DevelopmentDependency>true</DevelopmentDependency>
     <GeneratePackageOnBuild>true</GeneratePackageOnBuild>
